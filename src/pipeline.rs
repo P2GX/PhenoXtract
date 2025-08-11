@@ -37,8 +37,6 @@ impl Pipeline {
             }
         }
 
-        // Push the Tables through the transformer_module.transform function
-        // You should get a vec of phenopackets from the transformer. Use the loader module to store them.
         Ok(())
     }
 
