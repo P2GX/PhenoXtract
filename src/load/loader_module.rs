@@ -10,5 +10,6 @@ pub trait Loadable {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "type")]
 enum Loader {
+    #[allow(unused)]
     FileSystem(FileSystemLoader),
 }

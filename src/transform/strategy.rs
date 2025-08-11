@@ -1,5 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-
+#[allow(dead_code)]
 pub trait Strategy {
     fn transform<'a>(&self, table: &'a mut ContextualizedDataFrame) -> &'a ContextualizedDataFrame {
         if self.is_valid(table) {

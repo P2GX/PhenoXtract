@@ -5,11 +5,12 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct FileSystemLoader {
-    out_path: PathBuf,
+    _out_path: PathBuf,
 }
 
 impl Loadable for FileSystemLoader {
-    fn load(&self, phenopacket: &Phenopacket) -> Result<(), anyhow::Error> {
+    // Rename input withoug _, when implementing
+    fn load(&self, _phenopacket: &Phenopacket) -> Result<(), anyhow::Error> {
         Ok(())
     }
 }

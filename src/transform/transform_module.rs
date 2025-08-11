@@ -3,12 +3,14 @@ use crate::transform::phenopacket::Phenopacket;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategy::Strategy;
 
+#[allow(dead_code)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
     phenopacket_builder: PhenopacketBuilder,
 }
 
 impl TransformerModule {
+    #[allow(dead_code)]
     pub fn run(
         &self,
         tables: &mut [ContextualizedDataFrame],

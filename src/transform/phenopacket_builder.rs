@@ -1,25 +1,33 @@
 use crate::transform::phenopacket::Phenopacket;
 use std::collections::HashMap;
 
+#[allow(dead_code)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<usize, Phenopacket>,
 }
 
 impl PhenopacketBuilder {
+    #[allow(dead_code)]
     pub fn build(&self) -> Result<Vec<Phenopacket>, anyhow::Error> {
         Ok(Vec::new())
     }
-
-    pub fn build_for_id(&self, id: usize) -> Result<Phenopacket, anyhow::Error> {
+    #[allow(dead_code)]
+    pub fn build_for_id(
+        &self,
+        // Rename input withoug _, when implementing
+        _id: usize,
+    ) -> Result<Phenopacket, anyhow::Error> {
         Ok(Phenopacket::new("Magnus Knut Hansen".to_string()))
     }
 
+    #[allow(dead_code)]
     pub fn add_phenotypic_feature(
         &mut self,
-        subject_id: String,
-        phenotype: String,
-        on_set: Option<String>,
-        is_observed: Option<bool>,
+        // Rename inputs without the _, when used
+        _subject_id: String,
+        _phenotype: String,
+        _on_set: Option<String>,
+        _is_observed: Option<bool>,
     ) -> Result<(), anyhow::Error> {
         todo!()
     }

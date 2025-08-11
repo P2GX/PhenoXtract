@@ -6,31 +6,35 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct CSVDataSource {
+    #[allow(unused)]
     source: PathBuf,
+    #[allow(unused)]
     separator: Option<String>,
+    #[allow(unused)]
     table: Option<TableContext>,
 }
 #[derive(Debug, Deserialize)]
 pub struct ExcelDatasource {
-    source: PathBuf,
-    sheets: Option<Vec<TableContext>>,
+    _source: PathBuf,
+    _sheets: Option<Vec<TableContext>>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type")]
 pub enum DataSource {
-    CSV(CSVDataSource),
+    Csv(CSVDataSource),
     Excel(ExcelDatasource),
 }
 
 impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
         match self {
-            DataSource::CSV(csv_source) => {
+            // Rename input withoug _, when implementing
+            DataSource::Csv(_csv_source) => {
                 todo!()
             }
-            DataSource::Excel(excel_source) => {
+            DataSource::Excel(_excel_source) => {
                 todo!()
             }
         }

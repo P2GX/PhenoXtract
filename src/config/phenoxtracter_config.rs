@@ -5,7 +5,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct PhenoXtractorConfig {
+    #[allow(unused)]
     data_sources: Vec<DataSource>,
+    #[allow(unused)]
     meta_data: MetaData,
+    #[allow(unused)]
     pipeline: PipelineConfig,
 }
