@@ -9,6 +9,7 @@ pub trait Loadable {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "type")]
+#[allow(dead_code)]
 enum Loader {
     #[allow(unused)]
     FileSystem(FileSystemLoader),
