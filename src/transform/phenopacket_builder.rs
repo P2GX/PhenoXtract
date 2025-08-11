@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::transform::phenopacket::Phenopacket;
+use std::collections::HashMap;
 
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<usize, Phenopacket>,
