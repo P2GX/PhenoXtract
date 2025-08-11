@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  compile_and_test:
+    name: Compile & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: Check out Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust Toolchain for GitHub CI
+        uses: actions-rust-lang/setup-rust-toolchain@v1.13.0
+        with:
+          toolchain: stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.0
+
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.99
+
+      - name: Test
+        run: cargo nextest run --workspace --lib --all-targets --all-features
+
+  format:
+    name: Code Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust Toolchain for GitHub CI
+        uses: actions-rust-lang/setup-rust-toolchain@v1.13.0
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.0
+
+      - name: Check formatting of Rust code with rustfmt
+        uses: actions-rust-lang/rustfmt@v1.1.1
+
+  lint:
+    name: Code Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust Toolchain for GitHub CI
+        uses: actions-rust-lang/setup-rust-toolchain@v1.13.0
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.0
+
+      - run: cargo clippy --workspace --lib --all-targets --all-features -- -D clippy::dbg-macro

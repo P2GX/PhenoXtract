@@ -1,0 +1,10 @@
+[package]
+authors = ["Rouven Reuter"]
+description = "A template for rust projects build by the robinson group"
+edition = "2024"
+homepage = "https://robinsongroup.github.io/"
+license = "MIT"
+name = "robinson-group-rust-template"
+version = "0.1.0"
+
+[dependencies]
