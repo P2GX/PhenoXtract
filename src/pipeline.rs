@@ -19,8 +19,6 @@ impl Pipeline {
 
         self.run_tl(&mut data)?;
         Ok(())
-        // Use the extract function of the Extractable Trait to get tables
-        // Next call the run_tl function.
     }
     #[allow(dead_code)]
     fn run_tl(&self, tables: &mut [ContextualizedDataFrame]) -> Result<(), anyhow::Error> {
