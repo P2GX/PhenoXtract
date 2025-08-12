@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "PhenoXtrackt"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "config",
+ "phenopackets",
+ "polars",
+ "serde",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2466,17 +2477,6 @@ checksum = "52e599a477cf9840e92f2cde9a7189e67b42c57532749bf90aea6ec10facd4db"
 dependencies = [
  "byteorder",
  "rmp",
- "serde",
-]
-
-[[package]]
-name = "robinson-group-rust-template"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "config",
- "phenopackets",
- "polars",
  "serde",
 ]
 

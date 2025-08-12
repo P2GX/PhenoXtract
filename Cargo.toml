@@ -1,10 +1,10 @@
 [package]
-authors = ["Rouven Reuter"]
-description = "A template for rust projects build by the robinson group"
+authors = ["Rouven Reuter", "Peter Robinson", "Patrick Simon Nairne"]
+description = "A configurable ETL pipeline to convert tables into phenpackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
 license = "MIT"
-name = "robinson-group-rust-template"
+name = "PhenoXtrackt"
 version = "0.1.0"
 
 [dependencies]
