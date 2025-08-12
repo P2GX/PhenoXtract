@@ -6,4 +6,5 @@ pub struct PipelineConfig {
     transform_strategies: Vec<String>,
     #[allow(unused)]
     loader: String,
+    // String for now, later enum
 }

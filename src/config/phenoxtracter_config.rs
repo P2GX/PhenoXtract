@@ -10,5 +10,5 @@ struct PhenoXtractorConfig {
     #[allow(unused)]
     meta_data: MetaData,
     #[allow(unused)]
-    pipeline: PipelineConfig,
+    pipeline: Option<PipelineConfig>,
 }
