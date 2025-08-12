@@ -33,7 +33,7 @@ pub enum Context {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
-enum PolyValue {
+enum CellValue {
     #[allow(unused)]
     String(String),
     #[allow(unused)]
@@ -49,10 +49,10 @@ struct CellContext {
     #[serde(default)]
     context: Context,
     #[allow(unused)]
-    fill_missing: PolyValue,
+    fill_missing: CellValue,
     #[allow(unused)]
     #[serde(default)]
-    alias_map: HashMap<String, PolyValue>,
+    alias_map: HashMap<String, CellValue>,
     // Besides just strings, should also be able to hold operations like ">1" or "=1", which can be interpreted later.
 }
 
