@@ -11,56 +11,65 @@ pub struct TableContext {
     rows: Vec<SeriesContext>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "lowercase")]
-#[serde(tag = "identifier")]
-enum Identifier {
-    #[allow(unused)]
-    Name(String),
-    #[allow(unused)]
-    Regex(String),
-    #[allow(unused)]
-    Number(isize),
-}
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 enum Context {
     #[allow(unused)]
-    HpoID(String),
+    HpoID,
     #[allow(unused)]
-    HpoLabel(String),
+    HpoLabel,
     #[allow(unused)]
-    OnSet(String),
+    OnSet,
     #[allow(unused)]
-    OnSetDate(String),
+    OnSetDate,
     #[allow(unused)]
-    SubjectID(String),
+    SubjectID,
     #[allow(unused)]
-    SubjectSex(String),
+    SubjectSex,
     //...
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
-enum AliasValue {
+enum PolyValue {
     #[allow(unused)]
     String(String), // Can be just a string, but also a function call.
     #[allow(unused)]
     Int(i64),
     #[allow(unused)]
     Float(f64),
+    #[allow(unused)]
+    Bool(bool),
 }
 #[derive(Debug, Clone, Deserialize)]
 struct CellContext {
     #[allow(unused)]
     context: Context,
     #[allow(unused)]
-    fill_missing: String, // Probably, should cover more than strings
+    fill_missing: PolyValue,
     #[allow(unused)]
-    alias_map: HashMap<String, AliasValue>, // This is not complete. Needs to be able to take string, callables, int, floats and still be deserializable. Maybe use Tuple here, so the key can also be an alias value
+    alias_map: HashMap<String, PolyValue>, // This is not complete. Needs to be able to take string, callables, int, floats and still be deserializable. Maybe use Tuple here, so the key can also be an alias value
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct SeriesContext {
+#[serde(untagged)]
+enum Identifier {
+    #[allow(unused)]
+    Name(String),
+    #[allow(unused)]
+    Number(isize),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum SeriesContext {
+    #[allow(unused)]
+    Single(SingleSeriesContext),
+    #[allow(unused)]
+    Multi(MultiSeriesContext),
+}
+#[derive(Debug, Clone, Deserialize)]
+struct SingleSeriesContext {
     #[allow(unused)]
     identifier: Identifier, // Not so sure if this works, when deserializing, because all values of the enum are strings.
     #[allow(unused)]
@@ -69,4 +78,14 @@ struct SeriesContext {
     cells: CellContext,
     #[allow(unused)]
     rename_id: Option<String>, // This only works, when the identifier is a name and not a regex. Maybe need, two different structs?
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct MultiSeriesContext {
+    #[allow(unused)]
+    regex_identifier: String, // Not so sure if this works, when deserializing, because all values of the enum are strings.
+    #[allow(unused)]
+    id_context: Option<Context>,
+    #[allow(unused)]
+    cells: CellContext,
 }
