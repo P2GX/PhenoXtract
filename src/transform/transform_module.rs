@@ -1,0 +1,29 @@
+use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::transform::phenopacket::Phenopacket;
+use crate::transform::phenopacket_builder::PhenopacketBuilder;
+use crate::transform::strategy::Strategy;
+
+#[allow(dead_code)]
+pub struct TransformerModule {
+    strategies: Vec<Box<dyn Strategy>>,
+    phenopacket_builder: PhenopacketBuilder,
+}
+
+impl TransformerModule {
+    #[allow(dead_code)]
+    pub fn run(
+        &self,
+        tables: &mut [ContextualizedDataFrame],
+    ) -> Result<Vec<Phenopacket>, anyhow::Error> {
+        tables.iter_mut().for_each(|table| {
+            for strategy in &self.strategies {
+                strategy.transform(table);
+            }
+        });
+        // The tables should now be in the correct format.
+        // Iterate through them to doing a groupby("subject_id") for each and collecting
+        // the relevant values per subject with the phenopacket builder.
+        let packets = self.phenopacket_builder.build()?;
+        Ok(packets)
+    }
+}
