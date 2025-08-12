@@ -1,4 +1,4 @@
-use crate::transform::phenopacket::Phenopacket;
+use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -13,7 +13,7 @@ impl PhenopacketBuilder {
     }
     #[allow(dead_code)]
     pub fn build_for_id(&self, #[allow(unused)] id: usize) -> Result<Phenopacket, anyhow::Error> {
-        Ok(Phenopacket::new("Magnus Knut Hansen".to_string()))
+        Ok(Phenopacket::default())
     }
 
     #[allow(dead_code)]

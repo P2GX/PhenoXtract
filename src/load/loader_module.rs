@@ -1,5 +1,6 @@
 use crate::load::file_system_loader::FileSystemLoader;
-use crate::transform::phenopacket::Phenopacket;
+use phenopackets::schema::v2::Phenopacket;
+
 use serde::Deserialize;
 
 pub trait Loadable {

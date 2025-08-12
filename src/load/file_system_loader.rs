@@ -1,5 +1,5 @@
 use crate::load::loader_module::Loadable;
-use crate::transform::phenopacket::Phenopacket;
+use phenopackets::schema::v2::Phenopacket;
 use serde::Deserialize;
 use std::path::PathBuf;
 

@@ -29,7 +29,7 @@ impl Pipeline {
                 // TODO: Replace print with logging later
                 println!(
                     "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket.subject_id.as_str(),
+                    phenopacket.subject.unwrap().id.as_str(),
                     e
                 )
             }
