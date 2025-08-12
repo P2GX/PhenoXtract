@@ -12,11 +12,7 @@ impl PhenopacketBuilder {
         Ok(Vec::new())
     }
     #[allow(dead_code)]
-    pub fn build_for_id(
-        &self,
-        // Rename input withoug _, when implementing
-        _id: usize,
-    ) -> Result<Phenopacket, anyhow::Error> {
+    pub fn build_for_id(&self, #[allow(unused)] id: usize) -> Result<Phenopacket, anyhow::Error> {
         Ok(Phenopacket::new("Magnus Knut Hansen".to_string()))
     }
 
