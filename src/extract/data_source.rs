@@ -11,14 +11,14 @@ pub struct CSVDataSource {
     #[allow(unused)]
     separator: Option<String>,
     #[allow(unused)]
-    table: Option<TableContext>,
+    table: TableContext,
 }
 #[derive(Debug, Deserialize)]
 pub struct ExcelDatasource {
     #[allow(unused)]
     source: PathBuf,
     #[allow(unused)]
-    sheets: Option<Vec<TableContext>>,
+    sheets: Vec<TableContext>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,7 +32,7 @@ pub enum DataSource {
 impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
         match self {
-            // Rename input withoug _, when implementing
+            // Rename input without _, when implementing
             DataSource::Csv(_csv_source) => {
                 todo!()
             }
