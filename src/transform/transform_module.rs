@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::phenopacket::Phenopacket;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategy::Strategy;
+use phenopackets::schema::v2::Phenopacket;
 
 #[allow(dead_code)]
 pub struct TransformerModule {
