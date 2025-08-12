@@ -29,7 +29,7 @@ impl Pipeline {
                 // TODO: Replace print with logging later
                 println!(
                     "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket._subject_id.as_str(),
+                    phenopacket.subject_id.as_str(),
                     e
                 )
             }
@@ -38,9 +38,9 @@ impl Pipeline {
         Ok(())
     }
 
-    // Rename input withoug _, when implementing
+    #[allow(unused)]
     #[allow(dead_code)]
-    fn from_config(_config: &PipelineConfig) -> Result<Self, anyhow::Error> {
+    fn from_config(config: &PipelineConfig) -> Result<Self, anyhow::Error> {
         // Uses the PipelineConfig object and constructs the pipeline from it
         todo!()
     }

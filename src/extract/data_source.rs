@@ -15,8 +15,10 @@ pub struct CSVDataSource {
 }
 #[derive(Debug, Deserialize)]
 pub struct ExcelDatasource {
-    _source: PathBuf,
-    _sheets: Option<Vec<TableContext>>,
+    #[allow(unused)]
+    source: PathBuf,
+    #[allow(unused)]
+    sheets: Option<Vec<TableContext>>,
 }
 
 #[derive(Debug, Deserialize)]

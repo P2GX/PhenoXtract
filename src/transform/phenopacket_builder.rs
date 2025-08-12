@@ -23,11 +23,10 @@ impl PhenopacketBuilder {
     #[allow(dead_code)]
     pub fn add_phenotypic_feature(
         &mut self,
-        // Rename inputs without the _, when used
-        _subject_id: String,
-        _phenotype: String,
-        _on_set: Option<String>,
-        _is_observed: Option<bool>,
+        #[allow(unused)] subject_id: String,
+        #[allow(unused)] phenotype: String,
+        #[allow(unused)] on_set: Option<String>,
+        #[allow(unused)] is_observed: Option<bool>,
     ) -> Result<(), anyhow::Error> {
         todo!()
     }
