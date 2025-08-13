@@ -2,6 +2,7 @@ use crate::config::phenoxtracter_config::PhenoXtractorConfig;
 use config::{Config, ConfigError, File, FileFormat};
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 fn load_config(path_buf: PathBuf) -> Result<PhenoXtractorConfig, ConfigError> {
     if let Some(ext) = path_buf.extension() {
         let file_format = match ext.to_str() {
