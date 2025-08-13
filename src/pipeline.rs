@@ -22,7 +22,7 @@ impl Pipeline {
     pub fn extract(
         &self,
         extractables: &mut [impl Extractable],
-    ) -> Result<(Vec<ContextualizedDataFrame>), anyhow::Error> {
+    ) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
         let data: Vec<ContextualizedDataFrame> = extractables
             .iter()
             .flat_map(|ex| ex.extract().unwrap())
@@ -34,7 +34,7 @@ impl Pipeline {
     pub fn transform(
         &self,
         tables: &mut [ContextualizedDataFrame],
-    ) -> Result<(Vec<Phenopacket>), anyhow::Error> {
+    ) -> Result<Vec<Phenopacket>, anyhow::Error> {
         let phenopackets = self.transformer_module.run(tables)?;
         Ok(phenopackets)
     }
