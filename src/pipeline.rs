@@ -3,6 +3,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::extractable::Extractable;
 use crate::load::loader_module::Loadable;
 use crate::transform::transform_module::TransformerModule;
+use phenopackets::schema::v2::Phenopacket;
 #[allow(dead_code)]
 struct Pipeline {
     transformer_module: TransformerModule,
@@ -11,30 +12,44 @@ struct Pipeline {
 
 impl Pipeline {
     #[allow(dead_code)]
-    fn run_etl(&self, extractables: &mut [impl Extractable]) -> Result<(), anyhow::Error> {
-        let mut data: Vec<ContextualizedDataFrame> = extractables
+    pub fn run(&self, extractables: &mut [impl Extractable]) -> Result<(), anyhow::Error> {
+        let mut data = self.extract(extractables)?;
+        let phenopackets = self.transform(data.as_mut_slice())?;
+        self.load(phenopackets.as_slice())?;
+        Ok(())
+    }
+
+    pub fn extract(
+        &self,
+        extractables: &mut [impl Extractable],
+    ) -> Result<(Vec<ContextualizedDataFrame>), anyhow::Error> {
+        let data: Vec<ContextualizedDataFrame> = extractables
             .iter()
             .flat_map(|ex| ex.extract().unwrap())
             .collect();
 
-        self.run_tl(&mut data)?;
-        Ok(())
+        Ok(data)
     }
-    #[allow(dead_code)]
-    fn run_tl(&self, tables: &mut [ContextualizedDataFrame]) -> Result<(), anyhow::Error> {
-        let phenopackets = self.transformer_module.run(tables)?;
 
+    pub fn transform(
+        &self,
+        tables: &mut [ContextualizedDataFrame],
+    ) -> Result<(Vec<Phenopacket>), anyhow::Error> {
+        let phenopackets = self.transformer_module.run(tables)?;
+        Ok(phenopackets)
+    }
+
+    pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), anyhow::Error> {
         for phenopacket in phenopackets {
-            if let Err(e) = self.loader_module.load(&phenopacket) {
+            if let Err(e) = self.loader_module.load(phenopacket) {
                 // TODO: Replace print with logging later
                 println!(
                     "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket.subject.unwrap().id.as_str(),
+                    phenopacket.clone().subject.unwrap().id.as_str(),
                     e
                 )
             }
         }
-
         Ok(())
     }
 
