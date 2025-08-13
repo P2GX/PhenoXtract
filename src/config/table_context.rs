@@ -120,7 +120,9 @@ struct SingleSeriesContext {
     #[allow(unused)]
     rename_id: Option<String>, // This only works, when the identifier is a name and not a regex. Maybe need, two different structs?
     /// A unique ID that can be used to link to other series
+    #[allow(unused)]
     linking_id: Option<String>,
+    #[allow(unused)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
     linked_to: Option<Vec<String>>,
 }
