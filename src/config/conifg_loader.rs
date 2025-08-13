@@ -111,16 +111,14 @@ mod tests {
     #[case("json", JSON_DATA)]
     #[case("ron", RON_DATA)]
     fn test_load_config_from_various_formats(
-        temp_dir: TempDir, // Injects the temp_dir fixture
+        temp_dir: TempDir,
         #[case] extension: &str,
         #[case] data: &[u8],
     ) {
-        // --- Setup: Create the config file for the current case ---
         let file_path = temp_dir.path().join(format!("config.{}", extension));
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(data).unwrap();
 
-        // --- Test Logic: This part is now reused for every format ---
         let mut phenoxtractor_config = load_config(file_path).unwrap();
         let source = phenoxtractor_config.data_sources.pop().unwrap();
 
