@@ -13,3 +13,7 @@ polars = "0.50.0"
 serde = "1.0.219"
 anyhow = "1.0.98"
 phenopackets = "0.2.2-post1"
+
+[dev-dependencies]
+rstest = "0.26.1"
+tempfile = "3.8"
