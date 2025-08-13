@@ -8,7 +8,7 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize)]
 pub struct TableContext {
     #[allow(unused)]
-    name: String,
+    pub name: String,
     #[allow(unused)]
     columns: Option<Vec<SeriesContext>>,
     #[allow(unused)]

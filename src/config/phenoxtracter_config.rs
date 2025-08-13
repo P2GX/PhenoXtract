@@ -5,11 +5,11 @@ use serde::Deserialize;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
 #[derive(Debug, Deserialize)]
-struct PhenoXtractorConfig {
+pub struct PhenoXtractorConfig {
     #[allow(unused)]
-    data_sources: Vec<DataSource>,
+    pub data_sources: Vec<DataSource>,
     #[allow(unused)]
-    meta_data: MetaData,
+    pub meta_data: MetaData,
     #[allow(unused)]
-    pipeline: Option<PipelineConfig>,
+    pub pipeline: Option<PipelineConfig>,
 }
