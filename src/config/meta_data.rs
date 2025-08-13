@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-/// Hold all shared meta data for the phenopackets produced by the pipeline
+/// Holds all shared meta data for the phenopackets produced by the pipeline
 #[derive(Debug, Deserialize)]
 pub struct MetaData {
     #[allow(unused)]
