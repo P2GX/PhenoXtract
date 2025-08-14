@@ -17,6 +17,7 @@ pub struct PhenoXtractorConfig {
 }
 
 impl PhenoXtractorConfig {
+    #[allow(dead_code)]
     pub fn load(file_path: PathBuf) -> Result<PhenoXtractorConfig, ConfigError> {
         if let Some(ext) = file_path.extension() {
             let file_format = match ext.to_str() {
