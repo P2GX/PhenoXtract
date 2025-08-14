@@ -35,6 +35,7 @@ mod tests {
     use rstest::*;
     use std::fs::File as StdFile;
     use std::io::Write;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     const YAML_DATA: &[u8] = br#"
@@ -46,13 +47,13 @@ mod tests {
           name: "test_table"
 
     meta_data:
-      creator: Rouven Reuter
+      created_by: Rouven Reuter
       submitted_by: Magnus Knut Hansen
     "#;
 
     const TOML_DATA: &[u8] = br#"
     [meta_data]
-    creator = "Rouven Reuter"
+    created_by = "Rouven Reuter"
     submitted_by = "Magnus Knut Hansen"
 
     [[data_sources]]
@@ -65,7 +66,7 @@ mod tests {
     const JSON_DATA: &[u8] = br#"
     {
       "meta_data": {
-        "creator": "Rouven Reuter",
+        "created_by": "Rouven Reuter",
         "submitted_by": "Magnus Knut Hansen"
       },
       "data_sources": [
@@ -82,13 +83,13 @@ mod tests {
     "#;
 
     const RON_DATA: &[u8] = br#"
-( // Represents the top-level config struct
+(
     meta_data: (
-        creator: "Rouven Reuter",
+        created_by: "Rouven Reuter",
         submitted_by: "Magnus Knut Hansen",
     ),
-    data_sources: [ // A list of data sources
-        ( // The Csv data source variant
+    data_sources: [
+        (
             type: "csv",
             source: "test/path",
             separator: ",",
@@ -115,20 +116,31 @@ mod tests {
         #[case] extension: &str,
         #[case] data: &[u8],
     ) {
-        let file_path = temp_dir.path().join(format!("config.{}", extension));
+        let file_path = temp_dir.path().join(format!("config.{extension}"));
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(data).unwrap();
 
         let mut phenoxtractor_config = load_config(file_path).unwrap();
+        let meta_data = phenoxtractor_config.meta_data;
         let source = phenoxtractor_config.data_sources.pop().unwrap();
 
         match source {
             DataSource::Csv(data) => {
-                assert_eq!(data.separator.unwrap(), ",");
+                assert_eq!(data.separator, Some(",".to_string()));
                 assert_eq!(data.table.name, "test_table");
                 assert_eq!(data.source.to_str().unwrap(), "test/path");
             }
             _ => panic!("Wrong data source type. Expected Csv."),
         }
+
+        assert_eq!(meta_data.created_by, Some("Rouven Reuter".to_string()));
+        assert_eq!(meta_data.submitted_by, "Magnus Knut Hansen".to_string());
+    }
+
+    #[rstest]
+    fn test_load_config_unsupported_file_format() {
+        let file_path = PathBuf::from_str("test/path/config.exe").unwrap();
+        let err = load_config(file_path);
+        assert!(err.is_err());
     }
 }

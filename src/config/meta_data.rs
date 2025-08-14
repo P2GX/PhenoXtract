@@ -5,7 +5,7 @@ use serde::Deserialize;
 pub struct MetaData {
     #[allow(unused)]
     // When not set should be defaulted to app name and version
-    created_by: Option<String>,
+    pub created_by: Option<String>,
     #[allow(unused)]
-    submitted_by: String,
+    pub submitted_by: String,
 }
