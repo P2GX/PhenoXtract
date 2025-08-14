@@ -17,8 +17,8 @@ pub struct PhenoXtractorConfig {
 }
 
 impl PhenoXtractorConfig {
-    pub fn load(path_buf: PathBuf) -> Result<PhenoXtractorConfig, ConfigError> {
-        if let Some(ext) = path_buf.extension() {
+    pub fn load(file_path: PathBuf) -> Result<PhenoXtractorConfig, ConfigError> {
+        if let Some(ext) = file_path.extension() {
             let file_format = match ext.to_str() {
                 Some("yaml") => Ok(FileFormat::Yaml),
                 Some("yml") => Ok(FileFormat::Yaml),
@@ -26,18 +26,18 @@ impl PhenoXtractorConfig {
                 Some("toml") => Ok(FileFormat::Toml),
                 Some("ron") => Ok(FileFormat::Ron),
                 _ => Err(ConfigError::NotFound(format!(
-                    "File format not supported. yaml, json, toml or ron are supported. {path_buf:?}"
+                    "File format not supported. yaml, json, toml or ron are supported. {file_path:?}"
                 ))),
             }?;
 
             let settings = Config::builder()
-                .add_source(File::new(path_buf.to_str().unwrap(), file_format))
+                .add_source(File::new(file_path.to_str().unwrap(), file_format))
                 .build()?;
             let settings_struct: PhenoXtractorConfig = settings.try_deserialize()?;
             Ok(settings_struct)
         } else {
             Err(ConfigError::NotFound(format!(
-                "Could not find file extension on path {path_buf:?}"
+                "Could not find file extension on path {file_path:?}"
             )))
         }
     }
