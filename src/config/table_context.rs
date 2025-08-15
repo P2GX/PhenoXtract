@@ -1,25 +1,25 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TableContext {
     #[allow(unused)]
-    name: String,
+    pub name: String,
     #[allow(unused)]
-    columns: Option<Vec<SeriesContext>>,
+    pub columns: Option<Vec<SeriesContext>>,
     #[allow(unused)]
-    rows: Option<Vec<SeriesContext>>,
+    pub rows: Option<Vec<SeriesContext>>,
 }
 
 /// Defines the semantic meaning or type of data in a cell or series.
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
-#[derive(Debug, Clone, PartialEq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
     #[allow(unused)]
@@ -43,7 +43,7 @@ pub enum Context {
 ///
 /// This enum uses `serde(untagged)` to allow for flexible deserialization
 /// of JSON values (string, integer, float, or boolean) into a single type.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum CellValue {
     #[allow(unused)]
@@ -57,7 +57,7 @@ enum CellValue {
 }
 
 /// Provides detailed context for processing the values within all cells of a column.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct CellContext {
     /// The semantic context of the cell's data.
     #[allow(unused)]
@@ -79,7 +79,7 @@ struct CellContext {
 /// An identifier for a series, which can be either a name or a numerical index.
 ///
 /// This allows for selecting columns or rows by their header name (e.g., "PatientID")
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum Identifier {
     #[allow(unused)]
@@ -93,9 +93,9 @@ enum Identifier {
 /// This enum acts as a dispatcher. It can either define the context for a
 /// single, specifically identified series or for multiple series identified
 /// by a regular expression.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-enum SeriesContext {
+pub(crate) enum SeriesContext {
     #[allow(unused)]
     Single(SingleSeriesContext),
     #[allow(unused)]
@@ -103,8 +103,8 @@ enum SeriesContext {
 }
 
 /// Defines the context for a single, specific series (e.g., a column or row).
-#[derive(Debug, Clone, Deserialize)]
-struct SingleSeriesContext {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     /// The unique identifier for the series.
     identifier: Identifier,
@@ -123,7 +123,7 @@ struct SingleSeriesContext {
     linked_to: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum MultiIdentifier {
     #[allow(unused)]
@@ -136,8 +136,8 @@ enum MultiIdentifier {
 ///
 /// This is useful for applying the same logic to a group of related columns or rows,
 /// for example, all columns whose names start with "measurement_".
-#[derive(Debug, Clone, Deserialize)]
-struct MultiSeriesContext {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct MultiSeriesContext {
     #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
     multi_identifier: MultiIdentifier,
