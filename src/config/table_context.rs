@@ -1,17 +1,22 @@
+use crate::validation::table_context_validation::validate_unique_identifiers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::option::Option;
+use validator::Validate;
 
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Validate, Deserialize, Serialize)]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
     #[allow(unused)]
+    #[validate(custom(function = "validate_unique_identifiers"))]
     pub columns: Option<Vec<SeriesContext>>,
     #[allow(unused)]
+    #[validate(custom(function = "validate_unique_identifiers"))]
     pub rows: Option<Vec<SeriesContext>>,
 }
 
@@ -45,7 +50,7 @@ pub enum Context {
 /// of JSON values (string, integer, float, or boolean) into a single type.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-enum CellValue {
+pub(crate) enum CellValue {
     #[allow(unused)]
     String(String),
     #[allow(unused)]
@@ -58,7 +63,7 @@ enum CellValue {
 
 /// Provides detailed context for processing the values within all cells of a column.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct CellContext {
+pub(crate) struct CellContext {
     /// The semantic context of the cell's data.
     #[allow(unused)]
     #[serde(default)]
@@ -81,7 +86,7 @@ struct CellContext {
 /// This allows for selecting columns or rows by their header name (e.g., "PatientID")
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-enum Identifier {
+pub(crate) enum Identifier {
     #[allow(unused)]
     Name(String),
     #[allow(unused)]
@@ -107,7 +112,7 @@ pub(crate) enum SeriesContext {
 pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     /// The unique identifier for the series.
-    identifier: Identifier,
+    pub(crate) identifier: Identifier,
     #[allow(unused)]
     #[serde(default)]
     /// The semantic context found in the header/index of the series.
@@ -123,9 +128,22 @@ pub(crate) struct SingleSeriesContext {
     linked_to: Option<Vec<String>>,
 }
 
+impl SingleSeriesContext {
+    #[allow(unused)]
+    pub(crate) fn new(identifier: Identifier) -> Self {
+        SingleSeriesContext {
+            identifier,
+            id_context: Context::None,
+            cells: None,
+            linking_id: None,
+            linked_to: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-enum MultiIdentifier {
+pub(crate) enum MultiIdentifier {
     #[allow(unused)]
     Regex(String),
     #[allow(unused)]
@@ -140,11 +158,22 @@ enum MultiIdentifier {
 pub(crate) struct MultiSeriesContext {
     #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
-    multi_identifier: MultiIdentifier,
+    pub(crate) multi_identifier: MultiIdentifier,
     #[allow(unused)]
     /// The semantic context to apply to the identifiers of all matched column header or row indexes.
     id_context: Context,
     #[allow(unused)]
     /// The context to apply to every cell in all of the matched series.
     cells: Option<CellContext>,
+}
+
+impl MultiSeriesContext {
+    #[allow(unused)]
+    pub(crate) fn new(multi_identifier: MultiIdentifier) -> Self {
+        MultiSeriesContext {
+            multi_identifier,
+            id_context: Context::None,
+            cells: None,
+        }
+    }
 }
