@@ -2,6 +2,7 @@ use crate::config::table_context::TableContext;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::extractable::Extractable;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use validator::{Validate, ValidationError};
@@ -33,17 +34,25 @@ pub struct ExcelDatasource {
 }
 
 fn validate_unique_sheet_names(sheets: &[TableContext]) -> Result<(), ValidationError> {
-    let sheet_names: Vec<&str> = sheets
+    let mut seen_names = HashSet::new();
+
+    let duplicates: Vec<String> = sheets
         .iter()
-        .map(|sheet| sheet.name.as_str())
-        .collect::<Vec<&str>>();
-    let unique_sheet_names: HashSet<&&str> = HashSet::from_iter(sheet_names.iter());
-    if sheet_names.len() == unique_sheet_names.len() {
+        .filter_map(|s| {
+            if !seen_names.insert(&s.name) {
+                Some(s.name.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if duplicates.is_empty() {
         Ok(())
     } else {
-        let msg = format!("Duplicate sheet name configured {sheet_names:?}");
-        let msg_static: &'static str = Box::leak(msg.into_boxed_str());
-        Err(ValidationError::new(msg_static))
+        let mut error = ValidationError::new("unique");
+        error.add_param(Cow::from("duplicates"), &duplicates);
+        Err(error.with_message(Cow::Owned("Duplicate sheet name configured.".to_string())))
     }
 }
 
