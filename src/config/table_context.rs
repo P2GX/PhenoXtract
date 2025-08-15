@@ -192,13 +192,19 @@ pub(crate) struct SingleSeriesContext {
 
 impl SingleSeriesContext {
     #[allow(unused)]
-    pub(crate) fn new(identifier: Identifier) -> Self {
+    pub(crate) fn new(
+        identifier: Identifier,
+        id_context: Context,
+        cells: Option<CellContext>,
+        linking_id: Option<String>,
+        linked_to: Option<Vec<String>>,
+    ) -> Self {
         SingleSeriesContext {
             identifier,
-            id_context: Context::None,
-            cells: None,
-            linking_id: None,
-            linked_to: None,
+            id_context,
+            cells,
+            linking_id,
+            linked_to,
         }
     }
 }
@@ -231,11 +237,15 @@ pub(crate) struct MultiSeriesContext {
 
 impl MultiSeriesContext {
     #[allow(unused)]
-    pub(crate) fn new(multi_identifier: MultiIdentifier) -> Self {
+    pub(crate) fn new(
+        multi_identifier: MultiIdentifier,
+        id_context: Context,
+        cells: Option<CellContext>,
+    ) -> Self {
         MultiSeriesContext {
             multi_identifier,
-            id_context: Context::None,
-            cells: None,
+            id_context,
+            cells,
         }
     }
 }

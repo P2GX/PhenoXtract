@@ -100,23 +100,39 @@ mod tests {
     use rstest::rstest;
 
     fn single_name(name: &str) -> SeriesContext {
-        SeriesContext::Single(SingleSeriesContext::new(Identifier::Name(name.to_string())))
+        SeriesContext::Single(SingleSeriesContext::new(
+            Identifier::Name(name.to_string()),
+            Context::None,
+            None,
+            None,
+            None,
+        ))
     }
 
     fn single_number(num: isize) -> SeriesContext {
-        SeriesContext::Single(SingleSeriesContext::new(Identifier::Number(num)))
+        SeriesContext::Single(SingleSeriesContext::new(
+            Identifier::Number(num),
+            Context::None,
+            None,
+            None,
+            None,
+        ))
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
-        SeriesContext::Multi(MultiSeriesContext::new(MultiIdentifier::Multi(
-            ids.into_iter().map(String::from).collect(),
-        )))
+        SeriesContext::Multi(MultiSeriesContext::new(
+            MultiIdentifier::Multi(ids.into_iter().map(String::from).collect()),
+            Context::None,
+            None,
+        ))
     }
 
     fn multi_regex(regex: &str) -> SeriesContext {
-        SeriesContext::Multi(MultiSeriesContext::new(MultiIdentifier::Regex(
-            regex.to_string(),
-        )))
+        SeriesContext::Multi(MultiSeriesContext::new(
+            MultiIdentifier::Regex(regex.to_string()),
+            Context::None,
+            None,
+        ))
     }
 
     #[rstest]
