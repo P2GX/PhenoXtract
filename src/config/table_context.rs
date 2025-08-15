@@ -1,3 +1,4 @@
+use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -8,7 +9,11 @@ use validator::Validate;
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Validate, Deserialize, Serialize)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone)]
+#[validate(schema(
+    function = "validate_at_least_one_subject_id",
+    skip_on_field_errors = false
+))]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
@@ -71,16 +76,28 @@ pub(crate) struct CellContext {
 
     /// A default value to replace empty fields in a cell
     #[allow(unused)]
-    fill_missing: CellValue,
+    fill_missing: Option<CellValue>,
     #[allow(unused)]
     #[serde(default)]
     /// A map to replace specific string values with another `CellValue`.
     ///
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: HashMap<String, CellValue>,
+    alias_map: Option<HashMap<String, CellValue>>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 }
-
+impl CellContext {
+    pub fn new(
+        context: Context,
+        fill_missing: Option<CellValue>,
+        alias_map: Option<HashMap<String, CellValue>>,
+    ) -> CellContext {
+        CellContext {
+            context,
+            fill_missing,
+            alias_map,
+        }
+    }
+}
 /// An identifier for a series, which can be either a name or a numerical index.
 ///
 /// This allows for selecting columns or rows by their header name (e.g., "PatientID")
@@ -105,6 +122,51 @@ pub(crate) enum SeriesContext {
     Single(SingleSeriesContext),
     #[allow(unused)]
     Multi(MultiSeriesContext),
+}
+
+impl SeriesContext {
+    pub fn get_context(&self) -> Context {
+        match self {
+            SeriesContext::Single(single) => single.id_context.clone(),
+            SeriesContext::Multi(multi) => multi.id_context.clone(),
+        }
+    }
+
+    pub fn get_cell_context(&self) -> Context {
+        let cells_option = match self {
+            SeriesContext::Single(single) => &single.cells,
+            SeriesContext::Multi(multi) => &multi.cells,
+        };
+        cells_option
+            .clone()
+            .map(|context_container| context_container.context)
+            .unwrap_or(Context::None)
+    }
+    #[allow(unused)]
+    pub fn with_context(mut self, context: Context) -> Self {
+        let id_context_ref = match &mut self {
+            SeriesContext::Single(single) => &mut single.id_context,
+            SeriesContext::Multi(multi) => &mut multi.id_context,
+        };
+
+        *id_context_ref = context;
+
+        self
+    }
+
+    #[allow(unused)]
+    pub fn with_cell_context(mut self, context: Context) -> Self {
+        let cells_option = match &mut self {
+            SeriesContext::Single(single) => &mut single.cells,
+            SeriesContext::Multi(multi) => &mut multi.cells,
+        };
+        if let Some(cell_context) = cells_option {
+            cell_context.context = context;
+        } else {
+            *cells_option = Some(CellContext::new(context, None, None));
+        }
+        self
+    }
 }
 
 /// Defines the context for a single, specific series (e.g., a column or row).

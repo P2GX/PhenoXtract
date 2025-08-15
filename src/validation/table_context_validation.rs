@@ -1,5 +1,6 @@
-use crate::config::table_context::SeriesContext;
+use crate::config::table_context::{Context, SeriesContext, TableContext};
 use crate::validation::validation_utils::fail_validation_on_duplicates;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use validator::ValidationError;
 
@@ -59,11 +60,41 @@ pub(crate) fn validate_unique_identifiers(
     fail_validation_on_duplicates(duplicates)
 }
 
+pub(crate) fn validate_at_least_one_subject_id(
+    table_context: &TableContext,
+) -> Result<(), ValidationError> {
+    if let Some(columns) = &table_context.columns {
+        for column in columns {
+            if column.get_context() == Context::SubjectId
+                || column.get_cell_context() == Context::SubjectId
+            {
+                return Ok(());
+            }
+        }
+    }
+    if let Some(rows) = &table_context.rows {
+        for row in rows {
+            if row.get_context() == Context::SubjectId
+                || row.get_cell_context() == Context::SubjectId
+            {
+                return Ok(());
+            }
+        }
+    }
+
+    let mut error = ValidationError::new("missing_subject_id");
+    error.add_param(Cow::from("table_name"), &table_context.name);
+    Err(error.with_message(Cow::Owned(
+        "Missing SubjectID on table. Every table needs to have at least one.".to_string(),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::validate_unique_identifiers;
+    use super::{validate_at_least_one_subject_id, validate_unique_identifiers};
     use crate::config::table_context::{
-        Identifier, MultiIdentifier, MultiSeriesContext, SeriesContext, SingleSeriesContext,
+        Context, Identifier, MultiIdentifier, MultiSeriesContext, SeriesContext,
+        SingleSeriesContext, TableContext,
     };
 
     use rstest::rstest;
@@ -148,5 +179,83 @@ mod tests {
                 panic!("Validation failed.");
             }
         }
+    }
+
+    #[rstest]
+    #[case::subject_id_in_column_context(
+        TableContext {
+            name: "test".to_string(),
+            columns: Some(vec![single_name("test").with_context(Context::SubjectId)]),
+            rows: None,
+            },
+    )]
+    #[case::subject_id_in_column_cell_context(
+        TableContext {
+            name: "test".to_string(),
+            columns: Some(vec![single_name("test").with_cell_context(Context::SubjectId)]),
+            rows: None,
+            },
+    )]
+    #[case::subject_id_in_row_context(
+        TableContext {
+            name: "test".to_string(),
+            columns: None,
+            rows: Some(vec![single_name("test").with_context(Context::SubjectId)]),
+            },
+    )]
+    #[case::subject_id_in_row_cell_context(
+        TableContext {
+            name: "test".to_string(),
+            columns: None,
+            rows: Some(vec![single_name("test").with_cell_context(Context::SubjectId)]),
+            },
+    )]
+    fn test_validation_succeeds_when_subject_id_is_present(#[case] table_context: TableContext) {
+        let result = validate_at_least_one_subject_id(&table_context);
+        assert!(result.is_ok());
+    }
+
+    /// This test covers the failure scenario where columns and rows exist,
+    /// but none of them are marked with the SubjectId context.
+    #[rstest]
+    fn test_validation_fails_when_subject_id_is_absent() {
+        let table_context = TableContext {
+            name: "table_without_subject_id".to_string(),
+            columns: Some(vec![
+                single_name("test").with_context(Context::HpoId),
+                single_name("test").with_cell_context(Context::None),
+            ]),
+            rows: Some(vec![single_name("test").with_context(Context::HpoId)]),
+        };
+
+        let result = validate_at_least_one_subject_id(&table_context);
+        assert!(result.is_err());
+    }
+
+    /// This test covers the edge case where the table context has no
+    /// columns or rows defined at all.
+    #[rstest]
+    fn test_validation_fails_for_empty_table() {
+        let table_context = TableContext {
+            name: "empty_table".to_string(),
+            columns: None,
+            rows: None,
+        };
+
+        let result = validate_at_least_one_subject_id(&table_context);
+        assert!(result.is_err());
+    }
+
+    /// This test covers the edge case where the column and row vectors are present but empty.
+    #[rstest]
+    fn test_validation_fails_for_table_with_empty_vectors() {
+        let table_context = TableContext {
+            name: "table_with_empty_vecs".to_string(),
+            columns: Some(vec![]),
+            rows: Some(vec![]),
+        };
+
+        let result = validate_at_least_one_subject_id(&table_context);
+        assert!(result.is_err());
     }
 }
