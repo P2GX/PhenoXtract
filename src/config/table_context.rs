@@ -1,8 +1,9 @@
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
+use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
+use crate::validation::table_context_validation::validate_unique_series_linking;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::option::Option;
 use validator::Validate;
 
 /// Represents the contextual information for an entire table.
@@ -14,6 +15,8 @@ use validator::Validate;
     function = "validate_at_least_one_subject_id",
     skip_on_field_errors = false
 ))]
+#[validate(schema(function = "validate_series_linking"))]
+#[validate(schema(function = "validate_unique_series_linking"))]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
@@ -184,10 +187,10 @@ pub(crate) struct SingleSeriesContext {
     cells: Option<CellContext>,
     /// A unique ID that can be used to link to other series
     #[allow(unused)]
-    linking_id: Option<String>,
+    pub linking_id: Option<String>,
     #[allow(unused)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
-    linked_to: Option<Vec<String>>,
+    pub linked_to: Option<Vec<String>>,
 }
 
 impl SingleSeriesContext {

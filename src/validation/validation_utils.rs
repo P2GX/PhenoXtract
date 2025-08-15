@@ -1,8 +1,9 @@
+use serde::Serialize;
 use std::borrow::Cow;
 use validator::ValidationError;
 
-pub(crate) fn fail_validation_on_duplicates(
-    duplicates: Vec<String>,
+pub(crate) fn fail_validation_on_duplicates<T: Serialize>(
+    duplicates: Vec<T>,
 ) -> Result<(), ValidationError> {
     if duplicates.is_empty() {
         Ok(())
@@ -27,7 +28,7 @@ mod tests {
 
     #[rstest]
     fn test_fail_on_duplicates_pass() {
-        let duplicates = vec![];
+        let duplicates: Vec<String> = vec![];
         let res = fail_validation_on_duplicates(duplicates);
         assert!(res.is_ok());
     }

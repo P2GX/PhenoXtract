@@ -89,9 +89,85 @@ pub(crate) fn validate_at_least_one_subject_id(
     )))
 }
 
+pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<(), ValidationError> {
+    let all_link_ids = match table_context.columns {
+        Some(ref columns) => columns
+            .iter()
+            .filter_map(|column| match column {
+                SeriesContext::Single(single) => single.linking_id.clone(),
+                _ => None,
+            })
+            .collect(),
+        _ => {
+            vec![]
+        }
+    };
+
+    let all_target_ids = match table_context.columns {
+        Some(ref columns) => columns
+            .iter()
+            .filter_map(|column| match column {
+                SeriesContext::Single(single) => single.linked_to.clone(),
+                _ => None,
+            })
+            .flatten()
+            .collect(),
+        _ => {
+            vec![]
+        }
+    };
+
+    for link_id in all_target_ids {
+        if !all_link_ids.contains(&link_id) {
+            let mut error = ValidationError::new("missing_link");
+            error.add_param(Cow::from("linking_id"), &link_id);
+            error.add_param(Cow::from("table_name"), &table_context.name);
+            return Err(error.with_message(Cow::Owned(
+                "Linking id does not link to any other series.".into(),
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn validate_unique_series_linking(
+    table_context: &TableContext,
+) -> Result<(), ValidationError> {
+    let all_link_ids = match table_context.columns {
+        Some(ref columns) => columns
+            .iter()
+            .filter_map(|column| match column {
+                SeriesContext::Single(single) => single.linking_id.clone(),
+                _ => None,
+            })
+            .collect(),
+        _ => {
+            vec![]
+        }
+    };
+
+    let mut unique_linking_ids: HashSet<String> = HashSet::new();
+
+    let duplicates = all_link_ids
+        .iter()
+        .filter_map(|link_id| {
+            if !unique_linking_ids.insert(link_id.clone()) {
+                Some(link_id.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<String>>();
+
+    fail_validation_on_duplicates(duplicates)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{validate_at_least_one_subject_id, validate_unique_identifiers};
+    use super::{
+        validate_at_least_one_subject_id, validate_series_linking, validate_unique_identifiers,
+    };
     use crate::config::table_context::{
         Context, Identifier, MultiIdentifier, MultiSeriesContext, SeriesContext,
         SingleSeriesContext, TableContext,
@@ -273,5 +349,210 @@ mod tests {
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_valid_linking() {
+        let table_context = TableContext {
+            rows: None,
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_a".to_string()),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("B".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    Some(vec!["link_a".to_string()]),
+                )),
+            ]),
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests the primary failure case: a series tries to link to an ID that doesn't exist.
+    /// Series "B" attempts to link to "non_existent_link", which is not defined anywhere.
+    #[rstest]
+    fn test_invalid_linking_missing_target() {
+        let table_context = TableContext {
+            rows: None,
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_a".to_string()),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("B".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    Some(vec!["non_existent_link".to_string()]),
+                )),
+            ]),
+        };
+
+        let result = validate_series_linking(&table_context);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert_eq!(err.code, "missing_link");
+        assert_eq!(err.params.get("linking_id").unwrap(), "non_existent_link");
+        assert_eq!(err.params.get("table_name").unwrap(), "test_table");
+    }
+
+    /// Tests that validation passes when there are no columns at all.
+    #[rstest]
+    fn test_no_columns() {
+        let table_context = TableContext {
+            rows: None,
+            name: "test_table".to_string(),
+            columns: None,
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests that validation passes when the columns vector is empty.
+    #[rstest]
+    fn test_empty_columns() {
+        let table_context = TableContext {
+            rows: None,
+            name: "test_table".to_string(),
+            columns: Some(vec![]),
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests that validation passes when columns exist but no linking is configured.
+    #[rstest]
+    fn test_no_links_defined() {
+        let table_context = TableContext {
+            rows: Some(vec![]),
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("B".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    None,
+                )),
+            ]),
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests that validation passes when there are other types of SeriesContext present.
+    /// The function should correctly ignore them.
+    #[rstest]
+    fn test_with_other_series_types() {
+        let table_context = TableContext {
+            rows: Some(vec![]),
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_a".to_string()),
+                    None,
+                )),
+                SeriesContext::Multi(MultiSeriesContext::new(
+                    MultiIdentifier::Regex(".test".to_string()),
+                    Default::default(),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("B".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    Some(vec!["link_a".to_string()]),
+                )),
+            ]),
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests a more complex valid scenario with multiple links.
+    /// C links to A and B. Both A and B have valid linking_ids.
+    #[rstest]
+    fn test_multiple_valid_links() {
+        let table_context = TableContext {
+            rows: Some(vec![]),
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_a".to_string()),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("B".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_b".to_string()),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    Some(vec!["link_a".to_string(), "link_b".to_string()]),
+                )),
+            ]),
+        };
+        assert!(validate_series_linking(&table_context).is_ok());
+    }
+
+    /// Tests a scenario where one of multiple links is invalid.
+    /// C links to A (valid) and "non_existent_link" (invalid).
+    #[rstest]
+    fn test_one_of_multiple_links_is_invalid() {
+        let table_context = TableContext {
+            name: "test_table".to_string(),
+            columns: Some(vec![
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("A".to_string()),
+                    Default::default(),
+                    None,
+                    Some("link_a".to_string()),
+                    None,
+                )),
+                SeriesContext::Single(SingleSeriesContext::new(
+                    Identifier::Name("C".to_string()),
+                    Default::default(),
+                    None,
+                    None,
+                    Some(vec!["link_a".to_string(), "non_existent_link".to_string()]),
+                )),
+            ]),
+            rows: None,
+        };
+
+        let result = validate_series_linking(&table_context);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.code, "missing_link");
+        assert_eq!(err.params.get("linking_id").unwrap(), "non_existent_link");
     }
 }
