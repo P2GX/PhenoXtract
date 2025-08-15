@@ -115,16 +115,21 @@ struct SingleSeriesContext {
     #[allow(unused)]
     /// The context to apply to every cell within this series.
     cells: Option<CellContext>,
-    /// An optional new name to assign to this series during processing.
-    /// This is typically used when `identifier` is a `Name`.
-    #[allow(unused)]
-    rename_id: Option<String>, // This only works, when the identifier is a name and not a regex. Maybe need, two different structs?
     /// A unique ID that can be used to link to other series
     #[allow(unused)]
     linking_id: Option<String>,
     #[allow(unused)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
     linked_to: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum MultiIdentifier {
+    #[allow(unused)]
+    Regex(String),
+    #[allow(unused)]
+    Multi(Vec<String>),
 }
 
 /// Defines the context for multiple series identified by a regex pattern.
@@ -135,7 +140,7 @@ struct SingleSeriesContext {
 struct MultiSeriesContext {
     #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
-    regex_identifier: String,
+    multi_identifier: MultiIdentifier,
     #[allow(unused)]
     /// The semantic context to apply to the identifiers of all matched column header or row indexes.
     id_context: Context,
