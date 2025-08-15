@@ -1,8 +1,10 @@
 use crate::config::table_context::TableContext;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::extractable::Extractable;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::PathBuf;
+use validator::{Validate, ValidationError};
 
 /// Defines a CSV file as a data source.
 #[derive(Debug, Deserialize)]
@@ -19,14 +21,30 @@ pub struct CSVDataSource {
 }
 
 /// Defines an Excel workbook as a data source.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Validate, Deserialize, Serialize)]
 pub struct ExcelDatasource {
     /// The file path to the Excel workbook.
     #[allow(unused)]
     source: PathBuf,
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[allow(unused)]
+    #[validate(custom(function = "validate_unique_sheet_names"))]
     sheets: Vec<TableContext>,
+}
+
+fn validate_unique_sheet_names(sheets: &[TableContext]) -> Result<(), ValidationError> {
+    let sheet_names: Vec<&str> = sheets
+        .iter()
+        .map(|sheet| sheet.name.as_str())
+        .collect::<Vec<&str>>();
+    let unique_sheet_names: HashSet<&&str> = HashSet::from_iter(sheet_names.iter());
+    if sheet_names.len() == unique_sheet_names.len() {
+        Ok(())
+    } else {
+        let msg = format!("Duplicate sheet name configured {sheet_names:?}");
+        let msg_static: &'static str = Box::leak(msg.into_boxed_str());
+        Err(ValidationError::new(msg_static))
+    }
 }
 
 /// An enumeration of all supported data source types.
@@ -52,5 +70,47 @@ impl Extractable for DataSource {
                 todo!("Excel extraction is not yet implemented.")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_validate_unique_sheet_names() {
+        let table_context = vec![
+            TableContext {
+                name: "phenotypes".to_string(),
+                columns: None,
+                rows: None,
+            },
+            TableContext {
+                name: "genotypes".to_string(),
+                columns: None,
+                rows: None,
+            },
+        ];
+        let validation = validate_unique_sheet_names(&table_context);
+        assert!(validation.is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_unique_sheet_names_error() {
+        let table_context = vec![
+            TableContext {
+                name: "phenotypes".to_string(),
+                columns: None,
+                rows: None,
+            },
+            TableContext {
+                name: "phenotypes".to_string(),
+                columns: None,
+                rows: None,
+            },
+        ];
+        let validation = validate_unique_sheet_names(&table_context);
+        assert!(validation.is_err());
     }
 }
