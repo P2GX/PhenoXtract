@@ -30,13 +30,13 @@ mod tests {
         let table_context = vec![
             TableContext {
                 name: "phenotypes".to_string(),
-                columns: None,
-                rows: None,
+                columns: vec![],
+                rows: vec![],
             },
             TableContext {
                 name: "genotypes".to_string(),
-                columns: None,
-                rows: None,
+                columns: vec![],
+                rows: vec![],
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);
@@ -48,13 +48,13 @@ mod tests {
         let table_context = vec![
             TableContext {
                 name: "phenotypes".to_string(),
-                columns: None,
-                rows: None,
+                columns: vec![],
+                rows: vec![],
             },
             TableContext {
                 name: "phenotypes".to_string(),
-                columns: None,
-                rows: None,
+                columns: vec![],
+                rows: vec![],
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);

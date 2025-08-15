@@ -22,10 +22,12 @@ pub struct TableContext {
     pub name: String,
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_identifiers"))]
-    pub columns: Option<Vec<SeriesContext>>,
+    #[serde(default)]
+    pub columns: Vec<SeriesContext>,
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_identifiers"))]
-    pub rows: Option<Vec<SeriesContext>>,
+    #[serde(default)]
+    pub rows: Vec<SeriesContext>,
 }
 
 /// Defines the semantic meaning or type of data in a cell or series.
@@ -85,14 +87,14 @@ pub(crate) struct CellContext {
     /// A map to replace specific string values with another `CellValue`.
     ///
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: Option<HashMap<String, CellValue>>,
+    alias_map: HashMap<String, CellValue>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 }
 impl CellContext {
     pub fn new(
         context: Context,
         fill_missing: Option<CellValue>,
-        alias_map: Option<HashMap<String, CellValue>>,
+        alias_map: HashMap<String, CellValue>,
     ) -> CellContext {
         CellContext {
             context,
@@ -166,7 +168,7 @@ impl SeriesContext {
         if let Some(cell_context) = cells_option {
             cell_context.context = context;
         } else {
-            *cells_option = Some(CellContext::new(context, None, None));
+            *cells_option = Some(CellContext::new(context, None, HashMap::default()));
         }
         self
     }
@@ -189,8 +191,9 @@ pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     pub linking_id: Option<String>,
     #[allow(unused)]
+    #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
-    pub linked_to: Option<Vec<String>>,
+    pub linked_to: Vec<String>,
 }
 
 impl SingleSeriesContext {
@@ -200,7 +203,7 @@ impl SingleSeriesContext {
         id_context: Context,
         cells: Option<CellContext>,
         linking_id: Option<String>,
-        linked_to: Option<Vec<String>>,
+        linked_to: Vec<String>,
     ) -> Self {
         SingleSeriesContext {
             identifier,
