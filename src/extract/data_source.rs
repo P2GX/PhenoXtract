@@ -1,8 +1,10 @@
 use crate::config::table_context::TableContext;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::extractable::Extractable;
-use serde::Deserialize;
+use crate::validation::data_source_validation::validate_unique_sheet_names;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use validator::Validate;
 
 /// Defines a CSV file as a data source.
 #[derive(Debug, Deserialize)]
@@ -19,13 +21,14 @@ pub struct CSVDataSource {
 }
 
 /// Defines an Excel workbook as a data source.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Validate, Deserialize, Serialize)]
 pub struct ExcelDatasource {
     /// The file path to the Excel workbook.
     #[allow(unused)]
     source: PathBuf,
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[allow(unused)]
+    #[validate(custom(function = "validate_unique_sheet_names"))]
     sheets: Vec<TableContext>,
 }
 
