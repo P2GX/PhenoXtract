@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Holds all shared meta data for the phenopackets produced by the pipeline
 #[derive(Debug, Deserialize, Clone)]
