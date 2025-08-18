@@ -1,0 +1,110 @@
+use crate::extract::data_source::DataSource;
+use crate::validation::validation_utils::fail_validation_on_duplicates;
+use std::collections::HashSet;
+use validator::ValidationError;
+
+pub fn validate_unique_data_sources(sources: &[DataSource]) -> Result<(), ValidationError> {
+    let mut unique_identifiers: HashSet<&str> = HashSet::new();
+    let mut duplicates: Vec<&str> = vec![];
+
+    for source in sources {
+        match source {
+            DataSource::Csv(csv_source) => {
+                let path_string = csv_source.source.to_str();
+                if let Some(path_string) = path_string {
+                    if !unique_identifiers.insert(path_string) {
+                        duplicates.push(path_string)
+                    }
+                } else {
+                    return Err(ValidationError::new("Unable to convert source to string"));
+                }
+            }
+            DataSource::Excel(excel_source) => {
+                let path_string = excel_source.source.to_str();
+                if let Some(path_string) = path_string {
+                    if !unique_identifiers.insert(path_string) {
+                        duplicates.push(path_string)
+                    }
+                } else {
+                    return Err(ValidationError::new("Unable to convert source to string"));
+                }
+            }
+        };
+    }
+    fail_validation_on_duplicates(duplicates)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_unique_data_sources;
+    use crate::config::table_context::TableContext;
+    use crate::extract::data_source::{CSVDataSource, DataSource, ExcelDatasource, HasSource};
+    use rstest::{fixture, rstest};
+    use std::path::PathBuf;
+    use std::str::FromStr;
+    use std::vec;
+
+    #[fixture]
+    fn csv_data_source() -> DataSource {
+        DataSource::Csv(CSVDataSource::new(
+            PathBuf::from("some/dir/file.csv"),
+            None,
+            TableContext::new("".to_string(), vec![], vec![]),
+        ))
+    }
+    #[fixture]
+    fn excel_data_source() -> DataSource {
+        DataSource::Excel(ExcelDatasource::new(
+            PathBuf::from("some/dir/file.csv"),
+            vec![TableContext::new("".to_string(), vec![], vec![])],
+        ))
+    }
+    #[rstest]
+    fn test_validate_unique_data_sources_pass(csv_data_source: DataSource) {
+        let mut other = csv_data_source.clone();
+        if let DataSource::Csv(ref mut other_csv_source) = other {
+            other_csv_source.set_source(&PathBuf::from_str("some/dir/file_1.csv").unwrap())
+        }
+
+        let sources = [csv_data_source, other];
+
+        let result = validate_unique_data_sources(&sources);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_unique_data_sources_fail(csv_data_source: DataSource) {
+        let other = csv_data_source.clone();
+
+        let sources = [csv_data_source, other];
+
+        let result = validate_unique_data_sources(&sources);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_validate_unique_data_sources_fail_mixed(
+        csv_data_source: DataSource,
+        excel_data_source: DataSource,
+    ) {
+        let sources = [csv_data_source, excel_data_source];
+
+        let result = validate_unique_data_sources(&sources);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_validate_unique_data_sources_pass_mixed(
+        mut csv_data_source: DataSource,
+        excel_data_source: DataSource,
+    ) {
+        if let DataSource::Csv(ref mut csv_source) = csv_data_source {
+            csv_source.set_source(&PathBuf::from_str("some/dir/file_1.csv").unwrap())
+        }
+
+        let sources = [csv_data_source, excel_data_source];
+
+        let result = validate_unique_data_sources(&sources);
+        assert!(result.is_ok());
+    }
+}
