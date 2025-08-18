@@ -11,10 +11,10 @@ pub struct CSVDataSource {
     pub source: PathBuf,
     /// The character used to separate fields in the CSV file (e.g., ',').
     #[allow(unused)]
-    separator: Option<String>,
+    pub separator: Option<String>,
     /// The context describing how to interpret the single table within the CSV.
     #[allow(unused)]
-    table: TableContext,
+    pub table: TableContext,
 }
 
 impl CSVDataSource {
