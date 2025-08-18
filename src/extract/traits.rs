@@ -4,3 +4,11 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 pub trait Extractable: std::fmt::Debug {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error>;
 }
+
+pub trait HasSource {
+    type Source;
+    #[allow(dead_code)]
+    fn source(&self) -> &Self::Source;
+    #[allow(dead_code)]
+    fn with_source(self, source: &Self::Source) -> Self;
+}
