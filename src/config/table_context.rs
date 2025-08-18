@@ -30,6 +30,16 @@ pub struct TableContext {
     pub rows: Vec<SeriesContext>,
 }
 
+impl TableContext {
+    #[allow(dead_code)]
+    pub(crate) fn new(name: String, columns: Vec<SeriesContext>, rows: Vec<SeriesContext>) -> Self {
+        TableContext {
+            name,
+            columns,
+            rows,
+        }
+    }
+}
 /// Defines the semantic meaning or type of data in a cell or series.
 ///
 /// This enum is used to tag data with a specific, machine-readable context,

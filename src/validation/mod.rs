@@ -1,3 +1,4 @@
 pub(crate) mod data_source_validation;
+pub(crate) mod phenoxtractor_config_validation;
 pub(crate) mod table_context_validation;
 mod validation_utils;

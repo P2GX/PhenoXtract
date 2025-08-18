@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Represents the configuration for a data processing pipeline.
 ///
 /// This struct holds the necessary information to define how data
 /// should be loaded and transformed.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct PipelineConfig {
     #[allow(unused)]
     /// A list of strategies to transform the data. Each string identifies
