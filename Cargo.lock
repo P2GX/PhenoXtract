@@ -1586,7 +1586,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "pheno_xtrackt"
+name = "phenopackets"
+version = "0.2.2-post1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4b592c022cc2205445bfe3d42e833183ab4d6b815a62f5a930d6a667871f671"
+dependencies = [
+ "prost",
+ "prost-build",
+ "prost-types",
+]
+
+[[package]]
+name = "phenoxtrackt"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1597,17 +1608,6 @@ dependencies = [
  "serde",
  "tempfile",
  "validator",
-]
-
-[[package]]
-name = "phenopackets"
-version = "0.2.2-post1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b592c022cc2205445bfe3d42e833183ab4d6b815a62f5a930d6a667871f671"
-dependencies = [
- "prost",
- "prost-build",
- "prost-types",
 ]
 
 [[package]]

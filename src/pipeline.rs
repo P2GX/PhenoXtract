@@ -1,9 +1,10 @@
 use crate::config::pipeline_config::PipelineConfig;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::extract::extractable::Extractable;
-use crate::load::loader_module::Loadable;
+use crate::extract::traits::Extractable;
+use crate::load::traits::Loadable;
 use crate::transform::transform_module::TransformerModule;
 use phenopackets::schema::v2::Phenopacket;
+
 #[allow(dead_code)]
 struct Pipeline {
     transformer_module: TransformerModule,
@@ -23,12 +24,12 @@ impl Pipeline {
         &self,
         extractables: &mut [impl Extractable],
     ) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
-        let data: Vec<ContextualizedDataFrame> = extractables
+        let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
             .flat_map(|ex| ex.extract().unwrap())
             .collect();
 
-        Ok(data)
+        Ok(tables)
     }
 
     pub fn transform(
