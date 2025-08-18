@@ -4,32 +4,24 @@ use std::collections::HashSet;
 use validator::ValidationError;
 
 pub fn validate_unique_data_sources(sources: &[DataSource]) -> Result<(), ValidationError> {
-    let mut unique_identifiers: HashSet<&str> = HashSet::new();
-    let mut duplicates: Vec<&str> = vec![];
+    let mut unique_identifiers: HashSet<String> = HashSet::new();
+    let mut duplicates: Vec<String> = vec![];
 
     for source in sources {
-        match source {
-            DataSource::Csv(csv_source) => {
-                let path_string = csv_source.source.to_str();
-                if let Some(path_string) = path_string {
-                    if !unique_identifiers.insert(path_string) {
-                        duplicates.push(path_string)
-                    }
-                } else {
-                    return Err(ValidationError::new("Unable to convert source to string"));
-                }
-            }
-            DataSource::Excel(excel_source) => {
-                let path_string = excel_source.source.to_str();
-                if let Some(path_string) = path_string {
-                    if !unique_identifiers.insert(path_string) {
-                        duplicates.push(path_string)
-                    }
-                } else {
-                    return Err(ValidationError::new("Unable to convert source to string"));
-                }
-            }
+        let path_buf = match source {
+            DataSource::Csv(csv_source) => &csv_source.source,
+            DataSource::Excel(excel_source) => &excel_source.source,
         };
+
+        if let Some(path_string) = path_buf.to_str() {
+            let owned_path = path_string.to_string();
+
+            if !unique_identifiers.insert(owned_path.clone()) {
+                duplicates.push(owned_path.clone());
+            }
+        } else {
+            return Err(ValidationError::new("Unable to convert source to string"));
+        }
     }
     fail_validation_on_duplicates(duplicates)
 }
