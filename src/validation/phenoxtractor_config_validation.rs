@@ -30,7 +30,10 @@ pub fn validate_unique_data_sources(sources: &[DataSource]) -> Result<(), Valida
 mod tests {
     use super::validate_unique_data_sources;
     use crate::config::table_context::TableContext;
-    use crate::extract::data_source::{CSVDataSource, DataSource, ExcelDatasource, HasSource};
+    use crate::extract::csv_data_source::CSVDataSource;
+    use crate::extract::data_source::DataSource;
+    use crate::extract::excel_data_source::ExcelDatasource;
+    use crate::extract::traits::HasSource;
     use rstest::{fixture, rstest};
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -54,8 +57,9 @@ mod tests {
     #[rstest]
     fn test_validate_unique_data_sources_pass(csv_data_source: DataSource) {
         let mut other = csv_data_source.clone();
-        if let DataSource::Csv(ref mut other_csv_source) = other {
-            other_csv_source.set_source(&PathBuf::from_str("some/dir/file_1.csv").unwrap())
+        if let DataSource::Csv(other_csv_source) = &mut other {
+            let new_path = PathBuf::from_str("some/dir/file_1.csv").unwrap();
+            *other_csv_source = other_csv_source.clone().with_source(&new_path);
         }
 
         let sources = [csv_data_source, other];
@@ -90,8 +94,9 @@ mod tests {
         mut csv_data_source: DataSource,
         excel_data_source: DataSource,
     ) {
-        if let DataSource::Csv(ref mut csv_source) = csv_data_source {
-            csv_source.set_source(&PathBuf::from_str("some/dir/file_1.csv").unwrap())
+        if let DataSource::Csv(csv_source) = &mut csv_data_source {
+            let new_path = PathBuf::from_str("some/dir/file_1.csv").unwrap();
+            *csv_source = csv_source.clone().with_source(&new_path);
         }
 
         let sources = [csv_data_source, excel_data_source];
