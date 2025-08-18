@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Holds all shared meta data for the phenopackets produced by the pipeline
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MetaData {
     #[allow(unused)]
     // When not set should be defaulted to app name and version

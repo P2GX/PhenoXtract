@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 /// Defines a CSV file as a data source.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CSVDataSource {
     /// The file path to the CSV source.
     #[allow(unused)]
@@ -21,7 +21,7 @@ pub struct CSVDataSource {
 }
 
 /// Defines an Excel workbook as a data source.
-#[derive(Debug, Validate, Deserialize, Serialize)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone)]
 pub struct ExcelDatasource {
     /// The file path to the Excel workbook.
     #[allow(unused)]
@@ -36,7 +36,7 @@ pub struct ExcelDatasource {
 ///
 /// This enum uses a `tag` to differentiate between source types (e.g., "csv", "excel")
 /// when deserializing from a configuration file.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type")]
 pub enum DataSource {

@@ -13,3 +13,18 @@ struct PhenoXtractorConfig {
     #[allow(unused)]
     pipeline: Option<PipelineConfig>,
 }
+
+impl PhenoXtractorConfig {
+    #[allow(dead_code)]
+    pub fn get_pipeline_config(&self) -> Option<PipelineConfig> {
+        self.pipeline.clone()
+    }
+    #[allow(dead_code)]
+    pub fn get_data_sources(&self) -> Vec<DataSource> {
+        self.data_sources.clone()
+    }
+    #[allow(dead_code)]
+    pub fn get_meta_data(&self) -> MetaData {
+        self.meta_data.clone()
+    }
+}
