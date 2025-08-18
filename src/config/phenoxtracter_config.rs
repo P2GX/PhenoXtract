@@ -1,11 +1,14 @@
 use crate::config::meta_data::MetaData;
 use crate::config::pipeline_config::PipelineConfig;
 use crate::extract::data_source::DataSource;
-use serde::Deserialize;
+use crate::validation::phenoxtractor_config_validation::validate_unique_data_sources;
+use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate, Serialize)]
 struct PhenoXtractorConfig {
+    #[validate(custom(function = "validate_unique_data_sources"))]
     #[allow(unused)]
     data_sources: Vec<DataSource>,
     #[allow(unused)]
