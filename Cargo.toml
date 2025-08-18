@@ -4,7 +4,7 @@ description = "A configurable ETL pipeline to convert tables into phenpackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
 license = "MIT"
-name = "pheno_xtrackt"
+name = "phenoxtrackt"
 version = "0.1.0"
 
 [dependencies]
@@ -13,7 +13,7 @@ polars = "0.50.0"
 serde = "1.0.219"
 anyhow = "1.0.98"
 phenopackets = "0.2.2-post1"
-validator = { version = "0.19.0", features = ["derive"] }
+validator = { version = "0.20.0", features = ["derive"] }
 
 
 [dev-dependencies]
