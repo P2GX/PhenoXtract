@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 #[allow(dead_code)]
 pub struct PhenopacketBuilder {
-    subject_to_phenopacket: HashMap<usize, Phenopacket>,
+    subject_to_phenopacket: HashMap<String, Phenopacket>,
 }
 
 impl PhenopacketBuilder {
@@ -12,7 +12,7 @@ impl PhenopacketBuilder {
         Ok(Vec::new())
     }
     #[allow(dead_code)]
-    pub fn build_for_id(&self, #[allow(unused)] id: usize) -> Result<Phenopacket, anyhow::Error> {
+    pub fn build_for_id(&self, #[allow(unused)] id: String) -> Result<Phenopacket, anyhow::Error> {
         Ok(Phenopacket::default())
     }
 
