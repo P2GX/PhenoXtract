@@ -21,10 +21,7 @@ pub struct ExcelDatasource {
 impl ExcelDatasource {
     #[allow(dead_code)]
     pub(crate) fn new(source: PathBuf, contexts: Vec<TableContext>) -> Self {
-        ExcelDatasource {
-            source,
-            contexts,
-        }
+        ExcelDatasource { source, contexts }
     }
 }
 
