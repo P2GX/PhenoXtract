@@ -18,6 +18,7 @@ impl ContextualizedDataFrame {
         ContextualizedDataFrame { context, data }
     }
 
+    #[allow(unused)]
     pub fn context(&self) -> &TableContext {
         &self.context
     }
