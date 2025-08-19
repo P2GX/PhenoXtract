@@ -45,6 +45,7 @@ mod tests {
             PathBuf::from("some/dir/file.csv"),
             None,
             TableContext::new("".to_string(), vec![], vec![]),
+            false,
         ))
     }
     #[fixture]
