@@ -22,4 +22,19 @@ impl ContextualizedDataFrame {
     pub fn context(&self) -> &TableContext {
         &self.context
     }
+
+    #[allow(unused)]
+    pub fn context_mut(&mut self) -> &mut TableContext {
+        &mut self.context
+    }
+
+    #[allow(unused)]
+    pub fn data(&self) -> &DataFrame {
+        &self.data
+    }
+
+    #[allow(unused)]
+    pub fn data_mut(&mut self) -> &mut DataFrame {
+        &mut self.data
+    }
 }
