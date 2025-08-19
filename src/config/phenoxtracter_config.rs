@@ -8,15 +8,15 @@ use std::path::PathBuf;
 use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
-#[derive(Debug, Deserialize, Validate, Serialize)]
+#[derive(Debug, Deserialize, Validate, Serialize, Clone)]
 pub struct PhenoXtractorConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     #[allow(unused)]
-    pub data_sources: Vec<DataSource>,
+    data_sources: Vec<DataSource>,
     #[allow(unused)]
-    pub meta_data: MetaData,
+    meta_data: MetaData,
     #[allow(unused)]
-    pub pipeline: Option<PipelineConfig>,
+    pipeline: Option<PipelineConfig>,
 }
 
 impl PhenoXtractorConfig {
@@ -46,15 +46,15 @@ impl PhenoXtractorConfig {
         }
     }
     #[allow(dead_code)]
-    pub fn get_pipeline_config(&self) -> Option<PipelineConfig> {
+    pub fn pipeline_config(&self) -> Option<PipelineConfig> {
         self.pipeline.clone()
     }
     #[allow(dead_code)]
-    pub fn get_data_sources(&self) -> Vec<DataSource> {
+    pub fn data_sources(&self) -> Vec<DataSource> {
         self.data_sources.clone()
     }
     #[allow(dead_code)]
-    pub fn get_meta_data(&self) -> MetaData {
+    pub fn meta_data(&self) -> MetaData {
         self.meta_data.clone()
     }
 }
@@ -157,7 +157,7 @@ mod tests {
 
         match source {
             DataSource::Csv(data) => {
-                assert_eq!(data.separator, Some(",".to_string()));
+                assert_eq!(data.separator, Some(','));
                 assert_eq!(data.table.name, "test_table");
                 assert_eq!(data.source.to_str().unwrap(), "test/path");
             }

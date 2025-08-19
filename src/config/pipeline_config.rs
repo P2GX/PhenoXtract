@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This struct holds the necessary information to define how data
 /// should be loaded and transformed.
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 pub struct PipelineConfig {
     #[allow(unused)]
     /// A list of strategies to transform the data. Each string identifies

@@ -1,4 +1,4 @@
-use crate::config::table_context::{Context, SeriesContext, TableContext};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -85,16 +85,16 @@ pub(crate) fn validate_at_least_one_subject_id(
 }
 
 pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<(), ValidationError> {
-    let all_link_ids: Vec<String> = table_context
+    let all_link_ids: Vec<Identifier> = table_context
         .columns
         .iter()
         .filter_map(|column| match column {
-            SeriesContext::Single(single) => single.linking_id.clone(),
+            SeriesContext::Single(single) => Some(single.identifier.clone()),
             _ => None,
         })
         .collect();
 
-    let all_target_ids: Vec<String> = table_context
+    let all_target_ids: Vec<Identifier> = table_context
         .columns
         .iter()
         .filter_map(|column| match column {
@@ -121,16 +121,16 @@ pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<()
 pub(crate) fn validate_unique_series_linking(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
-    let all_link_ids: Vec<String> = table_context
+    let all_link_ids: Vec<Identifier> = table_context
         .columns
         .iter()
         .filter_map(|column| match column {
-            SeriesContext::Single(single) => single.linking_id.clone(),
+            SeriesContext::Single(single) => Some(single.identifier.clone()),
             _ => None,
         })
         .collect();
 
-    let mut unique_linking_ids: HashSet<String> = HashSet::new();
+    let mut unique_linking_ids: HashSet<Identifier> = HashSet::new();
 
     let duplicates = all_link_ids
         .iter()
@@ -141,7 +141,7 @@ pub(crate) fn validate_unique_series_linking(
                 None
             }
         })
-        .collect::<Vec<String>>();
+        .collect::<Vec<Identifier>>();
 
     fail_validation_on_duplicates(duplicates)
 }
@@ -163,16 +163,14 @@ mod tests {
             Identifier::Name(name.to_string()),
             Context::None,
             None,
-            None,
             vec![],
         ))
     }
 
-    fn single_number(num: isize) -> SeriesContext {
+    fn single_number(num: usize) -> SeriesContext {
         SeriesContext::Single(SingleSeriesContext::new(
             Identifier::Number(num),
             Context::None,
-            None,
             None,
             vec![],
         ))
@@ -344,15 +342,13 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    Some("link_a".to_string()),
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("B".to_string()),
                     Default::default(),
                     None,
-                    None,
-                    vec!["link_a".to_string()],
+                    vec![Identifier::Name("A".to_string())],
                 )),
             ],
         };
@@ -371,15 +367,13 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    Some("link_a".to_string()),
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("B".to_string()),
                     Default::default(),
                     None,
-                    None,
-                    vec!["non_existent_link".to_string()],
+                    vec![Identifier::Name("non_existent_link".to_string())],
                 )),
             ],
         };
@@ -426,13 +420,11 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    None,
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("B".to_string()),
                     Default::default(),
-                    None,
                     None,
                     vec![],
                 )),
@@ -453,7 +445,6 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    Some("link_a".to_string()),
                     vec![],
                 )),
                 SeriesContext::Multi(MultiSeriesContext::new(
@@ -465,8 +456,7 @@ mod tests {
                     Identifier::Name("B".to_string()),
                     Default::default(),
                     None,
-                    None,
-                    vec!["link_a".to_string()],
+                    vec![Identifier::Name("A".to_string())],
                 )),
             ],
         };
@@ -485,22 +475,22 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    Some("link_a".to_string()),
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("B".to_string()),
                     Default::default(),
                     None,
-                    Some("link_b".to_string()),
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    None,
-                    vec!["link_a".to_string(), "link_b".to_string()],
+                    vec![
+                        Identifier::Name("A".to_string()),
+                        Identifier::Name("B".to_string()),
+                    ],
                 )),
             ],
         };
@@ -518,15 +508,16 @@ mod tests {
                     Identifier::Name("A".to_string()),
                     Default::default(),
                     None,
-                    Some("link_a".to_string()),
                     vec![],
                 )),
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("C".to_string()),
                     Default::default(),
                     None,
-                    None,
-                    vec!["link_a".to_string(), "non_existent_link".to_string()],
+                    vec![
+                        Identifier::Name("A".to_string()),
+                        Identifier::Name("non_existent_link".to_string()),
+                    ],
                 )),
             ],
             rows: vec![],

@@ -7,23 +7,28 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct CSVDataSource {
     /// The file path to the CSV source.
-    #[allow(unused)]
     pub source: PathBuf,
     /// The character used to separate fields in the CSV file (e.g., ',').
-    #[allow(unused)]
-    pub separator: Option<String>,
+    pub separator: Option<char>,
     /// The context describing how to interpret the single table within the CSV.
-    #[allow(unused)]
     pub table: TableContext,
+    #[serde(default = "default_has_header")]
+    pub has_header: bool,
 }
 
 impl CSVDataSource {
     #[allow(dead_code)]
-    pub fn new(source: PathBuf, separator: Option<String>, table: TableContext) -> Self {
+    pub fn new(
+        source: PathBuf,
+        separator: Option<char>,
+        table: TableContext,
+        has_header: bool,
+    ) -> Self {
         Self {
             source,
             separator,
             table,
+            has_header,
         }
     }
 }
@@ -39,4 +44,8 @@ impl HasSource for CSVDataSource {
         self.source = source.clone();
         self
     }
+}
+
+fn default_has_header() -> bool {
+    true
 }

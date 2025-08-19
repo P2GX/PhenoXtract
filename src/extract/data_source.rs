@@ -3,6 +3,8 @@ use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
 use polars::prelude::CsvReadOptions;
 
+use std::sync::Arc;
+
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use serde::{Deserialize, Serialize};
@@ -23,14 +25,22 @@ impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
         match self {
             DataSource::Csv(csv_source) => {
-                let csv_dataframe = CsvReadOptions::default()
-                    .with_has_header(true)
+                let mut csv_read_options =
+                    CsvReadOptions::default().with_has_header(csv_source.has_header);
+
+                if let Some(sep) = csv_source.separator {
+                    let new_parse_options = (*csv_read_options.parse_options)
+                        .clone()
+                        .with_separator(sep as u8);
+                    csv_read_options.parse_options = Arc::from(new_parse_options);
+                }
+                let csv_data = csv_read_options
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
                 Ok(vec![ContextualizedDataFrame::new(
                     csv_source.table.clone(),
-                    csv_dataframe,
+                    csv_data,
                 )])
             }
             DataSource::Excel(_excel_source) => {
@@ -112,6 +122,7 @@ mod tests {
     fn test_load_csv(
         temp_dir: TempDir,
         csv_data: Vec<u8>,
+        column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
         hpo_ids: [&'static str; 4],
         disease_ids: [&'static str; 4],
@@ -131,32 +142,35 @@ mod tests {
                     None,
                     Default::default(),
                 )),
-                Some("Link_A".to_string()),
-                vec!["HP:0000054".to_string()],
+                vec![Identifier::Name("HP:0000054".to_string())],
             ))],
             vec![SeriesContext::Single(SingleSeriesContext::new(
                 Identifier::Name("test_row".to_string()),
                 Context::None,
                 Some(CellContext::new(Context::None, None, Default::default())),
-                Some("Link_A".to_string()),
-                vec!["HP:0000054".to_string()],
+                vec![Identifier::Name("HP:0000054".to_string())],
             ))],
         );
 
-        let data_source =
-            DataSource::Csv(CSVDataSource::new(file_path, None, table_context.clone()));
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            table_context.clone(),
+            true,
+        ));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
 
         assert_eq!(context_df.context(), &table_context);
 
-        let column_data_pairs = [
-            ("patient_id", patient_ids),
-            ("hpo_id", hpo_ids),
-            ("disease_id", disease_ids),
-            ("sex", subject_sexes),
-        ];
+        let column_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
+
+        let column_data_pairs: Vec<(&str, &[&str])> = column_names
+            .iter()
+            .zip(column_data.iter())
+            .map(|(&col_name, &col_data)| (col_name, col_data))
+            .collect();
 
         for (col_name, expected_values) in column_data_pairs.iter() {
             let loaded_data = context_df.data();
