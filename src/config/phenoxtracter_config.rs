@@ -74,7 +74,7 @@ mod tests {
       - type: "csv"
         source: "test/path"
         separator: ","
-        table:
+        context:
           name: "test_table"
 
     meta_data:
@@ -91,7 +91,7 @@ mod tests {
     type = "csv"
     source = "test/path"
     separator = ","
-    table = { name = "test_table" }
+    context = { name = "test_table" }
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -105,7 +105,7 @@ mod tests {
           "type": "csv",
           "source": "test/path",
           "separator": ",",
-          "table": {
+          "context": {
             "name": "test_table"
           }
         }
@@ -124,7 +124,7 @@ mod tests {
             type: "csv",
             source: "test/path",
             separator: ",",
-            table: (
+            context: (
                 name: "test_table",
             ),
         ),
@@ -158,7 +158,7 @@ mod tests {
         match source {
             DataSource::Csv(data) => {
                 assert_eq!(data.separator, Some(','));
-                assert_eq!(data.table.name, "test_table");
+                assert_eq!(data.context.name, "test_table");
                 assert_eq!(data.source.to_str().unwrap(), "test/path");
             }
             _ => panic!("Wrong data source type. Expected Csv."),

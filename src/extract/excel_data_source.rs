@@ -15,13 +15,13 @@ pub struct ExcelDatasource {
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
-    sheets: Vec<TableContext>,
+    contexts: Vec<TableContext>,
 }
 
 impl ExcelDatasource {
     #[allow(dead_code)]
-    pub(crate) fn new(source: PathBuf, sheets: Vec<TableContext>) -> Self {
-        ExcelDatasource { source, sheets }
+    pub(crate) fn new(source: PathBuf, contexts: Vec<TableContext>) -> Self {
+        ExcelDatasource { source, contexts }
     }
 }
 

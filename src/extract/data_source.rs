@@ -39,7 +39,7 @@ impl Extractable for DataSource {
                     .finish()?;
 
                 Ok(vec![ContextualizedDataFrame::new(
-                    csv_source.table.clone(),
+                    csv_source.context.clone(),
                     csv_data,
                 )])
             }

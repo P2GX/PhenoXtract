@@ -11,7 +11,7 @@ pub struct CSVDataSource {
     /// The character used to separate fields in the CSV file (e.g., ',').
     pub separator: Option<char>,
     /// The context describing how to interpret the single table within the CSV.
-    pub table: TableContext,
+    pub context: TableContext,
     #[serde(default = "default_has_header")]
     pub has_header: bool,
 }
@@ -27,7 +27,7 @@ impl CSVDataSource {
         Self {
             source,
             separator,
-            table,
+            context: table,
             has_header,
         }
     }
