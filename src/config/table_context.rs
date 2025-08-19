@@ -113,6 +113,7 @@ impl CellContext {
         }
     }
 }
+
 /// An identifier for a series, which can be either a name or a numerical index.
 ///
 /// This allows for selecting columns or rows by their header name (e.g., "PatientID")

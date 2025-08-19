@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 pub struct MetaData {
     #[allow(unused)]
     #[serde(default = "default_creator")]
-    created_by: Option<String>,
+    pub created_by: Option<String>,
     #[allow(unused)]
-    submitted_by: String,
+    pub submitted_by: String,
 }
 
 impl Default for MetaData {

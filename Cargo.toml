@@ -8,7 +8,7 @@ name = "phenoxtrackt"
 version = "0.1.0"
 
 [dependencies]
-config = { version = "0.15.13", features = ["yaml"] }
+config = "0.15.13"
 polars = "0.50.0"
 serde = "1.0.219"
 anyhow = "1.0.98"
