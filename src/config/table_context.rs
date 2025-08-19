@@ -10,7 +10,7 @@ use validator::Validate;
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Validate, Deserialize, Serialize, Clone)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
 #[validate(schema(
     function = "validate_at_least_one_subject_id",
     skip_on_field_errors = false
@@ -68,7 +68,7 @@ pub enum Context {
 ///
 /// This enum uses `serde(untagged)` to allow for flexible deserialization
 /// of JSON values (string, integer, float, or boolean) into a single type.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum CellValue {
     #[allow(unused)]
@@ -82,7 +82,7 @@ pub(crate) enum CellValue {
 }
 
 /// Provides detailed context for processing the values within all cells of a column.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct CellContext {
     /// The semantic context of the cell's data.
     #[allow(unused)]
@@ -116,7 +116,7 @@ impl CellContext {
 /// An identifier for a series, which can be either a name or a numerical index.
 ///
 /// This allows for selecting columns or rows by their header name (e.g., "PatientID")
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum Identifier {
     #[allow(unused)]
@@ -130,7 +130,7 @@ pub(crate) enum Identifier {
 /// This enum acts as a dispatcher. It can either define the context for a
 /// single, specifically identified series or for multiple series identified
 /// by a regular expression.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum SeriesContext {
     #[allow(unused)]
@@ -185,7 +185,7 @@ impl SeriesContext {
 }
 
 /// Defines the context for a single, specific series (e.g., a column or row).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     /// The unique identifier for the series.
@@ -225,7 +225,7 @@ impl SingleSeriesContext {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum MultiIdentifier {
     #[allow(unused)]
@@ -238,7 +238,7 @@ pub(crate) enum MultiIdentifier {
 ///
 /// This is useful for applying the same logic to a group of related columns or rows,
 /// for example, all columns whose names start with "measurement_".
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct MultiSeriesContext {
     #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
