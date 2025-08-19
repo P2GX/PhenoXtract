@@ -1,3 +1,4 @@
+use crate::validation::multi_series_context_validation::validate_regex_multi_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
@@ -235,10 +236,11 @@ pub(crate) enum MultiIdentifier {
 ///
 /// This is useful for applying the same logic to a group of related columns or rows,
 /// for example, all columns whose names start with "measurement_".
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 pub(crate) struct MultiSeriesContext {
     #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
+    #[validate(custom(function = "validate_regex_multi_identifier"))]
     pub(crate) multi_identifier: MultiIdentifier,
     #[allow(unused)]
     /// The semantic context to apply to the identifiers of all matched column header or row indexes.
