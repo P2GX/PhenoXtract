@@ -89,7 +89,7 @@ mod tests {
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
     ) -> Vec<u8> {
-        let mut csv_content = (column_names.join(",") + "\n");
+        let mut csv_content = column_names.join(",") + "\n";
 
         for i in 0..patient_ids.len() {
             writeln!(
