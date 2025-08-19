@@ -20,9 +20,16 @@ pub enum DataSource {
 impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
         match self {
-            // Rename input without _, when implementing
-            DataSource::Csv(_csv_source) => {
-                todo!("CSV extraction is not yet implemented.")
+            DataSource::Csv(csv_source) => {
+                let csv_dataframe = CsvReadOptions::default()
+                    .with_has_header(true)
+                    .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
+                    .finish()?;
+
+                Ok(vec![ContextualizedDataFrame::new(
+                    csv_source.table.clone(),
+                    csv_dataframe,
+                )])
             }
             DataSource::Excel(_excel_source) => {
                 todo!("Excel extraction is not yet implemented.")
