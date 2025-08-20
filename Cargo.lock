@@ -1597,7 +1597,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "phenoxtrackt"
+name = "phenoxtract"
 version = "0.1.0"
 dependencies = [
  "anyhow",
