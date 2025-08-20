@@ -26,4 +26,14 @@ impl TransformerModule {
         let packets = self.phenopacket_builder.build()?;
         Ok(packets)
     }
+
+    pub(crate) fn new(
+        strategies: Vec<Box<dyn Strategy>>,
+        phenopacket_builder: PhenopacketBuilder,
+    ) -> Self {
+        TransformerModule {
+            strategies,
+            phenopacket_builder,
+        }
+    }
 }
