@@ -32,7 +32,7 @@ mod tests {
     use crate::config::table_context::TableContext;
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
-    use crate::extract::excel_data_source::ExcelDatasource;
+    use crate::extract::excel_data_source::{ExcelDatasource, PatientOrientation};
     use crate::extract::traits::HasSource;
     use rstest::{fixture, rstest};
     use std::path::PathBuf;
@@ -54,6 +54,7 @@ mod tests {
             PathBuf::from("some/dir/file.csv"),
             vec![TableContext::new("".to_string(), vec![], vec![])],
             false,
+            PatientOrientation::PatientsAreRows
         ))
     }
     #[rstest]
