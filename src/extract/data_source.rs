@@ -100,18 +100,18 @@ impl Extractable for DataSource {
                     let columns: Vec<Column> = if excel_source.has_headers {
                         vectors
                             .iter()
-                            .map(|col_vec| {
-                                let col_header = col_vec[0].to_string();
-                                Column::new(col_header.into(), col_vec[1..].to_vec())
+                            .map(|vec| {
+                                let header = vec[0].to_string();
+                                Column::new(header.into(), vec[1..].to_vec())
                             })
                             .collect()
                     } else {
                         vectors
                             .iter()
                             .enumerate()
-                            .map(|(i, col_vec)| {
-                                let col_header = format!("column {i}");
-                                Column::new(col_header.into(), col_vec)
+                            .map(|(i, vec)| {
+                                let header = format!("column {i}");
+                                Column::new(header.into(), vec)
                             })
                             .collect()
                     };
