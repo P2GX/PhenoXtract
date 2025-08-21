@@ -39,7 +39,7 @@ mod tests {
         let default_creator = default_creator();
         assert!(default_creator.is_some());
         let creator = default_creator.unwrap();
-        assert!(creator.contains("phenoxtrackt"));
+        assert!(creator.contains("phenoxtract"));
     }
 
     #[rstest]
@@ -47,7 +47,7 @@ mod tests {
         let default_meta_data = MetaData::default();
         assert!(default_meta_data.created_by.is_some());
         let creator = default_meta_data.created_by.unwrap();
-        assert!(creator.contains("phenoxtrackt"));
+        assert!(creator.contains("phenoxtract"));
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -73,7 +73,7 @@ mod tests {
 
         assert!(default_meta_data.created_by.is_some());
         let creator = default_meta_data.created_by.unwrap();
-        assert!(creator.contains("phenoxtrackt"));
+        assert!(creator.contains("phenoxtract"));
         assert_eq!(default_meta_data.submitted_by, "Magnus Knut Hansen");
     }
 }

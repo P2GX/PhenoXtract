@@ -1661,6 +1661,7 @@ dependencies = [
  "config",
  "phenopackets",
  "polars",
+ "regex",
  "rstest",
  "serde",
  "tempfile",
