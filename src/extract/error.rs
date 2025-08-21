@@ -2,6 +2,7 @@ use polars::prelude::PolarsError;
 
 #[derive(Debug)]
 pub enum ExtractionError {
+    #[allow(unused)]
     PolarsError(PolarsError),
 }
 
