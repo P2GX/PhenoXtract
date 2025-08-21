@@ -73,7 +73,6 @@ impl Pipeline {
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
         /// In progress
         let builder = PhenopacketBuilder::default();
-        /// TODO: Write task for this
         let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::default());
         let loader_module = FileSystemLoader {
             out_path: PathBuf::from("some/dir/"),
