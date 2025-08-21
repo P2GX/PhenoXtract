@@ -1,10 +1,10 @@
 [package]
 authors = ["Rouven Reuter", "Peter Robinson", "Patrick Simon Nairne"]
-description = "A configurable ETL pipeline to convert tables into phenpackets"
+description = "A configurable ETL pipeline to convert tables into phenopackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
 license = "MIT"
-name = "phenoxtrackt"
+name = "phenoxtract"
 version = "0.1.0"
 
 [dependencies]
@@ -14,6 +14,7 @@ serde = "1.0.219"
 anyhow = "1.0.98"
 phenopackets = "0.2.2-post1"
 validator = { version = "0.20.0", features = ["derive"] }
+calamine = "0.30.0"
 
 
 [dev-dependencies]

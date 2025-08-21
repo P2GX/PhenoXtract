@@ -15,13 +15,23 @@ pub struct ExcelDatasource {
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
-    contexts: Vec<TableContext>,
+    pub contexts: Vec<TableContext>,
+    //todo do we need to add the default thing that's in the csv_data_source struct?
+    pub has_column_headers: bool,
 }
 
 impl ExcelDatasource {
     #[allow(dead_code)]
-    pub(crate) fn new(source: PathBuf, contexts: Vec<TableContext>) -> Self {
-        ExcelDatasource { source, contexts }
+    pub(crate) fn new(
+        source: PathBuf,
+        contexts: Vec<TableContext>,
+        has_column_headers: bool,
+    ) -> Self {
+        ExcelDatasource {
+            source,
+            contexts,
+            has_column_headers,
+        }
     }
 }
 

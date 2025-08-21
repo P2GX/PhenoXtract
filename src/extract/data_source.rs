@@ -1,13 +1,17 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::CsvReadOptions;
+use polars::prelude::{AnyValue, Column, CsvReadOptions};
 
 use std::sync::Arc;
 
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use serde::{Deserialize, Serialize};
+
+use calamine::Data;
+use calamine::{Reader, Xlsx, open_workbook};
+use polars::frame::DataFrame;
 
 /// An enumeration of all supported data source types.
 ///
@@ -26,7 +30,7 @@ impl Extractable for DataSource {
         match self {
             DataSource::Csv(csv_source) => {
                 let mut csv_read_options =
-                    CsvReadOptions::default().with_has_header(csv_source.has_header);
+                    CsvReadOptions::default().with_has_header(csv_source.has_column_headers);
 
                 if let Some(sep) = csv_source.separator {
                     let new_parse_options = (*csv_read_options.parse_options)
@@ -43,8 +47,87 @@ impl Extractable for DataSource {
                     csv_data,
                 )])
             }
-            DataSource::Excel(_excel_source) => {
-                todo!("Excel extraction is not yet implemented.")
+            DataSource::Excel(excel_source) => {
+                let mut cdf_vec = Vec::new();
+
+                let mut workbook: Xlsx<_> = open_workbook(excel_source.source.clone())?;
+                let sheet_names = workbook.sheet_names();
+
+                for sheet_name in sheet_names {
+                    let range = workbook.worksheet_range(&sheet_name)?;
+                    let no_of_cols = range.get_size().1;
+
+                    let mut col_vectors: Vec<Vec<AnyValue>> =
+                        (0..no_of_cols).map(|_| Vec::new()).collect();
+
+                    //Don't ask me why, but Calamine only allows you to iterate on the rows. This explains why the vectors have been created in this way.
+                    for row in range.rows() {
+                        for (col_index, cell_data) in row.iter().enumerate() {
+                            match *cell_data {
+                                Data::Empty => col_vectors[col_index].push(AnyValue::Null),
+                                Data::Int(ref i) => {
+                                    col_vectors[col_index].push(AnyValue::Int64(*i))
+                                }
+                                Data::Bool(ref b) => {
+                                    col_vectors[col_index].push(AnyValue::Boolean(*b))
+                                }
+                                //todo something appropriate for Error types
+                                Data::Error(ref _e) => {
+                                    col_vectors[col_index].push(AnyValue::String("ERROR!!!!!"))
+                                }
+                                Data::Float(ref f) => {
+                                    col_vectors[col_index].push(AnyValue::Float64(*f))
+                                }
+                                //todo something appropriate for DateTime types
+                                Data::DateTime(ref d) => {
+                                    col_vectors[col_index].push(AnyValue::Float64(d.as_f64()))
+                                }
+                                Data::String(ref s)
+                                | Data::DateTimeIso(ref s)
+                                | Data::DurationIso(ref s) => {
+                                    col_vectors[col_index].push(AnyValue::String(s))
+                                }
+                            }
+                        }
+                    }
+
+                    //todo I'm not sure how I feel about doing this as part of the load stage. Same goes for considering the CSV headers.
+                    let columns: Vec<Column> = if excel_source.has_column_headers {
+                        col_vectors
+                            .iter()
+                            .map(|col_vec| {
+                                //todo how can we be certain that the AnyValue implements to_string so that this makes sense?
+                                let col_header = col_vec[0].to_string();
+                                Column::new(col_header.into(), col_vec[1..].to_vec())
+                            })
+                            .collect()
+                    } else {
+                        col_vectors
+                            .iter()
+                            .enumerate()
+                            .map(|(i, col_vec)| {
+                                let col_header = format!("column {i}");
+                                Column::new(col_header.into(), col_vec)
+                            })
+                            .collect()
+                    };
+
+                    let sheet_data = DataFrame::new(columns)?;
+
+                    //todo we are enforcing here that the name of the table contexts must be the same as the worksheet names. Is that what we want?
+                    //todo we are also enforcing that every sheet has a table context.
+                    //todo at what point do we enforce validation of the ExcelDataSource?
+                    let sheet_context = excel_source
+                        .contexts
+                        .iter()
+                        .find(|context| context.name == sheet_name.as_str())
+                        .expect("One of the Excel Worksheet names was missing from the Table Context names.")
+                        .clone();
+                    let cdf = ContextualizedDataFrame::new(sheet_context, sheet_data);
+                    cdf_vec.push(cdf);
+                }
+
+                Ok(cdf_vec)
             }
         }
     }

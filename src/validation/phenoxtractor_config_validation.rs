@@ -53,6 +53,7 @@ mod tests {
         DataSource::Excel(ExcelDatasource::new(
             PathBuf::from("some/dir/file.csv"),
             vec![TableContext::new("".to_string(), vec![], vec![])],
+            false,
         ))
     }
     #[rstest]

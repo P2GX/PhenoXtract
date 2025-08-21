@@ -12,8 +12,8 @@ pub struct CSVDataSource {
     pub separator: Option<char>,
     /// The context describing how to interpret the single table within the CSV.
     pub context: TableContext,
-    #[serde(default = "default_has_header")]
-    pub has_header: bool,
+    #[serde(default = "default_has_column_headers")]
+    pub has_column_headers: bool,
 }
 
 impl CSVDataSource {
@@ -22,13 +22,13 @@ impl CSVDataSource {
         source: PathBuf,
         separator: Option<char>,
         table: TableContext,
-        has_header: bool,
+        has_column_headers: bool,
     ) -> Self {
         Self {
             source,
             separator,
             context: table,
-            has_header,
+            has_column_headers,
         }
     }
 }
@@ -46,6 +46,6 @@ impl HasSource for CSVDataSource {
     }
 }
 
-fn default_has_header() -> bool {
+fn default_has_column_headers() -> bool {
     true
 }
