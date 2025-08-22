@@ -55,7 +55,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::table_context::{
-        CellContext, Context, Identifier, SeriesContext, SingleSeriesContext, TableContext,
+        CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use rstest::{fixture, rstest};
     use std::fmt::Write;
@@ -136,14 +136,14 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
-                Identifier::Name("patient_id".to_string()),
+                "patient_id".to_string(),
                 Context::None,
                 Some(CellContext::new(
                     Context::SubjectId,
                     None,
                     Default::default(),
                 )),
-                vec![Identifier::Name("HP:0000054".to_string())],
+                vec!["HP:0000054".to_string()],
             ))],
             true,
         );
