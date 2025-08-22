@@ -5,6 +5,7 @@ use polars::prelude::CsvReadOptions;
 
 use std::sync::Arc;
 
+use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use serde::{Deserialize, Serialize};
@@ -22,7 +23,7 @@ pub enum DataSource {
 }
 
 impl Extractable for DataSource {
-    fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
+    fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, ExtractionError> {
         match self {
             DataSource::Csv(csv_source) => {
                 let mut csv_read_options =
