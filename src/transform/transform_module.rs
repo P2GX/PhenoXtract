@@ -1,4 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::transform::error::TransformError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
@@ -14,7 +15,7 @@ impl TransformerModule {
     pub fn run(
         &self,
         tables: &mut [ContextualizedDataFrame],
-    ) -> Result<Vec<Phenopacket>, anyhow::Error> {
+    ) -> Result<Vec<Phenopacket>, TransformError> {
         tables.iter_mut().for_each(|table| {
             for strategy in &self.strategies {
                 strategy.transform(table);
