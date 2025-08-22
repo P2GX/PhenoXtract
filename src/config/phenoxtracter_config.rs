@@ -30,7 +30,7 @@ impl PhenoXtractorConfig {
                 Some("toml") => Ok(FileFormat::Toml),
                 Some("ron") => Ok(FileFormat::Ron),
                 _ => Err(ConfigError::NotFound(format!(
-                    "File format not supported. yaml, json, toml or ron are supported. {file_path:?}"
+                    "File format not supported. File needs to end on .yaml, .json, .toml or .ron. {file_path:?}"
                 ))),
             }?;
 
@@ -76,6 +76,8 @@ mod tests {
         separator: ","
         context:
           name: "test_table"
+          context_in_columns: true
+
 
     meta_data:
       created_by: Rouven Reuter
@@ -91,7 +93,7 @@ mod tests {
     type = "csv"
     source = "test/path"
     separator = ","
-    context = { name = "test_table" }
+    context = { name = "test_table", context_in_columns = true}
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -106,7 +108,8 @@ mod tests {
           "source": "test/path",
           "separator": ",",
           "context": {
-            "name": "test_table"
+            "name": "test_table",
+            "context_in_columns": true
           }
         }
       ]
@@ -126,6 +129,7 @@ mod tests {
             separator: ",",
             context: (
                 name: "test_table",
+                context_in_columns: true
             ),
         ),
     ],

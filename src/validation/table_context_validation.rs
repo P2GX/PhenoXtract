@@ -63,16 +63,10 @@ pub(crate) fn validate_unique_identifiers(
 pub(crate) fn validate_at_least_one_subject_id(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
-    for column in &table_context.columns {
+    for column in &table_context.context {
         if column.get_context() == Context::SubjectId
             || column.get_cell_context() == Context::SubjectId
         {
-            return Ok(());
-        }
-    }
-
-    for row in &table_context.rows {
-        if row.get_context() == Context::SubjectId || row.get_cell_context() == Context::SubjectId {
             return Ok(());
         }
     }
@@ -86,7 +80,7 @@ pub(crate) fn validate_at_least_one_subject_id(
 
 pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<(), ValidationError> {
     let all_link_ids: Vec<Identifier> = table_context
-        .columns
+        .context
         .iter()
         .filter_map(|column| match column {
             SeriesContext::Single(single) => Some(single.identifier.clone()),
@@ -95,7 +89,7 @@ pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<()
         .collect();
 
     let all_target_ids: Vec<Identifier> = table_context
-        .columns
+        .context
         .iter()
         .filter_map(|column| match column {
             SeriesContext::Single(single) => Some(single.linked_to.clone()),
@@ -122,7 +116,7 @@ pub(crate) fn validate_unique_series_linking(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
     let all_link_ids: Vec<Identifier> = table_context
-        .columns
+        .context
         .iter()
         .filter_map(|column| match column {
             SeriesContext::Single(single) => Some(single.identifier.clone()),
@@ -256,50 +250,35 @@ mod tests {
 
     #[rstest]
     #[case::subject_id_in_column_context(
-        TableContext {
+        TableContext{
             name: "test".to_string(),
-            columns: vec![single_name("test").with_context(Context::SubjectId)],
-            rows: vec![],
+            context: vec![single_name("test").with_context(Context::SubjectId)],
+            context_in_columns: true,
             },
     )]
     #[case::subject_id_in_column_cell_context(
-        TableContext {
+        TableContext{
             name: "test".to_string(),
-            columns: vec![single_name("test").with_cell_context(Context::SubjectId)],
-            rows: vec![],
-            },
-    )]
-    #[case::subject_id_in_row_context(
-        TableContext {
-            name: "test".to_string(),
-            columns: vec![],
-            rows: vec![single_name("test").with_context(Context::SubjectId)],
-            },
-    )]
-    #[case::subject_id_in_row_cell_context(
-        TableContext {
-            name: "test".to_string(),
-            columns: vec![],
-            rows: vec![single_name("test").with_cell_context(Context::SubjectId)],
+            context: vec![single_name("test").with_cell_context(Context::SubjectId)],
+            context_in_columns: true,
             },
     )]
     fn test_validation_succeeds_when_subject_id_is_present(#[case] table_context: TableContext) {
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_ok());
     }
-
     /// This test covers the failure scenario where columns and rows exist,
     /// but none of them are marked with the SubjectId context.
     #[rstest]
     fn test_validation_fails_when_subject_id_is_absent() {
-        let table_context = TableContext {
-            name: "table_without_subject_id".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "table_without_subject_id".to_string(),
+            vec![
                 single_name("test").with_context(Context::HpoId),
                 single_name("test").with_cell_context(Context::None),
             ],
-            rows: vec![single_name("test").with_context(Context::HpoId)],
-        };
+            true,
+        );
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
@@ -309,11 +288,7 @@ mod tests {
     /// columns or rows defined at all.
     #[rstest]
     fn test_validation_fails_for_empty_table() {
-        let table_context = TableContext {
-            name: "empty_table".to_string(),
-            columns: vec![],
-            rows: vec![],
-        };
+        let table_context = TableContext::new("empty_table".to_string(), vec![], true);
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
@@ -322,11 +297,7 @@ mod tests {
     /// This test covers the edge case where the column and row vectors are present but empty.
     #[rstest]
     fn test_validation_fails_for_table_with_empty_vectors() {
-        let table_context = TableContext {
-            name: "table_with_empty_vecs".to_string(),
-            columns: vec![],
-            rows: vec![],
-        };
+        let table_context = TableContext::new("table_with_empty_vecs".to_string(), vec![], true);
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
@@ -334,10 +305,9 @@ mod tests {
 
     #[rstest]
     fn test_valid_linking() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -351,7 +321,8 @@ mod tests {
                     vec![Identifier::Name("A".to_string())],
                 )),
             ],
-        };
+            true,
+        );
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
@@ -359,10 +330,9 @@ mod tests {
     /// Series "B" attempts to link to "non_existent_link", which is not defined anywhere.
     #[rstest]
     fn test_invalid_linking_missing_target() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -376,7 +346,8 @@ mod tests {
                     vec![Identifier::Name("non_existent_link".to_string())],
                 )),
             ],
-        };
+            true,
+        );
 
         let result = validate_series_linking(&table_context);
         assert!(result.is_err());
@@ -390,32 +361,24 @@ mod tests {
     /// Tests that validation passes when there are no columns at all.
     #[rstest]
     fn test_no_columns() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![],
-        };
+        let table_context = TableContext::new("test_table".to_string(), vec![], true);
+
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
     /// Tests that validation passes when the columns vector is empty.
     #[rstest]
     fn test_empty_columns() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![],
-        };
+        let table_context = TableContext::new("test_table".to_string(), vec![], true);
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
     /// Tests that validation passes when columns exist but no linking is configured.
     #[rstest]
     fn test_no_links_defined() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -429,7 +392,8 @@ mod tests {
                     vec![],
                 )),
             ],
-        };
+            true,
+        );
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
@@ -437,10 +401,9 @@ mod tests {
     /// The function should correctly ignore them.
     #[rstest]
     fn test_with_other_series_types() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -459,7 +422,8 @@ mod tests {
                     vec![Identifier::Name("A".to_string())],
                 )),
             ],
-        };
+            true,
+        );
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
@@ -467,10 +431,9 @@ mod tests {
     /// C links to A and B. Both A and B have valid linking_ids.
     #[rstest]
     fn test_multiple_valid_links() {
-        let table_context = TableContext {
-            rows: vec![],
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -493,7 +456,8 @@ mod tests {
                     ],
                 )),
             ],
-        };
+            true,
+        );
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
@@ -501,9 +465,9 @@ mod tests {
     /// C links to A (valid) and "non_existent_link" (invalid).
     #[rstest]
     fn test_one_of_multiple_links_is_invalid() {
-        let table_context = TableContext {
-            name: "test_table".to_string(),
-            columns: vec![
+        let table_context = TableContext::new(
+            "test_table".to_string(),
+            vec![
                 SeriesContext::Single(SingleSeriesContext::new(
                     Identifier::Name("A".to_string()),
                     Default::default(),
@@ -520,8 +484,8 @@ mod tests {
                     ],
                 )),
             ],
-            rows: vec![],
-        };
+            true,
+        );
 
         let result = validate_series_linking(&table_context);
         assert!(result.is_err());
