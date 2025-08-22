@@ -3,12 +3,12 @@ use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
 use polars::prelude::CsvReadOptions;
 
-use std::sync::Arc;
-
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
+use log::info;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// An enumeration of all supported data source types.
 ///
@@ -26,6 +26,11 @@ impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, ExtractionError> {
         match self {
             DataSource::Csv(csv_source) => {
+                info!(
+                    "Attempt to extract CSV data from{}",
+                    csv_source.source.display()
+                );
+
                 let mut csv_read_options =
                     CsvReadOptions::default().with_has_header(csv_source.has_header);
 
@@ -39,6 +44,7 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
+                info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![ContextualizedDataFrame::new(
                     csv_source.context.clone(),
                     csv_data,
