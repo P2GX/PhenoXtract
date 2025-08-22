@@ -27,7 +27,7 @@ impl Extractable for DataSource {
         match self {
             DataSource::Csv(csv_source) => {
                 info!(
-                    "Attempt to extract CSV data from{}",
+                    "Attempt to extract CSV data from: {}",
                     csv_source.source.display()
                 );
 
