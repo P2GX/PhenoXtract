@@ -7,6 +7,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
+use log::{info, warn};
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 
@@ -29,11 +30,12 @@ impl Pipeline {
         &self,
         extractables: &mut [impl Extractable],
     ) -> Result<Vec<ContextualizedDataFrame>, PipelineError> {
+        info!("Starting extract");
         let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
             .flat_map(|ex| ex.extract().unwrap())
             .collect();
-
+        info!("Concluded extraction extracted {:?} tables", tables.len());
         Ok(tables)
     }
 
@@ -41,21 +43,27 @@ impl Pipeline {
         &self,
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, PipelineError> {
+        info!("Starting Transformation");
         let phenopackets = self.transformer_module.run(tables)?;
+        info!(
+            "Concluded Transformation. Found {:?} Phenopackets",
+            phenopackets.len()
+        );
         Ok(phenopackets)
     }
 
     pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), PipelineError> {
+        info!("Start Loading");
         for phenopacket in phenopackets {
             if let Err(e) = self.loader_module.load(phenopacket) {
-                // TODO: Replace print with logging later
-                println!(
+                warn!(
                     "Could not save Phenopacket for subject: {}. Error: {:?}",
                     phenopacket.clone().subject.unwrap().id.as_str(),
                     e
                 )
             }
         }
+        info!("Concluded Loading");
         Ok(())
     }
     pub fn new(
