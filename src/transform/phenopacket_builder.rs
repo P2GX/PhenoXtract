@@ -2,6 +2,7 @@ use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
+#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
 }

@@ -16,7 +16,6 @@ phenopackets = "0.2.2-post1"
 validator = { version = "0.20.0", features = ["derive"] }
 regex = "1.11.1"
 
-
 [dev-dependencies]
 rstest = "0.26.1"
 tempfile = "3.8"

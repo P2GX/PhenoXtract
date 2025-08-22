@@ -1,9 +1,14 @@
 use crate::config::pipeline_config::PipelineConfig;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
+use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
+use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
+
+use crate::error::ConstructionError;
 use phenopackets::schema::v2::Phenopacket;
+use std::path::PathBuf;
 
 #[allow(dead_code)]
 struct Pipeline {
@@ -53,11 +58,37 @@ impl Pipeline {
         }
         Ok(())
     }
+    pub fn new(
+        transformer_module: TransformerModule,
+        loader_module: impl Loadable + 'static,
+    ) -> Pipeline {
+        Pipeline {
+            transformer_module,
+            loader_module: Box::new(loader_module),
+        }
+    }
 
     #[allow(unused)]
     #[allow(dead_code)]
-    fn from_config(config: &PipelineConfig) -> Result<Self, anyhow::Error> {
-        // Uses the PipelineConfig object and constructs the pipeline from it
-        todo!()
+    pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
+        /// In progress
+        let builder = PhenopacketBuilder::default();
+        let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::default());
+        let loader_module = FileSystemLoader {
+            out_path: PathBuf::from("some/dir/"),
+        };
+        Ok(Pipeline::new(tf_module, loader_module))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_from_pipeline_config() {
+        let config = PipelineConfig::default();
+        let _ = Pipeline::from_config(&config);
     }
 }

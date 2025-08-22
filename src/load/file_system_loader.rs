@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize)]
 pub struct FileSystemLoader {
     #[allow(unused)]
-    out_path: PathBuf,
+    pub out_path: PathBuf,
 }
 
 impl Loadable for FileSystemLoader {
