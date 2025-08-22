@@ -24,20 +24,17 @@ pub struct TableContext {
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_identifiers"))]
     #[serde(default)]
-    pub columns: Vec<SeriesContext>,
-    #[allow(unused)]
-    #[validate(custom(function = "validate_unique_identifiers"))]
-    #[serde(default)]
-    pub rows: Vec<SeriesContext>,
+    pub context: Vec<SeriesContext>,
+    pub context_in_columns: bool,
 }
 
 impl TableContext {
     #[allow(dead_code)]
-    pub(crate) fn new(name: String, columns: Vec<SeriesContext>, rows: Vec<SeriesContext>) -> Self {
+    pub(crate) fn new(name: String, context: Vec<SeriesContext>, context_in_columns: bool) -> Self {
         TableContext {
             name,
-            columns,
-            rows,
+            context,
+            context_in_columns,
         }
     }
 }

@@ -145,12 +145,7 @@ mod tests {
                 )),
                 vec![Identifier::Name("HP:0000054".to_string())],
             ))],
-            vec![SeriesContext::Single(SingleSeriesContext::new(
-                Identifier::Name("test_row".to_string()),
-                Context::None,
-                Some(CellContext::new(Context::None, None, Default::default())),
-                vec![Identifier::Name("HP:0000054".to_string())],
-            ))],
+            true,
         );
 
         let data_source = DataSource::Csv(CSVDataSource::new(
