@@ -7,7 +7,9 @@ pub enum ConstructionError {
 }
 
 pub enum PipelineError {
+    #[allow(dead_code)]
     ExtractionError(ExtractionError),
+    #[allow(dead_code)]
     TransformError(TransformError),
 }
 

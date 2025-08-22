@@ -18,7 +18,10 @@ impl TransformerModule {
     ) -> Result<Vec<Phenopacket>, TransformError> {
         tables.iter_mut().for_each(|table| {
             for strategy in &self.strategies {
-                strategy.transform(table);
+                if let Err(_e) = strategy.transform(table) {
+                    //TODO: Log error here.
+                    continue;
+                };
             }
         });
         // The tables should now be in the correct format.
