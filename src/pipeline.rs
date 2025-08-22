@@ -6,7 +6,7 @@ use crate::load::traits::Loadable;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
 
-use crate::error::ConstructionError;
+use crate::error::{ConstructionError, PipelineError};
 use log::{info, warn};
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ struct Pipeline {
 
 impl Pipeline {
     #[allow(dead_code)]
-    pub fn run(&self, extractables: &mut [impl Extractable]) -> Result<(), anyhow::Error> {
+    pub fn run(&self, extractables: &mut [impl Extractable]) -> Result<(), PipelineError> {
         let mut data = self.extract(extractables)?;
         let phenopackets = self.transform(data.as_mut_slice())?;
         self.load(phenopackets.as_slice())?;
@@ -29,7 +29,7 @@ impl Pipeline {
     pub fn extract(
         &self,
         extractables: &mut [impl Extractable],
-    ) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
+    ) -> Result<Vec<ContextualizedDataFrame>, PipelineError> {
         info!("Starting extract");
         let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
@@ -42,7 +42,7 @@ impl Pipeline {
     pub fn transform(
         &self,
         tables: &mut [ContextualizedDataFrame],
-    ) -> Result<Vec<Phenopacket>, anyhow::Error> {
+    ) -> Result<Vec<Phenopacket>, PipelineError> {
         info!("Starting Transformation");
         let phenopackets = self.transformer_module.run(tables)?;
         info!(
@@ -52,7 +52,7 @@ impl Pipeline {
         Ok(phenopackets)
     }
 
-    pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), anyhow::Error> {
+    pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), PipelineError> {
         info!("Start Loading");
         for phenopacket in phenopackets {
             if let Err(e) = self.loader_module.load(phenopacket) {
