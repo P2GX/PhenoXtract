@@ -30,7 +30,7 @@ impl PhenoXtractorConfig {
                 Some("toml") => Ok(FileFormat::Toml),
                 Some("ron") => Ok(FileFormat::Ron),
                 _ => Err(ConfigError::NotFound(format!(
-                    "File format not supported. File needs to end on .yaml, .json, .toml or .ron. {file_path:?}"
+                    "File format not supported. File needs to end with .yaml, .json, .toml or .ron. {file_path:?}"
                 ))),
             }?;
 
