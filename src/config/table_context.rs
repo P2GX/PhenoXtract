@@ -112,18 +112,6 @@ impl CellContext {
     }
 }
 
-/// An identifier for a series, which can be either a name or a numerical index.
-///
-/// This allows for selecting columns or rows by their header name (e.g., "PatientID")
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-#[serde(untagged)]
-pub(crate) enum Identifier {
-    #[allow(unused)]
-    Name(String),
-    #[allow(unused)]
-    Number(usize),
-}
-
 /// Represents the context for one or more series (columns or rows).
 ///
 /// This enum acts as a dispatcher. It can either define the context for a
@@ -188,7 +176,7 @@ impl SeriesContext {
 pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     /// The unique identifier for the series.
-    pub(crate) identifier: Identifier,
+    pub(crate) identifier: String,
     #[allow(unused)]
     #[serde(default)]
     /// The semantic context found in the header/index of the series.
@@ -200,16 +188,16 @@ pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
-    pub linked_to: Vec<Identifier>,
+    pub linked_to: Vec<String>,
 }
 
 impl SingleSeriesContext {
     #[allow(unused)]
     pub(crate) fn new(
-        identifier: Identifier,
+        identifier: String,
         id_context: Context,
         cells: Option<CellContext>,
-        linked_to: Vec<Identifier>,
+        linked_to: Vec<String>,
     ) -> Self {
         SingleSeriesContext {
             identifier,
