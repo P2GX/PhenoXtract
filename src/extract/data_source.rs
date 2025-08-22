@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::{AnyValue, Column, CsvReadOptions};
+use polars::prelude::{AnyValue, CsvReadOptions, IntoColumn, NamedFrom, Series};
 
 use std::sync::Arc;
 
@@ -9,7 +9,6 @@ use crate::extract::excel_data_source::{ExcelDatasource, PatientOrientation};
 use crate::extract::traits::Extractable;
 use serde::{Deserialize, Serialize};
 
-use crate::config::table_context::TableContext;
 use calamine::Data;
 use calamine::{Reader, Xlsx, open_workbook};
 use polars::frame::DataFrame;
@@ -52,16 +51,45 @@ impl Extractable for DataSource {
                 let mut cdf_vec = Vec::new();
 
                 let mut workbook: Xlsx<_> = open_workbook(excel_source.source.clone())?;
-                let sheet_names = workbook.sheet_names();
 
-                for sheet_name in sheet_names {
-                    let range = workbook.worksheet_range(&sheet_name)?;
-                    let no_of_cols = range.get_size().1;
+                let sheet_contexts = excel_source.contexts.clone();
+
+                if sheet_contexts.len() < workbook.sheet_names().len() {
+                    eprintln!("Warning: fewer Table Contexts than Excel Worksheets.");
+                }
+                else if sheet_contexts.len() > workbook.sheet_names().len() {
+                    eprintln!("Warning: more Table Contexts than Excel Worksheets.");
+                }
+
+                for sheet_context in sheet_contexts {
+
+                    //this makes the search for the appropriate sheets not case sensitive
+                    //todo we are assuming the user isn't going to do something silly like have two table contexts called ASheet and asheet, or give us a workbook whose sheets have those names... but maybe those cases need to be dealt with properly.
+                    let sheet_context_name_lowercase = sheet_context.name.clone().to_lowercase();
+                    let sheet_name = match workbook.sheet_names().iter().find(|name| name.to_lowercase() == sheet_context_name_lowercase) {
+                        Some(r) => r.clone(),
+                        None => {
+                            eprintln!("Could not find Excel Worksheet with the name {sheet_context_name_lowercase}!");
+                            continue;
+                        },
+                    };
+
+                    let range = match workbook.worksheet_range(&sheet_name) {
+                        Ok(r) => r,
+                        Err(_) => {
+                            eprintln!("The Calamine .worksheet_range method could not find a sheet with the name {sheet_name}!");
+                            continue;
+                        },
+                    };
+
+                    let no_of_vectors = match excel_source.patient_orientation {
+                        PatientOrientation::PatientsAreRows => range.get_size().1,
+                        PatientOrientation::PatientsAreColumns => range.get_size().0,
+                    };
 
                     let mut vectors: Vec<Vec<AnyValue>> =
-                        (0..no_of_cols).map(|_| Vec::new()).collect();
+                        (0..no_of_vectors).map(|_| Vec::new()).collect();
 
-                    //Don't ask me why, but Calamine only allows you to iterate on the rows. This explains why the vectors have been created in this way.
                     for (row_index, row) in range.rows().enumerate() {
                         for (col_index, cell_data) in row.iter().enumerate() {
                             let index_to_load = match excel_source.patient_orientation {
@@ -97,41 +125,37 @@ impl Extractable for DataSource {
                         }
                     }
 
-                    let columns: Vec<Column> = if excel_source.has_headers {
+
+                    let columns = if excel_source.has_headers {
                         vectors
                             .iter()
                             .map(|vec| {
-                                let header = vec[0].to_string();
-                                Column::new(header.into(), vec[1..].to_vec())
+                                match Series::from_any_values(vec[0].to_string().clone().into(), &vec[1..].to_vec(), false) {
+                                    Ok(s) => s.into_column(),
+                                    Err(e) => {
+                                        let stringified_vec: Vec<String> = vec[1..].iter().map(|v| v.to_string()).collect();
+                                        Series::new(vec[0].to_string().into(), stringified_vec).into_column()
+                                    }
+                                }
                             })
                             .collect()
                     } else {
                         vectors
                             .iter()
                             .enumerate()
-                            .map(|(i, vec)| {
-                                let header = format!("column {i}");
-                                Column::new(header.into(), vec)
+                            .map(|(i,vec)| {
+                                match Series::from_any_values(format!("Column {i}").into(), &vec[1..].to_vec(), false) {
+                                    Ok(s) => s.into_column(),
+                                    Err(e) => {
+                                        let stringified_vec: Vec<String> = vec.iter().map(|v| v.to_string()).collect();
+                                        Series::new(format!("Column {i}").into(), stringified_vec).into_column()
+                                    }
+                                }
                             })
                             .collect()
                     };
 
                     let sheet_data = DataFrame::new(columns)?;
-
-                    //todo we are enforcing here that the name of the table contexts must be the same as the worksheet names. Is that what we want?
-                    //todo we are also enforcing that every sheet has a table context.
-                    //todo at what point do we enforce validation of the ExcelDataSource?
-
-                    let sheet_context_opt = excel_source
-                        .contexts
-                        .iter()
-                        .find(|context| context.name == sheet_name.as_str());
-
-                    let sheet_context = match sheet_context_opt {
-                        Some(context) => context.clone(),
-                        None => TableContext::new(sheet_name, vec![], vec![]),
-                    };
-
                     let cdf = ContextualizedDataFrame::new(sheet_context, sheet_data);
                     cdf_vec.push(cdf);
                 }
@@ -354,7 +378,5 @@ mod tests {
         let data_frames = data_source.extract().unwrap();
         dbg!(data_frames);
 
-        //todo DEAL WITH CASE WHERE COLUMNS CONTAIN E.G. FLOATS AND STRINGS
-        //todo why are integers being interpreted as floats?
     }
 }
