@@ -3,11 +3,12 @@ use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
 use polars::prelude::{AnyValue, CsvReadOptions, IntoColumn, NamedFrom, Series};
 
-use std::sync::Arc;
-
+use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::{ExcelDatasource, PatientOrientation};
 use crate::extract::traits::Extractable;
+use log::info;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use calamine::Data;
 use calamine::{Reader, Xlsx, open_workbook};
@@ -26,9 +27,14 @@ pub enum DataSource {
 }
 
 impl Extractable for DataSource {
-    fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, anyhow::Error> {
+    fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, ExtractionError> {
         match self {
             DataSource::Csv(csv_source) => {
+                info!(
+                    "Attempt to extract CSV data from: {}",
+                    csv_source.source.display()
+                );
+
                 let mut csv_read_options =
                     CsvReadOptions::default().with_has_header(csv_source.has_column_headers);
 
@@ -42,6 +48,7 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
+                info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![ContextualizedDataFrame::new(
                     csv_source.context.clone(),
                     csv_data,
@@ -170,7 +177,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::table_context::{
-        CellContext, Context, Identifier, SeriesContext, SingleSeriesContext, TableContext,
+        CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use rstest::{fixture, rstest};
     use std::fmt::Write;
@@ -276,14 +283,14 @@ mod tests {
         TableContext::new(
             "first_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
-                Identifier::Name("patient_id".to_string()),
+                "patient_id".to_string(),
                 Context::None,
                 Some(CellContext::new(
                     Context::SubjectId,
                     None,
                     Default::default(),
                 )),
-                vec![Identifier::Name("disease_id".to_string())],
+                vec!["disease_id".to_string()],
             ))],
             vec![SeriesContext::Single(SingleSeriesContext::new(
                 Identifier::Name("test_row".to_string()),
@@ -314,6 +321,7 @@ mod tests {
                 Some(CellContext::new(Context::None, None, Default::default())),
                 vec![Identifier::Name("another_row_2".to_string())],
             ))],
+            true,
         );
         vec![test_tc, test_tc2]
     }

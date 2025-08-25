@@ -5,3 +5,5 @@ mod pipeline;
 mod transform;
 
 mod validation;
+
+mod error;
