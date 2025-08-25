@@ -71,8 +71,8 @@ impl Extractable for DataSource {
                 }
 
                 for sheet_context in sheet_contexts {
-                    //this makes the search for the appropriate sheets not case sensitive
-                    //todo we are assuming the user isn't going to do something silly like have two table contexts called ASheet and asheet, or give us a workbook whose sheets have those names... but maybe those cases need to be dealt with properly.
+
+                    //todo this makes the search for the appropriate sheets not case sensitive. we are assuming the user isn't going to do something silly like have two table contexts called ASheet and asheet, or give us a workbook whose sheets have those names... but maybe those cases need to be dealt with properly.
                     let sheet_context_name_lowercase = sheet_context.name.clone().to_lowercase();
                     let sheet_name = match workbook
                         .sheet_names()
@@ -114,7 +114,6 @@ impl Extractable for DataSource {
                             };
 
                             //todo I am writing this code to avoid panicking if we have indexing errors. Uncertain if that is the right thing to do.
-                            //If the range object functions in any sensible way, there should be no error.
                             let vector_to_load = vectors
                                 .get_mut(index_to_load)
                                 .ok_or(ExtractionError::ExcelIndexing)?;
@@ -205,6 +204,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write as StdWrite;
     use std::path::PathBuf;
+    use rust_xlsxwriter::Workbook;
     use tempfile::TempDir;
 
     #[fixture]
@@ -385,6 +385,21 @@ mod tests {
                 assert_eq!(expected_values[i], unwrapped_value);
             }
         }
+    }
+
+    fn write_test_excel(temp_dir: TempDir,
+                        column_names: [&'static str; 4],
+                        patient_ids: [&'static str; 4],
+                        hpo_ids: [&'static str; 4],
+                        disease_ids: [&'static str; 4],
+                        subject_sexes: [&'static str; 4],) {
+
+        let mut workbook = Workbook::new();
+
+        let sheet_one = workbook.add_worksheet();
+        sheet_one.set_name("sheet one").unwrap();
+
+        //etc. etc.
     }
 
     #[rstest]

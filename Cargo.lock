@@ -1664,6 +1664,7 @@ dependencies = [
  "polars",
  "regex",
  "rstest",
+ "rust_xlsxwriter",
  "serde",
  "tempfile",
  "validator",
@@ -2696,6 +2697,15 @@ checksum = "e7295b7ce3bf4806b419dc3420745998b447178b7005e2011947b38fc5aa6791"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
+]
+
+[[package]]
+name = "rust_xlsxwriter"
+version = "0.90.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fc4507df5e1c3ab599b1434c3e71ef14684d9b21cfbf1d3f1315cda74a47320"
+dependencies = [
+ "zip",
 ]
 
 [[package]]
