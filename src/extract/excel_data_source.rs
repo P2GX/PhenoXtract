@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use validator::Validate;
 
-#[derive(Clone, Debug, Deserialize,Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PatientOrientation {
     PatientsAreRows,
     PatientsAreColumns,

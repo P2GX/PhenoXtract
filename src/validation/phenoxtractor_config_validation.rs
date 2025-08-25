@@ -44,7 +44,7 @@ mod tests {
         DataSource::Csv(CSVDataSource::new(
             PathBuf::from("some/dir/file.csv"),
             None,
-            TableContext::new("".to_string(), vec![], true),
+            TableContext::new("".to_string(), vec![]),
             false,
         ))
     }
@@ -52,9 +52,9 @@ mod tests {
     fn excel_data_source() -> DataSource {
         DataSource::Excel(ExcelDatasource::new(
             PathBuf::from("some/dir/file.csv"),
-            vec![TableContext::new("".to_string(), vec![], true)],
+            vec![TableContext::new("".to_string(), vec![])],
             false,
-            PatientOrientation::PatientsAreRows
+            PatientOrientation::PatientsAreRows,
         ))
     }
     #[rstest]
