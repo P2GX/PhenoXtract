@@ -12,23 +12,15 @@ pub struct CSVDataSource {
     pub separator: Option<char>,
     /// The context describing how to interpret the single table within the CSV.
     pub context: TableContext,
-    #[serde(default = "default_has_column_headers")]
-    pub has_column_headers: bool,
 }
 
 impl CSVDataSource {
     #[allow(dead_code)]
-    pub fn new(
-        source: PathBuf,
-        separator: Option<char>,
-        table: TableContext,
-        has_column_headers: bool,
-    ) -> Self {
+    pub fn new(source: PathBuf, separator: Option<char>, table: TableContext) -> Self {
         Self {
             source,
             separator,
             context: table,
-            has_column_headers,
         }
     }
 }
@@ -44,8 +36,4 @@ impl HasSource for CSVDataSource {
         self.source = source.clone();
         self
     }
-}
-
-fn default_has_column_headers() -> bool {
-    true
 }

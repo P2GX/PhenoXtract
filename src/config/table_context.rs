@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use validator::Validate;
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum PatientOrientation {
+    PatientsAreRows,
+    PatientsAreColumns,
+}
+
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
@@ -25,12 +31,24 @@ pub struct TableContext {
     #[validate(custom(function = "validate_unique_identifiers"))]
     #[serde(default)]
     pub context: Vec<SeriesContext>,
+    pub has_headers: bool,
+    pub patient_orientation: PatientOrientation,
 }
 
 impl TableContext {
     #[allow(dead_code)]
-    pub(crate) fn new(name: String, context: Vec<SeriesContext>) -> Self {
-        TableContext { name, context }
+    pub(crate) fn new(
+        name: String,
+        context: Vec<SeriesContext>,
+        has_headers: bool,
+        patient_orientation: PatientOrientation,
+    ) -> Self {
+        TableContext {
+            name,
+            context,
+            has_headers,
+            patient_orientation,
+        }
     }
 }
 /// Defines the semantic meaning or type of data in a cell or series.

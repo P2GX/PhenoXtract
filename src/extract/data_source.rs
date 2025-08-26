@@ -6,12 +6,13 @@ use std::fs::File;
 use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
-use crate::extract::excel_data_source::{ExcelDatasource, PatientOrientation};
+use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::config::table_context::PatientOrientation;
 use calamine::Data;
 use calamine::{Reader, Xlsx, open_workbook};
 use polars::frame::DataFrame;
@@ -38,7 +39,7 @@ impl Extractable for DataSource {
                 );
 
                 let mut csv_read_options =
-                    CsvReadOptions::default().with_has_header(csv_source.has_column_headers);
+                    CsvReadOptions::default().with_has_header(csv_source.context.has_headers);
 
                 if let Some(sep) = csv_source.separator {
                     let new_parse_options = (*csv_read_options.parse_options)
@@ -71,8 +72,8 @@ impl Extractable for DataSource {
                 }
 
                 for sheet_context in sheet_contexts {
-
-                    //todo this makes the search for the appropriate sheets not case sensitive. we are assuming the user isn't going to do something silly like have two table contexts called ASheet and asheet, or give us a workbook whose sheets have those names... but maybe those cases need to be dealt with properly.
+                    //this makes the search for the appropriate sheets not case sensitive.
+                    // todo we might need to validate to makes sure the user doesn't do something silly like have two table contexts called ASheet and asheet
                     let sheet_context_name_lowercase = sheet_context.name.clone().to_lowercase();
                     let sheet_name = match workbook
                         .sheet_names()
@@ -98,7 +99,7 @@ impl Extractable for DataSource {
                         }
                     };
 
-                    let no_of_vectors = match excel_source.patient_orientation {
+                    let no_of_vectors = match sheet_context.patient_orientation {
                         PatientOrientation::PatientsAreRows => range.get_size().1,
                         PatientOrientation::PatientsAreColumns => range.get_size().0,
                     };
@@ -108,7 +109,7 @@ impl Extractable for DataSource {
 
                     for (row_index, row) in range.rows().enumerate() {
                         for (col_index, cell_data) in row.iter().enumerate() {
-                            let index_to_load = match excel_source.patient_orientation {
+                            let index_to_load = match sheet_context.patient_orientation {
                                 PatientOrientation::PatientsAreRows => col_index,
                                 PatientOrientation::PatientsAreColumns => row_index,
                             };
@@ -147,7 +148,7 @@ impl Extractable for DataSource {
                             let header;
                             let data;
 
-                            if excel_source.has_headers {
+                            if sheet_context.has_headers {
                                 let h = vec.first().ok_or(ExtractionError::VectorIndexing)?;
                                 header = h.to_string();
                                 data = vec.get(1..).ok_or(ExtractionError::VectorIndexing)?;
@@ -200,11 +201,11 @@ mod tests {
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use rstest::{fixture, rstest};
+    use rust_xlsxwriter::Workbook;
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
     use std::path::PathBuf;
-    use rust_xlsxwriter::Workbook;
     use tempfile::TempDir;
 
     #[fixture]
@@ -313,6 +314,8 @@ mod tests {
                 )),
                 vec!["disease_id".to_string()],
             ))],
+            true,
+            PatientOrientation::PatientsAreRows,
         )
     }
 
@@ -330,10 +333,12 @@ mod tests {
                 )),
                 vec!["patient_id".to_string()],
             ))],
+            true,
+            PatientOrientation::PatientsAreRows,
         )
     }
     #[fixture]
-    fn test_tcs(test_tc:TableContext, test_tc2:TableContext) -> Vec<TableContext> {
+    fn test_tcs(test_tc: TableContext, test_tc2: TableContext) -> Vec<TableContext> {
         vec![test_tc, test_tc2]
     }
 
@@ -352,12 +357,8 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         file.write_all(csv_data.as_slice()).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
-            file_path,
-            Some(','),
-            test_tc.clone(),
-            true,
-        ));
+        let data_source =
+            DataSource::Csv(CSVDataSource::new(file_path, Some(','), test_tc.clone()));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
@@ -387,19 +388,18 @@ mod tests {
         }
     }
 
-    fn write_test_excel(temp_dir: TempDir,
-                        column_names: [&'static str; 4],
-                        patient_ids: [&'static str; 4],
-                        hpo_ids: [&'static str; 4],
-                        disease_ids: [&'static str; 4],
-                        subject_sexes: [&'static str; 4],) {
-
+    fn write_test_excel(
+        temp_dir: TempDir,
+        column_names: [&'static str; 4],
+        patient_ids: [&'static str; 4],
+        hpo_ids: [&'static str; 4],
+        disease_ids: [&'static str; 4],
+        subject_sexes: [&'static str; 4],
+    ) {
         let mut workbook = Workbook::new();
 
         let sheet_one = workbook.add_worksheet();
         sheet_one.set_name("sheet one").unwrap();
-
-        //etc. etc.
     }
 
     #[rstest]
@@ -408,12 +408,7 @@ mod tests {
             "/Users/patrick/RustroverProjects/PhenoXtrackt/src/extract/test_excel.xlsx",
         );
 
-        let data_source = DataSource::Excel(ExcelDatasource::new(
-            file_path,
-            test_tcs.clone(),
-            true,
-            PatientOrientation::PatientsAreRows,
-        ));
+        let data_source = DataSource::Excel(ExcelDatasource::new(file_path, test_tcs.clone()));
 
         let data_frames = data_source.extract().unwrap();
         dbg!(data_frames);

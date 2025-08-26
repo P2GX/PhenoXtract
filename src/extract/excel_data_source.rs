@@ -6,12 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use validator::Validate;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum PatientOrientation {
-    PatientsAreRows,
-    PatientsAreColumns,
-}
-
 /// Defines an Excel workbook as a data source.
 #[derive(Debug, Validate, Deserialize, Serialize, Clone)]
 pub struct ExcelDatasource {
@@ -23,24 +17,12 @@ pub struct ExcelDatasource {
     #[validate(custom(function = "validate_unique_sheet_names"))]
     pub contexts: Vec<TableContext>,
     //todo do we need to add the default thing that's in the csv_data_source struct?
-    pub has_headers: bool,
-    pub patient_orientation: PatientOrientation,
 }
 
 impl ExcelDatasource {
     #[allow(dead_code)]
-    pub(crate) fn new(
-        source: PathBuf,
-        contexts: Vec<TableContext>,
-        has_headers: bool,
-        patient_orientation: PatientOrientation,
-    ) -> Self {
-        ExcelDatasource {
-            source,
-            contexts,
-            has_headers,
-            patient_orientation,
-        }
+    pub(crate) fn new(source: PathBuf, contexts: Vec<TableContext>) -> Self {
+        ExcelDatasource { source, contexts }
     }
 }
 

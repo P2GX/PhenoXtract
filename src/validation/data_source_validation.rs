@@ -23,6 +23,7 @@ pub(crate) fn validate_unique_sheet_names(sheets: &[TableContext]) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::PatientOrientation;
     use rstest::rstest;
 
     #[rstest]
@@ -31,10 +32,14 @@ mod tests {
             TableContext {
                 name: "phenotypes".to_string(),
                 context: vec![],
+                has_headers: true,
+                patient_orientation: PatientOrientation::PatientsAreRows,
             },
             TableContext {
                 name: "genotypes".to_string(),
                 context: vec![],
+                has_headers: true,
+                patient_orientation: PatientOrientation::PatientsAreRows,
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);
@@ -47,10 +52,14 @@ mod tests {
             TableContext {
                 name: "phenotypes".to_string(),
                 context: vec![],
+                has_headers: true,
+                patient_orientation: PatientOrientation::PatientsAreRows,
             },
             TableContext {
                 name: "phenotypes".to_string(),
                 context: vec![],
+                has_headers: true,
+                patient_orientation: PatientOrientation::PatientsAreRows,
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);
