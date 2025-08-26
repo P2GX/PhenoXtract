@@ -34,7 +34,7 @@ impl Extractable for DataSource {
         match self {
             DataSource::Csv(csv_source) => {
                 info!(
-                    "Attempt to extract CSV data from: {}",
+                    "Attempting to extract CSV data from: {}",
                     csv_source.source.display()
                 );
 
@@ -59,6 +59,11 @@ impl Extractable for DataSource {
             }
             DataSource::Excel(excel_source) => {
                 let mut cdf_vec = Vec::new();
+
+                info!(
+                    "Attempting to extract Excel data from: {}",
+                    excel_source.source.display()
+                );
 
                 let mut workbook: Xlsx<BufReader<File>> =
                     open_workbook(excel_source.source.clone())?;
