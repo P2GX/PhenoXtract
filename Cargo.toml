@@ -4,7 +4,7 @@ description = "A configurable ETL pipeline to convert tables into phenpackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
 license = "MIT"
-name = "phenoxtrackt"
+name = "phenoxtract"
 version = "0.1.0"
 
 [dependencies]

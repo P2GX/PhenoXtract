@@ -16,7 +16,6 @@ pub struct ExcelDatasource {
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
     pub contexts: Vec<TableContext>,
-    //todo do we need to add the default thing that's in the csv_data_source struct?
 }
 
 impl ExcelDatasource {

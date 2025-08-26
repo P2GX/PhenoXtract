@@ -357,6 +357,7 @@ mod tests {
         vec![test_tc1, test_tc2, test_tc3, test_tc4]
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_csv(
         temp_dir: TempDir,
@@ -402,6 +403,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_excel(
         test_tcs: Vec<TableContext>,
