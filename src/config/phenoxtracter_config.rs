@@ -76,7 +76,8 @@ mod tests {
         separator: ","
         context:
           name: "test_table"
-          context_in_columns: true
+          has_headers: true
+          patient_orientation: PatientsAreRows
 
 
     meta_data:
@@ -93,7 +94,7 @@ mod tests {
     type = "csv"
     source = "test/path"
     separator = ","
-    context = { name = "test_table", context_in_columns = true}
+    context = { name = "test_table", has_headers = true, patient_orientation = "PatientsAreRows"}
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -109,7 +110,8 @@ mod tests {
           "separator": ",",
           "context": {
             "name": "test_table",
-            "context_in_columns": true
+            "has_headers": true,
+            "patient_orientation": "PatientsAreRows"
           }
         }
       ]
@@ -129,7 +131,8 @@ mod tests {
             separator: ",",
             context: (
                 name: "test_table",
-                context_in_columns: true
+                has_headers: true,
+                patient_orientation: "PatientsAreRows"
             ),
         ),
     ],
