@@ -150,7 +150,7 @@ impl Extractable for DataSource {
 
                             if sheet_context.has_headers {
                                 let h = vec.first().ok_or(ExtractionError::VectorIndexing)?;
-                                header = h.to_string();
+                                header = h.get_str().ok_or(ExtractionError::NoStringInHeader)?.to_string();
                                 data = vec.get(1..).ok_or(ExtractionError::VectorIndexing)?;
                             } else {
                                 header = format!("{i}");
@@ -201,11 +201,11 @@ mod tests {
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use rstest::{fixture, rstest};
-    use rust_xlsxwriter::Workbook;
+    use rust_xlsxwriter::{ColNum, RowNum, Workbook};
+    use std::f64;
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
-    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[fixture]
@@ -238,39 +238,23 @@ mod tests {
     }
 
     #[fixture]
-    fn column_names_excel_sheet_2() -> [&'static str; 4] {
-        ["patient_id", "ages", "weight", "smokes"]
+    fn row_names() -> [&'static str; 4] {
+        ["patient_id", "age", "weight", "smokes"]
     }
 
     #[fixture]
-    fn ages() -> [&'static i32; 4] {
-        [&41, &29, &53, &101]
+    fn ages() -> [i32; 4] {
+        [41, 29, 53, 101]
     }
 
     #[fixture]
-    fn weight() -> [&'static f64; 4] {
-        [&100.5, &70.3, &95.8, &40.2]
+    fn weights() -> [f64; 4] {
+        [100.5, 70.3, 95.8, 40.2]
     }
 
     #[fixture]
-    fn smokes() -> [&'static bool; 4] {
-        [&false, &true, &false, &true]
-    }
-
-    #[fixture]
-    fn excel_data(
-        column_names: [&'static str; 4],
-        patient_ids: [&'static str; 4],
-        hpo_ids: [&'static str; 4],
-        disease_ids: [&'static str; 4],
-        subject_sexes: [&'static str; 4],
-        column_names_excel_sheet_2: [&'static str; 4],
-        ages: [&'static i32; 4],
-        weight: [&'static f64; 4],
-        smokes: [&'static bool; 4],
-    ) -> (Vec<u8>, Vec<u8>) {
-        //todo write an excel file for the test
-        (vec![], vec![])
+    fn smoker_bools() -> [bool; 4] {
+        [false, true, false, true]
     }
 
     #[fixture]
@@ -300,8 +284,9 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
+    //column-wise data with headers
     #[fixture]
-    fn test_tc() -> TableContext {
+    fn test_tc1() -> TableContext {
         TableContext::new(
             "first_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
@@ -319,34 +304,59 @@ mod tests {
         )
     }
 
+    //row-wise data with headers
     #[fixture]
     fn test_tc2() -> TableContext {
         TableContext::new(
             "second_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
-                "phenotypes".to_string(),
+                "age".to_string(),
                 Context::None,
                 Some(CellContext::new(
                     Context::SubjectId,
                     None,
                     Default::default(),
                 )),
-                vec!["patient_id".to_string()],
+                vec!["weight".to_string()],
             ))],
             true,
-            PatientOrientation::PatientsAreRows,
+            PatientOrientation::PatientsAreColumns,
         )
     }
+
+    //column-wise data without headers
     #[fixture]
-    fn test_tcs(test_tc: TableContext, test_tc2: TableContext) -> Vec<TableContext> {
-        vec![test_tc, test_tc2]
+    fn test_tc3(test_tc1: TableContext) -> TableContext {
+        let mut test_tc3 = test_tc1.clone();
+        test_tc3.name = "third_sheet".to_string();
+        test_tc3.has_headers = false;
+        test_tc3
+    }
+
+    //row-wise data without headers
+    #[fixture]
+    fn test_tc4(test_tc2: TableContext) -> TableContext {
+        let mut test_tc4 = test_tc2.clone();
+        test_tc4.name = "fourth_sheet".to_string();
+        test_tc4.has_headers = false;
+        test_tc4
+    }
+
+    #[fixture]
+    fn test_tcs(
+        test_tc1: TableContext,
+        test_tc2: TableContext,
+        test_tc3: TableContext,
+        test_tc4: TableContext,
+    ) -> Vec<TableContext> {
+        vec![test_tc1, test_tc2, test_tc3, test_tc4]
     }
 
     #[rstest]
     fn test_extract_csv(
         temp_dir: TempDir,
         csv_data: Vec<u8>,
-        test_tc: TableContext,
+        test_tc1: TableContext,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
         hpo_ids: [&'static str; 4],
@@ -358,59 +368,161 @@ mod tests {
         file.write_all(csv_data.as_slice()).unwrap();
 
         let data_source =
-            DataSource::Csv(CSVDataSource::new(file_path, Some(','), test_tc.clone()));
+            DataSource::Csv(CSVDataSource::new(file_path, Some(','), test_tc1.clone()));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
 
-        assert_eq!(context_df.context(), &test_tc);
+        assert_eq!(context_df.context(), &test_tc1);
 
-        let column_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
+        let expected_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
+        let extracted_data = context_df.data();
 
-        let column_data_pairs: Vec<(&str, &[&str])> = column_names
+        let expected_data_pairs: Vec<(&str, &[&str])> = column_names
             .iter()
-            .zip(column_data.iter())
+            .zip(expected_data.iter())
             .map(|(&col_name, &col_data)| (col_name, col_data))
             .collect();
 
-        for (col_name, expected_values) in column_data_pairs.iter() {
-            let loaded_data = context_df.data();
-            let col_content = loaded_data
+        for (col_name, expected_values) in expected_data_pairs.iter() {
+            let extracted_col = extracted_data
                 .column(col_name)
                 .expect("Failed to load column")
                 .str()
                 .unwrap();
 
-            for (i, value) in col_content.iter().enumerate() {
-                let unwrapped_value = value.unwrap();
-                assert_eq!(expected_values[i], unwrapped_value);
+            for (i, extracted_value) in extracted_col.iter().enumerate() {
+                assert_eq!(expected_values[i], extracted_value.unwrap());
             }
         }
     }
 
-    fn write_test_excel(
+    #[rstest]
+    fn test_extract_excel(
+        test_tcs: Vec<TableContext>,
         temp_dir: TempDir,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
         hpo_ids: [&'static str; 4],
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
+        row_names: [&'static str; 4],
+        ages: [i32; 4],
+        weights: [f64; 4],
+        smoker_bools: [bool; 4],
     ) {
+        //Write desired data to an Excel file
         let mut workbook = Workbook::new();
 
-        let sheet_one = workbook.add_worksheet();
-        sheet_one.set_name("sheet one").unwrap();
-    }
+        workbook.add_worksheet().set_name("first_sheet").unwrap();
+        workbook.add_worksheet().set_name("second_sheet").unwrap();
+        workbook.add_worksheet().set_name("third_sheet").unwrap();
+        workbook.add_worksheet().set_name("fourth_sheet").unwrap();
 
-    #[rstest]
-    fn test_extract_excel(test_tcs: Vec<TableContext>) {
-        let file_path = PathBuf::from(
-            "/Users/patrick/RustroverProjects/PhenoXtrackt/src/extract/test_excel.xlsx",
-        );
+        for worksheet in workbook.worksheets_mut() {
+            let mut offset_due_to_header = 0;
 
+            if worksheet.name() == "first_sheet" {
+                worksheet.write_row(0, 0, column_names).unwrap();
+                offset_due_to_header = 1;
+            }
+
+            if worksheet.name() == "second_sheet" {
+                worksheet.write_column(0, 0, row_names).unwrap();
+                offset_due_to_header = 1;
+            }
+
+            if worksheet.name() == "first_sheet" || worksheet.name() == "third_sheet" {
+                worksheet
+                    .write_column(offset_due_to_header as RowNum, 0, patient_ids)
+                    .unwrap();
+                worksheet
+                    .write_column(offset_due_to_header as RowNum, 1, hpo_ids)
+                    .unwrap();
+                worksheet
+                    .write_column(offset_due_to_header as RowNum, 2, disease_ids)
+                    .unwrap();
+                worksheet
+                    .write_column(offset_due_to_header as RowNum, 3, subject_sexes)
+                    .unwrap();
+            }
+
+            if worksheet.name() == "second_sheet" || worksheet.name() == "fourth_sheet" {
+                worksheet
+                    .write_row(0, offset_due_to_header as ColNum, patient_ids)
+                    .unwrap();
+                worksheet
+                    .write_row(1, offset_due_to_header as ColNum, ages)
+                    .unwrap();
+                worksheet
+                    .write_row(2, offset_due_to_header as ColNum, weights)
+                    .unwrap();
+                worksheet
+                    .write_row(3, offset_due_to_header as ColNum, smoker_bools)
+                    .unwrap();
+            }
+        }
+
+        let file_path = temp_dir.path().join("test_excel.xlsx");
+        workbook.save(file_path.clone()).unwrap();
+
+        //Now we test the extraction
         let data_source = DataSource::Excel(ExcelDatasource::new(file_path, test_tcs.clone()));
 
         let data_frames = data_source.extract().unwrap();
-        dbg!(data_frames);
+
+        for data_frame in data_frames {
+            let extracted_data = data_frame.data();
+
+            if data_frame.context().name == "first_sheet" {
+                assert_eq!(extracted_data.get_column_names(), column_names);
+            } else if data_frame.context().name == "second_sheet" {
+                assert_eq!(extracted_data.get_column_names(), row_names);
+            } else {
+                assert_eq!(extracted_data.get_column_names(), ["0", "1", "2", "3"]);
+            }
+
+            let extracted_col0 = extracted_data.select_at_idx(0).unwrap();
+            let extracted_col1 = extracted_data.select_at_idx(1).unwrap();
+            let extracted_col2 = extracted_data.select_at_idx(2).unwrap();
+            let extracted_col3 = extracted_data.select_at_idx(3).unwrap();
+
+            if data_frame.context().name == "first_sheet"
+                || data_frame.context().name == "third_sheet"
+            {
+                let extracted_patient_ids: Vec<_> =
+                    extracted_col0.str().unwrap().into_no_null_iter().collect();
+                let extracted_hpo_ids: Vec<_> =
+                    extracted_col1.str().unwrap().into_no_null_iter().collect();
+                let extracted_disease_ids: Vec<_> =
+                    extracted_col2.str().unwrap().into_no_null_iter().collect();
+                let extracted_subject_sexes: Vec<_> =
+                    extracted_col3.str().unwrap().into_no_null_iter().collect();
+                assert_eq!(extracted_patient_ids, patient_ids);
+                assert_eq!(extracted_hpo_ids, hpo_ids);
+                assert_eq!(extracted_disease_ids, disease_ids);
+                assert_eq!(extracted_subject_sexes, subject_sexes);
+            }
+
+            if data_frame.context().name == "second_sheet"
+                || data_frame.context().name == "fourth_sheet"
+            {
+                let extracted_patient_ids: Vec<_> =
+                    extracted_col0.str().unwrap().into_no_null_iter().collect();
+                let extracted_ages: Vec<_> =
+                    extracted_col1.f64().unwrap().into_no_null_iter().collect();
+                let extracted_weights: Vec<_> =
+                    extracted_col2.f64().unwrap().into_no_null_iter().collect();
+                let extracted_smoker_bools: Vec<_> =
+                    extracted_col3.bool().unwrap().into_no_null_iter().collect();
+                assert_eq!(extracted_patient_ids, patient_ids);
+                assert_eq!(
+                    extracted_ages,
+                    ages.iter().map(|&v| v as f64).collect::<Vec<f64>>()
+                );
+                assert_eq!(extracted_weights, weights);
+                assert_eq!(extracted_smoker_bools, smoker_bools);
+            }
+        }
     }
 }

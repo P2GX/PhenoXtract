@@ -9,6 +9,7 @@ pub enum ExtractionError {
     Calamine(XlsxError),
     ExcelIndexing,
     VectorIndexing,
+    NoStringInHeader,
 }
 
 impl From<PolarsError> for ExtractionError {
