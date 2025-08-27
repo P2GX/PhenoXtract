@@ -12,7 +12,8 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::config::table_context::PatientOrientation;
+use crate::config::table_context::TableContext;
+use crate::extract::extraction_config::PatientOrientation;
 use calamine::Data;
 use calamine::{Reader, Xlsx, open_workbook};
 use polars::frame::DataFrame;
@@ -38,8 +39,8 @@ impl Extractable for DataSource {
                     csv_source.source.display()
                 );
 
-                let mut csv_read_options =
-                    CsvReadOptions::default().with_has_header(csv_source.context.has_headers);
+                let mut csv_read_options = CsvReadOptions::default()
+                    .with_has_header(csv_source.extraction_config.has_headers);
 
                 if let Some(sep) = csv_source.separator {
                     let new_parse_options = (*csv_read_options.parse_options)
@@ -68,43 +69,27 @@ impl Extractable for DataSource {
                 let mut workbook: Xlsx<BufReader<File>> =
                     open_workbook(excel_source.source.clone())?;
 
-                let sheet_contexts = excel_source.contexts.clone();
+                let extraction_configs = excel_source.extraction_configs.clone();
 
-                if sheet_contexts.len() < workbook.sheet_names().len() {
-                    warn!("Warning: fewer Table Contexts than Excel Worksheets.");
-                } else if sheet_contexts.len() > workbook.sheet_names().len() {
-                    warn!("Warning: more Table Contexts than Excel Worksheets.");
+                if extraction_configs.len() < workbook.sheet_names().len() {
+                    warn!("Warning: fewer ExtractionConfigs than Excel Worksheets.");
+                } else if extraction_configs.len() > workbook.sheet_names().len() {
+                    warn!("Warning: more ExtractionConfigs than Excel Worksheets.");
                 }
 
-                for sheet_context in sheet_contexts {
-                    //this makes the search for the appropriate sheets not case sensitive.
-                    // todo we might need to validate to makes sure the user doesn't do something silly like have two table contexts called ASheet and asheet
-                    let sheet_context_name_lowercase = sheet_context.name.clone().to_lowercase();
-                    let sheet_name = match workbook
-                        .sheet_names()
-                        .iter()
-                        .find(|name| name.to_lowercase() == sheet_context_name_lowercase)
-                    {
-                        Some(r) => r.clone(),
-                        None => {
-                            warn!(
-                                "Could not find Excel Worksheet with the name {sheet_context_name_lowercase}!"
-                            );
-                            continue;
-                        }
-                    };
-
+                for extraction_config in extraction_configs {
+                    let sheet_name = extraction_config.name.clone();
                     let range = match workbook.worksheet_range(&sheet_name) {
                         Ok(r) => r,
                         Err(_) => {
                             warn!(
-                                "The Calamine .worksheet_range method could not find a sheet with the name {sheet_name}!"
+                                "Could not find Excel Worksheet with the name {sheet_name}! No dataframe extracted."
                             );
                             continue;
                         }
                     };
 
-                    let no_of_vectors = match sheet_context.patient_orientation {
+                    let no_of_vectors = match extraction_config.patient_orientation {
                         PatientOrientation::PatientsAreRows => range.get_size().1,
                         PatientOrientation::PatientsAreColumns => range.get_size().0,
                     };
@@ -114,7 +99,7 @@ impl Extractable for DataSource {
 
                     for (row_index, row) in range.rows().enumerate() {
                         for (col_index, cell_data) in row.iter().enumerate() {
-                            let index_to_load = match sheet_context.patient_orientation {
+                            let index_to_load = match extraction_config.patient_orientation {
                                 PatientOrientation::PatientsAreRows => col_index,
                                 PatientOrientation::PatientsAreColumns => row_index,
                             };
@@ -153,7 +138,7 @@ impl Extractable for DataSource {
                             let header;
                             let data;
 
-                            if sheet_context.has_headers {
+                            if extraction_config.has_headers {
                                 let h = vec.first().ok_or(ExtractionError::VectorIndexing)?;
                                 header = h.get_str().ok_or(ExtractionError::NoStringInHeader)?.to_string();
                                 data = vec.get(1..).ok_or(ExtractionError::VectorIndexing)?;
@@ -184,6 +169,21 @@ impl Extractable for DataSource {
                     let columns = columnify_result?;
 
                     let sheet_data = DataFrame::new(columns)?;
+
+                    let sheet_context = match excel_source
+                        .contexts
+                        .iter()
+                        .find(|context| context.name == sheet_name)
+                    {
+                        Some(context) => context.clone(),
+                        None => {
+                            warn!(
+                                "Could not find table context with the name {sheet_name}! Empty table context generated."
+                            );
+                            TableContext::new(sheet_name.clone(), vec![])
+                        }
+                    };
+
                     let cdf = ContextualizedDataFrame::new(sheet_context, sheet_data);
                     cdf_vec.push(cdf);
                     info!(
@@ -205,6 +205,7 @@ mod tests {
     use crate::config::table_context::{
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
+    use crate::extract::extraction_config::ExtractionConfig;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, RowNum, Workbook};
     use std::f64;
@@ -304,6 +305,13 @@ mod tests {
                 )),
                 vec!["disease_id".to_string()],
             ))],
+        )
+    }
+
+    #[fixture]
+    fn test_ec1() -> ExtractionConfig {
+        ExtractionConfig::new(
+            "first_sheet".to_string(),
             true,
             PatientOrientation::PatientsAreRows,
         )
@@ -324,6 +332,13 @@ mod tests {
                 )),
                 vec!["weight".to_string()],
             ))],
+        )
+    }
+
+    #[fixture]
+    fn test_ec2() -> ExtractionConfig {
+        ExtractionConfig::new(
+            "second_sheet".to_string(),
             true,
             PatientOrientation::PatientsAreColumns,
         )
@@ -334,8 +349,16 @@ mod tests {
     fn test_tc3(test_tc1: TableContext) -> TableContext {
         let mut test_tc3 = test_tc1.clone();
         test_tc3.name = "third_sheet".to_string();
-        test_tc3.has_headers = false;
         test_tc3
+    }
+
+    #[fixture]
+    fn test_ec3() -> ExtractionConfig {
+        ExtractionConfig::new(
+            "third_sheet".to_string(),
+            false,
+            PatientOrientation::PatientsAreRows,
+        )
     }
 
     //row-wise data without headers
@@ -343,8 +366,16 @@ mod tests {
     fn test_tc4(test_tc2: TableContext) -> TableContext {
         let mut test_tc4 = test_tc2.clone();
         test_tc4.name = "fourth_sheet".to_string();
-        test_tc4.has_headers = false;
         test_tc4
+    }
+
+    #[fixture]
+    fn test_ec4() -> ExtractionConfig {
+        ExtractionConfig::new(
+            "fourth_sheet".to_string(),
+            false,
+            PatientOrientation::PatientsAreColumns,
+        )
     }
 
     #[fixture]
@@ -357,12 +388,23 @@ mod tests {
         vec![test_tc1, test_tc2, test_tc3, test_tc4]
     }
 
+    #[fixture]
+    fn test_ecs(
+        test_ec1: ExtractionConfig,
+        test_ec2: ExtractionConfig,
+        test_ec3: ExtractionConfig,
+        test_ec4: ExtractionConfig,
+    ) -> Vec<ExtractionConfig> {
+        vec![test_ec1, test_ec2, test_ec3, test_ec4]
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_csv(
         temp_dir: TempDir,
         csv_data: Vec<u8>,
         test_tc1: TableContext,
+        test_ec1: ExtractionConfig,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
         hpo_ids: [&'static str; 4],
@@ -373,8 +415,12 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         file.write_all(csv_data.as_slice()).unwrap();
 
-        let data_source =
-            DataSource::Csv(CSVDataSource::new(file_path, Some(','), test_tc1.clone()));
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            test_tc1.clone(),
+            test_ec1.clone(),
+        ));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
@@ -407,6 +453,7 @@ mod tests {
     #[rstest]
     fn test_extract_excel(
         test_tcs: Vec<TableContext>,
+        test_ecs: Vec<ExtractionConfig>,
         temp_dir: TempDir,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
@@ -474,7 +521,11 @@ mod tests {
         workbook.save(file_path.clone()).unwrap();
 
         //Now we test the extraction
-        let data_source = DataSource::Excel(ExcelDatasource::new(file_path, test_tcs.clone()));
+        let data_source = DataSource::Excel(ExcelDatasource::new(
+            file_path,
+            test_tcs.clone(),
+            test_ecs.clone(),
+        ));
 
         let data_frames = data_source.extract().unwrap();
 

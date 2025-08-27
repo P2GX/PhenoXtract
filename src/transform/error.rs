@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum TransformError {
     #[allow(dead_code)]
     BuildingError(String),

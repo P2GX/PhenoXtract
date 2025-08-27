@@ -74,10 +74,12 @@ mod tests {
       - type: "csv"
         source: "test/path"
         separator: ","
+        extraction_config:
+            name: "test_config"
+            has_headers: true
+            patient_orientation: PatientsAreRows
         context:
           name: "test_table"
-          has_headers: true
-          patient_orientation: PatientsAreRows
 
 
     meta_data:
@@ -94,7 +96,8 @@ mod tests {
     type = "csv"
     source = "test/path"
     separator = ","
-    context = { name = "test_table", has_headers = true, patient_orientation = "PatientsAreRows"}
+    context = { name = "test_table"}
+    extraction_config = { name = "test_config", has_headers = true, patient_orientation = "PatientsAreRows"}
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -109,7 +112,10 @@ mod tests {
           "source": "test/path",
           "separator": ",",
           "context": {
-            "name": "test_table",
+            "name": "test_table"
+          },
+          "extraction_config": {
+            "name": "test_config",
             "has_headers": true,
             "patient_orientation": "PatientsAreRows"
           }
@@ -131,8 +137,11 @@ mod tests {
             separator: ",",
             context: (
                 name: "test_table",
+            ),
+            extraction_config: (
+                name: "test_config",
                 has_headers: true,
-                patient_orientation: "PatientsAreRows"
+                patient_orientation: "PatientsAreRows",
             ),
         ),
     ],

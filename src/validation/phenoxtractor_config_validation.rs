@@ -29,10 +29,11 @@ pub fn validate_unique_data_sources(sources: &[DataSource]) -> Result<(), Valida
 #[cfg(test)]
 mod tests {
     use super::validate_unique_data_sources;
-    use crate::config::table_context::{PatientOrientation, TableContext};
+    use crate::config::table_context::TableContext;
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
+    use crate::extract::extraction_config::{ExtractionConfig, PatientOrientation};
     use crate::extract::traits::HasSource;
     use rstest::{fixture, rstest};
     use std::path::PathBuf;
@@ -44,21 +45,17 @@ mod tests {
         DataSource::Csv(CSVDataSource::new(
             PathBuf::from("some/dir/file.csv"),
             None,
-            TableContext::new(
-                "".to_string(),
-                vec![],
-                true,
-                PatientOrientation::PatientsAreRows,
-            ),
+            TableContext::new("".to_string(), vec![]),
+            ExtractionConfig::new("".to_string(), true, PatientOrientation::PatientsAreRows),
         ))
     }
     #[fixture]
     fn excel_data_source() -> DataSource {
         DataSource::Excel(ExcelDatasource::new(
             PathBuf::from("some/dir/file.csv"),
-            vec![TableContext::new(
+            vec![TableContext::new("".to_string(), vec![])],
+            vec![ExtractionConfig::new(
                 "".to_string(),
-                vec![],
                 true,
                 PatientOrientation::PatientsAreRows,
             )],
