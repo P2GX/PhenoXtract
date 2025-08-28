@@ -6,4 +6,5 @@ mod transform;
 
 mod validation;
 
+mod baby_pipeline;
 mod error;

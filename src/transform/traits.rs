@@ -1,8 +1,8 @@
-use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
+use crate::transform::error::TransformError::StrategyError;
 use polars::datatypes::DataType;
-use polars::prelude::{Column, NamedFrom, Series};
+use polars::prelude::{AnyValue, NamedFrom, Series};
 
 #[allow(dead_code)]
 /// Represents a strategy for transforming a `ContextualizedDataFrame`.
@@ -30,61 +30,81 @@ pub trait Strategy {
     -> Result<(), TransformError>;
 }
 
-struct WordSwap {
-    input_string: String,
-    output_string: String,
-    columns_to_transform: Vec<String>,
-    expected_context: Option<Context>,
+pub struct StringSwap {
+    pub input_string: String,
+    pub output_string: String,
+    pub table_column_pairs_to_transform: Vec<[String; 2]>,
 }
 
-impl Strategy for WordSwap {
+impl StringSwap {
+    pub fn get_col_names(&self) -> Vec<String> {
+        self.table_column_pairs_to_transform
+            .iter()
+            .map(|pair| pair[1].clone())
+            .collect::<Vec<String>>()
+    }
+
+    pub fn get_table_names(&self) -> Vec<String> {
+        self.table_column_pairs_to_transform
+            .iter()
+            .map(|pair| pair[1].clone())
+            .collect::<Vec<String>>()
+    }
+}
+
+impl Strategy for StringSwap {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        let col_names = self.columns_to_transform.clone();
-        //checks that all columns have the string data type
-        //and that they all have the appropriate context
-        col_names.iter().all(|col_name| {
-            table.data().column(col_name).unwrap().dtype() == &DataType::String
-                && match &self.expected_context {
-                    Some(context) => table
-                        .context()
-                        .context
-                        .iter()
-                        .all(|s_context| *context == s_context.get_context()),
-                    None => true,
-                }
+        //checks that all relevant columns have the string data type
+        self.get_col_names().iter().all(|col_name| {
+            let col_search_result = table.data().column(col_name);
+            match col_search_result {
+                Ok(col) => col.dtype() == &DataType::String,
+                Err(_) => false,
+            }
         })
     }
     fn internal_transform(
         &self,
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
-        let col_names = self.columns_to_transform.clone();
-        let mut vec_of_transformed_series: Vec<Series> = vec![];
+        let output_string = self.output_string.clone();
+        let table_column_pairs_to_transform = self.table_column_pairs_to_transform.clone();
 
-        for col_name in col_names {
-            let col = table.data().column(&*col_name).unwrap();
-            let vec_of_strings = col
-                .as_series()
-                .unwrap()
-                .iter()
-                .map(|val| {
-                    if val.get_str().unwrap() == "Male" {
-                        "M".to_string()
-                    } else {
-                        val.get_str().unwrap().to_string()
+        for table_col_pair in table_column_pairs_to_transform {
+            let table_name = &table_col_pair[0];
+            let col_name = &table_col_pair[1];
+            if table_name == &table.context().name {
+                let col_search_result = table.data().column(col_name);
+                match col_search_result {
+                    Ok(col) => {
+                        let vec_of_strings = col
+                            .as_series()
+                            .unwrap()
+                            .iter()
+                            .map(|val| match val {
+                                AnyValue::String(s) => {
+                                    if s == self.input_string {
+                                        AnyValue::String(&output_string)
+                                    } else {
+                                        AnyValue::String(s)
+                                    }
+                                }
+                                _ => AnyValue::Null,
+                            })
+                            .collect::<Vec<AnyValue>>();
+                        let transformed_s = Series::new(col_name.into(), vec_of_strings);
+                        table.data_mut().replace(col_name, transformed_s).unwrap();
                     }
-                })
-                .collect::<Vec<String>>();
-            let transformed_s = Series::new(col_name.into(), vec_of_strings);
-            vec_of_transformed_series.push(transformed_s);
-        }
-
-        for transformed_series in vec_of_transformed_series {
-            let col_name = transformed_series.name().clone();
-            table
-                .data_mut()
-                .replace(&*col_name, transformed_series)
-                .unwrap();
+                    Err(_) => {
+                        return Err(StrategyError(
+                            format!("Could not find column {col_name} in table {table_name}.")
+                                .to_string(),
+                        ));
+                    }
+                }
+            } else {
+                continue;
+            }
         }
 
         Ok(())
@@ -93,38 +113,23 @@ impl Strategy for WordSwap {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{
-        CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
-    };
+    use crate::config::table_context::TableContext;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::transform::traits::{Strategy, WordSwap};
+    use crate::transform::traits::{Strategy, StringSwap};
     use polars::frame::DataFrame;
-    use polars::prelude::NamedFrom;
-    use polars::prelude::{AnyValue, Column};
-    use polars::series::Series;
+    use polars::prelude::Column;
     use rstest::{fixture, rstest};
 
     #[fixture]
     fn tc() -> TableContext {
-        TableContext::new(
-            "patient_sex_column".to_string(),
-            vec![SeriesContext::Single(SingleSeriesContext::new(
-                "sex".to_string(),
-                Context::SubjectSex,
-                Some(CellContext::new(
-                    Context::SubjectId,
-                    None,
-                    Default::default(),
-                )),
-                vec![],
-            ))],
-        )
+        TableContext::new("patient_data".to_string(), vec![])
     }
 
     #[fixture]
     fn data() -> DataFrame {
-        let col = Column::new("sex".into(), ["Male", "Female", "Female", "Male"]);
-        DataFrame::new(vec![col]).unwrap()
+        let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
+        let col2 = Column::new("sex".into(), ["Male", "Female", "Female", "Male"]);
+        DataFrame::new(vec![col1, col2]).unwrap()
     }
 
     #[fixture]
@@ -134,15 +139,14 @@ mod tests {
 
     #[rstest]
     fn test_transformation(mut cdf: ContextualizedDataFrame) {
-        let a = WordSwap {
+        let male_to_m = StringSwap {
             input_string: String::from("Male"),
             output_string: String::from("M"),
-            columns_to_transform: vec!["sex".to_string()],
-            expected_context: Some(Context::SubjectSex),
+            table_column_pairs_to_transform: vec![["patient_data".to_string(), "sex".to_string()]],
         };
 
         println!("{:?}", cdf);
-        a.transform(&mut cdf).unwrap();
+        male_to_m.transform(&mut cdf).unwrap();
         println!("{:?}", cdf);
     }
 }

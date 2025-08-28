@@ -6,6 +6,7 @@ pub enum ConstructionError {
     NotFound(String),
 }
 
+#[derive(Debug)]
 pub enum PipelineError {
     #[allow(dead_code)]
     ExtractionError(ExtractionError),
