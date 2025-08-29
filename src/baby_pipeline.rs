@@ -61,7 +61,7 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::{ExtractionConfig, PatientOrientation};
-    use crate::transform::string_swap_transform::StringSwap;
+    use crate::transform::generic_string_transformation::GenericStringTransformation;
     use rstest::rstest;
     use std::path::PathBuf;
 
@@ -92,22 +92,27 @@ mod tests {
             extraction_configs.clone(),
         ));
 
-        let male_to_m_strategy = StringSwap {
-            input_string: String::from("Male"),
-            output_string: String::from("M"),
+        fn string_swap(input_string: &str, output_string: &str, s: &str) -> String {
+            if s == input_string {
+                output_string.to_string()
+            } else {
+                s.to_string()
+            }
+        }
+
+        let male_to_m_strategy = GenericStringTransformation {
             table_col_pair_to_transform: ["Cohort".to_string(), "Sex".to_string()],
+            transformation: |s| string_swap("Male", "M", s),
         };
 
-        let female_to_f_strategy = StringSwap {
-            input_string: String::from("Female"),
-            output_string: String::from("F"),
+        let female_to_f_strategy = GenericStringTransformation {
             table_col_pair_to_transform: ["Cohort".to_string(), "Sex".to_string()],
+            transformation: |s| string_swap("Female", "F", s),
         };
 
-        let pneumonia_to_hpo_id_strategy = StringSwap {
-            input_string: String::from("Pneumonia"),
-            output_string: String::from("HP:0002090"),
+        let pneumonia_to_hpo_id_strategy = GenericStringTransformation {
             table_col_pair_to_transform: ["Infections".to_string(), "Infection".to_string()],
+            transformation: |s| string_swap("Pneumonia", "HP:0002090", s),
         };
 
         let baby_pipeline = BabyPipeline {

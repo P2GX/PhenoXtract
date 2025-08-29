@@ -2,23 +2,18 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
-use polars::datatypes::{AnyValue, DataType};
 use polars::prelude::{NamedFrom, Series};
 
-pub struct StringSwap {
-    pub input_string: String,
-    pub output_string: String,
-    pub table_col_pair_to_transform: [String; 2],
+pub struct Stringify {
+    pub table_col_pair_to_stringify: [String; 2],
 }
-impl Strategy for StringSwap {
+
+impl Strategy for Stringify {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        //checks that the relevant column exists and has the string data type
-        if table.context().name == self.table_col_pair_to_transform[0] {
-            let col_search_result = table.data().column(&self.table_col_pair_to_transform[1]);
-            match col_search_result {
-                Ok(col) => col.dtype() == &DataType::String,
-                Err(_) => false,
-            }
+        //checks that the relevant column exists in the relevant table
+        if table.context().name == self.table_col_pair_to_stringify[0] {
+            let col_search_result = table.data().column(&self.table_col_pair_to_stringify[1]);
+            col_search_result.is_ok()
         } else {
             true
         }
@@ -28,30 +23,20 @@ impl Strategy for StringSwap {
         &self,
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
-        let output_string = &self.output_string;
-        let table_name = &self.table_col_pair_to_transform[0];
-        let col_name = &self.table_col_pair_to_transform[1];
+        let table_name = &self.table_col_pair_to_stringify[0];
+        let col_name = &self.table_col_pair_to_stringify[1];
 
         if table_name == &table.context().name {
             let col_search_result = table.data().column(col_name);
             match col_search_result {
                 Ok(col) => {
-                    let vec_of_any_values = col
+                    let vec_of_strings = col
                         .as_series()
                         .unwrap()
                         .iter()
-                        .map(|val| match val {
-                            AnyValue::String(s) => {
-                                if s == self.input_string {
-                                    AnyValue::String(output_string)
-                                } else {
-                                    AnyValue::String(s)
-                                }
-                            }
-                            _ => AnyValue::Null,
-                        })
-                        .collect::<Vec<AnyValue>>();
-                    let transformed_s = Series::new(col_name.into(), vec_of_any_values);
+                        .map(|val| val.to_string())
+                        .collect::<Vec<String>>();
+                    let transformed_s = Series::new(col_name.into(), vec_of_strings);
                     table.data_mut().replace(col_name, transformed_s).unwrap();
                 }
                 Err(_) => {
@@ -71,7 +56,7 @@ impl Strategy for StringSwap {
 mod tests {
     use crate::config::table_context::TableContext;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::transform::string_swap_transform::StringSwap;
+    use crate::transform::stringify_transform::Stringify;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
@@ -85,7 +70,7 @@ mod tests {
     #[fixture]
     fn data() -> DataFrame {
         let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
-        let col2 = Column::new("sex".into(), ["Male", "Female", "Female", "Male"]);
+        let col2 = Column::new("age".into(), [35, 100, 10, 25]);
         DataFrame::new(vec![col1, col2]).unwrap()
     }
 
@@ -96,14 +81,12 @@ mod tests {
 
     #[rstest]
     fn test_transformation(mut cdf: ContextualizedDataFrame) {
-        let male_to_m = StringSwap {
-            input_string: String::from("Male"),
-            output_string: String::from("M"),
-            table_col_pair_to_transform: ["patient_data".to_string(), "sex".to_string()],
+        let age_to_string = Stringify {
+            table_col_pair_to_stringify: ["patient_data".to_string(), "age".to_string()],
         };
 
         println!("{:?}", cdf);
-        male_to_m.transform(&mut cdf).unwrap();
+        age_to_string.transform(&mut cdf).unwrap();
         println!("{:?}", cdf);
     }
 }
