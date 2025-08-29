@@ -61,7 +61,7 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::{ExtractionConfig, PatientOrientation};
-    use crate::transform::traits::StringSwap;
+    use crate::transform::string_swap_transform::StringSwap;
     use rstest::rstest;
     use std::path::PathBuf;
 
@@ -95,23 +95,27 @@ mod tests {
         let male_to_m_strategy = StringSwap {
             input_string: String::from("Male"),
             output_string: String::from("M"),
-            table_column_pairs_to_transform: vec![["Cohort".to_string(), "Sex".to_string()]],
+            table_col_pair_to_transform: ["Cohort".to_string(), "Sex".to_string()],
         };
 
         let female_to_f_strategy = StringSwap {
             input_string: String::from("Female"),
             output_string: String::from("F"),
-            table_column_pairs_to_transform: vec![["Cohort".to_string(), "Sex".to_string()]],
+            table_col_pair_to_transform: ["Cohort".to_string(), "Sex".to_string()],
         };
 
         let pneumonia_to_hpo_id_strategy = StringSwap {
             input_string: String::from("Pneumonia"),
             output_string: String::from("HP:0002090"),
-            table_column_pairs_to_transform: vec![["Infections".to_string(), "Infection".to_string()]],
+            table_col_pair_to_transform: ["Infections".to_string(), "Infection".to_string()],
         };
 
         let baby_pipeline = BabyPipeline {
-            strategies: vec![Box::new(male_to_m_strategy), Box::new(female_to_f_strategy), Box::new(pneumonia_to_hpo_id_strategy)],
+            strategies: vec![
+                Box::new(male_to_m_strategy),
+                Box::new(female_to_f_strategy),
+                Box::new(pneumonia_to_hpo_id_strategy),
+            ],
         };
 
         baby_pipeline.run(&mut [data_source.clone()]).unwrap();
