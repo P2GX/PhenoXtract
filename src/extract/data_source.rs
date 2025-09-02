@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::{AnyValue, Column, CsvReadOptions, IntoColumn, NamedFrom, Series};
+use polars::prelude::CsvReadOptions;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -12,11 +12,8 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::config::table_context::TableContext;
-use crate::extract::extraction_config::PatientOrientation;
-use calamine::Data;
+use crate::extract::excel_range_reader::ExcelRangeReader;
 use calamine::{Reader, Xlsx, open_workbook};
-use polars::frame::DataFrame;
 
 /// An enumeration of all supported data source types.
 ///
@@ -69,7 +66,7 @@ impl Extractable for DataSource {
                 let mut workbook: Xlsx<BufReader<File>> =
                     open_workbook(excel_source.source.clone())?;
 
-                let extraction_configs = excel_source.extraction_configs.clone();
+                let extraction_configs = &excel_source.extraction_configs;
 
                 if extraction_configs.len() < workbook.sheet_names().len() {
                     warn!("Warning: fewer ExtractionConfigs than Excel Worksheets.");
@@ -78,8 +75,13 @@ impl Extractable for DataSource {
                 }
 
                 for extraction_config in extraction_configs {
-                    let sheet_name = extraction_config.name.clone();
-                    let range = match workbook.worksheet_range(&sheet_name) {
+                    let sheet_name = &extraction_config.name;
+                    let sheet_context = excel_source
+                        .contexts
+                        .iter()
+                        .find(|context| &context.name == sheet_name).expect("Table context sheet names do no correspond to extraction config sheet names.");
+
+                    let range = match workbook.worksheet_range(sheet_name) {
                         Ok(r) => r,
                         Err(_) => {
                             warn!(
@@ -89,102 +91,11 @@ impl Extractable for DataSource {
                         }
                     };
 
-                    let no_of_vectors = match extraction_config.patient_orientation {
-                        PatientOrientation::PatientsAreRows => range.get_size().1,
-                        PatientOrientation::PatientsAreColumns => range.get_size().0,
-                    };
+                    let excel_range_reader = ExcelRangeReader::new(range, extraction_config);
 
-                    let mut vectors: Vec<Vec<AnyValue>> =
-                        (0..no_of_vectors).map(|_| Vec::new()).collect();
+                    let sheet_data = excel_range_reader.extract_to_df()?;
 
-                    for (row_index, row) in range.rows().enumerate() {
-                        for (col_index, cell_data) in row.iter().enumerate() {
-                            let index_to_load = match extraction_config.patient_orientation {
-                                PatientOrientation::PatientsAreRows => col_index,
-                                PatientOrientation::PatientsAreColumns => row_index,
-                            };
-
-                            //todo I am writing this code to avoid panicking if we have indexing errors. Uncertain if that is the right thing to do.
-                            let vector_to_load = vectors
-                                .get_mut(index_to_load)
-                                .ok_or(ExtractionError::ExcelIndexing)?;
-
-                            match *cell_data {
-                                Data::Empty => vector_to_load.push(AnyValue::Null),
-                                Data::Int(ref i) => vector_to_load.push(AnyValue::Int64(*i)),
-                                Data::Bool(ref b) => vector_to_load.push(AnyValue::Boolean(*b)),
-                                //todo something appropriate for Error types
-                                Data::Error(ref _e) => {
-                                    vector_to_load.push(AnyValue::String("ERROR!!!!!"))
-                                }
-                                Data::Float(ref f) => vector_to_load.push(AnyValue::Float64(*f)),
-                                //todo something appropriate for DateTime types
-                                Data::DateTime(ref d) => {
-                                    vector_to_load.push(AnyValue::Float64(d.as_f64()))
-                                }
-                                Data::String(ref s)
-                                | Data::DateTimeIso(ref s)
-                                | Data::DurationIso(ref s) => {
-                                    vector_to_load.push(AnyValue::String(s))
-                                }
-                            }
-                        }
-                    }
-
-                    let columnify_result: Result<Vec<Column>, ExtractionError> = vectors
-                        .iter()
-                        .enumerate()
-                        .map(|(i, vec)| {
-                            let header;
-                            let data;
-
-                            if extraction_config.has_headers {
-                                let h = vec.first().ok_or(ExtractionError::VectorIndexing)?;
-                                header = h.get_str().ok_or(ExtractionError::NoStringInHeader)?.to_string();
-                                data = vec.get(1..).ok_or(ExtractionError::VectorIndexing)?;
-                            } else {
-                                header = format!("{i}");
-                                data = vec;
-                            }
-
-                            let series_result =
-                                Series::from_any_values(header.clone().into(), data, false);
-
-                            //if the from_any_values function fails to convert the values to a single type
-                            //we stringify the data to create the series
-                            let series = match series_result {
-                                Ok(s) => s,
-                                Err(_) => {
-                                    info!("Column/row {} in Excel Worksheet {} of Excel Workbook {} contained multiple data types. These have been turned into strings.", header,sheet_name,excel_source.source.display());
-                                    let stringified_col_data: Vec<String> =
-                                        data.iter().map(|d| d.to_string()).collect();
-                                    Series::new(header.into(), stringified_col_data)
-                                }
-                            };
-
-                            Ok(series.into_column())
-                        })
-                        .collect();
-
-                    let columns = columnify_result?;
-
-                    let sheet_data = DataFrame::new(columns)?;
-
-                    let sheet_context = match excel_source
-                        .contexts
-                        .iter()
-                        .find(|context| context.name == sheet_name)
-                    {
-                        Some(context) => context.clone(),
-                        None => {
-                            warn!(
-                                "Could not find table context with the name {sheet_name}! Empty table context generated."
-                            );
-                            TableContext::new(sheet_name.clone(), vec![])
-                        }
-                    };
-
-                    let cdf = ContextualizedDataFrame::new(sheet_context, sheet_data);
+                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
                     cdf_vec.push(cdf);
                     info!(
                         "Extracted data from Excel Worksheet {} in Excel Workbook {}",
@@ -310,11 +221,7 @@ mod tests {
 
     #[fixture]
     fn test_ec1() -> ExtractionConfig {
-        ExtractionConfig::new(
-            "first_sheet".to_string(),
-            true,
-            PatientOrientation::PatientsAreRows,
-        )
+        ExtractionConfig::new("first_sheet".to_string(), true, true)
     }
 
     //row-wise data with headers
@@ -337,11 +244,7 @@ mod tests {
 
     #[fixture]
     fn test_ec2() -> ExtractionConfig {
-        ExtractionConfig::new(
-            "second_sheet".to_string(),
-            true,
-            PatientOrientation::PatientsAreColumns,
-        )
+        ExtractionConfig::new("second_sheet".to_string(), true, false)
     }
 
     //column-wise data without headers
@@ -354,11 +257,7 @@ mod tests {
 
     #[fixture]
     fn test_ec3() -> ExtractionConfig {
-        ExtractionConfig::new(
-            "third_sheet".to_string(),
-            false,
-            PatientOrientation::PatientsAreRows,
-        )
+        ExtractionConfig::new("third_sheet".to_string(), false, true)
     }
 
     //row-wise data without headers
@@ -371,11 +270,7 @@ mod tests {
 
     #[fixture]
     fn test_ec4() -> ExtractionConfig {
-        ExtractionConfig::new(
-            "fourth_sheet".to_string(),
-            false,
-            PatientOrientation::PatientsAreColumns,
-        )
+        ExtractionConfig::new("fourth_sheet".to_string(), false, false)
     }
 
     #[fixture]

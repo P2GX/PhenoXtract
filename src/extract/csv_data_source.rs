@@ -13,7 +13,7 @@ pub struct CSVDataSource {
     pub separator: Option<char>,
     /// The context describing how to interpret the resulting DataFrame.
     pub context: TableContext,
-    /// This configures how we extract the DataFrame.
+    /// This configures how the DataFrame is extracted.
     pub extraction_config: ExtractionConfig,
 }
 

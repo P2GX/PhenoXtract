@@ -7,9 +7,12 @@ pub enum ExtractionError {
     Polars(PolarsError),
     #[allow(dead_code)]
     Calamine(XlsxError),
-    ExcelIndexing,
-    VectorIndexing,
-    NoStringInHeader,
+    #[allow(dead_code)]
+    ExcelIndexing(String),
+    #[allow(dead_code)]
+    VectorIndexing(String),
+    #[allow(dead_code)]
+    NoStringInHeader(String),
 }
 
 impl From<PolarsError> for ExtractionError {

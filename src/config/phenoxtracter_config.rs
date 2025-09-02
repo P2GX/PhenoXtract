@@ -77,7 +77,7 @@ mod tests {
         extraction_config:
             name: "test_config"
             has_headers: true
-            patient_orientation: PatientsAreRows
+            patients_are_rows: true
         context:
           name: "test_table"
 
@@ -97,7 +97,7 @@ mod tests {
     source = "test/path"
     separator = ","
     context = { name = "test_table"}
-    extraction_config = { name = "test_config", has_headers = true, patient_orientation = "PatientsAreRows"}
+    extraction_config = { name = "test_config", has_headers = true, patients_are_rows = true}
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -117,7 +117,7 @@ mod tests {
           "extraction_config": {
             "name": "test_config",
             "has_headers": true,
-            "patient_orientation": "PatientsAreRows"
+            "patients_are_rows": true
           }
         }
       ]
@@ -141,7 +141,7 @@ mod tests {
             extraction_config: (
                 name: "test_config",
                 has_headers: true,
-                patient_orientation: "PatientsAreRows",
+                patients_are_rows: true,
             ),
         ),
     ],
