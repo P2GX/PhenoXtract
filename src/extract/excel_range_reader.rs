@@ -12,10 +12,10 @@ pub struct ExcelRangeReader {
 }
 
 impl ExcelRangeReader {
-    pub(crate) fn new(range: Range<Data>, extraction_config: &ExtractionConfig) -> Self {
+    pub(crate) fn new(range: Range<Data>, extraction_config: ExtractionConfig) -> Self {
         ExcelRangeReader {
             range,
-            extraction_config: extraction_config.clone(),
+            extraction_config,
         }
     }
     pub fn extract_to_df(self) -> Result<DataFrame, ExtractionError> {
@@ -27,7 +27,7 @@ impl ExcelRangeReader {
         Ok(dataframe)
     }
 
-    fn create_loading_vectors(&self) -> Vec<Vec<AnyValue>> {
+    fn create_loading_vectors<'a>(&'a self) -> Vec<Vec<AnyValue<'a>>> {
         let no_of_loading_vectors;
         let loading_vector_capacity;
         if self.extraction_config.patients_are_rows {
