@@ -17,7 +17,7 @@ pub struct ExcelDatasource {
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
     pub contexts: Vec<TableContext>,
-    /// One extraction config for every worksheet from the workbook that we wish to be extracted
+    /// One extraction config for every worksheet from the workbook that will be extracted.
     pub extraction_configs: Vec<ExtractionConfig>,
 }
 

@@ -70,14 +70,12 @@ impl ExcelRangeReader {
                     Data::Bool(ref b) => vector_to_load.push(AnyValue::Boolean(*b)),
                     Data::Error(ref e) => {
                         warn!(
-                            "The error {e} in Excel Worksheet {sheet_name} was found at row {row_index}, column {col_index}."
+                            "An error {e} in Excel Worksheet {sheet_name} was found at row {row_index}, column {col_index}."
                         );
                         vector_to_load.push(AnyValue::Null)
                     }
                     Data::Float(ref f) => vector_to_load.push(AnyValue::Float64(*f)),
-                    Data::DateTime(ref d) => {
-                        vector_to_load.push(AnyValue::StringOwned(d.to_string().into()))
-                    }
+                    Data::DateTime(ref d) => vector_to_load.push(AnyValue::Float64(d.as_f64())),
                     Data::String(ref s) | Data::DateTimeIso(ref s) | Data::DurationIso(ref s) => {
                         vector_to_load.push(AnyValue::String(s))
                     }
