@@ -91,7 +91,8 @@ impl Extractable for DataSource {
                         }
                     };
 
-                    let excel_range_reader = ExcelRangeReader::new(range, extraction_config.clone());
+                    let excel_range_reader =
+                        ExcelRangeReader::new(range, extraction_config.clone());
 
                     let sheet_data = excel_range_reader.extract_to_df()?;
 
