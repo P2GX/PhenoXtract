@@ -29,16 +29,16 @@ impl ExcelRangeReader {
     }
 
     fn create_loading_vectors<'a>(&'a self) -> Vec<Vec<AnyValue<'a>>> {
-        let no_of_loading_vectors;
+        let number_of_vecs;
         let loading_vector_capacity;
         if self.extraction_config.patients_are_rows {
-            no_of_loading_vectors = self.range.width();
+            number_of_vecs = self.range.width();
             loading_vector_capacity = self.range.height();
         } else {
-            no_of_loading_vectors = self.range.height();
+            number_of_vecs = self.range.height();
             loading_vector_capacity = self.range.width();
         }
-        (0..no_of_loading_vectors)
+        (0..number_of_vecs)
             .map(|_| Vec::with_capacity(loading_vector_capacity))
             .collect()
     }
