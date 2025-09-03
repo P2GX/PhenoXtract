@@ -119,7 +119,7 @@ mod tests {
     };
     use crate::extract::extraction_config::ExtractionConfig;
     use rstest::{fixture, rstest};
-    use rust_xlsxwriter::{ColNum, ExcelDateTime, RowNum, Workbook};
+    use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
     use std::f64;
     use std::fmt::Write;
     use std::fs::File;
@@ -422,7 +422,12 @@ mod tests {
 
             if worksheet.name() == "second_sheet" || worksheet.name() == "fourth_sheet" {
                 worksheet
-                    .write_row(0, offset_due_to_header as ColNum, &times_of_birth)
+                    .write_row_with_format(
+                        0,
+                        offset_due_to_header as ColNum,
+                        &times_of_birth,
+                        &Format::new().set_num_format("yyyy-mm-dd hh:mm:ss"),
+                    )
                     .unwrap();
                 worksheet
                     .write_row(1, offset_due_to_header as ColNum, ages)
@@ -486,26 +491,33 @@ mod tests {
             if data_frame.context().name == "second_sheet"
                 || data_frame.context().name == "fourth_sheet"
             {
-                let extracted_times_of_birth: Vec<_> =
-                    extracted_col0.f64().unwrap().into_no_null_iter().collect();
+                let extracted_times_of_birth = extracted_col0
+                    .datetime()
+                    .unwrap()
+                    .to_string("%Y-%m-%dT%H:%M:%SZ")
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>();
+                let expected_times_of_birth = times_of_birth
+                    .iter()
+                    .map(|dt| dt.utc_datetime())
+                    .collect::<Vec<String>>();
+                assert_eq!(extracted_times_of_birth, expected_times_of_birth);
+
                 let extracted_ages: Vec<_> =
                     extracted_col1.f64().unwrap().into_no_null_iter().collect();
-                let extracted_weights: Vec<_> =
-                    extracted_col2.f64().unwrap().into_no_null_iter().collect();
-                let extracted_smoker_bools: Vec<_> =
-                    extracted_col3.bool().unwrap().into_no_null_iter().collect();
-                assert_eq!(
-                    extracted_times_of_birth,
-                    times_of_birth
-                        .iter()
-                        .map(|dt| dt.to_excel())
-                        .collect::<Vec<f64>>()
-                );
                 assert_eq!(
                     extracted_ages,
                     ages.iter().map(|&v| v as f64).collect::<Vec<f64>>()
                 );
+
+                let extracted_weights: Vec<_> =
+                    extracted_col2.f64().unwrap().into_no_null_iter().collect();
                 assert_eq!(extracted_weights, weights);
+
+                let extracted_smoker_bools: Vec<_> =
+                    extracted_col3.bool().unwrap().into_no_null_iter().collect();
                 assert_eq!(extracted_smoker_bools, smoker_bools);
             }
         }
