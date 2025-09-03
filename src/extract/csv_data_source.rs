@@ -1,4 +1,5 @@
 use crate::config::table_context::TableContext;
+use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::HasSource;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -10,10 +11,10 @@ pub struct CSVDataSource {
     pub source: PathBuf,
     /// The character used to separate fields in the CSV file (e.g., ',').
     pub separator: Option<char>,
-    /// The context describing how to interpret the single table within the CSV.
+    /// The context describing how to interpret the resulting DataFrame.
     pub context: TableContext,
-    #[serde(default = "default_has_header")]
-    pub has_header: bool,
+    /// This configures how the DataFrame is extracted.
+    pub extraction_config: ExtractionConfig,
 }
 
 impl CSVDataSource {
@@ -22,13 +23,13 @@ impl CSVDataSource {
         source: PathBuf,
         separator: Option<char>,
         table: TableContext,
-        has_header: bool,
+        extraction_config: ExtractionConfig,
     ) -> Self {
         Self {
             source,
             separator,
             context: table,
-            has_header,
+            extraction_config,
         }
     }
 }
@@ -44,8 +45,4 @@ impl HasSource for CSVDataSource {
         self.source = source.clone();
         self
     }
-}
-
-fn default_has_header() -> bool {
-    true
 }

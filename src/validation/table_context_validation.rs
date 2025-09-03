@@ -220,14 +220,12 @@ mod tests {
         TableContext{
             name: "test".to_string(),
             context: vec![single_name("test").with_context(Context::SubjectId)],
-            context_in_columns: true,
             },
     )]
     #[case::subject_id_in_column_cell_context(
         TableContext{
             name: "test".to_string(),
             context: vec![single_name("test").with_cell_context(Context::SubjectId)],
-            context_in_columns: true,
             },
     )]
     fn test_validation_succeeds_when_subject_id_is_present(#[case] table_context: TableContext) {
@@ -244,7 +242,6 @@ mod tests {
                 single_name("test").with_context(Context::HpoId),
                 single_name("test").with_cell_context(Context::None),
             ],
-            true,
         );
 
         let result = validate_at_least_one_subject_id(&table_context);
@@ -255,7 +252,7 @@ mod tests {
     /// columns or rows defined at all.
     #[rstest]
     fn test_validation_fails_for_empty_table() {
-        let table_context = TableContext::new("empty_table".to_string(), vec![], true);
+        let table_context = TableContext::new("empty_table".to_string(), vec![]);
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
@@ -264,7 +261,7 @@ mod tests {
     /// This test covers the edge case where the column and row vectors are present but empty.
     #[rstest]
     fn test_validation_fails_for_table_with_empty_vectors() {
-        let table_context = TableContext::new("table_with_empty_vecs".to_string(), vec![], true);
+        let table_context = TableContext::new("table_with_empty_vecs".to_string(), vec![]);
 
         let result = validate_at_least_one_subject_id(&table_context);
         assert!(result.is_err());
@@ -288,7 +285,6 @@ mod tests {
                     vec!["A".to_string()],
                 )),
             ],
-            true,
         );
         assert!(validate_series_linking(&table_context).is_ok());
     }
@@ -313,7 +309,6 @@ mod tests {
                     vec!["non_existent_link".to_string()],
                 )),
             ],
-            true,
         );
 
         let result = validate_series_linking(&table_context);
@@ -328,7 +323,7 @@ mod tests {
     /// Tests that validation passes when there are no columns at all.
     #[rstest]
     fn test_no_columns() {
-        let table_context = TableContext::new("test_table".to_string(), vec![], true);
+        let table_context = TableContext::new("test_table".to_string(), vec![]);
 
         assert!(validate_series_linking(&table_context).is_ok());
     }
@@ -336,7 +331,7 @@ mod tests {
     /// Tests that validation passes when the columns vector is empty.
     #[rstest]
     fn test_empty_columns() {
-        let table_context = TableContext::new("test_table".to_string(), vec![], true);
+        let table_context = TableContext::new("test_table".to_string(), vec![]);
         assert!(validate_series_linking(&table_context).is_ok());
     }
 
@@ -359,7 +354,6 @@ mod tests {
                     vec![],
                 )),
             ],
-            true,
         );
         assert!(validate_series_linking(&table_context).is_ok());
     }
@@ -389,7 +383,6 @@ mod tests {
                     vec!["A".to_string()],
                 )),
             ],
-            true,
         );
         assert!(validate_series_linking(&table_context).is_ok());
     }
@@ -420,7 +413,6 @@ mod tests {
                     vec!["A".to_string(), "B".to_string()],
                 )),
             ],
-            true,
         );
         assert!(validate_series_linking(&table_context).is_ok());
     }
@@ -445,7 +437,6 @@ mod tests {
                     vec!["A".to_string(), "non_existent_link".to_string()],
                 )),
             ],
-            true,
         );
 
         let result = validate_series_linking(&table_context);

@@ -74,9 +74,12 @@ mod tests {
       - type: "csv"
         source: "test/path"
         separator: ","
+        extraction_config:
+            name: "test_config"
+            has_headers: true
+            patients_are_rows: true
         context:
           name: "test_table"
-          context_in_columns: true
 
 
     meta_data:
@@ -93,7 +96,8 @@ mod tests {
     type = "csv"
     source = "test/path"
     separator = ","
-    context = { name = "test_table", context_in_columns = true}
+    context = { name = "test_table"}
+    extraction_config = { name = "test_config", has_headers = true, patients_are_rows = true}
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -108,8 +112,12 @@ mod tests {
           "source": "test/path",
           "separator": ",",
           "context": {
-            "name": "test_table",
-            "context_in_columns": true
+            "name": "test_table"
+          },
+          "extraction_config": {
+            "name": "test_config",
+            "has_headers": true,
+            "patients_are_rows": true
           }
         }
       ]
@@ -129,7 +137,11 @@ mod tests {
             separator: ",",
             context: (
                 name: "test_table",
-                context_in_columns: true
+            ),
+            extraction_config: (
+                name: "test_config",
+                has_headers: true,
+                patients_are_rows: true,
             ),
         ),
     ],

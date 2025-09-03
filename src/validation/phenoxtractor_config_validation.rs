@@ -33,6 +33,7 @@ mod tests {
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
+    use crate::extract::extraction_config::ExtractionConfig;
     use crate::extract::traits::HasSource;
     use rstest::{fixture, rstest};
     use std::path::PathBuf;
@@ -44,15 +45,16 @@ mod tests {
         DataSource::Csv(CSVDataSource::new(
             PathBuf::from("some/dir/file.csv"),
             None,
-            TableContext::new("".to_string(), vec![], true),
-            false,
+            TableContext::new("".to_string(), vec![]),
+            ExtractionConfig::new("".to_string(), true, true),
         ))
     }
     #[fixture]
     fn excel_data_source() -> DataSource {
         DataSource::Excel(ExcelDatasource::new(
             PathBuf::from("some/dir/file.csv"),
-            vec![TableContext::new("".to_string(), vec![], true)],
+            vec![TableContext::new("".to_string(), vec![])],
+            vec![ExtractionConfig::new("".to_string(), true, true)],
         ))
     }
     #[rstest]

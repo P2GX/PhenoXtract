@@ -6,7 +6,6 @@ use crate::validation::table_context_validation::validate_unique_series_linking;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use validator::Validate;
-
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
@@ -25,17 +24,12 @@ pub struct TableContext {
     #[validate(custom(function = "validate_unique_identifiers"))]
     #[serde(default)]
     pub context: Vec<SeriesContext>,
-    pub context_in_columns: bool,
 }
 
 impl TableContext {
     #[allow(dead_code)]
-    pub(crate) fn new(name: String, context: Vec<SeriesContext>, context_in_columns: bool) -> Self {
-        TableContext {
-            name,
-            context,
-            context_in_columns,
-        }
+    pub(crate) fn new(name: String, context: Vec<SeriesContext>) -> Self {
+        TableContext { name, context }
     }
 }
 /// Defines the semantic meaning or type of data in a cell or series.

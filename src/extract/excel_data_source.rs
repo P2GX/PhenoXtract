@@ -1,5 +1,6 @@
 use crate::config::table_context::TableContext;
 
+use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::HasSource;
 use crate::validation::data_source_validation::validate_unique_sheet_names;
 use serde::{Deserialize, Serialize};
@@ -15,13 +16,23 @@ pub struct ExcelDatasource {
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
-    contexts: Vec<TableContext>,
+    pub contexts: Vec<TableContext>,
+    /// One extraction config for every worksheet from the workbook that will be extracted.
+    pub extraction_configs: Vec<ExtractionConfig>,
 }
 
 impl ExcelDatasource {
     #[allow(dead_code)]
-    pub(crate) fn new(source: PathBuf, contexts: Vec<TableContext>) -> Self {
-        ExcelDatasource { source, contexts }
+    pub(crate) fn new(
+        source: PathBuf,
+        contexts: Vec<TableContext>,
+        extraction_configs: Vec<ExtractionConfig>,
+    ) -> Self {
+        ExcelDatasource {
+            source,
+            contexts,
+            extraction_configs,
+        }
     }
 }
 
