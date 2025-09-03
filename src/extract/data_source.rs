@@ -119,7 +119,7 @@ mod tests {
     };
     use crate::extract::extraction_config::ExtractionConfig;
     use rstest::{fixture, rstest};
-    use rust_xlsxwriter::{ColNum, RowNum, Workbook};
+    use rust_xlsxwriter::{ColNum, ExcelDateTime, RowNum, Workbook};
     use std::f64;
     use std::fmt::Write;
     use std::fs::File;
@@ -157,7 +157,29 @@ mod tests {
 
     #[fixture]
     fn row_names() -> [&'static str; 4] {
-        ["patient_id", "age", "weight", "smokes"]
+        ["time_of_birth", "age", "weight", "smokes"]
+    }
+
+    #[fixture]
+    fn times_of_birth() -> [ExcelDateTime; 4] {
+        [
+            ExcelDateTime::from_ymd(1960, 1, 25)
+                .unwrap()
+                .and_hms(12, 30, 5)
+                .unwrap(),
+            ExcelDateTime::from_ymd(2020, 4, 28)
+                .unwrap()
+                .and_hms(23, 11, 15)
+                .unwrap(),
+            ExcelDateTime::from_ymd(1928, 11, 9)
+                .unwrap()
+                .and_hms(15, 32, 13)
+                .unwrap(),
+            ExcelDateTime::from_ymd(1998, 10, 4)
+                .unwrap()
+                .and_hms(11, 59, 59)
+                .unwrap(),
+        ]
     }
 
     #[fixture]
@@ -357,6 +379,7 @@ mod tests {
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
         row_names: [&'static str; 4],
+        times_of_birth: [ExcelDateTime; 4],
         ages: [i32; 4],
         weights: [f64; 4],
         smoker_bools: [bool; 4],
@@ -399,7 +422,7 @@ mod tests {
 
             if worksheet.name() == "second_sheet" || worksheet.name() == "fourth_sheet" {
                 worksheet
-                    .write_row(0, offset_due_to_header as ColNum, patient_ids)
+                    .write_row(0, offset_due_to_header as ColNum, &times_of_birth)
                     .unwrap();
                 worksheet
                     .write_row(1, offset_due_to_header as ColNum, ages)
@@ -424,7 +447,6 @@ mod tests {
         ));
 
         let data_frames = data_source.extract().unwrap();
-
         for data_frame in data_frames {
             let extracted_data = data_frame.data();
 
@@ -433,7 +455,10 @@ mod tests {
             } else if data_frame.context().name == "second_sheet" {
                 assert_eq!(extracted_data.get_column_names(), row_names);
             } else {
-                assert_eq!(extracted_data.get_column_names(), ["0", "1", "2", "3"]);
+                assert_eq!(
+                    extracted_data.get_column_names(),
+                    ["column_1", "column_2", "column_3", "column_4"]
+                );
             }
 
             let extracted_col0 = extracted_data.select_at_idx(0).unwrap();
@@ -461,15 +486,21 @@ mod tests {
             if data_frame.context().name == "second_sheet"
                 || data_frame.context().name == "fourth_sheet"
             {
-                let extracted_patient_ids: Vec<_> =
-                    extracted_col0.str().unwrap().into_no_null_iter().collect();
+                let extracted_times_of_birth: Vec<_> =
+                    extracted_col0.f64().unwrap().into_no_null_iter().collect();
                 let extracted_ages: Vec<_> =
                     extracted_col1.f64().unwrap().into_no_null_iter().collect();
                 let extracted_weights: Vec<_> =
                     extracted_col2.f64().unwrap().into_no_null_iter().collect();
                 let extracted_smoker_bools: Vec<_> =
                     extracted_col3.bool().unwrap().into_no_null_iter().collect();
-                assert_eq!(extracted_patient_ids, patient_ids);
+                assert_eq!(
+                    extracted_times_of_birth,
+                    times_of_birth
+                        .iter()
+                        .map(|dt| dt.to_excel())
+                        .collect::<Vec<f64>>()
+                );
                 assert_eq!(
                     extracted_ages,
                     ages.iter().map(|&v| v as f64).collect::<Vec<f64>>()

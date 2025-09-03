@@ -4,6 +4,7 @@ use calamine::{Data, Range};
 use log::{info, warn};
 use polars::datatypes::AnyValue;
 use polars::frame::DataFrame;
+use polars::prelude::TimeUnit::Milliseconds;
 use polars::prelude::{Column, IntoColumn, NamedFrom, Series};
 
 pub struct ExcelRangeReader {
@@ -75,7 +76,36 @@ impl ExcelRangeReader {
                         vector_to_load.push(AnyValue::Null)
                     }
                     Data::Float(ref f) => vector_to_load.push(AnyValue::Float64(*f)),
-                    Data::DateTime(ref d) => vector_to_load.push(AnyValue::Float64(d.as_f64())),
+                    Data::DateTime(ref d) => {
+                        let fallback = || {
+                            warn!(
+                                "Could not interpret Excel DateTime in worksheet {sheet_name} at row {row_index}, column {col_index}. Entry converted to f64."
+                            );
+                            AnyValue::Float64(d.as_f64())
+                        };
+
+                        let time_val = if d.is_datetime() {
+                            if let Some(dt) = d.as_datetime() {
+                                AnyValue::Datetime(
+                                    dt.and_utc().timestamp_millis(),
+                                    Milliseconds,
+                                    None,
+                                )
+                            } else {
+                                fallback()
+                            }
+                        } else if d.is_duration() {
+                            if let Some(dur) = d.as_duration() {
+                                AnyValue::Duration(dur.num_milliseconds(), Milliseconds)
+                            } else {
+                                fallback()
+                            }
+                        } else {
+                            fallback()
+                        };
+
+                        vector_to_load.push(time_val);
+                    }
                     Data::String(ref s) | Data::DateTimeIso(ref s) | Data::DurationIso(ref s) => {
                         vector_to_load.push(AnyValue::String(s))
                     }
@@ -102,7 +132,7 @@ impl ExcelRangeReader {
                     header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
                     data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("No data contained in vector.".to_string()))?;
                 } else {
-                    header = format!("{i}");
+                    header = format!("column_{}",i+1);
                     data = vec;
                 }
 
