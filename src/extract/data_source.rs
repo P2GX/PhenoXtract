@@ -70,8 +70,8 @@ impl DataSource {
 
         Ok(cdf)
     }
-
-    fn polars_column_string_cast(data: &mut DataFrame) -> Result<&DataFrame, ExtractionError> {
+    //TODO: Probably move this to transform later.
+    fn polars_column_string_cast(mut data: DataFrame) -> Result<DataFrame, ExtractionError> {
         let col_names: Vec<String> = data
             .get_column_names()
             .iter()
@@ -171,16 +171,15 @@ impl Extractable for DataSource {
                         .with_separator(sep as u8);
                     csv_read_options.parse_options = Arc::from(new_parse_options);
                 }
-                let mut csv_data = csv_read_options
+                let csv_data = csv_read_options
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
-                DataSource::polars_column_string_cast(&mut csv_data)?;
-                let cdf = DataSource::conditional_transpose(
+                let mut cdf = DataSource::conditional_transpose(
                     ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
                     &csv_source.extraction_config,
                 )?;
-
+                cdf.data = DataSource::polars_column_string_cast(cdf.data)?;
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
             }
@@ -223,9 +222,10 @@ impl Extractable for DataSource {
                     let excel_range_reader =
                         ExcelRangeReader::new(range, extraction_config.clone());
 
-                    let mut sheet_data = excel_range_reader.extract_to_df()?;
-                    DataSource::polars_column_string_cast(&mut sheet_data)?;
-                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
+                    let sheet_data = excel_range_reader.extract_to_df()?;
+
+                    let mut cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
+                    cdf.data = DataSource::polars_column_string_cast(cdf.data)?;
                     cdf_vec.push(cdf);
                     info!(
                         "Extracted data from Excel Worksheet {} in Excel Workbook {}",
