@@ -39,8 +39,7 @@ impl DataSource {
         extraction_config: &ExtractionConfig,
     ) -> Result<ContextualizedDataFrame, ExtractionError> {
         if !extraction_config.patients_are_rows {
-            let mut keep_names_as: Option<String> = None;
-            let mut column_names: Vec<String> = vec![];
+            let column_names: Vec<String>;
 
             if extraction_config.has_headers {
                 // Assuming, that the headers are in the first column of the dataframe
@@ -199,9 +198,8 @@ impl Extractable for DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{
-        CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
-    };
+    use crate::config::series_context::SingleSeriesContext;
+    use crate::config::table_context::{CellContext, Context, SeriesContext, TableContext};
     use crate::extract::extraction_config::ExtractionConfig;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
@@ -209,6 +207,8 @@ mod tests {
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
+    use std::path::PathBuf;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     #[fixture]

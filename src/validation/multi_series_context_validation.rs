@@ -1,4 +1,4 @@
-use crate::config::table_context::MultiIdentifier;
+use crate::config::series_context::MultiIdentifier;
 use crate::validation::validation_utils::validate_regex;
 use validator::ValidationError;
 

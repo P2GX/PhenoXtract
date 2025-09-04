@@ -17,6 +17,7 @@ validator = { version = "0.20.0", features = ["derive"] }
 calamine = { version = "0.30.0", features = ["dates"] }
 regex = "1.11.1"
 log = "0.4.27"
+either = "1.15.0"
 
 [dev-dependencies]
 rstest = "0.26.1"

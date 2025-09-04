@@ -1,3 +1,4 @@
+use crate::config::series_context::MultiIdentifier;
 use crate::config::table_context::{Context, SeriesContext, TableContext};
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
@@ -20,7 +21,7 @@ pub(crate) fn validate_unique_identifiers(
                 }
             }
             SeriesContext::Multi(multi) => match &multi.multi_identifier {
-                crate::config::table_context::MultiIdentifier::Multi(multi_ids) => {
+                MultiIdentifier::Multi(multi_ids) => {
                     let duplicates = multi_ids
                         .iter()
                         .filter_map(|multi_ids| {
@@ -37,7 +38,7 @@ pub(crate) fn validate_unique_identifiers(
                     }
                     None
                 }
-                crate::config::table_context::MultiIdentifier::Regex(regex) => {
+                MultiIdentifier::Regex(regex) => {
                     if !unique_identifiers.insert(regex.clone()) {
                         Some(regex.clone())
                     } else {
@@ -135,11 +136,9 @@ mod tests {
     use super::{
         validate_at_least_one_subject_id, validate_series_linking, validate_unique_identifiers,
     };
-    use crate::config::table_context::{
-        Context, MultiIdentifier, MultiSeriesContext, SeriesContext, SingleSeriesContext,
-        TableContext,
-    };
+    use crate::config::table_context::{Context, SeriesContext, TableContext};
 
+    use crate::config::series_context::{MultiIdentifier, MultiSeriesContext, SingleSeriesContext};
     use rstest::rstest;
 
     fn single_name(name: &str) -> SeriesContext {

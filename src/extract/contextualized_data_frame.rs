@@ -1,4 +1,5 @@
-use crate::config::table_context::{MultiIdentifier, SeriesContext, SetId, TableContext};
+use crate::config::series_context::{MultiIdentifier, SetId};
+use crate::config::table_context::{SeriesContext, TableContext};
 use anyhow::anyhow;
 use polars::prelude::DataFrame;
 
