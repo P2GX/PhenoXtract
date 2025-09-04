@@ -8,7 +8,6 @@ use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
-use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::Extractable;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
@@ -36,12 +35,13 @@ pub enum DataSource {
 impl DataSource {
     fn conditional_transpose(
         mut cdf: ContextualizedDataFrame,
-        extraction_config: &ExtractionConfig,
+        patients_are_rows: &bool,
+        has_header: &bool,
     ) -> Result<ContextualizedDataFrame, ExtractionError> {
-        if !extraction_config.patients_are_rows {
+        if !patients_are_rows {
             let column_names: Vec<String>;
 
-            if extraction_config.has_headers {
+            if *has_header {
                 // Assuming, that the headers are in the first column of the dataframe
                 let index_column =
                     cdf.data
@@ -177,7 +177,8 @@ impl Extractable for DataSource {
 
                 let mut cdf = DataSource::conditional_transpose(
                     ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
-                    &csv_source.extraction_config,
+                    &csv_source.extraction_config.patients_are_rows,
+                    &csv_source.extraction_config.has_headers,
                 )?;
                 DataSource::polars_column_string_cast(&mut cdf.data)?;
                 info!("Extracted CSV data from {}", csv_source.source.display());
@@ -255,8 +256,7 @@ mod tests {
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
-    use std::path::PathBuf;
-    use std::str::FromStr;
+
     use tempfile::TempDir;
 
     #[fixture]
@@ -675,5 +675,61 @@ mod tests {
             &DataType::Datetime(TimeUnit::Milliseconds, None)
         );
         assert_eq!(df.column("string_col").unwrap().dtype(), &DataType::String);
+    }
+
+    fn create_test_cdf() -> ContextualizedDataFrame {
+        let data = df![
+            "id" => &["patient1", "patient2"],
+            "value1" => &[1, 2],
+            "value2" => &[3, 4]
+        ]
+        .unwrap();
+        let context = TableContext::new("".to_string(), vec![]);
+        ContextualizedDataFrame::new(context, data)
+    }
+
+    #[rstest]
+    fn test_no_transpose_when_patients_are_rows() {
+        let cdf = create_test_cdf();
+        let result = DataSource::conditional_transpose(cdf.clone(), &true, &true).unwrap();
+
+        assert_eq!(result.data.shape(), cdf.data.shape());
+    }
+
+    #[rstest]
+    fn test_transpose_with_header() {
+        let cdf = create_test_cdf();
+        let result = DataSource::conditional_transpose(cdf.clone(), &false, &true).unwrap();
+
+        assert_eq!(result.data.shape().0, cdf.data.width() - 1);
+        assert_eq!(result.data.shape().1, cdf.data.height());
+
+        assert_eq!(
+            result
+                .data
+                .get_column_names()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+            vec!["patient1", "patient2"]
+        );
+    }
+
+    #[rstest]
+    fn test_transpose_without_header() {
+        let cdf = create_test_cdf();
+        let result = DataSource::conditional_transpose(cdf.clone(), &false, &false).unwrap();
+
+        assert_eq!(result.data.shape().0, cdf.data.width());
+        assert_eq!(result.data.shape().1, cdf.data.height());
+        assert_eq!(
+            result
+                .data
+                .get_column_names()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+            generate_default_column_names(result.data.get_columns().len() as i64)
+        );
     }
 }

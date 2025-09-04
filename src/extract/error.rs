@@ -13,8 +13,6 @@ pub enum ExtractionError {
     VectorIndexing(String),
     #[allow(dead_code)]
     NoStringInHeader(String),
-    #[allow(dead_code)]
-    ContextError(ContextError),
 }
 
 impl From<PolarsError> for ExtractionError {
@@ -27,20 +25,4 @@ impl From<XlsxError> for ExtractionError {
     fn from(err: XlsxError) -> Self {
         ExtractionError::Calamine(err)
     }
-}
-
-impl From<ContextError> for ExtractionError {
-    fn from(err: ContextError) -> Self {
-        ExtractionError::ContextError(err)
-    }
-}
-
-#[derive(Debug)]
-pub enum ContextError {
-    /// The specified context identifier could not be found.
-    NotFound(String),
-    /// The specific ID to be replaced was not found within a MultiIdentifier.
-    MultiIdNotFound(String),
-    /// An error occurred while trying to set the new ID.
-    SetIdFailed(String),
 }
