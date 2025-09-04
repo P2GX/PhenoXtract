@@ -39,7 +39,6 @@ impl DataSource {
         extraction_config: &ExtractionConfig,
     ) -> Result<ContextualizedDataFrame, ExtractionError> {
         if !extraction_config.patients_are_rows {
-            let mut keep_names_as: Option<String> = None;
             let mut column_names: Vec<String> = vec![];
 
             if extraction_config.has_headers {
@@ -63,17 +62,9 @@ impl DataSource {
             } else {
                 column_names = DataSource::generate_default_column_names(cdf.data.height() as i64);
             }
-            cdf.data = cdf.data.transpose(
-                keep_names_as.as_deref(),
-                Some(Either::Right(column_names.clone())),
-            )?;
-
-            if !extraction_config.has_headers {
-                column_names.iter().for_each(|col_name| {
-                    let expected_current_col_name = col_name;
-                    let res = cdf.replace_context_id(expected_current_col_name, col_name);
-                })
-            }
+            cdf.data = cdf
+                .data
+                .transpose(None, Some(Either::Right(column_names.clone())))?;
 
             for name in column_names {
                 if let Ok(series) = cdf.data.column(&name) {
