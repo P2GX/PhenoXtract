@@ -28,19 +28,4 @@ impl ContextualizedDataFrame {
     pub fn context_mut(&mut self) -> &mut TableContext {
         &mut self.context
     }
-
-    #[allow(unused)]
-    pub fn get_series_context(&self, identifier: &str) -> Option<&SeriesContext> {
-        self.context
-            .context
-            .iter()
-            .find(|ctx| ctx.matches_identifier(identifier))
-    }
-
-    pub fn get_series_context_mut(&mut self, identifier: &str) -> Option<&mut SeriesContext> {
-        self.context
-            .context
-            .iter_mut()
-            .find(|ctx| ctx.matches_identifier(identifier))
-    }
 }

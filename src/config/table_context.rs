@@ -152,69 +152,6 @@ impl SeriesContext {
         }
     }
 
-    /// Sets a new identifier for this `SeriesContext`.
-    ///
-    /// # Arguments
-    /// * `new_id` - The new identifier to assign. Must match the variant type of this context:
-    ///   - `SetId::Single` can only be applied to `SeriesContext::Single`.
-    ///   - `SetId::MultiList` or `SetId::MultiRegex` can only be applied to `SeriesContext::Multi`.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// * The `new_id` does not match the variant type of the context.
-    /// * The provided regex in `SetId::MultiRegex` is invalid.
-    pub fn set_id(&mut self, new_id: SetId) -> Result<(), ContextError> {
-        match (self, new_id) {
-            (SeriesContext::Single(single), SetId::Single(id)) => {
-                single.identifier = id;
-                Ok(())
-            }
-
-            (SeriesContext::Multi(multi), SetId::MultiList(ids)) => {
-                multi.multi_identifier = MultiIdentifier::Multi(ids);
-                Ok(())
-            }
-
-            (SeriesContext::Multi(multi), SetId::MultiRegex(pattern)) => {
-                Regex::new(&pattern)
-                    .map_err(|e| ContextError::SetIdFailed(format!("Invalid regex: {pattern}")))?;
-                multi.multi_identifier = MultiIdentifier::Regex(pattern);
-                Ok(())
-            }
-
-            (SeriesContext::Single(_), SetId::MultiList(_) | SetId::MultiRegex(_)) => {
-                Err(ContextError::SetIdFailed(
-                    "Cant set multi identifier on single identifier".to_string(),
-                ))
-            }
-            (SeriesContext::Multi(_), SetId::Single(_)) => Err(ContextError::SetIdFailed(
-                "Cant set single identifier on multi identifier".to_string(),
-            )),
-        }
-    }
-
-    /// Checks if the given identifier matches this `SeriesContext`.
-    ///
-    /// For `Single` variants, it matches if the stored identifier is equal to the input.
-    /// For `Multi` variants:
-    /// * If the identifier type is a regex, it matches on string equality of the regex pattern.
-    /// * If the identifier type is a list, it matches if any element of the list equals the input.
-    ///
-    /// # Arguments
-    /// * `identifier` - The identifier string to compare.
-    ///
-    /// # Returns
-    /// `true` if the given identifier matches; `false` otherwise.
-    pub fn matches_identifier(&self, identifier: &str) -> bool {
-        match self {
-            SeriesContext::Single(single) => single.identifier == identifier,
-            SeriesContext::Multi(multi) => match &multi.multi_identifier {
-                MultiIdentifier::Regex(regex_id) => regex_id == identifier,
-                MultiIdentifier::Multi(vector) => vector.iter().any(|v| v == identifier),
-            },
-        }
-    }
-
     pub fn get_cell_context(&self) -> Context {
         let cells_option = match self {
             SeriesContext::Single(single) => &single.cells,
