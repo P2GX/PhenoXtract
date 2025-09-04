@@ -1,4 +1,3 @@
-use crate::extract::data_source::DataSource;
 use crate::extract::error::ExtractionError;
 use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::utils::generate_default_column_names;

@@ -1,13 +1,12 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::{CsvReadOptions, DataType};
+use polars::prelude::CsvReadOptions;
 use std::fs::File;
 use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
-use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::Extractable;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
@@ -173,8 +172,8 @@ mod tests {
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
-    use std::path::PathBuf;
-    use std::str::FromStr;
+    
+    
     use tempfile::TempDir;
 
     #[fixture]

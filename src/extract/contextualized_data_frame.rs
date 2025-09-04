@@ -1,5 +1,4 @@
-use crate::config::table_context::{MultiIdentifier, SeriesContext, SetId, TableContext};
-use crate::extract::error::ContextError;
+use crate::config::table_context::TableContext;
 use polars::prelude::DataFrame;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.

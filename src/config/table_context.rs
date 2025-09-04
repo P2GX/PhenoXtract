@@ -1,10 +1,8 @@
-use crate::extract::error::ContextError;
 use crate::validation::multi_series_context_validation::validate_regex_multi_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use crate::validation::table_context_validation::validate_unique_series_linking;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -65,7 +63,7 @@ pub enum Context {
 
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -117,13 +115,6 @@ impl CellContext {
             alias_map,
         }
     }
-}
-
-pub enum SetId {
-    Single(String),
-    #[allow(unused)]
-    MultiList(Vec<String>),
-    MultiRegex(String),
 }
 
 /// Represents the context for one or more series (columns or rows).
