@@ -172,8 +172,7 @@ mod tests {
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
-    
-    
+
     use tempfile::TempDir;
 
     #[fixture]
