@@ -71,7 +71,7 @@ impl DataSource {
         Ok(cdf)
     }
     //TODO: Probably move this to transform later.
-    fn polars_column_string_cast(mut data: DataFrame) -> Result<DataFrame, ExtractionError> {
+    fn polars_column_string_cast(data: &mut DataFrame) -> Result<(), ExtractionError> {
         let col_names: Vec<String> = data
             .get_column_names()
             .iter()
@@ -147,7 +147,7 @@ impl DataSource {
                 continue;
             }
         }
-        Ok(data)
+        Ok(())
     }
 }
 
@@ -179,7 +179,7 @@ impl Extractable for DataSource {
                     ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
                     &csv_source.extraction_config,
                 )?;
-                cdf.data = DataSource::polars_column_string_cast(cdf.data)?;
+                DataSource::polars_column_string_cast(&mut cdf.data)?;
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
             }
@@ -225,7 +225,7 @@ impl Extractable for DataSource {
                     let sheet_data = excel_range_reader.extract_to_df()?;
 
                     let mut cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
-                    cdf.data = DataSource::polars_column_string_cast(cdf.data)?;
+                    DataSource::polars_column_string_cast(&mut cdf.data)?;
                     cdf_vec.push(cdf);
                     info!(
                         "Extracted data from Excel Worksheet {} in Excel Workbook {}",
