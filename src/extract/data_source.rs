@@ -66,80 +66,88 @@ impl DataSource {
             cdf.data = cdf
                 .data
                 .transpose(None, Some(Either::Right(column_names.clone())))?;
-            DataSource::polars_column_string_cast(&mut cdf.data, column_names.as_slice())?;
         }
 
         Ok(cdf)
     }
 
-    fn polars_column_string_cast(
-        data: &mut DataFrame,
-        column_names: &[String],
-    ) -> Result<(), ExtractionError> {
-        for name in column_names {
-            if let Ok(series) = data.column(name) {
-                debug!("Try casting Column: {name}");
-                if series.dtype() != DataType::String.as_ref() {
-                    debug!("Skipped column {name}. Not of string type.");
-                    continue;
-                }
+    fn polars_column_string_cast(data: &mut DataFrame) -> Result<&DataFrame, ExtractionError> {
+        let col_names: Vec<String> = data
+            .get_column_names()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
 
-                if let Some(bools) = series
-                    .str()?
-                    .iter()
-                    .map(|opt| {
-                        opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
-                            "true" | "1" | "yes" => Some(true),
-                            "false" | "0" | "no" => Some(false),
-                            _ => None,
-                        })
+        for col_name in col_names {
+            let column = data.column(col_name.as_str())?;
+
+            debug!("Try casting Column: {col_name}");
+            if column.dtype() != DataType::String.as_ref() {
+                debug!("Skipped column {col_name}. Not of string type.");
+                continue;
+            }
+
+            if let Some(bools) = column
+                .str()?
+                .iter()
+                .map(|opt| {
+                    opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
+                        "true" | "1" | "yes" => Some(true),
+                        "false" | "0" | "no" => Some(false),
+                        _ => None,
                     })
-                    .collect::<Option<Vec<bool>>>()
-                {
-                    debug!("Casted column: {name} to bool.");
-                    let s: Series = Series::new(name.into(), bools);
-                    data.replace(name, s.clone())?;
-                    continue;
-                }
+                })
+                .collect::<Option<Vec<bool>>>()
+            {
+                debug!("Casted column: {col_name} to bool.");
+                let s: Series = Series::new(col_name.clone().into(), bools);
+                data.replace(col_name.as_str(), s.clone())?;
+                continue;
+            }
 
-                if let Ok(mut casted) = series.strict_cast(&DataType::Int64) {
-                    debug!("Casted column: {name} to i64.");
-                    data.replace(name, casted.into_materialized_series().to_owned())?;
-                    continue;
-                }
+            if let Ok(mut casted) = column.strict_cast(&DataType::Int64) {
+                debug!("Casted column: {col_name} to i64.");
+                data.replace(
+                    col_name.as_str(),
+                    casted.into_materialized_series().to_owned(),
+                )?;
+                continue;
+            }
 
-                if let Ok(mut casted) = series.strict_cast(&DataType::Float64) {
-                    debug!("Casted column: {name} to f64.");
-                    data.replace(name, casted.into_materialized_series().to_owned())?;
-                    continue;
-                }
+            if let Ok(mut casted) = column.strict_cast(&DataType::Float64) {
+                debug!("Casted column: {col_name} to f64.");
+                data.replace(
+                    col_name.as_str(),
+                    casted.into_materialized_series().to_owned(),
+                )?;
+                continue;
+            }
 
-                if let Some(dates) = series
-                    .str()?
-                    .iter()
-                    .map(|s| s.and_then(try_parse_string_date))
-                    .collect::<Option<Vec<NaiveDate>>>()
-                {
-                    debug!("Casted column: {name} to date.");
-                    let s: Series = Series::new(name.into(), dates);
-                    data.replace(name, s.clone())?;
-                    continue;
-                }
+            if let Some(dates) = column
+                .str()?
+                .iter()
+                .map(|s| s.and_then(try_parse_string_date))
+                .collect::<Option<Vec<NaiveDate>>>()
+            {
+                debug!("Casted column: {col_name} to date.");
+                let s: Series = Series::new(col_name.clone().into(), dates);
+                data.replace(col_name.as_str(), s.clone())?;
+                continue;
+            }
 
-                if let Some(dates) = series
-                    .str()?
-                    .iter()
-                    .map(|s| s.and_then(try_parse_string_datetime))
-                    .collect::<Option<Vec<NaiveDateTime>>>()
-                {
-                    debug!("Casted column: {name} to datetime.");
-                    let s: Series = Series::new(name.into(), dates);
-                    data.replace(name, s.clone())?;
-                    continue;
-                }
+            if let Some(dates) = column
+                .str()?
+                .iter()
+                .map(|s| s.and_then(try_parse_string_datetime))
+                .collect::<Option<Vec<NaiveDateTime>>>()
+            {
+                debug!("Casted column: {col_name} to datetime.");
+                let s: Series = Series::new(col_name.clone().into(), dates);
+                data.replace(col_name.as_str(), s.clone())?;
+                continue;
             }
         }
-        Ok(())
+        Ok(data)
     }
 }
 
@@ -163,10 +171,11 @@ impl Extractable for DataSource {
                         .with_separator(sep as u8);
                     csv_read_options.parse_options = Arc::from(new_parse_options);
                 }
-                let csv_data = csv_read_options
+                let mut csv_data = csv_read_options
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
+                DataSource::polars_column_string_cast(&mut csv_data)?;
                 let cdf = DataSource::conditional_transpose(
                     ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
                     &csv_source.extraction_config,
@@ -214,8 +223,8 @@ impl Extractable for DataSource {
                     let excel_range_reader =
                         ExcelRangeReader::new(range, extraction_config.clone());
 
-                    let sheet_data = excel_range_reader.extract_to_df()?;
-
+                    let mut sheet_data = excel_range_reader.extract_to_df()?;
+                    DataSource::polars_column_string_cast(&mut sheet_data)?;
                     let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
                     cdf_vec.push(cdf);
                     info!(
