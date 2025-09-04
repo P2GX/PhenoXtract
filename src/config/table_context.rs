@@ -56,9 +56,17 @@ pub enum Context {
     SubjectId,
     #[allow(unused)]
     SubjectSex,
+    #[allow(unused)]
+    SubjectAge,
     #[default]
     None,
     //...
+}
+
+impl Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// Represents the value of a single cell, which can be one of several primitive types.
