@@ -27,6 +27,85 @@ pub enum DataSource {
     Excel(ExcelDatasource),
 }
 
+impl DataSource {
+    fn generate_default_column_names(column_count: i64) -> Vec<String> {
+        (0..column_count).map(|index| format!("{index}")).collect()
+    }
+
+    fn conditional_transpose(
+        mut cdf: ContextualizedDataFrame,
+        extraction_config: &ExtractionConfig,
+    ) -> Result<ContextualizedDataFrame, ExtractionError> {
+        if !extraction_config.patients_are_rows {
+            let mut keep_names_as: Option<String> = None;
+            let mut column_names: Vec<String> = vec![];
+
+            if extraction_config.has_headers {
+                // Assuming, that the headers are in the first column of the dataframe
+                let index_column =
+                    cdf.data
+                        .get_columns()
+                        .first()
+                        .ok_or(ExtractionError::VectorIndexing(
+                            "No columns in DataFrame".to_string(),
+                        ))?;
+
+                column_names = index_column
+                .str()
+                .into_iter()
+                .flatten()
+                .map(|s| s.expect("Unable to cast column name into string, when transposing DataFrame. If your data is oriented horizontally make sure the identifier are located in the first column.").to_string())
+                .collect();
+
+                cdf.data = cdf.data.drop(index_column.name())?;
+            } else {
+                column_names = DataSource::generate_default_column_names(cdf.data.height() as i64);
+            }
+            cdf.data = cdf.data.transpose(
+                keep_names_as.as_deref(),
+                Some(Either::Right(column_names.clone())),
+            )?;
+
+            if !extraction_config.has_headers {
+                column_names.iter().for_each(|col_name| {
+                    let expected_current_col_name = col_name;
+                    let res = cdf.replace_context_id(expected_current_col_name, col_name);
+                })
+            }
+
+            for name in column_names {
+                if let Ok(series) = cdf.data.column(&name) {
+                    if let Ok(mut casted) = series.strict_cast(&DataType::Int64) {
+                        cdf.data
+                            .replace(&name, casted.into_materialized_series().to_owned())?;
+                        continue;
+                    }
+
+                    if let Ok(mut casted) = series.strict_cast(&DataType::Float64) {
+                        cdf.data
+                            .replace(&name, casted.into_materialized_series().to_owned())?;
+                        continue;
+                    }
+
+                    if let Ok(mut casted) = series.strict_cast(&DataType::Boolean) {
+                        cdf.data
+                            .replace(&name, casted.into_materialized_series().to_owned())?;
+                        continue;
+                    }
+
+                    if let Ok(mut casted) = series.strict_cast(&DataType::Date) {
+                        cdf.data
+                            .replace(&name, casted.into_materialized_series().to_owned())?;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(cdf)
+    }
+}
+
 impl Extractable for DataSource {
     fn extract(&self) -> Result<Vec<ContextualizedDataFrame>, ExtractionError> {
         match self {
