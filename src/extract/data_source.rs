@@ -238,6 +238,8 @@ mod tests {
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use crate::extract::extraction_config::ExtractionConfig;
+    use polars::df;
+    use polars::prelude::TimeUnit;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
     use std::f64;
@@ -640,5 +642,38 @@ mod tests {
                 assert_eq!(extracted_smoker_bools, smoker_bools);
             }
         }
+    }
+
+    #[test]
+    fn test_polars_column_string_cast() {
+        let mut df = df![
+            "int_col" => &["1", "2", "3"],
+            "float_col" => &["1.5", "2.5", "3.5"],
+            "bool_col" => &["True", "False", "True"],
+            "date_col" => &["2023-01-01", "2023-01-02", "2023-01-03"],
+            "datetime_col" => &["2023-01-01T12:00:00", "2023-01-02T13:30:00", "2023-01-03T15:45:00"],
+            "string_col" => &["hello", "world", "test"]
+        ].unwrap();
+
+        let columns = vec![
+            "int_col".to_string(),
+            "float_col".to_string(),
+            "bool_col".to_string(),
+            "date_col".to_string(),
+            "datetime_col".to_string(),
+            "string_col".to_string(),
+        ];
+
+        let result = DataSource::polars_column_string_cast(&mut df, &columns);
+        assert!(result.is_ok());
+        assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int64);
+        assert_eq!(df.column("float_col").unwrap().dtype(), &DataType::Float64);
+        assert_eq!(df.column("bool_col").unwrap().dtype(), &DataType::Boolean);
+        assert_eq!(df.column("date_col").unwrap().dtype(), &DataType::Date);
+        assert_eq!(
+            df.column("datetime_col").unwrap().dtype(),
+            &DataType::Datetime(TimeUnit::Milliseconds, None)
+        );
+        assert_eq!(df.column("string_col").unwrap().dtype(), &DataType::String);
     }
 }
