@@ -92,8 +92,8 @@ impl DataSource {
                 .iter()
                 .map(|opt| {
                     opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
-                        "true" | "1" | "yes" => Some(true),
-                        "false" | "0" | "no" => Some(false),
+                        "true" => Some(true),
+                        "false" => Some(false),
                         _ => None,
                     })
                 })
