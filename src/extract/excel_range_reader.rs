@@ -1,3 +1,4 @@
+use crate::extract::data_source::DataSource;
 use crate::extract::error::ExtractionError;
 use crate::extract::extraction_config::ExtractionConfig;
 use calamine::{Data, Range};
@@ -28,7 +29,7 @@ impl ExcelRangeReader {
         Ok(dataframe)
     }
 
-    fn create_loading_vectors<'a>(&'a self) -> Vec<Vec<AnyValue<'a>>> {
+    fn create_loading_vectors(&self) -> Vec<Vec<AnyValue>> {
         let number_of_vecs;
         let loading_vector_capacity;
         if self.extraction_config.patients_are_rows {
@@ -120,6 +121,7 @@ impl ExcelRangeReader {
         &self,
         loading_vectors: Vec<Vec<AnyValue>>,
     ) -> Result<Vec<Column>, ExtractionError> {
+        let column_names = DataSource::generate_default_column_names(loading_vectors.len() as i64);
         loading_vectors
             .iter()
             .enumerate()
@@ -130,9 +132,9 @@ impl ExcelRangeReader {
                 if self.extraction_config.has_headers {
                     let h = vec.first().ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                     header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
-                    data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("No data contained in vector.".to_string()))?;
+                    data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                 } else {
-                    header = format!("column_{}",i+1);
+                    header = column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Try to access vector at {i}. On Vector with len {}", column_names.len()).to_string()))?.to_string();
                     data = vec;
                 }
 
