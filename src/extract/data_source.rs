@@ -84,6 +84,24 @@ impl DataSource {
                     continue;
                 }
 
+                if let Some(bools) = series
+                    .str()?
+                    .iter()
+                    .map(|opt| {
+                        opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
+                            "true" | "1" | "yes" => Some(true),
+                            "false" | "0" | "no" => Some(false),
+                            _ => None,
+                        })
+                    })
+                    .collect::<Option<Vec<bool>>>()
+                {
+                    debug!("Casted column: {name} to bool.");
+                    let s: Series = Series::new(name.into(), bools);
+                    data.replace(name, s.clone())?;
+                    continue;
+                }
+
                 if let Ok(mut casted) = series.strict_cast(&DataType::Int64) {
                     debug!("Casted column: {name} to i64.");
                     data.replace(name, casted.into_materialized_series().to_owned())?;
@@ -92,12 +110,6 @@ impl DataSource {
 
                 if let Ok(mut casted) = series.strict_cast(&DataType::Float64) {
                     debug!("Casted column: {name} to f64.");
-                    data.replace(name, casted.into_materialized_series().to_owned())?;
-                    continue;
-                }
-
-                if let Ok(mut casted) = series.strict_cast(&DataType::Boolean) {
-                    debug!("Casted column: {name} to boolean.");
                     data.replace(name, casted.into_materialized_series().to_owned())?;
                     continue;
                 }
