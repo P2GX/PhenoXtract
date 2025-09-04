@@ -1,6 +1,7 @@
 use crate::extract::data_source::DataSource;
 use crate::extract::error::ExtractionError;
 use crate::extract::extraction_config::ExtractionConfig;
+use crate::extract::utils::generate_default_column_names;
 use calamine::{Data, Range};
 use log::{info, warn};
 use polars::datatypes::AnyValue;
@@ -121,7 +122,7 @@ impl ExcelRangeReader {
         &self,
         loading_vectors: Vec<Vec<AnyValue>>,
     ) -> Result<Vec<Column>, ExtractionError> {
-        let column_names = DataSource::generate_default_column_names(loading_vectors.len() as i64);
+        let column_names = generate_default_column_names(loading_vectors.len() as i64);
         loading_vectors
             .iter()
             .enumerate()

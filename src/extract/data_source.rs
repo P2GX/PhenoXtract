@@ -13,6 +13,7 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
+use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 use std::sync::Arc;
@@ -30,16 +31,12 @@ pub enum DataSource {
 }
 
 impl DataSource {
-    fn generate_default_column_names(column_count: i64) -> Vec<String> {
-        (0..column_count).map(|index| format!("{index}")).collect()
-    }
-
     fn conditional_transpose(
         mut cdf: ContextualizedDataFrame,
         extraction_config: &ExtractionConfig,
     ) -> Result<ContextualizedDataFrame, ExtractionError> {
         if !extraction_config.patients_are_rows {
-            let mut column_names: Vec<String> = vec![];
+            let column_names: Vec<String>;
 
             if extraction_config.has_headers {
                 // Assuming, that the headers are in the first column of the dataframe
@@ -60,7 +57,8 @@ impl DataSource {
 
                 cdf.data = cdf.data.drop(index_column.name())?;
             } else {
-                column_names = DataSource::generate_default_column_names(cdf.data.height() as i64);
+                // Assuming, that the user declared the index of the rows as identifiers
+                column_names = generate_default_column_names(cdf.data.height() as i64);
             }
             cdf.data = cdf
                 .data
@@ -538,10 +536,7 @@ mod tests {
             } else if data_frame.context().name == "second_sheet" {
                 assert_eq!(extracted_data.get_column_names(), row_names);
             } else {
-                assert_eq!(
-                    extracted_data.get_column_names(),
-                    ["column_1", "column_2", "column_3", "column_4"]
-                );
+                assert_eq!(extracted_data.get_column_names(), ["0", "1", "2", "3"]);
             }
 
             let extracted_col0 = extracted_data.select_at_idx(0).unwrap();
