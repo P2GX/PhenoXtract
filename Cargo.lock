@@ -1660,6 +1660,7 @@ dependencies = [
  "anyhow",
  "calamine",
  "config",
+ "either",
  "log",
  "phenopackets",
  "polars",

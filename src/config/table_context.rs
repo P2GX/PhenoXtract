@@ -1,9 +1,9 @@
+use crate::extract::error::ContextError;
 use crate::validation::multi_series_context_validation::validate_regex_multi_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use crate::validation::table_context_validation::validate_unique_series_linking;
-use anyhow::anyhow;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -163,7 +163,7 @@ impl SeriesContext {
     /// Returns an error if:
     /// * The `new_id` does not match the variant type of the context.
     /// * The provided regex in `SetId::MultiRegex` is invalid.
-    pub fn set_id(&mut self, new_id: SetId) -> Result<(), anyhow::Error> {
+    pub fn set_id(&mut self, new_id: SetId) -> Result<(), ContextError> {
         match (self, new_id) {
             (SeriesContext::Single(single), SetId::Single(id)) => {
                 single.identifier = id;
@@ -176,17 +176,20 @@ impl SeriesContext {
             }
 
             (SeriesContext::Multi(multi), SetId::MultiRegex(pattern)) => {
-                Regex::new(&pattern).map_err(|e| anyhow!(e.to_string()))?;
+                Regex::new(&pattern)
+                    .map_err(|e| ContextError::SetIdFailed(format!("Invalid regex: {pattern}")))?;
                 multi.multi_identifier = MultiIdentifier::Regex(pattern);
                 Ok(())
             }
 
             (SeriesContext::Single(_), SetId::MultiList(_) | SetId::MultiRegex(_)) => {
-                anyhow::bail!("Cant set multi identifier on single identifier");
+                Err(ContextError::SetIdFailed(
+                    "Cant set multi identifier on single identifier".to_string(),
+                ))
             }
-            (SeriesContext::Multi(_), SetId::Single(_)) => {
-                anyhow::bail!("Cant set single identifier on multi identifier");
-            }
+            (SeriesContext::Multi(_), SetId::Single(_)) => Err(ContextError::SetIdFailed(
+                "Cant set single identifier on multi identifier".to_string(),
+            )),
         }
     }
 

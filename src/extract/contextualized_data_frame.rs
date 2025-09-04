@@ -1,5 +1,5 @@
 use crate::config::table_context::{MultiIdentifier, SeriesContext, SetId, TableContext};
-use anyhow::anyhow;
+use crate::extract::error::ContextError;
 use polars::prelude::DataFrame;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -29,10 +29,11 @@ impl ContextualizedDataFrame {
         &mut self.context
     }
 
-    pub fn replace_context_id(&mut self, old: &str, new: &str) -> Result<(), anyhow::Error> {
+    pub fn replace_context_id(&mut self, old: &str, new: &str) -> Result<(), ContextError> {
         let series_context = self.get_series_context_mut(old);
-        let series_context_unwrapped =
-            series_context.ok_or_else(|| anyhow!("No context found for identifier {old}."))?;
+        let series_context_unwrapped = series_context.ok_or_else(|| {
+            ContextError::NotFound(format!("No context found for identifier {old}."))
+        })?;
 
         match series_context_unwrapped {
             SeriesContext::Single(_) => {
@@ -43,7 +44,9 @@ impl ContextualizedDataFrame {
                     if let Some(index) = ids.iter().position(|word| word == old) {
                         ids[index] = new.to_string();
                     } else {
-                        return Err(anyhow!("Could not replace multi id: {old} not found."));
+                        return Err(ContextError::MultiIdNotFound(format!(
+                            "Could not replace multi id: {old} not found."
+                        )));
                     }
                 } else if let MultiIdentifier::Regex(_) = multi.multi_identifier {
                     series_context_unwrapped.set_id(SetId::MultiRegex(new.to_owned()))?;
