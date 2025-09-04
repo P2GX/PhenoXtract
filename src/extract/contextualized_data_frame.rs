@@ -1,4 +1,5 @@
-use crate::config::table_context::TableContext;
+use crate::config::table_context::{MultiIdentifier, SeriesContext, SetId, TableContext};
+use anyhow::anyhow;
 use polars::prelude::DataFrame;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -10,7 +11,7 @@ pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
     #[allow(unused)]
-    data: DataFrame,
+    pub data: DataFrame,
 }
 
 impl ContextualizedDataFrame {

@@ -132,11 +132,13 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
+                let cdf = DataSource::conditional_transpose(
+                    ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
+                    &csv_source.extraction_config,
+                )?;
+
                 info!("Extracted CSV data from {}", csv_source.source.display());
-                Ok(vec![ContextualizedDataFrame::new(
-                    csv_source.context.clone(),
-                    csv_data,
-                )])
+                Ok(vec![cdf])
             }
             DataSource::Excel(excel_source) => {
                 let mut cdf_vec = Vec::new();
@@ -429,7 +431,7 @@ mod tests {
         assert_eq!(context_df.context(), &test_tc1);
 
         let expected_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
-        let extracted_data = context_df.data();
+        let extracted_data = context_df.data;
 
         let expected_data_pairs: Vec<(&str, &[&str])> = column_names
             .iter()
@@ -536,7 +538,7 @@ mod tests {
 
         let data_frames = data_source.extract().unwrap();
         for data_frame in data_frames {
-            let extracted_data = data_frame.data();
+            let extracted_data = data_frame.data.clone();
 
             if data_frame.context().name == "first_sheet" {
                 assert_eq!(extracted_data.get_column_names(), column_names);
