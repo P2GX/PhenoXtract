@@ -3,9 +3,14 @@ use crate::validation::table_context_validation::validate_at_least_one_subject_i
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use crate::validation::table_context_validation::validate_unique_series_linking;
+use anyhow::anyhow;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Display;
 use validator::Validate;
+
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
@@ -168,18 +173,15 @@ impl SeriesContext {
 /// Defines the context for a single, specific series (e.g., a column or row).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct SingleSeriesContext {
-    #[allow(unused)]
     /// The unique identifier for the series.
     pub(crate) identifier: String,
-    #[allow(unused)]
     #[serde(default)]
     /// The semantic context found in the header/index of the series.
     id_context: Context,
-    #[allow(unused)]
     /// The context to apply to every cell within this series.
     cells: Option<CellContext>,
     /// A unique ID that can be used to link to other series
-    #[allow(unused)]
+
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
     pub linked_to: Vec<String>,
@@ -205,9 +207,7 @@ impl SingleSeriesContext {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum MultiIdentifier {
-    #[allow(unused)]
     Regex(String),
-    #[allow(unused)]
     Multi(Vec<String>),
 }
 
@@ -217,14 +217,11 @@ pub(crate) enum MultiIdentifier {
 /// for example, all columns whose names start with "measurement_".
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 pub(crate) struct MultiSeriesContext {
-    #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
     #[validate(custom(function = "validate_regex_multi_identifier"))]
     pub(crate) multi_identifier: MultiIdentifier,
-    #[allow(unused)]
     /// The semantic context to apply to the identifiers of all matched column header or row indexes.
     id_context: Context,
-    #[allow(unused)]
     /// The context to apply to every cell in all of the matched series.
     cells: Option<CellContext>,
 }
