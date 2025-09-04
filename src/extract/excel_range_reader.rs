@@ -29,7 +29,7 @@ impl ExcelRangeReader {
         Ok(dataframe)
     }
 
-    fn create_loading_vectors(&self) -> Vec<Vec<AnyValue>> {
+    fn create_loading_vectors(&'_ self) -> Vec<Vec<AnyValue<'_>>> {
         let number_of_vecs;
         let loading_vector_capacity;
         if self.extraction_config.patients_are_rows {
