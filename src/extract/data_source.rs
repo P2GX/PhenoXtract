@@ -1,7 +1,8 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
+use chrono::{NaiveDate, NaiveDateTime};
 use polars::io::SerReader;
-use polars::prelude::{CsvReadOptions, DataType};
+use polars::prelude::{CsvReadOptions, DataFrame, DataType, NamedFrom, Series};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -9,11 +10,13 @@ use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::Extractable;
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
-use crate::extract::utils::generate_default_column_names;
+use crate::extract::utils::{
+    generate_default_column_names, try_parse_string_date, try_parse_string_datetime,
+};
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 use std::sync::Arc;
@@ -63,37 +66,68 @@ impl DataSource {
             cdf.data = cdf
                 .data
                 .transpose(None, Some(Either::Right(column_names.clone())))?;
-
-            for name in column_names {
-                if let Ok(series) = cdf.data.column(&name) {
-                    if let Ok(mut casted) = series.strict_cast(&DataType::Int64) {
-                        cdf.data
-                            .replace(&name, casted.into_materialized_series().to_owned())?;
-                        continue;
-                    }
-
-                    if let Ok(mut casted) = series.strict_cast(&DataType::Float64) {
-                        cdf.data
-                            .replace(&name, casted.into_materialized_series().to_owned())?;
-                        continue;
-                    }
-
-                    if let Ok(mut casted) = series.strict_cast(&DataType::Boolean) {
-                        cdf.data
-                            .replace(&name, casted.into_materialized_series().to_owned())?;
-                        continue;
-                    }
-
-                    if let Ok(mut casted) = series.strict_cast(&DataType::Date) {
-                        cdf.data
-                            .replace(&name, casted.into_materialized_series().to_owned())?;
-                        continue;
-                    }
-                }
-            }
+            DataSource::polars_column_string_cast(&mut cdf.data, column_names.as_slice())?;
         }
 
         Ok(cdf)
+    }
+
+    fn polars_column_string_cast(
+        data: &mut DataFrame,
+        column_names: &[String],
+    ) -> Result<(), ExtractionError> {
+        for name in column_names {
+            if let Ok(series) = data.column(name) {
+                debug!("Try casting Column: {name}");
+                if series.dtype() != DataType::String.as_ref() {
+                    debug!("Skipped column {name}. Not of string type.");
+                    continue;
+                }
+
+                if let Ok(mut casted) = series.strict_cast(&DataType::Int64) {
+                    debug!("Casted column: {name} to i64.");
+                    data.replace(name, casted.into_materialized_series().to_owned())?;
+                    continue;
+                }
+
+                if let Ok(mut casted) = series.strict_cast(&DataType::Float64) {
+                    debug!("Casted column: {name} to f64.");
+                    data.replace(name, casted.into_materialized_series().to_owned())?;
+                    continue;
+                }
+
+                if let Ok(mut casted) = series.strict_cast(&DataType::Boolean) {
+                    debug!("Casted column: {name} to boolean.");
+                    data.replace(name, casted.into_materialized_series().to_owned())?;
+                    continue;
+                }
+
+                if let Some(dates) = series
+                    .str()?
+                    .iter()
+                    .map(|s| s.and_then(try_parse_string_date))
+                    .collect::<Option<Vec<NaiveDate>>>()
+                {
+                    debug!("Casted column: {name} to date.");
+                    let s: Series = Series::new(name.into(), dates);
+                    data.replace(name, s.clone())?;
+                    continue;
+                }
+
+                if let Some(dates) = series
+                    .str()?
+                    .iter()
+                    .map(|s| s.and_then(try_parse_string_datetime))
+                    .collect::<Option<Vec<NaiveDateTime>>>()
+                {
+                    debug!("Casted column: {name} to datetime.");
+                    let s: Series = Series::new(name.into(), dates);
+                    data.replace(name, s.clone())?;
+                    continue;
+                }
+            }
+        }
+        Ok(())
     }
 }
 
