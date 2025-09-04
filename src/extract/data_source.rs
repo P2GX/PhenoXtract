@@ -664,16 +664,7 @@ mod tests {
             "string_col" => &["hello", "world", "test"]
         ].unwrap();
 
-        let columns = vec![
-            "int_col".to_string(),
-            "float_col".to_string(),
-            "bool_col".to_string(),
-            "date_col".to_string(),
-            "datetime_col".to_string(),
-            "string_col".to_string(),
-        ];
-
-        let result = DataSource::polars_column_string_cast(&mut df, &columns);
+        let result = DataSource::polars_column_string_cast(&mut df);
         assert!(result.is_ok());
         assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int64);
         assert_eq!(df.column("float_col").unwrap().dtype(), &DataType::Float64);
