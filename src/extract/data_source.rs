@@ -1,19 +1,21 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::CsvReadOptions;
+use polars::prelude::{CsvReadOptions, DataType};
 use std::fs::File;
 use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
+use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::Extractable;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
 use calamine::{Reader, Xlsx, open_workbook};
+use either::Either;
+use std::sync::Arc;
 
 /// An enumeration of all supported data source types.
 ///
@@ -115,8 +117,10 @@ impl Extractable for DataSource {
                     csv_source.source.display()
                 );
 
-                let mut csv_read_options = CsvReadOptions::default()
-                    .with_has_header(csv_source.extraction_config.has_headers);
+                let mut csv_read_options = CsvReadOptions::default().with_has_header(
+                    csv_source.extraction_config.patients_are_rows
+                        && csv_source.extraction_config.has_headers,
+                );
 
                 if let Some(sep) = csv_source.separator {
                     let new_parse_options = (*csv_read_options.parse_options)
