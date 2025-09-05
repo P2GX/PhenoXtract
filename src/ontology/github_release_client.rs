@@ -4,8 +4,8 @@ use reqwest::blocking::{Client, Response, get};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Release {
-    tag_name: String,
+pub(crate) struct Release {
+    pub tag_name: String,
 }
 
 /// A client for interacting with Github releases.
@@ -13,9 +13,9 @@ struct Release {
 /// This client provides methods to fetch the latest release information
 /// and download release files from a specified Github repository.
 pub(crate) struct GithubReleaseClient {
-    /// URL template for downloading a specific release file.
+    /// URL template for downloading a specific release file. The client will replace the substrings {repo_owner}, {repo_name}, {version}, {file_name} to assemble the url.
     web_url: String,
-    /// URL template for fetching the latest release information from the Github API.
+    /// URL template for fetching the latest release information from the Github API. The client will replace the substrings {repo_owner}, {repo_name} to assemble the url.
     latest_release_url: String,
 }
 
@@ -23,7 +23,7 @@ impl GithubReleaseClient {
     /// Creates a new `GithubReleaseClient` with default URL templates.
     ///
     /// The templates are pre-configured for Github's release and API endpoints.
-    fn new() -> GithubReleaseClient {
+    pub fn new() -> GithubReleaseClient {
         GithubReleaseClient {
             web_url: "https://github.com/{repo_owner}/{repo_name}/releases/download/{version}/{file_name}"
                 .to_string(),
@@ -31,6 +31,17 @@ impl GithubReleaseClient {
                 "https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest".to_string(),
         }
     }
+
+    pub fn with_web_url_template(mut self, url: impl Into<String>) -> Self {
+        self.web_url = url.into();
+        self
+    }
+
+    pub fn with_latest_release_url_template(mut self, url: impl Into<String>) -> Self {
+        self.latest_release_url = url.into();
+        self
+    }
+
     /// Fetches the tag name of the latest release for a given repository.
     ///
     /// # Arguments
