@@ -8,12 +8,21 @@ struct Release {
     tag_name: String,
 }
 
+/// A client for interacting with Github releases.
+///
+/// This client provides methods to fetch the latest release information
+/// and download release files from a specified Github repository.
 pub(crate) struct GithubReleaseClient {
+    /// URL template for downloading a specific release file.
     web_url: String,
+    /// URL template for fetching the latest release information from the Github API.
     latest_release_url: String,
 }
 
 impl GithubReleaseClient {
+    /// Creates a new `GithubReleaseClient` with default URL templates.
+    ///
+    /// The templates are pre-configured for Github's release and API endpoints.
     fn new() -> GithubReleaseClient {
         GithubReleaseClient {
             web_url: "https://github.com/{repo_owner}/{repo_name}/releases/download/{version}/{file_name}"
@@ -22,12 +31,22 @@ impl GithubReleaseClient {
                 "https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest".to_string(),
         }
     }
-
+    /// Fetches the tag name of the latest release for a given repository.
+    ///
+    /// # Arguments
+    ///
+    /// * `repo_owner` - The owner of the Github repository (e.g., "rust-lang").
+    /// * `repo_name` - The name of the Github repository (e.g., "rust").
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the latest release tag name as a `String` on success,
+    /// or an `reqwest::Error` on failure.
     pub fn get_latest_release_tag(
         &self,
         repo_ower: &str,
         repo_name: &str,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<String, reqwest::Error> {
         let mut url = self.latest_release_url.clone();
         url = url
             .replace("{repo_owner}", repo_ower)
@@ -44,28 +63,34 @@ impl GithubReleaseClient {
         Ok(release.tag_name)
     }
 
+    /// Downloads a specific file from a specified release version of a repository.
+    ///
+    /// # Arguments
+    ///
+    /// * `repo_owner` - The owner of the Github repository.
+    /// * `repo_name` - The name of the Github repository.
+    /// * `file_name` - The name of the file to download from the release assets.
+    /// * `version` - The release version tag (e.g., "v1.0.0").
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `reqwest::blocking::Response` on success,
+    /// which can be used to stream the file content. Returns an `reqwest::Error`
     pub fn get_release_file(
         &self,
         repo_ower: &str,
         repo_name: &str,
         file_name: &str,
         version: &str,
-    ) -> Result<Response, anyhow::Error> {
+    ) -> Result<Response, reqwest::Error> {
         let mut url = self.web_url.clone();
         url = url
             .replace("{repo_owner}", repo_ower)
             .replace("{repo_name}", repo_name)
             .replace("{file_name}", file_name)
             .replace("{version}", version);
-        dbg!(&url);
 
         let resp = get(url.clone())?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            debug!("GithubReleaseClient failed: {}", resp.text()?.clone());
-            anyhow::bail!("Failed to download: HTTP {}", status);
-        }
 
         debug!("GithubReleaseClient got file from {url}");
         Ok(resp)
