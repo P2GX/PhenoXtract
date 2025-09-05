@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::debug;
 use reqwest::blocking::{Client, Response, get};
 use serde::{Deserialize, Serialize};
