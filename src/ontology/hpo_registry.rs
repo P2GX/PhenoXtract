@@ -60,7 +60,7 @@ impl GithubOntologyRegistry {
         let env_var = "HOME";
         let home_dir_result = env::var(env_var);
 
-        if let Err(_) = home_dir_result {
+        if home_dir_result.is_err() {
             return Err(RegistryError::EnvironmentVarNotSet(env_var.to_string()));
         }
 
