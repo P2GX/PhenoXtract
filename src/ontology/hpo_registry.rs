@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 use crate::ontology::traits::OntologyRegistry;
-use anyhow::Error;
 
-use crate::ontology::errors::RegistryError;
+use crate::ontology::error::RegistryError;
 use crate::ontology::github_release_client::GithubReleaseClient;
 use log::debug;
 use std::env;
@@ -57,19 +56,26 @@ impl GithubOntologyRegistry {
     /// # Returns
     ///
     /// A `GithubOntologyRegistry` instance pre-configured for HPO.
-    pub fn default_hpo_registry() -> Self {
-        let home_dir = env::var("HOME").expect("HOME not set");
+    pub fn default_hpo_registry() -> Result<Self, RegistryError> {
+        let env_var = "HOME";
+        let home_dir_result = env::var(env_var);
+
+        if let Err(_) = home_dir_result {
+            return Err(RegistryError::EnvironmentVarNotSet(env_var.to_string()));
+        }
+
+        let home_dir = home_dir_result.unwrap();
         let pkg_name = env!("CARGO_PKG_NAME");
         let path: PathBuf = [home_dir.as_str(), format!(".{pkg_name}").as_str()]
             .iter()
             .collect();
 
-        GithubOntologyRegistry::new(
+        Ok(GithubOntologyRegistry::new(
             path,
             "human-phenotype-ontology".to_string(),
             "obophenotype".to_string(),
             "hp-base.json".to_string(),
-        )
+        ))
     }
 }
 impl OntologyRegistry for GithubOntologyRegistry {
@@ -127,11 +133,14 @@ impl OntologyRegistry for GithubOntologyRegistry {
 
         Ok(out_path)
     }
-    fn deregister(&self, version: &str) -> Result<bool, anyhow::Error> {
+    #[allow(dead_code)]
+    #[allow(unused)]
+    fn deregister(&self, version: &str) -> Result<bool, RegistryError> {
         todo!()
     }
-
-    fn get_location(&self, version: &str) -> Result<PathBuf, Error> {
+    #[allow(dead_code)]
+    #[allow(unused)]
+    fn get_location(&self, version: &str) -> Result<PathBuf, RegistryError> {
         todo!()
     }
 }

@@ -1,7 +1,11 @@
+use crate::ontology::error::RegistryError;
 use std::path::PathBuf;
 
 pub(crate) trait OntologyRegistry {
-    fn register(&self, version: &str) -> Result<PathBuf, anyhow::Error>;
-    fn deregister(&self, version: &str) -> Result<bool, anyhow::Error>;
-    fn get_location(&self, version: &str) -> Result<PathBuf, anyhow::Error>;
+    #[allow(dead_code)]
+    fn register(&self, version: &str) -> Result<PathBuf, RegistryError>;
+    #[allow(dead_code)]
+    fn deregister(&self, version: &str) -> Result<bool, RegistryError>;
+    #[allow(dead_code)]
+    fn get_location(&self, version: &str) -> Result<PathBuf, RegistryError>;
 }
