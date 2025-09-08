@@ -255,7 +255,7 @@ mod integration_tests {
             println!("Skipping test_get_latest_release_tag");
             return;
         }
-
+        println!("Running integration test_get_latest_release_tag");
         let client = GithubReleaseClient::new();
 
         let version = client
@@ -273,6 +273,7 @@ mod integration_tests {
             println!("Skipping test_get_release_file");
             return;
         }
+        println!("Running integration test_get_release_file");
 
         let client = GithubReleaseClient::new();
 
