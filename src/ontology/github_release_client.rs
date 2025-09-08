@@ -231,3 +231,60 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use regex::Regex;
+    use rstest::{fixture, rstest};
+
+    #[fixture]
+    fn repo_name() -> String {
+        "human-phenotype-ontology".to_string()
+    }
+
+    #[fixture]
+    fn repo_owner() -> String {
+        "obophenotype".to_string()
+    }
+
+    #[rstest]
+    fn test_get_latest_release_tag(repo_name: String, repo_owner: String) {
+        let ci = std::env::var("CI");
+        if ci.is_ok() {
+            println!("Skipping test_get_latest_release_tag");
+            return;
+        }
+
+        let client = GithubReleaseClient::new();
+
+        let version = client
+            .get_latest_release_tag(repo_owner.as_ref(), repo_name.as_ref())
+            .unwrap();
+
+        let version_regex = Regex::new(r"^v\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$").unwrap();
+        assert!(version_regex.is_match(&version));
+    }
+
+    #[rstest]
+    fn test_get_release_file(repo_name: String, repo_owner: String) {
+        let ci = std::env::var("CI");
+        if ci.is_ok() {
+            println!("Skipping test_get_release_file");
+            return;
+        }
+
+        let client = GithubReleaseClient::new();
+
+        let response = client
+            .get_release_file(
+                repo_owner.as_ref(),
+                repo_name.as_str(),
+                "hp-base.json",
+                "v2025-09-01",
+            )
+            .unwrap();
+        let hpo = response.text().unwrap();
+        assert!(hpo.contains("http://purl.obolibrary.org/obo/hp/releases/2025-09-01/hp-base.json"));
+    }
+}
