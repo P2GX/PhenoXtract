@@ -104,6 +104,9 @@ impl CellContext {
             alias_map,
         }
     }
+    pub fn get_alias_map(&self) -> &HashMap<String, CellValue> {
+        &self.alias_map
+    }
 }
 
 /// Represents the context for one or more series (columns or rows).
@@ -138,6 +141,14 @@ impl SeriesContext {
             .map(|context_container| context_container.context)
             .unwrap_or(Context::None)
     }
+    pub fn get_cell_context_option(&self) -> &Option<CellContext>
+    {
+        match self {
+            SeriesContext::Single(single) => &single.cells,
+            SeriesContext::Multi(multi) => &multi.cells,
+        }
+    }
+
     #[allow(unused)]
     pub fn with_context(mut self, context: Context) -> Self {
         let id_context_ref = match &mut self {
