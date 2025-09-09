@@ -73,8 +73,21 @@ pub(crate) enum CellValue {
     Bool(bool),
 }
 
-/// Provides detailed context for processing the values within all cells of a column.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+pub(crate) enum AliasMap {
+    #[allow(unused)]
+    StringToString(HashMap<String, String>),
+    #[allow(unused)]
+    StringToInt(HashMap<String, i64>),
+    #[allow(unused)]
+    StringToFloat(HashMap<String, f64>),
+    #[allow(unused)]
+    StringToBool(HashMap<String, bool>),
+}
+
+/// Provides detailed context for processing the values within all cells of a column.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct CellContext {
     /// The semantic context of the cell's data.
     #[allow(unused)]
@@ -89,14 +102,14 @@ pub(crate) struct CellContext {
     /// A map to replace specific string values with another `CellValue`.
     ///
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: HashMap<String, CellValue>,
+    alias_map: Option<AliasMap>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 }
 impl CellContext {
     pub fn new(
         context: Context,
         fill_missing: Option<CellValue>,
-        alias_map: HashMap<String, CellValue>,
+        alias_map: Option<AliasMap>,
     ) -> CellContext {
         CellContext {
             context,
@@ -104,7 +117,7 @@ impl CellContext {
             alias_map,
         }
     }
-    pub fn get_alias_map(&self) -> &HashMap<String, CellValue> {
+    pub fn get_alias_map(&self) -> &Option<AliasMap> {
         &self.alias_map
     }
 }
@@ -141,8 +154,7 @@ impl SeriesContext {
             .map(|context_container| context_container.context)
             .unwrap_or(Context::None)
     }
-    pub fn get_cell_context_option(&self) -> &Option<CellContext>
-    {
+    pub fn get_cell_context_option(&self) -> &Option<CellContext> {
         match self {
             SeriesContext::Single(single) => &single.cells,
             SeriesContext::Multi(multi) => &multi.cells,
@@ -170,7 +182,7 @@ impl SeriesContext {
         if let Some(cell_context) = cells_option {
             cell_context.context = context;
         } else {
-            *cells_option = Some(CellContext::new(context, None, HashMap::default()));
+            *cells_option = Some(CellContext::new(context, None, None));
         }
         self
     }
