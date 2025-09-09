@@ -51,6 +51,8 @@ pub enum Context {
     SubjectId,
     #[allow(unused)]
     SubjectSex,
+    #[allow(unused)]
+    AgeInYears,
     #[default]
     None,
     //...
@@ -77,13 +79,13 @@ pub(crate) enum CellValue {
 #[serde(untagged)]
 pub(crate) enum AliasMap {
     #[allow(unused)]
-    StringToString(HashMap<String, String>),
+    ToString(HashMap<String, String>),
     #[allow(unused)]
-    StringToInt(HashMap<String, i64>),
+    ToInt(HashMap<String, i64>),
     #[allow(unused)]
-    StringToFloat(HashMap<String, f64>),
+    ToFloat(HashMap<String, f64>),
     #[allow(unused)]
-    StringToBool(HashMap<String, bool>),
+    ToBool(HashMap<String, bool>),
 }
 
 /// Provides detailed context for processing the values within all cells of a column.

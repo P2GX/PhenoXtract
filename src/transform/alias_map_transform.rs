@@ -1,12 +1,10 @@
-use crate::config::table_context::AliasMap::{
-    StringToBool, StringToFloat, StringToInt, StringToString,
-};
+use crate::config::table_context::AliasMap::{ToBool, ToFloat, ToInt, ToString};
 use crate::config::table_context::SeriesContext;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
-use polars::prelude::{NamedFrom, Series};
+use polars::prelude::{AnyValue, NamedFrom, Series};
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::ParseBoolError;
 
@@ -44,11 +42,14 @@ impl Strategy for AliasMapTransform {
                             "Could not convert a column to a series.".to_string(),
                         ))?
                         .iter()
-                        .map(|val| val.to_string())
+                        .map(|val| match val {
+                            AnyValue::String(s) => s.to_string(),
+                            _ => val.to_string(),
+                        })
                         .collect::<Vec<String>>();
 
                     match alias_map {
-                        StringToString(hm) => {
+                        ToString(hm) => {
                             let transformed_vec: Vec<String> = vec_of_strings
                                 .iter()
                                 .map(|str| match hm.get(str) {
@@ -61,7 +62,7 @@ impl Strategy for AliasMapTransform {
                             table.data_mut().replace(&col_name, transformed_s).unwrap();
                             Ok(())
                         }
-                        StringToInt(hm) => {
+                        ToInt(hm) => {
                             let transformed_vec_result: Result<Vec<i64>, ParseIntError> =
                                 vec_of_strings
                                     .iter()
@@ -85,7 +86,7 @@ impl Strategy for AliasMapTransform {
                                 )),
                             }
                         }
-                        StringToFloat(hm) => {
+                        ToFloat(hm) => {
                             let transformed_vec_result: Result<Vec<f64>, ParseFloatError> =
                                 vec_of_strings
                                     .iter()
@@ -109,7 +110,7 @@ impl Strategy for AliasMapTransform {
                                 )),
                             }
                         }
-                        StringToBool(hm) => {
+                        ToBool(hm) => {
                             let transformed_vec_result: Result<Vec<bool>, ParseBoolError> =
                                 vec_of_strings
                                     .iter()
@@ -145,5 +146,80 @@ impl Strategy for AliasMapTransform {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::table_context::AliasMap::{ToInt, ToString};
+    use crate::config::table_context::Context::{AgeInYears, SubjectId};
+    use crate::config::table_context::SeriesContext::Single;
+    use crate::config::table_context::{CellContext, SingleSeriesContext, TableContext};
+    use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+    use crate::transform::alias_map_transform::AliasMapTransform;
+    use crate::transform::traits::Strategy;
+    use polars::frame::DataFrame;
+    use polars::prelude::Column;
+    use rstest::{fixture, rstest};
+    use std::collections::HashMap;
+
+    #[fixture]
+    fn hm1() -> HashMap<String, String> {
+        let mut hm1 = HashMap::new();
+        hm1.insert(String::from("P002"), String::from("patient 2"));
+        hm1.insert(String::from("P004"), String::from("P4"));
+        hm1
+    }
+
+    #[fixture]
+    fn cc1(hm1: HashMap<String, String>) -> CellContext {
+        CellContext::new(SubjectId, None, Some(ToString(hm1)))
+    }
+
+    #[fixture]
+    fn ssc1(cc1: CellContext) -> SingleSeriesContext {
+        SingleSeriesContext::new("patient_id".to_string(), SubjectId, Some(cc1), vec![])
+    }
+
+    #[fixture]
+    fn hm2() -> HashMap<String, i64> {
+        let mut hm2 = HashMap::new();
+        hm2.insert(String::from("35"), 40);
+        hm2
+    }
+
+    #[fixture]
+    fn cc2(hm2: HashMap<String, i64>) -> CellContext {
+        CellContext::new(AgeInYears, None, Some(ToInt(hm2)))
+    }
+
+    #[fixture]
+    fn ssc2(cc2: CellContext) -> SingleSeriesContext {
+        SingleSeriesContext::new("age".to_string(), AgeInYears, Some(cc2), vec![])
+    }
+
+    #[fixture]
+    fn tc(ssc1: SingleSeriesContext, ssc2: SingleSeriesContext) -> TableContext {
+        TableContext::new("patient_data".to_string(), vec![Single(ssc1), Single(ssc2)])
+    }
+
+    #[fixture]
+    fn data() -> DataFrame {
+        let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
+        let col2 = Column::new("age".into(), [35, 16, 35, 25]);
+        DataFrame::new(vec![col1, col2]).unwrap()
+    }
+
+    #[fixture]
+    fn cdf(tc: TableContext, data: DataFrame) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(tc, data)
+    }
+
+    #[rstest]
+    fn test_transformation(mut cdf: ContextualizedDataFrame) {
+        let alias_map_transform = AliasMapTransform {};
+        println!("{:?}", cdf);
+        alias_map_transform.transform(&mut cdf).unwrap();
+        println!("{:?}", cdf);
     }
 }
