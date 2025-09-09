@@ -199,7 +199,7 @@ mod tests {
 
     #[fixture]
     fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
+        tempfile::tempdir().expect("Failed to create temporary directory.")
     }
 
     #[fixture]
