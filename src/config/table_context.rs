@@ -123,14 +123,14 @@ pub(crate) enum SeriesContext {
 impl SeriesContext {
     pub fn get_context(&self) -> Context {
         match self {
-            SeriesContext::Single(single) => single.id_context.clone(),
+            SeriesContext::Single(single) => single.header_context.clone(),
             SeriesContext::Multi(multi) => multi.id_context.clone(),
         }
     }
 
     pub fn get_cell_context(&self) -> Context {
         let cells_option = match self {
-            SeriesContext::Single(single) => &single.cells,
+            SeriesContext::Single(single) => &single.cell_context,
             SeriesContext::Multi(multi) => &multi.cells,
         };
         cells_option
@@ -141,7 +141,7 @@ impl SeriesContext {
     #[allow(unused)]
     pub fn with_context(mut self, context: Context) -> Self {
         let id_context_ref = match &mut self {
-            SeriesContext::Single(single) => &mut single.id_context,
+            SeriesContext::Single(single) => &mut single.header_context,
             SeriesContext::Multi(multi) => &mut multi.id_context,
         };
 
@@ -153,7 +153,7 @@ impl SeriesContext {
     #[allow(unused)]
     pub fn with_cell_context(mut self, context: Context) -> Self {
         let cells_option = match &mut self {
-            SeriesContext::Single(single) => &mut single.cells,
+            SeriesContext::Single(single) => &mut single.cell_context,
             SeriesContext::Multi(multi) => &mut multi.cells,
         };
         if let Some(cell_context) = cells_option {
@@ -174,15 +174,25 @@ pub(crate) struct SingleSeriesContext {
     #[allow(unused)]
     #[serde(default)]
     /// The semantic context found in the header/index of the series.
-    id_context: Context,
+    header_context: Option<Context>,
     #[allow(unused)]
     /// The context to apply to every cell within this series.
-    cells: Option<CellContext>,
-    /// A unique ID that can be used to link to other series
+    cell_context: Option<Context>,
+    /// A default value to replace empty fields in a cell
+    #[allow(unused)]
+    fill_missing: Option<CellValue>,
+    #[allow(unused)]
+    #[serde(default)]
+    /// A map to replace specific string values with another `CellValue`.
+    ///
+    /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
+    alias_map: HashMap<String, CellValue>,
+    // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
     #[allow(unused)]
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
     pub linked_to: Vec<String>,
+
 }
 
 impl SingleSeriesContext {
@@ -195,8 +205,8 @@ impl SingleSeriesContext {
     ) -> Self {
         SingleSeriesContext {
             identifier,
-            id_context,
-            cells,
+            header_context: id_context,
+            cell_context: cells,
             linked_to,
         }
     }
