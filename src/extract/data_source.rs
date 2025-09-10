@@ -36,7 +36,7 @@ impl DataSource {
         has_header: &bool,
     ) -> Result<ContextualizedDataFrame, ExtractionError> {
         if !patients_are_rows {
-            let column_names: Vec<String>;
+            let mut column_names = None;
 
             if *has_header {
                 // Assuming, that the headers are in the first column of the dataframe
@@ -48,21 +48,16 @@ impl DataSource {
                             "No columns in DataFrame".to_string(),
                         ))?;
 
-                column_names = index_column
+                column_names = Some(Either::Right(index_column
                 .str()
                 .into_iter()
                 .flatten()
                 .map(|s| s.expect("Unable to cast column name into string, when transposing DataFrame. If your data is oriented horizontally make sure the identifiers are located in the first column.").to_string())
-                .collect();
+                .collect()));
 
                 cdf.data = cdf.data.drop(index_column.name())?;
-            } else {
-                // Assuming, that the user declared the index of the rows as identifiers
-                column_names = generate_default_column_names(cdf.data.height() as i64);
             }
-            cdf.data = cdf
-                .data
-                .transpose(None, Some(Either::Right(column_names.clone())))?;
+            cdf.data = cdf.data.transpose(None, column_names.clone())?;
         }
 
         Ok(cdf)
@@ -93,11 +88,28 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
-                let cdf = DataSource::conditional_transpose(
+                let mut cdf = DataSource::conditional_transpose(
                     ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
                     &csv_source.extraction_config.patients_are_rows,
                     &csv_source.extraction_config.has_headers,
                 )?;
+
+                if !csv_source.extraction_config.has_headers {
+                    let default_column_names =
+                        generate_default_column_names(cdf.data.width() as i64);
+                    let current_column_names: Vec<String> = cdf
+                        .data
+                        .get_column_names()
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect();
+
+                    for (col_name, new_col_name) in
+                        current_column_names.iter().zip(default_column_names)
+                    {
+                        cdf.data.rename(col_name.as_str(), new_col_name.into())?;
+                    }
+                }
 
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
@@ -161,18 +173,20 @@ impl Extractable for DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::MultiIdentifier::Regex;
     use crate::config::table_context::{
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
+    use polars::prelude::DataFrame;
+    use regex::escape;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
     use std::f64;
     use std::fmt::Write;
     use std::fs::File;
     use std::io::Write as StdWrite;
-
     use tempfile::TempDir;
 
     #[fixture]
@@ -273,9 +287,23 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    //column-wise data with headers
     #[fixture]
-    fn test_tc1() -> TableContext {
+    fn extraction_config_headers_patients_in_rows() -> ExtractionConfig {
+        ExtractionConfig::new("first_sheet".to_string(), true, true)
+    }
+
+    #[fixture]
+    fn extract_config_headers_patient_in_columns() -> ExtractionConfig {
+        ExtractionConfig::new("second_sheet".to_string(), true, false)
+    }
+
+    #[fixture]
+    fn extraction_config_no_headers_patients_in_rows() -> ExtractionConfig {
+        ExtractionConfig::new("third_sheet".to_string(), false, true)
+    }
+
+    #[fixture]
+    fn table_context_columns_wise_header() -> TableContext {
         TableContext::new(
             "first_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
@@ -292,13 +320,7 @@ mod tests {
     }
 
     #[fixture]
-    fn test_ec1() -> ExtractionConfig {
-        ExtractionConfig::new("first_sheet".to_string(), true, true)
-    }
-
-    //row-wise data with headers
-    #[fixture]
-    fn test_tc2() -> TableContext {
+    fn table_context_row_wise_header() -> TableContext {
         TableContext::new(
             "second_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
@@ -315,54 +337,57 @@ mod tests {
     }
 
     #[fixture]
-    fn test_ec2() -> ExtractionConfig {
-        ExtractionConfig::new("second_sheet".to_string(), true, false)
-    }
-
-    //column-wise data without headers
-    #[fixture]
-    fn test_tc3(test_tc1: TableContext) -> TableContext {
-        let mut test_tc3 = test_tc1.clone();
+    fn table_context_column_wise_header(
+        table_context_columns_wise_header: TableContext,
+    ) -> TableContext {
+        let mut test_tc3 = table_context_columns_wise_header.clone();
         test_tc3.name = "third_sheet".to_string();
         test_tc3
     }
 
-    #[fixture]
-    fn test_ec3() -> ExtractionConfig {
-        ExtractionConfig::new("third_sheet".to_string(), false, true)
-    }
-
     //row-wise data without headers
     #[fixture]
-    fn test_tc4(test_tc2: TableContext) -> TableContext {
-        let mut test_tc4 = test_tc2.clone();
+    fn table_context_row_wise_no_header(
+        table_context_row_wise_header: TableContext,
+    ) -> TableContext {
+        let mut test_tc4 = table_context_row_wise_header.clone();
         test_tc4.name = "fourth_sheet".to_string();
         test_tc4
     }
 
     #[fixture]
-    fn test_ec4() -> ExtractionConfig {
+    fn extraction_config_no_heads_patients_in_columns() -> ExtractionConfig {
         ExtractionConfig::new("fourth_sheet".to_string(), false, false)
     }
 
     #[fixture]
-    fn test_tcs(
-        test_tc1: TableContext,
-        test_tc2: TableContext,
-        test_tc3: TableContext,
-        test_tc4: TableContext,
+    fn table_contexts(
+        table_context_columns_wise_header: TableContext,
+        table_context_row_wise_header: TableContext,
+        table_context_column_wise_header: TableContext,
+        table_context_row_wise_no_header: TableContext,
     ) -> Vec<TableContext> {
-        vec![test_tc1, test_tc2, test_tc3, test_tc4]
+        vec![
+            table_context_columns_wise_header,
+            table_context_row_wise_header,
+            table_context_column_wise_header,
+            table_context_row_wise_no_header,
+        ]
     }
 
     #[fixture]
-    fn test_ecs(
-        test_ec1: ExtractionConfig,
-        test_ec2: ExtractionConfig,
-        test_ec3: ExtractionConfig,
-        test_ec4: ExtractionConfig,
+    fn extraction_configs(
+        extraction_config_headers_patients_in_rows: ExtractionConfig,
+        extract_config_headers_patient_in_columns: ExtractionConfig,
+        extraction_config_no_headers_patients_in_rows: ExtractionConfig,
+        extraction_config_no_heads_patients_in_columns: ExtractionConfig,
     ) -> Vec<ExtractionConfig> {
-        vec![test_ec1, test_ec2, test_ec3, test_ec4]
+        vec![
+            extraction_config_headers_patients_in_rows,
+            extract_config_headers_patient_in_columns,
+            extraction_config_no_headers_patients_in_rows,
+            extraction_config_no_heads_patients_in_columns,
+        ]
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -370,8 +395,8 @@ mod tests {
     fn test_extract_csv(
         temp_dir: TempDir,
         csv_data: Vec<u8>,
-        test_tc1: TableContext,
-        test_ec1: ExtractionConfig,
+        table_context_columns_wise_header: TableContext,
+        extraction_config_headers_patients_in_rows: ExtractionConfig,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
         hpo_ids: [&'static str; 4],
@@ -385,14 +410,14 @@ mod tests {
         let data_source = DataSource::Csv(CSVDataSource::new(
             file_path,
             Some(','),
-            test_tc1.clone(),
-            test_ec1.clone(),
+            table_context_columns_wise_header.clone(),
+            extraction_config_headers_patients_in_rows.clone(),
         ));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
 
-        assert_eq!(context_df.context(), &test_tc1);
+        assert_eq!(context_df.context(), &table_context_columns_wise_header);
 
         let expected_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
         let extracted_data = context_df.data;
@@ -416,11 +441,170 @@ mod tests {
         }
     }
 
+    #[rstest]
+    fn test_extract_csv_no_heads_patients_in_columns(
+        temp_dir: TempDir,
+        extraction_config_no_heads_patients_in_columns: ExtractionConfig,
+    ) {
+        let test_data = r#"
+PID_1,PID_2,PID_3
+54,55,56
+M,F,M
+18,27,89"#;
+
+        let table_context = TableContext::default();
+        let file_path = temp_dir.path().join("test_data.csv");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(test_data.as_bytes()).unwrap();
+
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            table_context.clone(),
+            extraction_config_no_heads_patients_in_columns.clone(),
+        ));
+
+        let mut data_frames = data_source.extract().unwrap();
+        let context_df = data_frames.pop().expect("No data");
+        assert_eq!(context_df.context(), &table_context);
+
+        let expected_df = df![
+            "0" => &["PID_1", "PID_2", "PID_3"],
+            "1" => &["54", "55", "56"],
+            "2" => &["M", "F", "M"],
+            "3" => &["18", "27", "89"]
+        ]
+        .unwrap();
+        assert_eq!(expected_df, context_df.data)
+    }
+
+    #[rstest]
+    fn test_extract_csv_no_headers_patients_in_rows(
+        temp_dir: TempDir,
+        extraction_config_no_headers_patients_in_rows: ExtractionConfig,
+    ) {
+        let test_data = br#"
+PID_1,54,M,18
+PID_2,55,F,27
+PID_3,56,M,89"#;
+
+        let table_context = TableContext::default();
+        let file_path = temp_dir.path().join("test_data.csv");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(test_data).unwrap();
+
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            table_context.clone(),
+            extraction_config_no_headers_patients_in_rows.clone(),
+        ));
+
+        let mut data_frames = data_source.extract().unwrap();
+        let cdf = data_frames.pop().expect("No data");
+        assert_eq!(cdf.context(), &table_context);
+
+        let expected_df: DataFrame = df![
+            "0" => &["PID_1", "PID_2", "PID_3"],
+            "1" => &[54, 55,56],
+            "2" => &["M", "F", "M"],
+            "3" => &[18, 27, 89]
+        ]
+        .unwrap();
+
+        dbg!(cdf.data.clone());
+        dbg!(expected_df.clone());
+
+        assert_eq!(expected_df, cdf.data);
+    }
+
+    #[rstest]
+    fn test_extract_csv_headers_patients_in_rows(
+        temp_dir: TempDir,
+        extraction_config_headers_patients_in_rows: ExtractionConfig,
+    ) {
+        let test_data = br#"
+Patient_IDs,HPO_IDs,SEX,AGE
+PID_1,54,M,18
+PID_2,55,F,27
+PID_3,56,M,89"#;
+
+        let table_context = TableContext::default();
+        let file_path = temp_dir.path().join("test_data.csv");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(test_data).unwrap();
+
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            table_context.clone(),
+            extraction_config_headers_patients_in_rows.clone(),
+        ));
+
+        let mut data_frames = data_source.extract().unwrap();
+        let cdf = data_frames.pop().expect("No data");
+        assert_eq!(cdf.context(), &table_context);
+
+        let expected_df: DataFrame = df![
+            "Patient_IDs" => &["PID_1", "PID_2", "PID_3"],
+            "HPO_IDs" => &[54, 55,56],
+            "SEX" => &["M", "F", "M"],
+            "AGE" => &[18, 27, 89]
+        ]
+        .unwrap();
+
+        dbg!(cdf.data.clone());
+        dbg!(expected_df.clone());
+
+        assert_eq!(expected_df, cdf.data);
+    }
+
+    #[rstest]
+    fn test_extract_csv_extract_config_headers_patient_in_columns(
+        temp_dir: TempDir,
+        extract_config_headers_patient_in_columns: ExtractionConfig,
+    ) {
+        let test_data = br#"
+Patient_IDs,PID_1,PID_2,PID_3
+HPO_IDs,54,55,56
+SEX,M,F,M
+AGE,18,27,89"#;
+
+        let table_context = TableContext::default();
+        let file_path = temp_dir.path().join("test_data.csv");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(test_data).unwrap();
+
+        let data_source = DataSource::Csv(CSVDataSource::new(
+            file_path,
+            Some(','),
+            table_context.clone(),
+            extract_config_headers_patient_in_columns.clone(),
+        ));
+
+        let mut data_frames = data_source.extract().unwrap();
+        let cdf = data_frames.pop().expect("No data");
+        assert_eq!(cdf.context(), &table_context);
+
+        let expected_df: DataFrame = df![
+            "Patient_IDs" => &["PID_1", "PID_2", "PID_3"],
+            "HPO_IDs" => &["54", "55","56"],
+            "SEX" => &["M", "F", "M"],
+            "AGE" => &["18", "27", "89"]
+        ]
+        .unwrap();
+
+        dbg!(cdf.data.clone());
+        dbg!(expected_df.clone());
+
+        assert_eq!(expected_df, cdf.data);
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_excel(
-        test_tcs: Vec<TableContext>,
-        test_ecs: Vec<ExtractionConfig>,
+        table_contexts: Vec<TableContext>,
+        extraction_configs: Vec<ExtractionConfig>,
         temp_dir: TempDir,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
@@ -496,8 +680,8 @@ mod tests {
         //Now we test the extraction
         let data_source = DataSource::Excel(ExcelDatasource::new(
             file_path,
-            test_tcs.clone(),
-            test_ecs.clone(),
+            table_contexts.clone(),
+            extraction_configs.clone(),
         ));
 
         let data_frames = data_source.extract().unwrap();
@@ -604,24 +788,6 @@ mod tests {
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>(),
             vec!["patient1", "patient2"]
-        );
-    }
-
-    #[rstest]
-    fn test_transpose_without_header() {
-        let cdf = create_test_cdf();
-        let result = DataSource::conditional_transpose(cdf.clone(), &false, &false).unwrap();
-
-        assert_eq!(result.data.shape().0, cdf.data.width());
-        assert_eq!(result.data.shape().1, cdf.data.height());
-        assert_eq!(
-            result
-                .data
-                .get_column_names()
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-            generate_default_column_names(result.data.get_columns().len() as i64)
         );
     }
 }
