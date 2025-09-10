@@ -5,7 +5,7 @@ use polars::prelude::DataFrame;
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
