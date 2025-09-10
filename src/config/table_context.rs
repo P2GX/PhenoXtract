@@ -10,7 +10,7 @@ use validator::Validate;
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq, Default)]
 #[validate(schema(
     function = "validate_at_least_one_subject_id",
     skip_on_field_errors = false
