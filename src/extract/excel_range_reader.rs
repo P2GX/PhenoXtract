@@ -121,7 +121,7 @@ impl ExcelRangeReader {
         &self,
         loading_vectors: Vec<Vec<AnyValue>>,
     ) -> Result<Vec<Column>, ExtractionError> {
-        let column_names = generate_default_column_names(loading_vectors.len() as i64);
+        let default_column_names = generate_default_column_names(loading_vectors.len() as i64);
         loading_vectors
             .iter()
             .enumerate()
@@ -134,7 +134,7 @@ impl ExcelRangeReader {
                     header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
                     data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                 } else {
-                    header = column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Try to access vector at {i}. On Vector with len {}", column_names.len()).to_string()))?.to_string();
+                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}", default_column_names.len()).to_string()))?.to_string();
                     data = vec;
                 }
 

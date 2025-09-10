@@ -13,7 +13,7 @@ use validator::Validate;
 ///
 /// This struct defines how to interpret a table, including its name and the
 /// context for its series, which can be organized as columns or rows.
-#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq, Default)]
 #[validate(schema(
     function = "validate_at_least_one_subject_id",
     skip_on_field_errors = false
@@ -103,6 +103,7 @@ pub(crate) struct CellContext {
     alias_map: HashMap<String, CellValue>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 }
+
 impl CellContext {
     pub fn new(
         context: Context,
