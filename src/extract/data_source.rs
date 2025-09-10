@@ -595,9 +595,6 @@ PID_3,56,M,89"#;
         ]
         .unwrap();
 
-        dbg!(cdf.data.clone());
-        dbg!(expected_df.clone());
-
         assert_eq!(expected_df, cdf.data);
     }
 
@@ -636,9 +633,6 @@ PID_3,56,M,89"#;
         ]
         .unwrap();
 
-        dbg!(cdf.data.clone());
-        dbg!(expected_df.clone());
-
         assert_eq!(expected_df, cdf.data);
     }
 
@@ -676,9 +670,6 @@ AGE,18,27,89"#;
             "AGE" => &[18, 27, 89]
         ]
         .unwrap();
-
-        dbg!(cdf.data.clone());
-        dbg!(expected_df.clone());
 
         assert_eq!(expected_df, cdf.data);
     }
