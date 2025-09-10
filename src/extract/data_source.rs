@@ -257,13 +257,13 @@ impl Extractable for DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::MultiIdentifier::Regex;
     use crate::config::table_context::{
         CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
     };
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::TimeUnit;
+    use polars::prelude::DataFrame;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
     use std::f64;
