@@ -52,7 +52,7 @@ impl DataSource {
                 .str()
                 .into_iter()
                 .flatten()
-                .map(|s| s.expect("Unable to cast column name into string, when transposing DataFrame. If your data is oriented horizontally make sure the identifier are located in the first column.").to_string())
+                .map(|s| s.expect("Unable to cast column name into string, when transposing DataFrame. If your data is oriented horizontally make sure the identifiers are located in the first column.").to_string())
                 .collect();
 
                 cdf.data = cdf.data.drop(index_column.name())?;
