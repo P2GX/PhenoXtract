@@ -553,9 +553,9 @@ M,F,M
 
         let expected_df = df![
             "0" => &["PID_1", "PID_2", "PID_3"],
-            "1" => &["54", "55", "56"],
+            "1" => &[54, 55, 56],
             "2" => &["M", "F", "M"],
-            "3" => &["18", "27", "89"]
+            "3" => &[18, 27, 89]
         ]
         .unwrap();
         assert_eq!(expected_df, context_df.data)
@@ -671,9 +671,9 @@ AGE,18,27,89"#;
 
         let expected_df: DataFrame = df![
             "Patient_IDs" => &["PID_1", "PID_2", "PID_3"],
-            "HPO_IDs" => &["54", "55","56"],
+            "HPO_IDs" => &[54, 55,56],
             "SEX" => &["M", "F", "M"],
-            "AGE" => &["18", "27", "89"]
+            "AGE" => &[18, 27, 89]
         ]
         .unwrap();
 
