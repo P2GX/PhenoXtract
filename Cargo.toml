@@ -18,7 +18,9 @@ calamine = { version = "0.30.0", features = ["dates"] }
 regex = "1.11.1"
 log = "0.4.27"
 
+
 [dev-dependencies]
 rstest = "0.26.1"
 tempfile = "3.8"
 rust_xlsxwriter = "0.90.0"
+serde_json = "1.0.142"

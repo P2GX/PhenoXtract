@@ -1667,6 +1667,7 @@ dependencies = [
  "rstest",
  "rust_xlsxwriter",
  "serde",
+ "serde_json",
  "tempfile",
  "validator",
 ]
