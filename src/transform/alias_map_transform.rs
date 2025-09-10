@@ -39,7 +39,7 @@ impl Strategy for AliasMapTransform {
                     let vec_of_strings = col
                         .as_series()
                         .ok_or(StrategyError(
-                            "Could not convert a column to a series.".to_string(),
+                            format!("Could not convert column {col_name} to a series.").to_string(),
                         ))?
                         .iter()
                         .map(|val| match val {

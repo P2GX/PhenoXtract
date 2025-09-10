@@ -88,6 +88,25 @@ pub(crate) enum AliasMap {
     ToBool(HashMap<String, bool>),
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub(crate) struct Partition {
+    /// interval boundaries is the start and end points of the intervals which make up the partition
+    /// interval aliases corresponds to the alias of the intervals (when they are ordered). if there are n interval boundaries there should be n+1 interval aliases
+    /// if inclusive_exclusive is true then intervals have the form {x <= y < z : real y} if it is false then they have the form {x < y <= z : real y}
+    /// EXAMPLE:
+    /// interval_boundaries = vec!(0, 5, 15)
+    /// interval_aliases = vec!(invalid, underweight, healthy weight, overweight)
+    /// inclusive_exclusive = false
+    /// corresponds to the quantification:
+    /// -infinity < weight <= 0: invalid
+    /// 0 < weight <= 5: underweight
+    /// 5 < weight <= 15: healthy weight
+    /// 15 < weight < infinity: overweight
+    pub interval_boundaries: Vec<f64>,
+    pub interval_aliases: Vec<String>,
+    pub inclusive_exclusive: bool,
+}
+
 /// Provides detailed context for processing the values within all cells of a column.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct CellContext {
@@ -105,22 +124,30 @@ pub(crate) struct CellContext {
     ///
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
     alias_map: Option<AliasMap>,
-    // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
+    /// floats or integers will be converted according to the partition. If an interval alias is "NC" (standing for no change) then the numbers will be left as they are in that interval.
+    #[allow(unused)]
+    quantifier: Option<Partition>,
 }
 impl CellContext {
     pub fn new(
         context: Context,
         fill_missing: Option<CellValue>,
         alias_map: Option<AliasMap>,
+        quantifier: Option<Partition>,
     ) -> CellContext {
         CellContext {
             context,
             fill_missing,
             alias_map,
+            quantifier,
         }
     }
     pub fn get_alias_map(&self) -> &Option<AliasMap> {
         &self.alias_map
+    }
+
+    pub fn get_quantifier(&self) -> &Option<Partition> {
+        &self.quantifier
     }
 }
 
@@ -184,7 +211,7 @@ impl SeriesContext {
         if let Some(cell_context) = cells_option {
             cell_context.context = context;
         } else {
-            *cells_option = Some(CellContext::new(context, None, None));
+            *cells_option = Some(CellContext::new(context, None, None, None));
         }
         self
     }
