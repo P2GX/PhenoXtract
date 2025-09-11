@@ -97,21 +97,21 @@ pub(crate) enum Identifier {
 pub(crate) struct SeriesContext {
     /// The identifier for the (possibly multiple) series.
     pub(crate) identifier: Identifier,
-    
+
     /// The semantic context found in the header(s) of the series.
     header_context: Option<Context>,
     /// The context that applies to every cell within this series.
     data_context: Option<Context>,
-    
+
     /// A default value to replace empty fields in a cell
     #[allow(unused)]
     fill_missing: Option<CellValue>,
-    
+
     #[allow(unused)]
     #[serde(default)]
     /// A map to replace specific string values with another `CellValue`.
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: HashMap<String, CellValue>,
+    alias_map: Option<HashMap<String, CellValue>>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 
     #[serde(default)]
@@ -125,13 +125,17 @@ impl SeriesContext {
     pub(crate) fn new(
         identifier: Identifier,
         header_context: Option<Context>,
-        cells: Option<CellContext>,
+        data_context: Option<Context>,
+        fill_missing: Option<CellValue>,
+        alias_map: Option<CellValue>,
         linked_to: Vec<String>,
     ) -> Self {
-        SingleSeriesContext {
+        SeriesContext {
             identifier,
-            id_context,
-            cells,
+            header_context,
+            data_context,
+            fill_missing,
+            alias_map,
             linked_to,
         }
     }
@@ -160,7 +164,7 @@ impl SeriesContext {
         *header_context_ref = Some(context);
         self
     }
-    
+
     #[allow(unused)]
     pub fn with_data_context(mut self, context: Context) -> Self {
         let data_context_ref = &mut self.data_context;
