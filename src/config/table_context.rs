@@ -5,7 +5,10 @@ use crate::validation::table_context_validation::validate_unique_identifiers;
 use crate::validation::table_context_validation::validate_unique_series_linking;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Display;
 use validator::Validate;
+
 /// Represents the contextual information for an entire table.
 ///
 /// This struct defines how to interpret a table, including its name and the
@@ -51,9 +54,17 @@ pub enum Context {
     SubjectId,
     #[allow(unused)]
     SubjectSex,
+    #[allow(unused)]
+    SubjectAge,
     #[default]
     None,
     //...
+}
+
+impl Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 /// Represents the value of a single cell, which can be one of several primitive types.
@@ -92,6 +103,7 @@ pub(crate) struct CellContext {
     alias_map: HashMap<String, CellValue>,
     // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
 }
+
 impl CellContext {
     pub fn new(
         context: Context,
@@ -121,6 +133,10 @@ pub(crate) enum SeriesContext {
 }
 
 impl SeriesContext {
+    /// Returns the identifier context associated with this `SeriesContext`.
+    ///
+    /// For `Single` variants, this is the `id_context` of the contained single series.
+    /// For `Multi` variants, this is the `id_context` of the contained multi series.
     pub fn get_context(&self) -> Context {
         match self {
             SeriesContext::Single(single) => single.id_context.clone(),
@@ -168,18 +184,15 @@ impl SeriesContext {
 /// Defines the context for a single, specific series (e.g., a column or row).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct SingleSeriesContext {
-    #[allow(unused)]
     /// The unique identifier for the series.
     pub(crate) identifier: String,
-    #[allow(unused)]
     #[serde(default)]
     /// The semantic context found in the header/index of the series.
     id_context: Context,
-    #[allow(unused)]
     /// The context to apply to every cell within this series.
     cells: Option<CellContext>,
     /// A unique ID that can be used to link to other series
-    #[allow(unused)]
+
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
     pub linked_to: Vec<String>,
@@ -205,9 +218,7 @@ impl SingleSeriesContext {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum MultiIdentifier {
-    #[allow(unused)]
     Regex(String),
-    #[allow(unused)]
     Multi(Vec<String>),
 }
 
@@ -217,14 +228,11 @@ pub(crate) enum MultiIdentifier {
 /// for example, all columns whose names start with "measurement_".
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 pub(crate) struct MultiSeriesContext {
-    #[allow(unused)]
     /// A regular expression used to match and select multiple series identifiers.
     #[validate(custom(function = "validate_multi_identifier"))]
     pub(crate) multi_identifier: MultiIdentifier,
-    #[allow(unused)]
     /// The semantic context to apply to the identifiers of all matched column header or row indexes.
     id_context: Context,
-    #[allow(unused)]
     /// The context to apply to every cell in all of the matched series.
     cells: Option<CellContext>,
 }
