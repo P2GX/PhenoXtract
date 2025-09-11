@@ -1,8 +1,7 @@
-use crate::validation::multi_series_context_validation::validate_multi_identifier;
+use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
-use crate::validation::table_context_validation::validate_unique_series_linking;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -19,7 +18,6 @@ use validator::Validate;
     skip_on_field_errors = false
 ))]
 #[validate(schema(function = "validate_series_linking"))]
-#[validate(schema(function = "validate_unique_series_linking"))]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
@@ -89,7 +87,7 @@ pub(crate) enum CellValue {
 /// If it has Regex type, then the columns will be determined by the regular expression
 /// NOTE: if the regex string corresponds exactly to a column name, then that single column will be identified.
 /// If it has multi type, then the strings within the vector will be the headers of the relevant columns.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub(crate) enum Identifier {
     Regex(String),
@@ -109,9 +107,9 @@ pub(crate) enum AliasMap {
     ToBool(HashMap<String, bool>),
 }
 
-
 /// Represents the context for one or more series in a table.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
+#[validate(schema(function = "validate_identifier"))]
 pub(crate) struct SeriesContext {
     /// The identifier for the (possibly multiple) series.
     pub(crate) identifier: Identifier,
@@ -133,11 +131,10 @@ pub(crate) struct SeriesContext {
 
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
-    pub linked_to: Vec<String>,
+    pub linked_to: Vec<Identifier>,
 }
 
 impl SeriesContext {
-
     #[allow(unused)]
     pub(crate) fn new(
         identifier: Identifier,
@@ -145,7 +142,7 @@ impl SeriesContext {
         data_context: Option<Context>,
         fill_missing: Option<CellValue>,
         alias_map: Option<AliasMap>,
-        linked_to: Vec<String>,
+        linked_to: Vec<Identifier>,
     ) -> Self {
         SeriesContext {
             identifier,
@@ -163,16 +160,16 @@ impl SeriesContext {
 
     pub fn get_header_context(&self) -> Context {
         let header_context_opt = self.header_context.clone();
-        header_context_opt
-            .clone()
-            .unwrap_or(Context::None)
+        header_context_opt.clone().unwrap_or(Context::None)
     }
 
     pub fn get_data_context(&self) -> Context {
         let data_context_opt = self.data_context.clone();
-        data_context_opt
-            .clone()
-            .unwrap_or(Context::None)
+        data_context_opt.clone().unwrap_or(Context::None)
+    }
+
+    pub fn get_links(&self) -> Vec<Identifier> {
+        self.linked_to.clone()
     }
 
     #[allow(unused)]

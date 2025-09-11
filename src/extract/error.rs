@@ -13,6 +13,8 @@ pub enum ExtractionError {
     VectorIndexing(String),
     #[allow(dead_code)]
     NoStringInHeader(String),
+    #[allow(dead_code)]
+    UnableToFindTableContext(String),
 }
 
 impl From<PolarsError> for ExtractionError {
