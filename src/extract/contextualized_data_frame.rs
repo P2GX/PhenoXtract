@@ -6,7 +6,7 @@ use validator::Validate;
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Debug, PartialEq, Validate)]
+#[derive(Debug, PartialEq, Validate, Default)]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
