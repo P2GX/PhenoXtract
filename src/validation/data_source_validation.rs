@@ -114,7 +114,7 @@ mod tests {
         let validation = validate_unique_sheet_names(&table_context);
         assert!(validation.is_err());
     }
-    // ----------
+
     fn mock_extraction_config(name: &str) -> ExtractionConfig {
         ExtractionConfig {
             name: name.to_string(),
@@ -129,10 +129,6 @@ mod tests {
             context: vec![],
         }
     }
-
-    //================================================================================
-    //== Tests for validate_extraction_config_unique_ids
-    //================================================================================
 
     #[test]
     fn test_unique_ids_success_with_no_duplicates() {
@@ -179,12 +175,11 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
 
-        // The order of detection might vary, so we check for presence
         let duplicates_str = error.params.get("duplicates").unwrap();
 
         if let Value::Array(arr) = duplicates_str {
             let reconstructed_duplicates: Result<Vec<&String>, String> = arr
-                .into_iter()
+                .iter()
                 .map(|val| {
                     if let Value::String(s) = val {
                         Ok(s)
@@ -207,10 +202,6 @@ mod tests {
 
         println!("{}", duplicates_str);
     }
-
-    //================================================================================
-    //== Tests for validate_extraction_config_links
-    //================================================================================
 
     #[test]
     fn test_links_success_with_matching_names() {
@@ -247,7 +238,7 @@ mod tests {
         let result = validate_extraction_config_links(&source);
         assert!(result.is_err());
 
-        let mut error = result.unwrap_err();
+        let error = result.unwrap_err();
         assert_eq!(error.code, "linking");
         assert_eq!(error.message.unwrap(), "Missing link on Extraction Config.");
         let mut vec = error
