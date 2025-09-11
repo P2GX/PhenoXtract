@@ -190,4 +190,88 @@ mod tests {
         let err = PhenoXtractorConfig::load(file_path);
         assert!(err.is_err());
     }
+
+    #[rstest]
+    fn test_load_complete_config(temp_dir: TempDir) {
+        let data: &[u8] = br#"
+data_sources:
+  - type: "csv"
+    source: "./data/example.csv"
+    separator: ","
+    context:
+      name: "TestTable"
+      context:
+        - identifier: "patient_id"
+          id_context: subject_id
+          cells:
+            context: "hpo_label"
+            fill_missing: "Zollinger-Ellison syndrome"
+            alias_map:
+              "null": "Primary peritoneal carcinoma"
+              "neoplasma": 4
+              "smoker": true
+              "height": 1.85
+          linked_to:
+          - "visit_table"
+          - "demographics_table"
+    extraction_config:
+      name: "Sheet1"
+      has_headers: true
+      patients_are_rows: true
+
+  - type: "excel"
+    source: "./data/example.excel"
+    contexts:
+      - name: "Sheet1"
+        context:
+        - multi_identifier: "lab_result_.*"
+          id_context: subject_id
+          cells:
+            context: "hpo_label"
+            fill_missing: "Zollinger-Ellison syndrome"
+            alias_map:
+              "null": "Primary peritoneal carcinoma"
+              "neoplasma": 4
+              "smoker": true
+              "height": 1.85
+      - name: "Sheet2"
+        context:
+        - multi_identifier:
+          - "Col_1"
+          - "Col_2"
+          - "Col_3"
+          id_context: subject_id
+          cells:
+            context: "hpo_label"
+            fill_missing: "Zollinger-Ellison syndrome"
+            alias_map:
+              "null": "Primary peritoneal carcinoma"
+              "neoplasma": 4
+              "smoker": true
+              "height": 1.85
+    extraction_configs:
+      - name: "Sheet1"
+        has_headers: true
+        patients_are_rows: true
+      - name: "Sheet2"
+        has_headers: true
+        patients_are_rows: true
+
+pipeline:
+  transform_strategies:
+    - "alias_mapping"
+    - "fill_null"
+  loader: "file_system"
+
+meta_data:
+  created_by: Rouven Reuter
+  submitted_by: Magnus Knut Hansen
+    "#;
+
+        let file_path = PathBuf::from_str("config.yaml").unwrap();
+        let mut file = StdFile::create(&file_path).unwrap();
+        file.write_all(data).unwrap();
+        let err = PhenoXtractorConfig::load(file_path).unwrap();
+        dbg!(err);
+    }
 }
