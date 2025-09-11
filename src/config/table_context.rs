@@ -130,7 +130,7 @@ pub(crate) struct SeriesContext {
     alias_map: Option<AliasMap>,
 
     #[serde(default)]
-    /// List of IDs that link to other tables, can be used to determine the relationship between these columns
+    /// List of IDs that link to other tables, can be used to determine the relationship between these columns.
     pub linked_to: Vec<Identifier>,
 }
 
