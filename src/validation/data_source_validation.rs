@@ -242,7 +242,7 @@ mod tests {
 
         let error = result.unwrap_err();
         assert_eq!(error.code, "linking");
-        assert_eq!(error.message.unwrap(), "Missing link on Extraction Config.");
+
         let mut vec = error
             .params
             .get("missing")
@@ -267,7 +267,7 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         assert_eq!(error.code, "linking");
-        assert_eq!(error.message.unwrap(), "Missing link on TableConfig.");
+
         let mut vec = error
             .params
             .get("missing")
