@@ -48,6 +48,11 @@ impl GithubOntologyRegistry {
         self
     }
 
+    pub fn with_file_name(mut self, file_name: String) -> Self {
+        self.file_name = file_name;
+        self
+    }
+
     /// Creates a default registry specifically for the Human Phenotype Ontology (HPO).
     ///
     /// This constructor configures the registry to download `hp-base.json` from the
@@ -105,20 +110,23 @@ impl OntologyRegistry for GithubOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
-        let mut out_path = self.registry_path.clone();
-        out_path.push(format!("{}_{}_{}", self.repo_name, version, self.file_name));
-
-        if out_path.exists() {
-            debug!("HPO version already registered. {}", out_path.display());
-            return Ok(out_path);
-        }
-
         let resolved_version = if version == "latest" {
             self.github_client
                 .get_latest_release_tag(self.repo_owner.as_str(), self.repo_name.as_str())?
         } else {
             version.to_string()
         };
+
+        let mut out_path = self.registry_path.clone();
+        out_path.push(format!(
+            "{}_{}_{}",
+            self.repo_name, resolved_version, self.file_name
+        ));
+
+        if out_path.exists() {
+            debug!("HPO version already registered. {}", out_path.display());
+            return Ok(out_path);
+        }
 
         let mut resp = self.github_client.get_release_file(
             self.repo_owner.as_str(),
