@@ -1,29 +1,15 @@
 use crate::ontology::error::RegistryError;
-use flate2::Compression;
-use flate2::bufread::GzDecoder;
-use flate2::write::GzEncoder;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
-use std::fs::File;
-use std::io::{BufReader, Cursor, Read, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
 pub(crate) fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, RegistryError> {
     let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
-    let mut json_data = Vec::new();
-    BufReader::new(File::open(hpo_path)?).read_to_end(&mut json_data)?;
-
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-
-    encoder.write_all(&json_data)?;
-    let compressed = encoder.finish()?;
-    let reader = GzDecoder::new(Cursor::new(compressed));
-
-    Ok(Rc::new(
-        loader.load_from_read(reader).expect("HPO should be loaded"),
-    ))
+    Ok(Rc::new(loader.load_from_path(hpo_path.clone()).expect(
+        &format!("Failed to load from {}", hpo_path.display()),
+    )))
 }
 
 #[cfg(test)]
