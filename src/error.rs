@@ -1,5 +1,6 @@
 use crate::extract::error::ExtractionError;
 use crate::transform::error::TransformError;
+use validator::ValidationErrors;
 
 #[allow(dead_code)]
 pub enum ConstructionError {
@@ -8,19 +9,27 @@ pub enum ConstructionError {
 
 pub enum PipelineError {
     #[allow(dead_code)]
-    ExtractionError(ExtractionError),
+    Extraction(ExtractionError),
     #[allow(dead_code)]
-    TransformError(TransformError),
+    Transform(TransformError),
+    #[allow(dead_code)]
+    Validation(ValidationErrors),
 }
 
 impl From<ExtractionError> for PipelineError {
     fn from(err: ExtractionError) -> PipelineError {
-        PipelineError::ExtractionError(err)
+        PipelineError::Extraction(err)
     }
 }
 
 impl From<TransformError> for PipelineError {
     fn from(err: TransformError) -> PipelineError {
-        PipelineError::TransformError(err)
+        PipelineError::Transform(err)
+    }
+}
+
+impl From<ValidationErrors> for PipelineError {
+    fn from(err: ValidationErrors) -> PipelineError {
+        PipelineError::Validation(err)
     }
 }

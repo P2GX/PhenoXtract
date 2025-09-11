@@ -9,7 +9,7 @@ version = "0.1.0"
 
 [dependencies]
 config = "0.15.13"
-polars = "0.50.0"
+polars = { version = "0.50.0", features = ["lazy"] }
 serde = "1.0.219"
 anyhow = "1.0.98"
 phenopackets = "0.2.2-post1"
@@ -17,8 +17,14 @@ validator = { version = "0.20.0", features = ["derive"] }
 calamine = { version = "0.30.0", features = ["dates"] }
 regex = "1.11.1"
 log = "0.4.27"
+reqwest = { version = "0.12.23", features = ["blocking", "json"] }
+either = "1.15.0"
+chrono = "0.4.41"
+
 
 [dev-dependencies]
 rstest = "0.26.1"
 tempfile = "3.8"
 rust_xlsxwriter = "0.90.0"
+mockito = "1.7.0"
+serde_json = "1.0.143"

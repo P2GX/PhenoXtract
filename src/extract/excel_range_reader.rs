@@ -1,5 +1,6 @@
 use crate::extract::error::ExtractionError;
 use crate::extract::extraction_config::ExtractionConfig;
+use crate::extract::utils::generate_default_column_names;
 use calamine::{Data, Range};
 use log::{info, warn};
 use polars::datatypes::AnyValue;
@@ -28,7 +29,7 @@ impl ExcelRangeReader {
         Ok(dataframe)
     }
 
-    fn create_loading_vectors<'a>(&'a self) -> Vec<Vec<AnyValue<'a>>> {
+    fn create_loading_vectors(&'_ self) -> Vec<Vec<AnyValue<'_>>> {
         let number_of_vecs;
         let loading_vector_capacity;
         if self.extraction_config.patients_are_rows {
@@ -120,6 +121,7 @@ impl ExcelRangeReader {
         &self,
         loading_vectors: Vec<Vec<AnyValue>>,
     ) -> Result<Vec<Column>, ExtractionError> {
+        let default_column_names = generate_default_column_names(loading_vectors.len() as i64);
         loading_vectors
             .iter()
             .enumerate()
@@ -130,9 +132,9 @@ impl ExcelRangeReader {
                 if self.extraction_config.has_headers {
                     let h = vec.first().ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                     header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
-                    data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("No data contained in vector.".to_string()))?;
+                    data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                 } else {
-                    header = format!("column_{}",i+1);
+                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}", default_column_names.len()).to_string()))?.to_string();
                     data = vec;
                 }
 
