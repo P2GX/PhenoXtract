@@ -156,7 +156,18 @@ impl OntologyRegistry for GithubOntologyRegistry {
     #[allow(dead_code)]
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Result<PathBuf, RegistryError> {
-        todo!()
+        let file_path = self
+            .registry_path
+            .clone()
+            .join(self.construct_file_name(version));
+        if !file_path.exists() {
+            return Err(RegistryError::NotRegistered(
+                format!("Version: {version} not registered in registry").to_string(),
+            ));
+        }
+
+        debug!("Returned register location {}", file_path.display());
+        Ok(file_path)
     }
 }
 
