@@ -384,9 +384,12 @@ mod tests {
     fn extraction_config_no_headers_patients_in_rows() -> ExtractionConfig {
         ExtractionConfig::new("third_sheet".to_string(), false, true)
     }
-
     #[fixture]
-    fn table_context_columns_wise_header() -> TableContext {
+    fn extraction_config_no_heads_patients_in_columns() -> ExtractionConfig {
+        ExtractionConfig::new("fourth_sheet".to_string(), false, false)
+    }
+    #[fixture]
+    fn table_context_column_wise_header() -> TableContext {
         TableContext::new(
             "first_sheet".to_string(),
             vec![SeriesContext::Single(SingleSeriesContext::new(
@@ -420,15 +423,14 @@ mod tests {
     }
 
     #[fixture]
-    fn table_context_column_wise_header(
-        table_context_columns_wise_header: TableContext,
+    fn table_context_column_wise_no_header(
+        table_context_column_wise_header: TableContext,
     ) -> TableContext {
-        let mut test_tc3 = table_context_columns_wise_header.clone();
+        let mut test_tc3 = table_context_column_wise_header.clone();
         test_tc3.name = "third_sheet".to_string();
         test_tc3
     }
 
-    //row-wise data without headers
     #[fixture]
     fn table_context_row_wise_no_header(
         table_context_row_wise_header: TableContext,
@@ -439,21 +441,16 @@ mod tests {
     }
 
     #[fixture]
-    fn extraction_config_no_heads_patients_in_columns() -> ExtractionConfig {
-        ExtractionConfig::new("fourth_sheet".to_string(), false, false)
-    }
-
-    #[fixture]
     fn table_contexts(
-        table_context_columns_wise_header: TableContext,
-        table_context_row_wise_header: TableContext,
         table_context_column_wise_header: TableContext,
+        table_context_row_wise_header: TableContext,
+        table_context_column_wise_no_header: TableContext,
         table_context_row_wise_no_header: TableContext,
     ) -> Vec<TableContext> {
         vec![
-            table_context_columns_wise_header,
-            table_context_row_wise_header,
             table_context_column_wise_header,
+            table_context_row_wise_header,
+            table_context_column_wise_no_header,
             table_context_row_wise_no_header,
         ]
     }
@@ -478,7 +475,7 @@ mod tests {
     fn test_extract_csv(
         temp_dir: TempDir,
         csv_data: Vec<u8>,
-        table_context_columns_wise_header: TableContext,
+        table_context_column_wise_header: TableContext,
         extraction_config_headers_patients_in_rows: ExtractionConfig,
         column_names: [&'static str; 4],
         patient_ids: [&'static str; 4],
@@ -493,14 +490,14 @@ mod tests {
         let data_source = DataSource::Csv(CSVDataSource::new(
             file_path,
             Some(','),
-            table_context_columns_wise_header.clone(),
+            table_context_column_wise_header.clone(),
             extraction_config_headers_patients_in_rows.clone(),
         ));
 
         let mut data_frames = data_source.extract().unwrap();
         let context_df = data_frames.pop().expect("No data");
 
-        assert_eq!(context_df.context(), &table_context_columns_wise_header);
+        assert_eq!(context_df.context(), &table_context_column_wise_header);
 
         let expected_data: [&[&str]; 4] = [&patient_ids, &hpo_ids, &disease_ids, &subject_sexes];
         let extracted_data = context_df.data;
