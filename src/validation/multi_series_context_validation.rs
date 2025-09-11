@@ -21,12 +21,13 @@ pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
+    use crate::config::table_context::Context;
     use super::*;
 
     #[test]
     fn test_multi_identifier_regex_delegates() {
         let id = Identifier::Regex("^[a-z]+$".to_string());
-        let sc = SeriesContext::new(id, None, None, None, None, vec![]);
+        let sc = SeriesContext::new(id, Context::None, Context::None, None, None, vec![]);
         let result = validate_identifier(&sc);
         assert!(result.is_ok());
     }
@@ -34,7 +35,7 @@ mod tests {
     #[test]
     fn test_multi_identifier_multi_empty_vec_errors() {
         let id = Identifier::Multi(vec![]);
-        let sc = SeriesContext::new(id, None, None, None, None, vec![]);
+        let sc = SeriesContext::new(id, Context::None, Context::None, None, None, vec![]);
         let result = validate_identifier(&sc);
 
         assert!(result.is_err());
@@ -46,7 +47,7 @@ mod tests {
     #[test]
     fn test_multi_identifier_multi_non_empty_vec_ok() {
         let id = Identifier::Multi(vec!["abc".to_string()]);
-        let sc = SeriesContext::new(id, None, None, None, None, vec![]);
+        let sc = SeriesContext::new(id, Context::None, Context::None, None, None, vec![]);
         let result = validate_identifier(&sc);
         assert!(result.is_ok());
     }

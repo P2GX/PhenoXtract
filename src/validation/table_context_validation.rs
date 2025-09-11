@@ -96,8 +96,8 @@ mod tests {
     fn regex(regex: &str) -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex(regex.to_string()),
-            None,
-            None,
+            Context::None,
+            Context::None,
             None,
             None,
             vec![],
@@ -107,8 +107,8 @@ mod tests {
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
         SeriesContext::new(
             Identifier::Multi(ids.iter().map(|id| id.to_string()).collect()),
-            None,
-            None,
+            Context::None,
+            Context::None,
             None,
             None,
             vec![],
@@ -222,16 +222,16 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![Identifier::Regex("A".to_string())],
@@ -250,16 +250,16 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![Identifier::Regex("non_existent_link".to_string())],
@@ -299,16 +299,16 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
@@ -327,24 +327,24 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Multi(vec!["test".to_string()]),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![Identifier::Regex("A".to_string())],
@@ -363,24 +363,24 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("C".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![
@@ -402,24 +402,24 @@ mod tests {
             vec![
                 SeriesContext::new(
                     Identifier::Regex("A".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("B".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("C".to_string()),
-                    None,
-                    None,
+                    Context::None,
+                    Context::None,
                     None,
                     None,
                     vec![

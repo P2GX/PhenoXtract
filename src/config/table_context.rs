@@ -116,9 +116,9 @@ pub(crate) struct SeriesContext {
     pub(crate) identifier: Identifier,
 
     /// The semantic context found in the header(s) of the series.
-    header_context: Option<Context>,
+    header_context: Context,
     /// The context that applies to every cell within this series.
-    data_context: Option<Context>,
+    data_context: Context,
 
     /// A default value to replace empty fields in a cell
     #[allow(unused)]
@@ -139,8 +139,8 @@ impl SeriesContext {
     #[allow(unused)]
     pub(crate) fn new(
         identifier: Identifier,
-        header_context: Option<Context>,
-        data_context: Option<Context>,
+        header_context: Context,
+        data_context: Context,
         fill_missing: Option<CellValue>,
         alias_map: Option<AliasMap>,
         linked_to: Vec<Identifier>,
@@ -160,13 +160,11 @@ impl SeriesContext {
     }
 
     pub fn get_header_context(&self) -> Context {
-        let header_context_opt = self.header_context.clone();
-        header_context_opt.clone().unwrap_or(Context::None)
+        self.header_context.clone()
     }
 
     pub fn get_data_context(&self) -> Context {
-        let data_context_opt = self.data_context.clone();
-        data_context_opt.clone().unwrap_or(Context::None)
+        self.data_context.clone()
     }
 
     pub fn get_links(&self) -> Vec<Identifier> {
@@ -176,14 +174,14 @@ impl SeriesContext {
     #[allow(unused)]
     pub fn with_header_context(mut self, context: Context) -> Self {
         let header_context_ref = &mut self.header_context;
-        *header_context_ref = Some(context);
+        *header_context_ref = context;
         self
     }
 
     #[allow(unused)]
     pub fn with_data_context(mut self, context: Context) -> Self {
         let data_context_ref = &mut self.data_context;
-        *data_context_ref = Some(context);
+        *data_context_ref = context;
         self
     }
 }

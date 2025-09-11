@@ -261,7 +261,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::table_context::Identifier::Regex;
-    use crate::config::table_context::{SeriesContext, TableContext};
+    use crate::config::table_context::{Context, SeriesContext, TableContext};
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
@@ -396,8 +396,8 @@ mod tests {
             "first_sheet".to_string(),
             vec![SeriesContext::new(
                 Regex("patient_id".to_string()),
-                None,
-                None,
+                Context::None,
+                Context::None,
                 None,
                 None,
                 vec![Regex("disease_id".to_string())],
@@ -411,8 +411,8 @@ mod tests {
             "second_sheet".to_string(),
             vec![SeriesContext::new(
                 Regex("age".to_string()),
-                None,
-                None,
+                Context::None,
+                Context::None,
                 None,
                 None,
                 vec![Regex("weight".to_string())],
