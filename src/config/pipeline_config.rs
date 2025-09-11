@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This struct holds the necessary information to define how data
 /// should be loaded and transformed.
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+#[derive(Debug, Deserialize, Clone, Serialize, Default, PartialEq)]
 pub struct PipelineConfig {
     #[allow(unused)]
     /// A list of strategies to transform the data. Each string identifies
@@ -19,4 +19,14 @@ pub struct PipelineConfig {
     /// a more complex configuration object.
     /// TODO: String for now, later enum
     loader: String,
+}
+
+impl PipelineConfig {
+    #[allow(dead_code)]
+    pub fn new(transform_strategies: Vec<String>, loader: String) -> Self {
+        Self {
+            transform_strategies,
+            loader,
+        }
+    }
 }

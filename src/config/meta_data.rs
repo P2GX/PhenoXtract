@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Holds all shared meta data for the phenopackets produced by the pipeline
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct MetaData {
     #[allow(unused)]
     #[serde(default = "default_creator")]
