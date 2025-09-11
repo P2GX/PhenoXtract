@@ -101,7 +101,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
         }
 
         let mut out_path = self.registry_path.clone();
-        out_path.push(format!("{}_{}.json", self.repo_name, version));
+        out_path.push(format!("{}_{}_{}", self.repo_name, version, self.file_name));
 
         if out_path.exists() {
             debug!("HPO version already registered. {}", out_path.display());
@@ -303,7 +303,9 @@ mod tests {
         mock_server: ServerGuard,
     ) {
         let tmp = TempDir::new().unwrap();
-        let file_path = tmp.path().join(format!("{repo_name}_v1.0.0.json"));
+        let file_path = tmp
+            .path()
+            .join(format!("{repo_name}_v1.0.0_{release_file_name}"));
 
         std::fs::write(&file_path, "already here").unwrap();
 
