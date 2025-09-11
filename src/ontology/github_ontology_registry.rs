@@ -394,12 +394,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_location_success(temp_dir: TempDir) {
+    fn test_get_location_success(temp_dir: TempDir, mock_server: ServerGuard) {
         let registry_path = temp_dir.path().to_path_buf();
 
         let reg = build_registry(
             &temp_dir,
-            "".to_string(),
+            mock_server.url(),
             "repo_name".to_string(),
             "repo_owner".to_string(),
             "release_file_name.json".to_string(),
@@ -415,10 +415,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_location_not_registered(temp_dir: TempDir) {
+    fn test_get_location_not_registered(temp_dir: TempDir, mock_server: ServerGuard) {
         let reg = build_registry(
             &temp_dir,
-            "".to_string(),
+            mock_server.url(),
             "repo_name".to_string(),
             "repo_owner".to_string(),
             "release_file_name.json".to_string(),
@@ -429,10 +429,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_deregister_success(temp_dir: TempDir) {
+    fn test_deregister_success(temp_dir: TempDir, mock_server: ServerGuard) {
         let reg = build_registry(
             &temp_dir,
-            "".to_string(),
+            mock_server.url(),
             "repo_name".to_string(),
             "repo_owner".to_string(),
             "release_file_name.json".to_string(),
@@ -449,10 +449,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_deregister_not_registered(temp_dir: TempDir) {
+    fn test_deregister_not_registered(temp_dir: TempDir, mock_server: ServerGuard) {
         let reg = build_registry(
             &temp_dir,
-            "".to_string(),
+            mock_server.url(),
             "repo_name".to_string(),
             "repo_owner".to_string(),
             "release_file_name.json".to_string(),
