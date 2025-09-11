@@ -96,6 +96,7 @@ pub(crate) enum Identifier {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum AliasMap {
     #[allow(unused)]
     ToString(HashMap<String, String>),
