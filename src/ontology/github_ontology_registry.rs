@@ -77,6 +77,10 @@ impl GithubOntologyRegistry {
             "hp-base.json".to_string(),
         ))
     }
+
+    fn construct_file_name(&self, version: &str) -> String {
+        format!("{}_{}_{}", self.repo_name, version, self.file_name)
+    }
 }
 impl OntologyRegistry for GithubOntologyRegistry {
     /// Downloads and registers an ontology file from GitHub for a specific version.
@@ -347,5 +351,13 @@ mod tests {
         let contents = std::fs::read_to_string(path.clone()).unwrap();
         assert!(contents.contains("latest_tag"));
         assert!(contents.contains("graphs"));
+    }
+
+    #[rstest]
+    fn test_construct_file_name() {
+        let reg = GithubOntologyRegistry::default_hpo_registry().unwrap();
+
+        let file_name = reg.construct_file_name("1.0.0");
+        assert_eq!(file_name, "human-phenotype-ontology_1.0.0_hp-base.json");
     }
 }
