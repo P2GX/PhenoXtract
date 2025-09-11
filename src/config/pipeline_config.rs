@@ -22,6 +22,7 @@ pub struct PipelineConfig {
 }
 
 impl PipelineConfig {
+    #[allow(dead_code)]
     pub fn new(transform_strategies: Vec<String>, loader: String) -> Self {
         Self {
             transform_strategies,
