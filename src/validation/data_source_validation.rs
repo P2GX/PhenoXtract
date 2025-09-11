@@ -114,7 +114,6 @@ mod tests {
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);
-        dbg!(&validation);
         assert!(validation.is_err());
     }
 
