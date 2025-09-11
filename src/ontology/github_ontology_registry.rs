@@ -201,6 +201,11 @@ mod tests {
     }
 
     #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    #[fixture]
     fn mock_server(
         latest_tag: String,
         repo_owner: String,
@@ -303,11 +308,10 @@ mod tests {
         release_file_name: String,
         release_version: String,
         mock_server: ServerGuard,
+        temp_dir: TempDir,
     ) {
-        let tmp = TempDir::new().unwrap();
-
         let registry = build_registry(
-            &tmp,
+            &temp_dir,
             mock_server.url(),
             repo_name,
             repo_owner,
@@ -356,11 +360,10 @@ mod tests {
         repo_owner: String,
         release_file_name: String,
         mock_server: ServerGuard,
+        temp_dir: TempDir,
     ) {
-        let tmp = TempDir::new().unwrap();
-
         let registry = build_registry(
-            &tmp,
+            &temp_dir,
             mock_server.url(),
             repo_name,
             repo_owner,
@@ -381,5 +384,74 @@ mod tests {
 
         let file_name = reg.construct_file_name("1.0.0");
         assert_eq!(file_name, "human-phenotype-ontology_1.0.0_hp-base.json");
+    }
+
+    #[rstest]
+    fn test_get_location_success(temp_dir: TempDir) {
+        let registry_path = temp_dir.path().to_path_buf();
+
+        let reg = build_registry(
+            &temp_dir,
+            "".to_string(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let file_name = reg.construct_file_name("1.0.0");
+        let file_path = registry_path.join(&file_name);
+        File::create(&file_path).unwrap();
+
+        let result = reg.get_location("1.0.0");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), file_path);
+    }
+
+    #[rstest]
+    fn test_get_location_not_registered(temp_dir: TempDir) {
+        let reg = build_registry(
+            &temp_dir,
+            "".to_string(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let result = reg.get_location("1.0.0");
+        assert!(matches!(result, Err(RegistryError::NotRegistered(_))));
+    }
+
+    #[rstest]
+    fn test_deregister_success(temp_dir: TempDir) {
+        let reg = build_registry(
+            &temp_dir,
+            "".to_string(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let file_name = reg.construct_file_name("1.0.0");
+        let file_path = temp_dir.path().to_path_buf().join(&file_name);
+        File::create(&file_path).unwrap();
+        assert!(file_path.exists());
+
+        let result = reg.deregister("1.0.0");
+        assert!(result.is_ok());
+        assert!(!file_path.exists());
+    }
+
+    #[rstest]
+    fn test_deregister_not_registered(temp_dir: TempDir) {
+        let reg = build_registry(
+            &temp_dir,
+            "".to_string(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let result = reg.deregister("1.0.0");
+        assert!(matches!(result, Err(RegistryError::NotRegistered(_))));
     }
 }
