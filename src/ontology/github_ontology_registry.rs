@@ -5,7 +5,7 @@ use crate::ontology::error::RegistryError;
 use crate::ontology::github_release_client::GithubReleaseClient;
 use log::debug;
 use std::env;
-use std::fs::File;
+use std::fs::{File, remove_file};
 use std::io::copy;
 use std::path::PathBuf;
 
@@ -105,7 +105,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
         }
 
         let mut out_path = self.registry_path.clone();
-        out_path.push(format!("{}_{}_{}", self.repo_name, version, self.file_name));
+        out_path.push(self.construct_file_name(version));
 
         if out_path.exists() {
             debug!("HPO version already registered. {}", out_path.display());
@@ -139,8 +139,19 @@ impl OntologyRegistry for GithubOntologyRegistry {
     }
     #[allow(dead_code)]
     #[allow(unused)]
-    fn deregister(&self, version: &str) -> Result<bool, RegistryError> {
-        todo!()
+    fn deregister(&self, version: &str) -> Result<(), RegistryError> {
+        let file_path = self
+            .registry_path
+            .clone()
+            .join(self.construct_file_name(version));
+        if !file_path.exists() {
+            return Err(RegistryError::NotRegistered(
+                format!("Version: {version} not registered in registry").to_string(),
+            ));
+        }
+        remove_file(file_path.clone())?;
+        debug!("Deregistered {}", file_path.display());
+        Ok(())
     }
     #[allow(dead_code)]
     #[allow(unused)]
