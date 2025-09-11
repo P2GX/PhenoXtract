@@ -145,6 +145,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
             .clone()
             .join(self.construct_file_name(version));
         if !file_path.exists() {
+            debug!("Unable do deregistered: {}", file_path.display());
             return Err(RegistryError::NotRegistered(
                 format!("Version: {version} not registered in registry").to_string(),
             ));
@@ -161,6 +162,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
             .clone()
             .join(self.construct_file_name(version));
         if !file_path.exists() {
+            debug!("Unable do getting location: {}", file_path.display());
             return None;
         }
 
