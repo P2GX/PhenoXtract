@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
-#[derive(Debug, Deserialize, Validate, Serialize, Clone)]
+#[derive(Debug, Deserialize, Validate, Serialize, Clone, PartialEq)]
 pub struct PhenoXtractorConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     #[allow(unused)]
@@ -62,8 +62,18 @@ impl PhenoXtractorConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::{
+        CellContext, CellValue, SeriesContext, SingleSeriesContext, TableContext,
+    };
+    use crate::config::table_context::{
+        Context as PhenopacketContext, MultiIdentifier, MultiSeriesContext,
+    };
+    use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
+    use crate::extract::excel_data_source::ExcelDatasource;
+    use crate::extract::extraction_config::ExtractionConfig;
     use rstest::*;
+    use std::collections::HashMap;
     use std::fs::File as StdFile;
     use std::io::Write;
     use std::str::FromStr;
@@ -268,10 +278,129 @@ meta_data:
   submitted_by: Magnus Knut Hansen
     "#;
 
-        let file_path = PathBuf::from_str("config.yaml").unwrap();
+        let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(data).unwrap();
-        let err = PhenoXtractorConfig::load(file_path).unwrap();
-        dbg!(err);
+        let config = PhenoXtractorConfig::load(file_path).unwrap();
+
+        let expected_config = PhenoXtractorConfig {
+            meta_data: MetaData {
+                created_by: Some("Rouven Reuter".to_string()),
+                submitted_by: "Magnus Knut Hansen".to_string(),
+            },
+            pipeline: Some(PipelineConfig::new(
+                vec!["alias_mapping".to_string(), "fill_null".to_string()],
+                "file_system".to_string(),
+            )),
+            data_sources: vec![
+                // First data source: CSV
+                DataSource::Csv(CSVDataSource {
+                    source: PathBuf::from("./data/example.csv"),
+                    separator: Some(','),
+                    extraction_config: ExtractionConfig {
+                        name: "Sheet1".to_string(),
+                        has_headers: true,
+                        patients_are_rows: true,
+                    },
+                    context: TableContext {
+                        name: "TestTable".to_string(),
+                        context: vec![SeriesContext::Single(SingleSeriesContext::new(
+                            "patient_id".to_string(),
+                            PhenopacketContext::SubjectId,
+                            Some(CellContext::new(
+                                PhenopacketContext::HpoLabel,
+                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                                HashMap::from([
+                                    (
+                                        "null".to_string(),
+                                        CellValue::String(
+                                            "Primary peritoneal carcinoma".to_string(),
+                                        ),
+                                    ),
+                                    ("neoplasma".to_string(), CellValue::Int(4)),
+                                    ("smoker".to_string(), CellValue::Bool(true)),
+                                    ("height".to_string(), CellValue::Float(1.85)),
+                                ]),
+                            )),
+                            vec!["visit_table".to_string(), "demographics_table".to_string()],
+                        ))],
+                    },
+                }),
+                // Second data source: Excel
+                DataSource::Excel(ExcelDatasource {
+                    source: PathBuf::from("./data/example.excel"),
+                    extraction_configs: vec![
+                        ExtractionConfig {
+                            name: "Sheet1".to_string(),
+                            has_headers: true,
+                            patients_are_rows: true,
+                        },
+                        ExtractionConfig {
+                            name: "Sheet2".to_string(),
+                            has_headers: true,
+                            patients_are_rows: true,
+                        },
+                    ],
+                    contexts: vec![
+                        // Context for "Sheet1"
+                        TableContext {
+                            name: "Sheet1".to_string(),
+                            context: vec![SeriesContext::Multi(MultiSeriesContext::new(
+                                MultiIdentifier::Regex("lab_result_.*".to_string()),
+                                PhenopacketContext::SubjectId,
+                                Some(CellContext::new(
+                                    PhenopacketContext::HpoLabel,
+                                    Some(CellValue::String(
+                                        "Zollinger-Ellison syndrome".to_string(),
+                                    )),
+                                    HashMap::from([
+                                        (
+                                            "null".to_string(),
+                                            CellValue::String(
+                                                "Primary peritoneal carcinoma".to_string(),
+                                            ),
+                                        ),
+                                        ("neoplasma".to_string(), CellValue::Int(4)),
+                                        ("smoker".to_string(), CellValue::Bool(true)),
+                                        ("height".to_string(), CellValue::Float(1.85)),
+                                    ]),
+                                )),
+                            ))],
+                        },
+                        // Context for "Sheet2"
+                        TableContext {
+                            name: "Sheet2".to_string(),
+                            context: vec![SeriesContext::Multi(MultiSeriesContext::new(
+                                MultiIdentifier::Multi(vec![
+                                    "Col_1".to_string(),
+                                    "Col_2".to_string(),
+                                    "Col_3".to_string(),
+                                ]),
+                                PhenopacketContext::SubjectId,
+                                Some(CellContext::new(
+                                    PhenopacketContext::HpoLabel,
+                                    Some(CellValue::String(
+                                        "Zollinger-Ellison syndrome".to_string(),
+                                    )),
+                                    HashMap::from([
+                                        (
+                                            "null".to_string(),
+                                            CellValue::String(
+                                                "Primary peritoneal carcinoma".to_string(),
+                                            ),
+                                        ),
+                                        ("neoplasma".to_string(), CellValue::Int(4)),
+                                        ("smoker".to_string(), CellValue::Bool(true)),
+                                        ("height".to_string(), CellValue::Float(1.85)),
+                                    ]),
+                                )),
+                            ))],
+                        },
+                    ],
+                }),
+            ],
+        };
+
+        assert_eq!(config, expected_config);
     }
 }

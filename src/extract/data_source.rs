@@ -19,7 +19,7 @@ use calamine::{Reader, Xlsx, open_workbook};
 ///
 /// This enum uses a `tag` to differentiate between source types (e.g., "csv", "excel")
 /// when deserializing from a configuration file.
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type")]
 pub enum DataSource {

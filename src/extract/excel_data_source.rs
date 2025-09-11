@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 /// Defines an Excel workbook as a data source.
-#[derive(Debug, Validate, Deserialize, Serialize, Clone)]
+#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
 pub struct ExcelDatasource {
     /// The file path to the Excel workbook.
     #[allow(unused)]
