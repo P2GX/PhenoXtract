@@ -78,6 +78,16 @@ impl GithubOntologyRegistry {
         ))
     }
 
+    fn resolve_latest_version(&self, version: &str) -> String {
+        if version == "latest" {
+            self.github_client
+                .get_latest_release_tag(&self.repo_owner, &self.repo_name)
+                .expect("get latest tag failed")
+        } else {
+            version.to_string()
+        }
+    }
+
     fn construct_file_name(&self, version: &str) -> String {
         format!("{}_{}_{}", self.repo_name, version, self.file_name)
     }
@@ -104,6 +114,8 @@ impl OntologyRegistry for GithubOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
+        let resolved_version = self.resolve_latest_version(version);
+
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(version));
 
@@ -111,13 +123,6 @@ impl OntologyRegistry for GithubOntologyRegistry {
             debug!("HPO version already registered. {}", out_path.display());
             return Ok(out_path);
         }
-
-        let resolved_version = if version == "latest" {
-            self.github_client
-                .get_latest_release_tag(self.repo_owner.as_str(), self.repo_name.as_str())?
-        } else {
-            version.to_string()
-        };
 
         let mut resp = self.github_client.get_release_file(
             self.repo_owner.as_str(),
@@ -140,14 +145,15 @@ impl OntologyRegistry for GithubOntologyRegistry {
     #[allow(dead_code)]
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
+        let resolved_version = self.resolve_latest_version(version);
         let file_path = self
             .registry_path
             .clone()
-            .join(self.construct_file_name(version));
+            .join(self.construct_file_name(resolved_version.as_str()));
         if !file_path.exists() {
             debug!("Unable do deregistered: {}", file_path.display());
             return Err(RegistryError::NotRegistered(
-                format!("Version: {version} not registered in registry").to_string(),
+                format!("Version: {resolved_version} not registered in registry").to_string(),
             ));
         }
         remove_file(file_path.clone())?;
@@ -157,10 +163,11 @@ impl OntologyRegistry for GithubOntologyRegistry {
     #[allow(dead_code)]
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Option<PathBuf> {
+        let resolved_version = self.resolve_latest_version(version);
         let file_path = self
             .registry_path
             .clone()
-            .join(self.construct_file_name(version));
+            .join(self.construct_file_name(resolved_version.as_str()));
         if !file_path.exists() {
             debug!("Unable do getting location: {}", file_path.display());
             return None;
