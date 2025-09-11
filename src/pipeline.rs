@@ -10,6 +10,7 @@ use crate::error::{ConstructionError, PipelineError};
 use log::{info, warn};
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
+use validator::Validate;
 
 #[allow(dead_code)]
 struct Pipeline {
@@ -19,7 +20,10 @@ struct Pipeline {
 
 impl Pipeline {
     #[allow(dead_code)]
-    pub fn run(&self, extractables: &mut [impl Extractable]) -> Result<(), PipelineError> {
+    pub fn run(
+        &self,
+        extractables: &mut [impl Extractable + Validate],
+    ) -> Result<(), PipelineError> {
         let mut data = self.extract(extractables)?;
         let phenopackets = self.transform(data.as_mut_slice())?;
         self.load(phenopackets.as_slice())?;
@@ -28,9 +32,10 @@ impl Pipeline {
 
     pub fn extract(
         &self,
-        extractables: &mut [impl Extractable],
+        extractables: &mut [impl Extractable + Validate],
     ) -> Result<Vec<ContextualizedDataFrame>, PipelineError> {
         info!("Starting extract");
+        extractables.validate()?;
         let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
             .flat_map(|ex| ex.extract().unwrap())
@@ -44,6 +49,8 @@ impl Pipeline {
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, PipelineError> {
         info!("Starting Transformation");
+        tables.iter().try_for_each(|t| t.validate())?;
+
         let phenopackets = self.transformer_module.run(tables)?;
         info!(
             "Concluded Transformation. Found {:?} Phenopackets",
