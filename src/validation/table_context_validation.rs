@@ -54,8 +54,8 @@ pub(crate) fn validate_at_least_one_subject_id(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
     for column in &table_context.context {
-        if column.get_context() == Context::SubjectId
-            || column.get_cell_context() == Context::SubjectId
+        if column.get_header_context() == Context::SubjectId
+            || column.get_data_context() == Context::SubjectId
         {
             return Ok(());
         }
