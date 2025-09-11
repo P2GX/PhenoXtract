@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Defines a CSV file as a data source.
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct CSVDataSource {
     /// The file path to the CSV source.
     pub source: PathBuf,
