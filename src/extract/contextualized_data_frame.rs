@@ -36,29 +36,29 @@ impl ContextualizedDataFrame {
     /// If the identifier is a multi, then all columns whose names match one of the strings in the vector will be returned
     #[allow(unused)]
     pub fn get_cols_from_identifier(&self, identifier: Identifier) -> Vec<&Column> {
-
         let cols = self.data.get_columns();
 
         match identifier {
-            Identifier::Regex(regex) => {
-                match cols.iter().find(|col|col.name()==&&regex) {
-                    Some(col) => vec![col],
-                    None => {
-                        let regex_pattern_result = Regex::new(&regex);
-                        match regex_pattern_result {
-                            Err(_) => {vec![]},
-                            Ok(regex_pattern) => {
-                                cols.iter().filter(|col|regex_pattern.is_match(col.name())).collect::<Vec<&Column>>()
-                            },
+            Identifier::Regex(regex) => match cols.iter().find(|col| col.name() == &&regex) {
+                Some(col) => vec![col],
+                None => {
+                    let regex_pattern_result = Regex::new(&regex);
+                    match regex_pattern_result {
+                        Err(_) => {
+                            vec![]
                         }
-                    },
+                        Ok(regex_pattern) => cols
+                            .iter()
+                            .filter(|col| regex_pattern.is_match(col.name()))
+                            .collect::<Vec<&Column>>(),
+                    }
                 }
             },
-            Identifier::Multi(ids) => {
-                cols.iter().filter(|col|ids.contains(&col.name().to_string())).collect::<Vec<&Column>>()
-            },
+            Identifier::Multi(ids) => cols
+                .iter()
+                .filter(|col| ids.contains(&col.name().to_string()))
+                .collect::<Vec<&Column>>(),
         }
-
     }
 }
 
@@ -79,6 +79,19 @@ mod tests {
     use std::io::Write as StdWrite;
     use tempfile::TempDir;
 
+    #[fixture]
+    fn cdf() -> ContextualizedDataFrame {
+        let col1 = Column::new("alice".into(), vec![1, 2]);
+        let col2 = Column::new("bob".into(), vec![3, 4]);
+        let col3 = Column::new("charlie".into(), vec![5, 6]);
+        let col4 = Column::new("david".into(), vec![7, 8]);
+        let col5 = Column::new("eve".into(), vec![9, 19]);
 
+        let context = TableContext::new("table".to_string(), vec![]);
 
+        ContextualizedDataFrame::new(
+            context,
+            DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap(),
+        )
+    }
 }
