@@ -56,15 +56,17 @@ pub(crate) fn validate_extraction_config_links(
         let missing: Vec<String> = table_ids.difference(&extraction_ids).cloned().collect();
         let mut error = ValidationError::new("linking");
         error.add_param(Cow::from("missing"), &missing);
-        return Err(
-            error.with_message(Cow::Owned("Missing link on Extraction Config.".to_string()))
-        );
+        return Err(error.with_message(Cow::Owned(
+            "More TableContext than ExtractionConfigs".to_string(),
+        )));
     }
     if extraction_ids.len() > table_ids.len() {
         let missing: Vec<String> = extraction_ids.difference(&table_ids).cloned().collect();
         let mut error = ValidationError::new("linking");
         error.add_param(Cow::from("missing"), &missing);
-        return Err(error.with_message(Cow::Owned("Missing link on TableConfig.".to_string())));
+        return Err(error.with_message(Cow::Owned(
+            "More ExtractionConfigs than TableContext".to_string(),
+        )));
     }
     if extraction_ids != table_ids {
         let mut error = ValidationError::new("linking");
@@ -112,6 +114,7 @@ mod tests {
             },
         ];
         let validation = validate_unique_sheet_names(&table_context);
+        dbg!(&validation);
         assert!(validation.is_err());
     }
 
