@@ -155,19 +155,17 @@ impl OntologyRegistry for GithubOntologyRegistry {
     }
     #[allow(dead_code)]
     #[allow(unused)]
-    fn get_location(&self, version: &str) -> Result<PathBuf, RegistryError> {
+    fn get_location(&self, version: &str) -> Option<PathBuf> {
         let file_path = self
             .registry_path
             .clone()
             .join(self.construct_file_name(version));
         if !file_path.exists() {
-            return Err(RegistryError::NotRegistered(
-                format!("Version: {version} not registered in registry").to_string(),
-            ));
+            return None;
         }
 
         debug!("Returned register location {}", file_path.display());
-        Ok(file_path)
+        Some(file_path)
     }
 }
 
@@ -403,7 +401,7 @@ mod tests {
         File::create(&file_path).unwrap();
 
         let result = reg.get_location("1.0.0");
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(result.unwrap(), file_path);
     }
 
@@ -418,7 +416,7 @@ mod tests {
         );
 
         let result = reg.get_location("1.0.0");
-        assert!(matches!(result, Err(RegistryError::NotRegistered(_))));
+        assert!(result.is_none());
     }
 
     #[rstest]
