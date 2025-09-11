@@ -78,7 +78,7 @@ impl GithubOntologyRegistry {
         ))
     }
 
-    fn resolve_latest_version(&self, version: &str) -> String {
+    fn resolve_version(&self, version: &str) -> String {
         if version == "latest" {
             self.github_client
                 .get_latest_release_tag(&self.repo_owner, &self.repo_name)
@@ -114,7 +114,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
-        let resolved_version = self.resolve_latest_version(version);
+        let resolved_version = self.resolve_version(version);
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(version));
@@ -145,7 +145,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
     #[allow(dead_code)]
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_latest_version(version);
+        let resolved_version = self.resolve_version(version);
         let file_path = self
             .registry_path
             .clone()
@@ -163,7 +163,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
     #[allow(dead_code)]
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_latest_version(version);
+        let resolved_version = self.resolve_version(version);
         let file_path = self
             .registry_path
             .clone()
@@ -460,5 +460,29 @@ mod tests {
 
         let result = reg.deregister("1.0.0");
         assert!(matches!(result, Err(RegistryError::NotRegistered(_))));
+    }
+
+    #[rstest]
+    fn test_resolve_version(
+        repo_name: String,
+        repo_owner: String,
+        release_file_name: String,
+        latest_tag: String,
+        release_version: String,
+        mock_server: ServerGuard,
+        temp_dir: TempDir,
+    ) {
+        let registry = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            repo_name,
+            repo_owner,
+            release_file_name,
+        );
+        let resolved_version = registry.resolve_version("latest");
+        assert_eq!(resolved_version, latest_tag);
+
+        let resolved_version = registry.resolve_version(release_version.as_str());
+        assert_eq!(resolved_version, release_version);
     }
 }
