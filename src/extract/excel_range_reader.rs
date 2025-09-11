@@ -388,10 +388,10 @@ mod tests {
         let cols = excel_range_reader_no_headers
             .convert_vectors_to_columns(full_vecs_no_headers)
             .unwrap();
-        assert_eq!(cols[0].name().to_string(), "column_1");
-        assert_eq!(cols[1].name().to_string(), "column_2");
-        assert_eq!(cols[2].name().to_string(), "column_3");
-        assert_eq!(cols[3].name().to_string(), "column_4");
+        assert_eq!(cols[0].name().to_string(), "0");
+        assert_eq!(cols[1].name().to_string(), "1");
+        assert_eq!(cols[2].name().to_string(), "2");
+        assert_eq!(cols[3].name().to_string(), "3");
 
         let extracted_patient_ids: Vec<_> = cols[0].str().unwrap().into_no_null_iter().collect();
         let extracted_ages: Vec<_> = cols[1].f64().unwrap().into_no_null_iter().collect();
@@ -446,17 +446,12 @@ mod tests {
         smoker_col: (&'static str, [bool; 4]),
     ) {
         let df = excel_range_reader_no_headers.extract_to_df().unwrap();
-        assert_eq!(
-            df.get_column_names(),
-            ["column_1", "column_2", "column_3", "column_4"]
-        );
-        let extracted_patient_ids: &Vec<_> =
-            &df["column_1"].str().unwrap().into_no_null_iter().collect();
-        let extracted_ages: &Vec<_> = &df["column_2"].f64().unwrap().into_no_null_iter().collect();
-        let extracted_weights: &Vec<_> =
-            &df["column_3"].f64().unwrap().into_no_null_iter().collect();
+        assert_eq!(df.get_column_names(), ["0", "1", "2", "3"]);
+        let extracted_patient_ids: &Vec<_> = &df["0"].str().unwrap().into_no_null_iter().collect();
+        let extracted_ages: &Vec<_> = &df["1"].f64().unwrap().into_no_null_iter().collect();
+        let extracted_weights: &Vec<_> = &df["2"].f64().unwrap().into_no_null_iter().collect();
         let extracted_smoker_bools: &Vec<_> =
-            &df["column_4"].bool().unwrap().into_no_null_iter().collect();
+            &df["3"].bool().unwrap().into_no_null_iter().collect();
         assert_eq!(extracted_patient_ids, &patient_id_col.1);
         assert_eq!(
             extracted_ages,
