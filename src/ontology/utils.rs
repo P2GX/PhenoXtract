@@ -9,7 +9,7 @@ use std::io::{BufReader, Cursor, Read, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-pub fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, RegistryError> {
+pub(crate) fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, RegistryError> {
     let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
     let mut json_data = Vec::new();
@@ -17,8 +17,8 @@ pub fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, RegistryE
 
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
 
-    encoder.write_all(&json_data).unwrap();
-    let compressed = encoder.finish().unwrap();
+    encoder.write_all(&json_data)?;
+    let compressed = encoder.finish()?;
     let reader = GzDecoder::new(Cursor::new(compressed));
 
     Ok(Rc::new(
