@@ -35,7 +35,7 @@ impl TableContext {
         TableContext { name, context }
     }
 }
-/// Defines the semantic meaning or type of data in a cell or series.
+/// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
@@ -84,13 +84,31 @@ pub(crate) enum CellValue {
     Bool(bool),
 }
 
-//todo add a doc string here
+/// The identifier will correspond to either one or multiple columns in a dataframe.
+///
+/// If it has Regex type, then the columns will be determined by the regular expression
+/// NOTE: if the regex string corresponds exactly to a column name, then that single column will be identified.
+/// If it has multi type, then the strings within the vector will be the headers of the relevant columns.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum Identifier {
     Regex(String),
     Multi(Vec<String>),
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+pub(crate) enum AliasMap {
+    #[allow(unused)]
+    ToString(HashMap<String, String>),
+    #[allow(unused)]
+    ToInt(HashMap<String, i64>),
+    #[allow(unused)]
+    ToFloat(HashMap<String, f64>),
+    #[allow(unused)]
+    ToBool(HashMap<String, bool>),
+}
+
 
 /// Represents the context for one or more series in a table.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -109,10 +127,9 @@ pub(crate) struct SeriesContext {
 
     #[allow(unused)]
     #[serde(default)]
-    /// A map to replace specific string values with another `CellValue`.
+    /// A map to replace specific cell values with other strings, ints, floats or bools.
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: Option<HashMap<String, CellValue>>,
-    // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
+    alias_map: Option<AliasMap>,
 
     #[serde(default)]
     /// List of IDs that link to other tables, can be used to determine the relationship between these columns
@@ -127,7 +144,7 @@ impl SeriesContext {
         header_context: Option<Context>,
         data_context: Option<Context>,
         fill_missing: Option<CellValue>,
-        alias_map: Option<CellValue>,
+        alias_map: Option<AliasMap>,
         linked_to: Vec<String>,
     ) -> Self {
         SeriesContext {
