@@ -171,6 +171,7 @@ impl SeriesContext {
         self.data_context.clone()
     }
 
+    #[allow(dead_code)]
     pub fn get_alias_map_opt(&self) -> Option<AliasMap> {
         self.alias_map.clone()
     }

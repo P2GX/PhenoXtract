@@ -9,6 +9,7 @@ use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+#[allow(dead_code)]
 pub struct AliasMapTransform {}
 
 impl Strategy for AliasMapTransform {
