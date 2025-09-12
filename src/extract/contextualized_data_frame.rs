@@ -57,7 +57,7 @@ impl ContextualizedDataFrame {
     /// let specific_cols = dataset.get_column(&Identifier::Multi(vec!["id", "name"]));
     /// ```
     #[allow(unused)]
-    pub fn get_column(&self, id: &Identifier) -> Vec<&Column> {
+    pub fn get_columns(&self, id: &Identifier) -> Vec<&Column> {
         match id {
             Identifier::Regex(pattern) => {
                 let mut found_columns = vec![];
@@ -163,7 +163,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Regex("location (some stuff)".to_string());
-        let cols = cdf.get_column(&id);
+        let cols = cdf.get_columns(&id);
 
         assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name(), "location (some stuff)");
@@ -176,7 +176,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Regex("^[a,u]{1}[a-z.]*".to_string());
-        let cols = cdf.get_column(&id);
+        let cols = cdf.get_columns(&id);
 
         assert_eq!(cols.len(), 2);
         assert_eq!(cols[0].name(), "user.name");
@@ -190,7 +190,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Multi(vec!["user.name".to_string(), "age".to_string()]);
-        let cols = cdf.get_column(&id);
+        let cols = cdf.get_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["user.name", "age"]);
