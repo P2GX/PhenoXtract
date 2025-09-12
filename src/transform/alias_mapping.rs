@@ -354,7 +354,6 @@ mod tests {
                 .is_err(),
             false
         );
-        //make sure that nothing has changed
         assert_eq!(
             cdf_convert_to_int_success
                 .data
