@@ -1,4 +1,5 @@
 use crate::config::table_context::{Identifier, TableContext};
+use log::debug;
 use polars::prelude::{Column, DataFrame};
 use regex::{Regex, escape};
 use validator::Validate;
@@ -65,12 +66,32 @@ impl ContextualizedDataFrame {
                 if let Ok(regex) = Regex::new(pattern.as_str()) {
                     found_columns = self.regex_match_column(&regex);
                 }
+                debug!(
+                    "Found columns {:?} using regex {}",
+                    found_columns
+                        .iter()
+                        .map(|col| col.name().as_str())
+                        .collect::<Vec<&str>>(),
+                    pattern
+                );
                 found_columns
             }
-            Identifier::Multi(multi) => multi
-                .iter()
-                .filter_map(|col_name| self.data.column(col_name).ok())
-                .collect::<Vec<&Column>>(),
+            Identifier::Multi(multi) => {
+                let found_columns = multi
+                    .iter()
+                    .filter_map(|col_name| self.data.column(col_name).ok())
+                    .collect::<Vec<&Column>>();
+
+                debug!(
+                    "Found columns {:?} using multi identifiers {}",
+                    found_columns
+                        .iter()
+                        .map(|col| col.name().as_str())
+                        .collect::<Vec<&str>>(),
+                    multi.join(", ")
+                );
+                found_columns
+            }
         }
     }
 }
