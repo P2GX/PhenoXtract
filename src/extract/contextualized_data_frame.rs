@@ -34,27 +34,28 @@ impl ContextualizedDataFrame {
             .collect::<Vec<&Column>>()
     }
 
-    /// Retrieves a collection of columns (`&Column`) from the dataset based on the given identifier.
+    /// Retrieves columns from the dataset based on the given identifier(s).
     ///
     /// # Parameters
     /// - `id`: An `Identifier` specifying which columns to retrieve. This can be:
-    ///     - `Identifier::Regex(pattern)`: Selects all columns whose names match the given regex pattern.
-    ///       The function will attempt both an escaped and unescaped version of the pattern.
-    ///     - `Identifier::Multi(vec)`: Selects columns whose names are explicitly listed in the vector.
+    ///     - `Identifier::Regex(pattern)`: Uses a regular expression to match column names.
+    ///       It first tries an escaped version of the regex pattern and falls back to the raw pattern
+    ///       if no columns are found.
+    ///     - `Identifier::Multi(multi)`: A collection of column names to retrieve explicitly.
     ///
     /// # Returns
-    /// A `Vec<&Column>` containing references to the matching columns.
-    /// If no columns match the identifier, the returned vector will be empty.
+    /// A `Vec<&Column>` containing references to the columns that match the given identifier(s).
+    /// If no columns match, an empty vector is returned.
+    ///
+    /// # Behavior
+    /// - When using a regex, columns are matched against the column names in the dataset.
+    /// - When using multiple identifiers, only the columns that exist in the dataset are returned.
     ///
     /// # Examples
     /// ```ignore
-    /// let series = dataframe.get_series(&Identifier::Regex(r"^user_.*".into()));
-    /// let specific_series = dataframe.get_series(&Identifier::Multi(vec!["age".into(), "score".into()]));
+    /// let cols = dataset.get_column(&Identifier::Regex("user.*".into()));
+    /// let specific_cols = dataset.get_column(&Identifier::Multi(vec!["id", "name"]));
     /// ```
-    ///
-    /// # Notes
-    /// - The function internally uses `regex_match_column` to handle regex matching.
-    /// - When using a regex, both the escaped and original patterns are tried to maximize matches.
     #[allow(unused)]
     pub fn get_column(&self, id: &Identifier) -> Vec<&Column> {
         match id {
