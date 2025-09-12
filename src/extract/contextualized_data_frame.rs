@@ -63,7 +63,9 @@ impl ContextualizedDataFrame {
                 if let Ok(escape_regex) = Regex::new(escape(pattern).as_str()) {
                     found_columns = self.regex_match_column(&escape_regex);
                 }
-                if let Ok(regex) = Regex::new(pattern.as_str()) {
+                if let Ok(regex) = Regex::new(pattern.as_str())
+                    && found_columns.is_empty()
+                {
                     found_columns = self.regex_match_column(&regex);
                 }
                 debug!(
@@ -83,12 +85,12 @@ impl ContextualizedDataFrame {
                     .collect::<Vec<&Column>>();
 
                 debug!(
-                    "Found columns {:?} using multi identifiers {}",
+                    "Found columns {:?} using multi identifiers {:?}",
                     found_columns
                         .iter()
                         .map(|col| col.name().as_str())
                         .collect::<Vec<&str>>(),
-                    multi.join(", ")
+                    multi
                 );
                 found_columns
             }
@@ -106,9 +108,9 @@ mod tests {
 
     fn sample_df() -> DataFrame {
         df!(
-        "name" => &["Alice", "Bob", "Charlie"],
+        "user.name" => &["Alice", "Bob", "Charlie"],
         "age" => &[25, 30, 40],
-        "location" => &["NY", "SF", "LA"]
+        "location (some stuff)" => &["NY", "SF", "LA"]
         )
         .unwrap()
     }
@@ -136,9 +138,9 @@ mod tests {
         let cols = cdf.regex_match_column(&regex);
 
         assert_eq!(cols.len(), 3);
-        assert_eq!(cols[0].name(), "name");
+        assert_eq!(cols[0].name(), "user.name");
         assert_eq!(cols[1].name(), "age");
-        assert_eq!(cols[2].name(), "location");
+        assert_eq!(cols[2].name(), "location (some stuff)");
     }
 
     #[rstest]
@@ -159,11 +161,11 @@ mod tests {
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
-        let id = Identifier::Regex("age".to_string());
+        let id = Identifier::Regex("location (some stuff)".to_string());
         let cols = cdf.get_column(&id);
 
         assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "age");
+        assert_eq!(cols[0].name(), "location (some stuff)");
     }
 
     #[rstest]
@@ -172,11 +174,11 @@ mod tests {
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
-        let id = Identifier::Regex("^[a,n]{1,2}[a-z]*".to_string());
+        let id = Identifier::Regex("^[a,u]{1}[a-z.]*".to_string());
         let cols = cdf.get_column(&id);
 
         assert_eq!(cols.len(), 2);
-        assert_eq!(cols[0].name(), "name");
+        assert_eq!(cols[0].name(), "user.name");
         assert_eq!(cols[1].name(), "age");
     }
 
@@ -186,10 +188,10 @@ mod tests {
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
-        let id = Identifier::Multi(vec!["name".to_string(), "age".to_string()]);
+        let id = Identifier::Multi(vec!["user.name".to_string(), "age".to_string()]);
         let cols = cdf.get_column(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
-        assert_eq!(col_names, vec!["name", "age"]);
+        assert_eq!(col_names, vec!["user.name", "age"]);
     }
 }
