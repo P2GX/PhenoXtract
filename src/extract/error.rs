@@ -15,8 +15,6 @@ pub enum ExtractionError {
     NoStringInHeader(String),
     #[allow(dead_code)]
     UnableToFindTableContext(String),
-    #[allow(dead_code)]
-    Regex(regex::Error),
 }
 
 impl From<PolarsError> for ExtractionError {
@@ -28,11 +26,5 @@ impl From<PolarsError> for ExtractionError {
 impl From<XlsxError> for ExtractionError {
     fn from(err: XlsxError) -> Self {
         ExtractionError::Calamine(err)
-    }
-}
-
-impl From<regex::Error> for ExtractionError {
-    fn from(err: regex::Error) -> Self {
-        ExtractionError::Regex(err)
     }
 }
