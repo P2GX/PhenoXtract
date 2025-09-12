@@ -134,8 +134,8 @@ impl Strategy for AliasMapTransform {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::AliasMap::{ToInt, ToString};
-    use crate::config::table_context::Context::{SubjectAge, SubjectId};
+    use crate::config::table_context::AliasMap::{ToBool, ToFloat, ToInt, ToString};
+    use crate::config::table_context::Context::{SmokerBool, SubjectAge, SubjectId, WeightInKg};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::alias_mapping::AliasMapTransform;
@@ -146,67 +146,175 @@ mod tests {
     use std::collections::HashMap;
 
     #[fixture]
-    fn hm1() -> HashMap<String, String> {
-        let mut hm1 = HashMap::new();
-        hm1.insert(String::from("P002"), String::from("patient 2"));
-        hm1.insert(String::from("P004"), String::from("P4"));
-        hm1
-    }
-
-    #[fixture]
-    fn sc1(hm1: HashMap<String, String>) -> SeriesContext {
+    fn sc_P00X_to_patient_X() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("patient_id".to_string()),
             Context::None,
             SubjectId,
             None,
-            Some(ToString(hm1)),
+            Some(ToString(HashMap::from([
+                ("P001".to_string(), "patient_1".to_string()),
+                ("P002".to_string(), "patient_2".to_string()),
+                ("P003".to_string(), "patient_3".to_string()),
+                ("P004".to_string(), "patient_4".to_string()),
+            ]))),
             vec![],
         )
     }
 
     #[fixture]
-    fn hm2() -> HashMap<String, i32> {
-        let mut hm2 = HashMap::new();
-        hm2.insert(String::from("35"), 40);
-        hm2
-    }
-
-    #[fixture]
-    fn sc2(hm2: HashMap<String, i32>) -> SeriesContext {
+    fn sc_11_to_22() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("age".to_string()),
             Context::None,
             SubjectAge,
             None,
-            Some(ToInt(hm2)),
+            Some(ToInt(HashMap::from([("11".to_string(), 22)]))),
             vec![],
         )
     }
 
-
     #[fixture]
-    fn tc(sc1: SeriesContext, sc2: SeriesContext) -> TableContext {
-        TableContext::new("patient_data".to_string(), vec![sc1, sc2])
+    fn sc_doubling() -> SeriesContext {
+        SeriesContext::new(
+            Identifier::Regex("weight".to_string()),
+            Context::None,
+            WeightInKg,
+            None,
+            Some(ToFloat(HashMap::from([
+                ("10.1".to_string(), 20.2),
+                ("20.2".to_string(), 40.4),
+                ("30.3".to_string(), 60.6),
+                ("40.4".to_string(), 80.8),
+            ]))),
+            vec![],
+        )
     }
 
     #[fixture]
-    fn data() -> DataFrame {
+    fn sc_no_false() -> SeriesContext {
+        SeriesContext::new(
+            Identifier::Regex("smokes".to_string()),
+            Context::None,
+            SmokerBool,
+            None,
+            Some(ToBool(HashMap::from([("false".to_string(), true)]))),
+            vec![],
+        )
+    }
+
+    #[fixture]
+    fn sc_convert_to_string_fail() -> SeriesContext {
+        SeriesContext::new(
+            Identifier::Regex("weight".to_string()),
+            Context::None,
+            SmokerBool,
+            None,
+            Some(ToString(HashMap::from([(
+                "40.4".to_string(),
+                "overweight".to_string(),
+            )]))),
+            vec![],
+        )
+    }
+
+    #[fixture]
+    fn tc(
+        sc_P00X_to_patient_X: SeriesContext,
+        sc_11_to_22: SeriesContext,
+        sc_doubling: SeriesContext,
+        sc_no_false: SeriesContext,
+    ) -> TableContext {
+        TableContext::new(
+            "patient_data".to_string(),
+            vec![sc_P00X_to_patient_X, sc_11_to_22, sc_doubling, sc_no_false],
+        )
+    }
+
+    #[fixture]
+    fn tc_convert_to_string_fail(sc_convert_to_string_fail: SeriesContext) -> TableContext {
+        TableContext::new("patient_data".to_string(), vec![sc_convert_to_string_fail])
+    }
+
+    #[fixture]
+    fn df1() -> DataFrame {
         let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
-        let col2 = Column::new("age".into(), [35, 16, 35, 25]);
-        DataFrame::new(vec![col1, col2]).unwrap()
+        let col2 = Column::new("age".into(), [11, 22, 33, 44]);
+        let col3 = Column::new("weight".into(), [10.1, 20.2, 30.3, 40.4]);
+        let col4 = Column::new("smokes".into(), [true, true, false, false]);
+        DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
     }
 
     #[fixture]
-    fn cdf(tc: TableContext, data: DataFrame) -> ContextualizedDataFrame {
-        ContextualizedDataFrame::new(tc, data)
+    fn cdf_aliasing(tc: TableContext, df1: DataFrame) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(tc, df1)
     }
 
+    #[fixture]
+    fn df2() -> DataFrame {
+        let col1 = Column::new("patient_id".into(), ["P1", "P2", "P3", "P4"]);
+        let col2 = Column::new("age".into(), [10, 20, 30, 40]);
+        let col3 = Column::new("weight".into(), [10.2, 20.3, 30.4, 40.5]);
+        let col4 = Column::new("smokes".into(), [true, true, true, true]);
+        DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
+    }
+
+    #[fixture]
+    fn cdf_no_aliasing(tc: TableContext, df2: DataFrame) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(tc, df2)
+    }
+
+    #[fixture]
+    fn cdf_convert_to_string_fail(
+        sc_convert_to_string_fail: SeriesContext,
+        df1: DataFrame,
+    ) -> ContextualizedDataFrame {
+        let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_string_fail]);
+        ContextualizedDataFrame::new(tc, df1)
+    }
+
+    //tests that the alias map makes the desired changes
     #[rstest]
-    fn test_transformation(mut cdf: ContextualizedDataFrame) {
+    fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapTransform {};
-        println!("{:?}", cdf);
-        alias_map_transform.transform(&mut cdf).unwrap();
-        println!("{:?}", cdf);
+        alias_map_transform.transform(&mut cdf_aliasing).unwrap();
+        assert_eq!(
+            cdf_aliasing.data.column("patient_id").unwrap(),
+            &Column::new(
+                "patient_id".into(),
+                ["patient_1", "patient_2", "patient_3", "patient_4"]
+            )
+        );
+        assert_eq!(
+            cdf_aliasing.data.column("age").unwrap(),
+            &Column::new("age".into(), [22, 22, 33, 44])
+        );
+        assert_eq!(
+            cdf_aliasing.data.column("weight").unwrap(),
+            &Column::new("weight".into(), [20.2, 40.4, 60.6, 80.8])
+        );
+        assert_eq!(
+            cdf_aliasing.data.column("smokes").unwrap(),
+            &Column::new("smokes".into(), [true, true, true, true])
+        );
+    }
+
+    //tests that the alias map makes no change when none of the dataframe elements are keys
+    #[rstest]
+    fn test_no_aliasing(mut cdf_no_aliasing: ContextualizedDataFrame, df2: DataFrame) {
+        let alias_map_transform = AliasMapTransform {};
+        alias_map_transform.transform(&mut cdf_no_aliasing).unwrap();
+        assert_eq!(cdf_no_aliasing.data, df2)
+    }
+
+    //tests that we get an error when we unsuccessfully change a column into a different type
+    #[rstest]
+    fn test_error(mut cdf_convert_to_string_fail: ContextualizedDataFrame) {
+        let alias_map_transform = AliasMapTransform {};
+        let alias_map_transform_res = alias_map_transform.transform(&mut cdf_convert_to_string_fail);
+        assert_eq!(
+            alias_map_transform.transform(&mut cdf_convert_to_string_fail).is_err(),
+            true
+        )
     }
 }
