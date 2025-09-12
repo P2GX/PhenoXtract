@@ -3,6 +3,7 @@ use ontolius::ontology::csr::FullCsrOntology;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+#[allow(dead_code)]
 pub(crate) fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, anyhow::Error> {
     let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
