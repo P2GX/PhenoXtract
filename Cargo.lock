@@ -2078,7 +2078,6 @@ dependencies = [
  "ontolius",
  "phenopackets",
  "polars",
- "rayon",
  "regex",
  "reqwest",
  "rstest",
