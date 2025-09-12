@@ -2073,12 +2073,12 @@ dependencies = [
  "chrono",
  "config",
  "either",
- "flate2",
  "log",
  "mockito",
  "ontolius",
  "phenopackets",
  "polars",
+ "rayon",
  "regex",
  "reqwest",
  "rstest",
@@ -2907,9 +2907,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.11.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368f01d005bf8fd9b1206fb6fa653e6c4a81ceb1466406b81792d87c5677a58f"
+checksum = "b418a60154510ca1a002a752ca9714984e21e4241e804d32555251faf8b78ffa"
 dependencies = [
  "either",
  "rayon-core",
