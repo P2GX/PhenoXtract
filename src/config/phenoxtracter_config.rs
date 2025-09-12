@@ -73,7 +73,6 @@ mod tests {
     use std::fs::File as StdFile;
     use std::io::Write;
     use std::str::FromStr;
-    use polars::prelude::Column::Series;
     use tempfile::TempDir;
 
     const YAML_DATA: &[u8] = br#"
@@ -214,9 +213,7 @@ data_sources:
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
               "null": "Primary peritoneal carcinoma"
-              "neoplasma": 4
-              "smoker": true
-              "height": 1.85
+              "M": "Male"
           linked_to:
           - "visit_table"
           - "demographics_table"
@@ -230,18 +227,16 @@ data_sources:
     contexts:
       - name: "Sheet1"
         context:
-        - multi_identifier: "lab_result_.*"
+        - identifier: "lab_result_.*"
           header_context: subject_id
           data_context: hpo_label
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
-              "null": "Primary peritoneal carcinoma"
               "neoplasma": 4
-              "smoker": true
               "height": 1.85
       - name: "Sheet2"
         context:
-        - multi_identifier:
+        - identifier:
           - "Col_1"
           - "Col_2"
           - "Col_3"
@@ -249,10 +244,7 @@ data_sources:
           data_context: hpo_label
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
-              "null": "Primary peritoneal carcinoma"
-              "neoplasma": 4
               "smoker": true
-              "height": 1.85
     extraction_configs:
       - name: "Sheet1"
         has_headers: true
@@ -298,23 +290,25 @@ meta_data:
                     },
                     context: TableContext {
                         name: "TestTable".to_string(),
-                        context: vec![SeriesContext::new(Identifier::Regex("patient_id".to_string()), PhenopacketContext::SubjectId, PhenopacketContext::HpoLabel,Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),Some(AliasMap::ToString(HashMap::from([
-                            (
-                                "null".to_string(),
-                                    "Primary peritoneal carcinoma".to_string()
-                            )]))),vec![Identifier::Regex("visit_table".to_string()), Identifier::Regex("demographics_table".to_string())])]
+                        context: vec![SeriesContext::new(
+                            Identifier::Regex("patient_id".to_string()),
+                            PhenopacketContext::SubjectId,
+                            PhenopacketContext::HpoLabel,
+                            Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                            Some(AliasMap::ToString(HashMap::from([
+                                (
+                                    "null".to_string(),
+                                    "Primary peritoneal carcinoma".to_string(),
+                                ),
+                                ("M".to_string(), "Male".to_string()),
+                            ]))),
+                            vec![
+                                Identifier::Regex("visit_table".to_string()),
+                                Identifier::Regex("demographics_table".to_string()),
+                            ],
+                        )],
                     },
                 }),
-                /**HashMap::from([
-                                   (
-                                       "null".to_string(),
-                                       CellValue::String(
-                                           "Primary peritoneal carcinoma".to_string(),
-                                       ),
-                                   ),
-                                   ("neoplasma".to_string(), CellValue::Int(4)),
-                                   ("smoker".to_string(), CellValue::Bool(true)),
-                                   ("height".to_string(), CellValue::Float(1.85))*/
                 // Second data source: Excel
                 DataSource::Excel(ExcelDatasource {
                     source: PathBuf::from("./data/example.excel"),
@@ -334,56 +328,36 @@ meta_data:
                         // Context for "Sheet1"
                         TableContext {
                             name: "Sheet1".to_string(),
-                            context: vec![SeriesContext::Multi(MultiSeriesContext::new(
-                                MultiIdentifier::Regex("lab_result_.*".to_string()),
+                            context: vec![SeriesContext::new(
+                                Identifier::Regex("lab_result_.*".to_string()),
                                 PhenopacketContext::SubjectId,
-                                Some(CellContext::new(
-                                    PhenopacketContext::HpoLabel,
-                                    Some(CellValue::String(
-                                        "Zollinger-Ellison syndrome".to_string(),
-                                    )),
-                                    HashMap::from([
-                                        (
-                                            "null".to_string(),
-                                            CellValue::String(
-                                                "Primary peritoneal carcinoma".to_string(),
-                                            ),
-                                        ),
-                                        ("neoplasma".to_string(), CellValue::Int(4)),
-                                        ("smoker".to_string(), CellValue::Bool(true)),
-                                        ("height".to_string(), CellValue::Float(1.85)),
-                                    ]),
-                                )),
-                            ))],
+                                PhenopacketContext::HpoLabel,
+                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                                Some(AliasMap::ToFloat(HashMap::from([
+                                    ("neoplasma".to_string(), 4.0),
+                                    ("height".to_string(), 1.85),
+                                ]))),
+                                vec![],
+                            )],
                         },
                         // Context for "Sheet2"
                         TableContext {
                             name: "Sheet2".to_string(),
-                            context: vec![SeriesContext::Multi(MultiSeriesContext::new(
-                                MultiIdentifier::Multi(vec![
+                            context: vec![SeriesContext::new(
+                                Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
                                 PhenopacketContext::SubjectId,
-                                Some(CellContext::new(
-                                    PhenopacketContext::HpoLabel,
-                                    Some(CellValue::String(
-                                        "Zollinger-Ellison syndrome".to_string(),
-                                    )),
-                                    HashMap::from([
-                                        (
-                                            "null".to_string(),
-                                            CellValue::String(
-                                                "Primary peritoneal carcinoma".to_string(),
-                                            ),
-                                        ),
-                                        ("neoplasma".to_string(), CellValue::Int(4)),
-                                        ("smoker".to_string(), CellValue::Bool(true)),
-                                        ("height".to_string(), CellValue::Float(1.85)),
-                                    ]),
-                                )),
-                            ))],
+                                PhenopacketContext::HpoLabel,
+                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                                Some(AliasMap::ToBool(HashMap::from([(
+                                    "smoker".to_string(),
+                                    true,
+                                )]))),
+                                vec![],
+                            )],
                         },
                     ],
                 }),
