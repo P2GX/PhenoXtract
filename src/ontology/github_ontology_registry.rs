@@ -120,7 +120,10 @@ impl OntologyRegistry for GithubOntologyRegistry {
         out_path.push(self.construct_file_name(version));
 
         if out_path.exists() {
-            debug!("HPO version already registered. {}", out_path.display());
+            debug!(
+                "Ontology version already registered. {}",
+                out_path.display()
+            );
             return Ok(out_path);
         }
 
