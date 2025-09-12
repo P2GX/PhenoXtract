@@ -101,7 +101,7 @@ pub(crate) enum AliasMap {
     #[allow(unused)]
     ToString(HashMap<String, String>),
     #[allow(unused)]
-    ToInt(HashMap<String, i64>),
+    ToInt(HashMap<String, i32>),
     #[allow(unused)]
     ToFloat(HashMap<String, f64>),
     #[allow(unused)]
@@ -165,6 +165,10 @@ impl SeriesContext {
 
     pub fn get_data_context(&self) -> Context {
         self.data_context.clone()
+    }
+
+    pub fn get_alias_map_opt(&self) -> Option<AliasMap> {
+        self.alias_map.clone()
     }
 
     pub fn get_links(&self) -> Vec<Identifier> {

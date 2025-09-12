@@ -1,3 +1,4 @@
+mod alias_mapping;
 pub mod error;
 pub mod phenopacket_builder;
 pub mod traits;

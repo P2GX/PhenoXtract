@@ -26,6 +26,11 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
+    #[allow(unused)]
+    pub fn data_mut(&mut self) -> &mut DataFrame {
+        &mut self.data
+    }
+
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
         self.data
             .get_columns()
