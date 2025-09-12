@@ -61,8 +61,7 @@ impl Strategy for AliasMapTransform {
                 .map_err(|_e| {
                     StrategyError(
                         format!(
-                            "Could not insert transformed column {} into table {}.",
-                            col_name, table_name,
+                            "Could not insert transformed column {col_name} into table {table_name}."
                         )
                         .to_string(),
                     )
@@ -141,7 +140,7 @@ mod tests {
     use crate::transform::alias_mapping::AliasMapTransform;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
-    use polars::prelude::Column;
+    use polars::prelude::{Column, DataType};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
 
@@ -204,16 +203,30 @@ mod tests {
     }
 
     #[fixture]
-    fn sc_convert_to_string_fail() -> SeriesContext {
+    fn sc_convert_to_int_fail() -> SeriesContext {
         SeriesContext::new(
-            Identifier::Regex("weight".to_string()),
+            Identifier::Regex("patient_id".to_string()),
             Context::None,
-            SmokerBool,
+            SubjectId,
             None,
-            Some(ToString(HashMap::from([(
-                "40.4".to_string(),
-                "overweight".to_string(),
-            )]))),
+            Some(ToInt(HashMap::from([("P001".to_string(), 1001)]))),
+            vec![],
+        )
+    }
+
+    #[fixture]
+    fn sc_convert_to_int_success() -> SeriesContext {
+        SeriesContext::new(
+            Identifier::Regex("patient_id".to_string()),
+            Context::None,
+            SubjectId,
+            None,
+            Some(ToInt(HashMap::from([
+                ("P001".to_string(), 1001),
+                ("P002".to_string(), 1002),
+                ("P003".to_string(), 1003),
+                ("P004".to_string(), 1004),
+            ]))),
             vec![],
         )
     }
@@ -229,11 +242,6 @@ mod tests {
             "patient_data".to_string(),
             vec![sc_P00X_to_patient_X, sc_11_to_22, sc_doubling, sc_no_false],
         )
-    }
-
-    #[fixture]
-    fn tc_convert_to_string_fail(sc_convert_to_string_fail: SeriesContext) -> TableContext {
-        TableContext::new("patient_data".to_string(), vec![sc_convert_to_string_fail])
     }
 
     #[fixture]
@@ -265,11 +273,20 @@ mod tests {
     }
 
     #[fixture]
-    fn cdf_convert_to_string_fail(
-        sc_convert_to_string_fail: SeriesContext,
+    fn cdf_convert_to_int_fail(
+        sc_convert_to_int_fail: SeriesContext,
         df1: DataFrame,
     ) -> ContextualizedDataFrame {
-        let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_string_fail]);
+        let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_int_fail]);
+        ContextualizedDataFrame::new(tc, df1)
+    }
+
+    #[fixture]
+    fn cdf_convert_to_int_success(
+        sc_convert_to_int_success: SeriesContext,
+        df1: DataFrame,
+    ) -> ContextualizedDataFrame {
+        let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_int_success]);
         ContextualizedDataFrame::new(tc, df1)
     }
 
@@ -277,7 +294,10 @@ mod tests {
     #[rstest]
     fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapTransform {};
-        alias_map_transform.transform(&mut cdf_aliasing).unwrap();
+        assert_eq!(
+            alias_map_transform.transform(&mut cdf_aliasing).is_err(),
+            false
+        );
         assert_eq!(
             cdf_aliasing.data.column("patient_id").unwrap(),
             &Column::new(
@@ -303,18 +323,52 @@ mod tests {
     #[rstest]
     fn test_no_aliasing(mut cdf_no_aliasing: ContextualizedDataFrame, df2: DataFrame) {
         let alias_map_transform = AliasMapTransform {};
-        alias_map_transform.transform(&mut cdf_no_aliasing).unwrap();
+        assert_eq!(
+            alias_map_transform.transform(&mut cdf_no_aliasing).is_err(),
+            false
+        );
         assert_eq!(cdf_no_aliasing.data, df2)
     }
 
     //tests that we get an error when we unsuccessfully change a column into a different type
     #[rstest]
-    fn test_error(mut cdf_convert_to_string_fail: ContextualizedDataFrame) {
+    fn test_error(mut cdf_convert_to_int_fail: ContextualizedDataFrame, df1: DataFrame) {
         let alias_map_transform = AliasMapTransform {};
-        let alias_map_transform_res = alias_map_transform.transform(&mut cdf_convert_to_string_fail);
         assert_eq!(
-            alias_map_transform.transform(&mut cdf_convert_to_string_fail).is_err(),
+            alias_map_transform
+                .transform(&mut cdf_convert_to_int_fail)
+                .is_err(),
             true
+        );
+        //make sure that nothing has changed despite the error
+        assert_eq!(cdf_convert_to_int_fail.data, df1);
+    }
+
+    //tests that we can change column types if we have sufficient aliases
+    #[rstest]
+    fn test_type_change(mut cdf_convert_to_int_success: ContextualizedDataFrame) {
+        let alias_map_transform = AliasMapTransform {};
+        assert_eq!(
+            alias_map_transform
+                .transform(&mut cdf_convert_to_int_success)
+                .is_err(),
+            false
+        );
+        //make sure that nothing has changed
+        assert_eq!(
+            cdf_convert_to_int_success
+                .data
+                .column("patient_id")
+                .unwrap(),
+            &Column::new("patient_id".into(), [1001, 1002, 1003, 1004])
+        );
+        assert_eq!(
+            cdf_convert_to_int_success
+                .data
+                .column("patient_id")
+                .unwrap()
+                .dtype(),
+            &DataType::Int32
         )
     }
 }
