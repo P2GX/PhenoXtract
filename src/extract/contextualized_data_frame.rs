@@ -80,9 +80,11 @@ impl ContextualizedDataFrame {
                 found_columns
             }
             Identifier::Multi(multi) => {
-                let found_columns = multi
+                let found_columns = self
+                    .data
+                    .get_columns()
                     .iter()
-                    .filter_map(|col_name| self.data.column(col_name).ok())
+                    .filter(|col| multi.contains(&col.name().to_string()))
                     .collect::<Vec<&Column>>();
 
                 debug!(
