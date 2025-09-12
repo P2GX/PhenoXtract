@@ -118,7 +118,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
     /// # Returns
     ///
     /// A `Result` containing the `PathBuf` to the locally cached ontology file on success,
-    /// or an `anyhow::Error` if the download, file creation, or API interaction fails.
+    /// or an `RegistryError` if the download, file creation, or API interaction fails.
     fn register(&self, version: &str) -> Result<PathBuf, RegistryError> {
         if !self.registry_path.exists() {
             std::fs::create_dir_all(&self.registry_path)?;
