@@ -5,7 +5,7 @@ use crate::ontology::error::RegistryError;
 use crate::ontology::github_release_client::GithubReleaseClient;
 use log::debug;
 use std::env;
-use std::fs::File;
+use std::fs::{File, remove_file};
 use std::io::copy;
 use std::path::PathBuf;
 
@@ -87,6 +87,20 @@ impl GithubOntologyRegistry {
             "hp-base.json".to_string(),
         ))
     }
+
+    fn resolve_version(&self, version: &str) -> String {
+        if version == "latest" {
+            self.github_client
+                .get_latest_release_tag(&self.repo_owner, &self.repo_name)
+                .expect("get latest tag failed")
+        } else {
+            version.to_string()
+        }
+    }
+
+    fn construct_file_name(&self, version: &str) -> String {
+        format!("{}_{}_{}", self.repo_name, version, self.file_name)
+    }
 }
 impl OntologyRegistry for GithubOntologyRegistry {
     /// Downloads and registers an ontology file from GitHub for a specific version.
@@ -110,21 +124,16 @@ impl OntologyRegistry for GithubOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
-        let resolved_version = if version == "latest" {
-            self.github_client
-                .get_latest_release_tag(self.repo_owner.as_str(), self.repo_name.as_str())?
-        } else {
-            version.to_string()
-        };
+        let resolved_version = self.resolve_version(version);
 
         let mut out_path = self.registry_path.clone();
-        out_path.push(format!(
-            "{}_{}_{}",
-            self.repo_name, resolved_version, self.file_name
-        ));
+        out_path.push(self.construct_file_name(version));
 
         if out_path.exists() {
-            debug!("HPO version already registered. {}", out_path.display());
+            debug!(
+                "Ontology version already registered. {}",
+                out_path.display()
+            );
             return Ok(out_path);
         }
 
@@ -148,13 +157,37 @@ impl OntologyRegistry for GithubOntologyRegistry {
     }
     #[allow(dead_code)]
     #[allow(unused)]
-    fn deregister(&self, version: &str) -> Result<bool, RegistryError> {
-        todo!()
+    fn deregister(&self, version: &str) -> Result<(), RegistryError> {
+        let resolved_version = self.resolve_version(version);
+        let file_path = self
+            .registry_path
+            .clone()
+            .join(self.construct_file_name(resolved_version.as_str()));
+        if !file_path.exists() {
+            debug!("Unable do deregistered: {}", file_path.display());
+            return Err(RegistryError::NotRegistered(
+                format!("Version: {resolved_version} not registered in registry").to_string(),
+            ));
+        }
+        remove_file(file_path.clone())?;
+        debug!("Deregistered {}", file_path.display());
+        Ok(())
     }
     #[allow(dead_code)]
     #[allow(unused)]
-    fn get_location(&self, version: &str) -> Result<PathBuf, RegistryError> {
-        todo!()
+    fn get_location(&self, version: &str) -> Option<PathBuf> {
+        let resolved_version = self.resolve_version(version);
+        let file_path = self
+            .registry_path
+            .clone()
+            .join(self.construct_file_name(resolved_version.as_str()));
+        if !file_path.exists() {
+            debug!("Unable do getting location: {}", file_path.display());
+            return None;
+        }
+
+        debug!("Returned register location {}", file_path.display());
+        Some(file_path)
     }
 }
 
@@ -185,6 +218,11 @@ mod tests {
     #[fixture]
     fn repo_name() -> String {
         "bikini-bottom".to_string()
+    }
+
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[fixture]
@@ -290,11 +328,10 @@ mod tests {
         release_file_name: String,
         release_version: String,
         mock_server: ServerGuard,
+        temp_dir: TempDir,
     ) {
-        let tmp = TempDir::new().unwrap();
-
         let registry = build_registry(
-            &tmp,
+            &temp_dir,
             mock_server.url(),
             repo_name,
             repo_owner,
@@ -343,11 +380,10 @@ mod tests {
         repo_owner: String,
         release_file_name: String,
         mock_server: ServerGuard,
+        temp_dir: TempDir,
     ) {
-        let tmp = TempDir::new().unwrap();
-
         let registry = build_registry(
-            &tmp,
+            &temp_dir,
             mock_server.url(),
             repo_name,
             repo_owner,
@@ -360,5 +396,106 @@ mod tests {
         let contents = std::fs::read_to_string(path.clone()).unwrap();
         assert!(contents.contains("latest_tag"));
         assert!(contents.contains("graphs"));
+    }
+
+    #[rstest]
+    fn test_construct_file_name() {
+        let reg = GithubOntologyRegistry::default_hpo_registry().unwrap();
+
+        let file_name = reg.construct_file_name("1.0.0");
+        assert_eq!(file_name, "human-phenotype-ontology_1.0.0_hp-base.json");
+    }
+
+    #[rstest]
+    fn test_get_location_success(temp_dir: TempDir, mock_server: ServerGuard) {
+        let registry_path = temp_dir.path().to_path_buf();
+
+        let reg = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let file_name = reg.construct_file_name("1.0.0");
+        let file_path = registry_path.join(&file_name);
+        File::create(&file_path).unwrap();
+
+        let result = reg.get_location("1.0.0");
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), file_path);
+    }
+
+    #[rstest]
+    fn test_get_location_not_registered(temp_dir: TempDir, mock_server: ServerGuard) {
+        let reg = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let result = reg.get_location("1.0.0");
+        assert!(result.is_none());
+    }
+
+    #[rstest]
+    fn test_deregister_success(temp_dir: TempDir, mock_server: ServerGuard) {
+        let reg = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let file_name = reg.construct_file_name("1.0.0");
+        let file_path = temp_dir.path().to_path_buf().join(&file_name);
+        File::create(&file_path).unwrap();
+        assert!(file_path.exists());
+
+        let result = reg.deregister("1.0.0");
+        assert!(result.is_ok());
+        assert!(!file_path.exists());
+    }
+
+    #[rstest]
+    fn test_deregister_not_registered(temp_dir: TempDir, mock_server: ServerGuard) {
+        let reg = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            "repo_name".to_string(),
+            "repo_owner".to_string(),
+            "release_file_name.json".to_string(),
+        );
+
+        let result = reg.deregister("1.0.0");
+        assert!(matches!(result, Err(RegistryError::NotRegistered(_))));
+    }
+
+    #[rstest]
+    fn test_resolve_version(
+        repo_name: String,
+        repo_owner: String,
+        release_file_name: String,
+        latest_tag: String,
+        release_version: String,
+        mock_server: ServerGuard,
+        temp_dir: TempDir,
+    ) {
+        let registry = build_registry(
+            &temp_dir,
+            mock_server.url(),
+            repo_name,
+            repo_owner,
+            release_file_name,
+        );
+        let resolved_version = registry.resolve_version("latest");
+        assert_eq!(resolved_version, latest_tag);
+
+        let resolved_version = registry.resolve_version(release_version.as_str());
+        assert_eq!(resolved_version, release_version);
     }
 }

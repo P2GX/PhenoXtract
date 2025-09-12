@@ -24,7 +24,7 @@ use std::sync::Arc;
 ///
 /// This enum uses a `tag` to differentiate between source types (e.g., "csv", "excel")
 /// when deserializing from a configuration file.
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type")]
 pub enum DataSource {
@@ -221,7 +221,10 @@ impl Extractable for DataSource {
                     let sheet_context = excel_source
                         .contexts
                         .iter()
-                        .find(|context| &context.name == sheet_name).expect("Table context sheet names do no correspond to extraction config sheet names.");
+                        .find(|context| &context.name == sheet_name)
+                        .ok_or(ExtractionError::UnableToFindTableContext(format!(
+                            "Can't find table context with name {sheet_name}"
+                        )))?;
 
                     let range = match workbook.worksheet_range(sheet_name) {
                         Ok(r) => r,
@@ -257,9 +260,8 @@ impl Extractable for DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{
-        CellContext, Context, SeriesContext, SingleSeriesContext, TableContext,
-    };
+    use crate::config::table_context::Identifier::Regex;
+    use crate::config::table_context::{Context, SeriesContext, TableContext};
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
@@ -376,7 +378,7 @@ mod tests {
     }
 
     #[fixture]
-    fn extract_config_headers_patient_in_columns() -> ExtractionConfig {
+    fn extract_config_headers_patients_in_columns() -> ExtractionConfig {
         ExtractionConfig::new("second_sheet".to_string(), true, false)
     }
 
@@ -385,23 +387,21 @@ mod tests {
         ExtractionConfig::new("third_sheet".to_string(), false, true)
     }
     #[fixture]
-    fn extraction_config_no_heads_patients_in_columns() -> ExtractionConfig {
+    fn extraction_config_no_headers_patients_in_columns() -> ExtractionConfig {
         ExtractionConfig::new("fourth_sheet".to_string(), false, false)
     }
     #[fixture]
     fn table_context_column_wise_header() -> TableContext {
         TableContext::new(
             "first_sheet".to_string(),
-            vec![SeriesContext::Single(SingleSeriesContext::new(
-                "patient_id".to_string(),
+            vec![SeriesContext::new(
+                Regex("patient_id".to_string()),
                 Context::None,
-                Some(CellContext::new(
-                    Context::SubjectId,
-                    None,
-                    Default::default(),
-                )),
-                vec!["disease_id".to_string()],
-            ))],
+                Context::None,
+                None,
+                None,
+                vec![Regex("disease_id".to_string())],
+            )],
         )
     }
 
@@ -409,16 +409,14 @@ mod tests {
     fn table_context_row_wise_header() -> TableContext {
         TableContext::new(
             "second_sheet".to_string(),
-            vec![SeriesContext::Single(SingleSeriesContext::new(
-                "age".to_string(),
+            vec![SeriesContext::new(
+                Regex("age".to_string()),
                 Context::None,
-                Some(CellContext::new(
-                    Context::SubjectId,
-                    None,
-                    Default::default(),
-                )),
-                vec!["weight".to_string()],
-            ))],
+                Context::None,
+                None,
+                None,
+                vec![Regex("weight".to_string())],
+            )],
         )
     }
 
@@ -458,15 +456,15 @@ mod tests {
     #[fixture]
     fn extraction_configs(
         extraction_config_headers_patients_in_rows: ExtractionConfig,
-        extract_config_headers_patient_in_columns: ExtractionConfig,
+        extract_config_headers_patients_in_columns: ExtractionConfig,
         extraction_config_no_headers_patients_in_rows: ExtractionConfig,
-        extraction_config_no_heads_patients_in_columns: ExtractionConfig,
+        extraction_config_no_headers_patients_in_columns: ExtractionConfig,
     ) -> Vec<ExtractionConfig> {
         vec![
             extraction_config_headers_patients_in_rows,
-            extract_config_headers_patient_in_columns,
+            extract_config_headers_patients_in_columns,
             extraction_config_no_headers_patients_in_rows,
-            extraction_config_no_heads_patients_in_columns,
+            extraction_config_no_headers_patients_in_columns,
         ]
     }
 
@@ -524,7 +522,7 @@ mod tests {
     #[rstest]
     fn test_extract_csv_no_heads_patients_in_columns(
         temp_dir: TempDir,
-        extraction_config_no_heads_patients_in_columns: ExtractionConfig,
+        extraction_config_no_headers_patients_in_columns: ExtractionConfig,
     ) {
         let test_data = r#"
 PID_1,PID_2,PID_3
@@ -541,7 +539,7 @@ M,F,M
             file_path,
             Some(','),
             table_context.clone(),
-            extraction_config_no_heads_patients_in_columns.clone(),
+            extraction_config_no_headers_patients_in_columns.clone(),
         ));
 
         let mut data_frames = data_source.extract().unwrap();
@@ -636,7 +634,7 @@ PID_3,56,M,89"#;
     #[rstest]
     fn test_extract_csv_extract_config_headers_patient_in_columns(
         temp_dir: TempDir,
-        extract_config_headers_patient_in_columns: ExtractionConfig,
+        extract_config_headers_patients_in_columns: ExtractionConfig,
     ) {
         let test_data = br#"
 Patient_IDs,PID_1,PID_2,PID_3
@@ -653,7 +651,7 @@ AGE,18,27,89"#;
             file_path,
             Some(','),
             table_context.clone(),
-            extract_config_headers_patient_in_columns.clone(),
+            extract_config_headers_patients_in_columns.clone(),
         ));
 
         let mut data_frames = data_source.extract().unwrap();

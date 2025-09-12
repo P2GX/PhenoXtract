@@ -1,8 +1,7 @@
-use crate::validation::multi_series_context_validation::validate_multi_identifier;
+use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
-use crate::validation::table_context_validation::validate_unique_series_linking;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -19,7 +18,6 @@ use validator::Validate;
     skip_on_field_errors = false
 ))]
 #[validate(schema(function = "validate_series_linking"))]
-#[validate(schema(function = "validate_unique_series_linking"))]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
@@ -35,7 +33,7 @@ impl TableContext {
         TableContext { name, context }
     }
 }
-/// Defines the semantic meaning or type of data in a cell or series.
+/// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
@@ -84,170 +82,106 @@ pub(crate) enum CellValue {
     Bool(bool),
 }
 
-/// Provides detailed context for processing the values within all cells of a column.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub(crate) struct CellContext {
-    /// The semantic context of the cell's data.
-    #[allow(unused)]
-    #[serde(default)]
-    context: Context,
-
-    /// A default value to replace empty fields in a cell
-    #[allow(unused)]
-    fill_missing: Option<CellValue>,
-    #[allow(unused)]
-    #[serde(default)]
-    /// A map to replace specific string values with another `CellValue`.
-    ///
-    /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
-    alias_map: HashMap<String, CellValue>,
-    // Besides just strings, should also be able to hold operations like "gt(1)" or "eq(1)", which can be interpreted later.
-}
-
-impl CellContext {
-    pub fn new(
-        context: Context,
-        fill_missing: Option<CellValue>,
-        alias_map: HashMap<String, CellValue>,
-    ) -> CellContext {
-        CellContext {
-            context,
-            fill_missing,
-            alias_map,
-        }
-    }
-}
-
-/// Represents the context for one or more series (columns or rows).
+/// The identifier will correspond to either one or multiple columns in a dataframe.
 ///
-/// This enum acts as a dispatcher. It can either define the context for a
-/// single, specifically identified series or for multiple series identified
-/// by a regular expression.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// If it has Regex type, then the columns will be determined by the regular expression
+/// NOTE: if the regex string corresponds exactly to a column name, then that single column will be identified.
+/// If it has multi type, then the strings within the vector will be the headers of the relevant columns.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
-pub(crate) enum SeriesContext {
-    #[allow(unused)]
-    Single(SingleSeriesContext),
-    #[allow(unused)]
-    Multi(MultiSeriesContext),
-}
-
-impl SeriesContext {
-    /// Returns the identifier context associated with this `SeriesContext`.
-    ///
-    /// For `Single` variants, this is the `id_context` of the contained single series.
-    /// For `Multi` variants, this is the `id_context` of the contained multi series.
-    pub fn get_context(&self) -> Context {
-        match self {
-            SeriesContext::Single(single) => single.id_context.clone(),
-            SeriesContext::Multi(multi) => multi.id_context.clone(),
-        }
-    }
-
-    pub fn get_cell_context(&self) -> Context {
-        let cells_option = match self {
-            SeriesContext::Single(single) => &single.cells,
-            SeriesContext::Multi(multi) => &multi.cells,
-        };
-        cells_option
-            .clone()
-            .map(|context_container| context_container.context)
-            .unwrap_or(Context::None)
-    }
-    #[allow(unused)]
-    pub fn with_context(mut self, context: Context) -> Self {
-        let id_context_ref = match &mut self {
-            SeriesContext::Single(single) => &mut single.id_context,
-            SeriesContext::Multi(multi) => &mut multi.id_context,
-        };
-
-        *id_context_ref = context;
-
-        self
-    }
-
-    #[allow(unused)]
-    pub fn with_cell_context(mut self, context: Context) -> Self {
-        let cells_option = match &mut self {
-            SeriesContext::Single(single) => &mut single.cells,
-            SeriesContext::Multi(multi) => &mut multi.cells,
-        };
-        if let Some(cell_context) = cells_option {
-            cell_context.context = context;
-        } else {
-            *cells_option = Some(CellContext::new(context, None, HashMap::default()));
-        }
-        self
-    }
-}
-
-/// Defines the context for a single, specific series (e.g., a column or row).
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub(crate) struct SingleSeriesContext {
-    /// The unique identifier for the series.
-    pub(crate) identifier: String,
-    #[serde(default)]
-    /// The semantic context found in the header/index of the series.
-    id_context: Context,
-    /// The context to apply to every cell within this series.
-    cells: Option<CellContext>,
-    /// A unique ID that can be used to link to other series
-
-    #[serde(default)]
-    /// List of IDs that link to other tables, can be used to determine the relationship between these columns
-    pub linked_to: Vec<String>,
-}
-
-impl SingleSeriesContext {
-    #[allow(unused)]
-    pub(crate) fn new(
-        identifier: String,
-        id_context: Context,
-        cells: Option<CellContext>,
-        linked_to: Vec<String>,
-    ) -> Self {
-        SingleSeriesContext {
-            identifier,
-            id_context,
-            cells,
-            linked_to,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(untagged)]
-pub(crate) enum MultiIdentifier {
+pub(crate) enum Identifier {
     Regex(String),
     Multi(Vec<String>),
 }
 
-/// Defines the context for multiple series identified by a regex pattern.
-///
-/// This is useful for applying the same logic to a group of related columns or rows,
-/// for example, all columns whose names start with "measurement_".
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
-pub(crate) struct MultiSeriesContext {
-    /// A regular expression used to match and select multiple series identifiers.
-    #[validate(custom(function = "validate_multi_identifier"))]
-    pub(crate) multi_identifier: MultiIdentifier,
-    /// The semantic context to apply to the identifiers of all matched column header or row indexes.
-    id_context: Context,
-    /// The context to apply to every cell in all of the matched series.
-    cells: Option<CellContext>,
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum AliasMap {
+    #[allow(unused)]
+    ToString(HashMap<String, String>),
+    #[allow(unused)]
+    ToInt(HashMap<String, i64>),
+    #[allow(unused)]
+    ToFloat(HashMap<String, f64>),
+    #[allow(unused)]
+    ToBool(HashMap<String, bool>),
 }
 
-impl MultiSeriesContext {
+/// Represents the context for one or more series in a table.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
+#[validate(schema(function = "validate_identifier"))]
+pub(crate) struct SeriesContext {
+    /// The identifier for the (possibly multiple) series.
+    pub(crate) identifier: Identifier,
+
+    /// The semantic context found in the header(s) of the series.
+    header_context: Context,
+    /// The context that applies to every cell within this series.
+    data_context: Context,
+
+    /// A default value to replace empty fields in a cell
+    #[allow(unused)]
+    fill_missing: Option<CellValue>,
+
+    #[allow(unused)]
+    #[serde(default)]
+    /// A map to replace specific cell values with other strings, ints, floats or bools.
+    /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
+    alias_map: Option<AliasMap>,
+
+    #[serde(default)]
+    /// List of IDs that link to other tables, can be used to determine the relationship between these columns.
+    pub linked_to: Vec<Identifier>,
+}
+
+impl SeriesContext {
     #[allow(unused)]
     pub(crate) fn new(
-        multi_identifier: MultiIdentifier,
-        id_context: Context,
-        cells: Option<CellContext>,
+        identifier: Identifier,
+        header_context: Context,
+        data_context: Context,
+        fill_missing: Option<CellValue>,
+        alias_map: Option<AliasMap>,
+        linked_to: Vec<Identifier>,
     ) -> Self {
-        MultiSeriesContext {
-            multi_identifier,
-            id_context,
-            cells,
+        SeriesContext {
+            identifier,
+            header_context,
+            data_context,
+            fill_missing,
+            alias_map,
+            linked_to,
         }
+    }
+
+    pub fn get_identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
+
+    pub fn get_header_context(&self) -> Context {
+        self.header_context.clone()
+    }
+
+    pub fn get_data_context(&self) -> Context {
+        self.data_context.clone()
+    }
+
+    pub fn get_links(&self) -> Vec<Identifier> {
+        self.linked_to.clone()
+    }
+
+    #[allow(unused)]
+    pub fn with_header_context(mut self, context: Context) -> Self {
+        let header_context_ref = &mut self.header_context;
+        *header_context_ref = context;
+        self
+    }
+
+    #[allow(unused)]
+    pub fn with_data_context(mut self, context: Context) -> Self {
+        let data_context_ref = &mut self.data_context;
+        *data_context_ref = context;
+        self
     }
 }
