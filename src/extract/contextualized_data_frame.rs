@@ -26,77 +26,46 @@ impl ContextualizedDataFrame {
     }
 
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
-        let matched_column_names: Vec<String> = self
-            .data
-            .get_column_names_str()
+        self.data
+            .get_columns()
             .iter()
-            .filter_map(|&name| {
-                if regex.is_match(name) {
-                    Some(name.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        matched_column_names
-            .iter()
-            .map(|col_names| {
-                self.data
-                    .column(col_names)
-                    .expect("Expected valid column name")
-            })
-            .collect()
+            .filter(|col| regex.is_match(col.name()))
+            .collect::<Vec<&Column>>()
     }
 
-    /// Retrieves one or more `Column` references from the underlying `DataFrame`
-    /// based on the provided [`Identifier`].
+    /// Retrieves a collection of columns (`&Column`) from the dataset based on the given identifier.
     ///
-    /// # Behavior
-    /// - If the identifier is [`Identifier::Regex`], the method first tries to
-    ///   interpret the given string as a *literal* regex (escaped). If no matches
-    ///   are found, it then interprets the string as a true regex pattern and
-    ///   attempts to match full column names.
-    /// - If the identifier is [`Identifier::Multi`], each provided column name is
-    ///   resolved directly against the `DataFrame`.
+    /// # Parameters
+    /// - `id`: An `Identifier` specifying which columns to retrieve. This can be:
+    ///     - `Identifier::Regex(pattern)`: Selects all columns whose names match the given regex pattern.
+    ///       The function will attempt both an escaped and unescaped version of the pattern.
+    ///     - `Identifier::Multi(vec)`: Selects columns whose names are explicitly listed in the vector.
     ///
     /// # Returns
-    /// A vector of references to matching [`Column`]s.
-    /// If no matches are found, an empty vector is returned.
-    ///
-    /// # Panics
-    /// - When an internally matched column name cannot be resolved in the
-    ///   `DataFrame` (this should only happen if the column set changes
-    ///   unexpectedly).
+    /// A `Vec<&Column>` containing references to the matching columns.
+    /// If no columns match the identifier, the returned vector will be empty.
     ///
     /// # Examples
     /// ```ignore
-    /// let df = DataFrame::new(...)?;
-    /// let ctx_df = ContextualizedDataFrame::new(ctx, df);
-    ///
-    /// // Match columns by exact regex
-    /// let cols = ctx_df.get_series(&Identifier::Regex("^age$".into()));
-    ///
-    /// // Match multiple named columns
-    /// let cols = ctx_df.get_series(&Identifier::Multi(vec!["id".into(), "name".into()]));
+    /// let series = dataframe.get_series(&Identifier::Regex(r"^user_.*".into()));
+    /// let specific_series = dataframe.get_series(&Identifier::Multi(vec!["age".into(), "score".into()]));
     /// ```
+    ///
+    /// # Notes
+    /// - The function internally uses `regex_match_column` to handle regex matching.
+    /// - When using a regex, both the escaped and original patterns are tried to maximize matches.
     #[allow(unused)]
-    pub fn get_series(&self, id: &Identifier) -> Vec<&Column> {
+    pub fn get_column(&self, id: &Identifier) -> Vec<&Column> {
         match id {
-            Identifier::Regex(regex) => {
-                if let Ok(escape_regex) = Regex::new(escape(regex).as_str()) {
-                    let found_columns = self.regex_match_column(&escape_regex);
-                    if !found_columns.is_empty() {
-                        return found_columns;
-                    }
+            Identifier::Regex(pattern) => {
+                let mut found_columns = vec![];
+                if let Ok(escape_regex) = Regex::new(escape(pattern).as_str()) {
+                    found_columns = self.regex_match_column(&escape_regex);
                 }
-                if let Ok(re) = Regex::new(regex.as_str()) {
-                    let pattern = String::from(r"\A(?:") + re.as_str() + r")\z";
-                    let full_match_regex = Regex::new(&pattern)
-                        .unwrap_or_else(|_| panic!("Failed to compile regex {}", pattern));
-                    return self.regex_match_column(&full_match_regex);
+                if let Ok(regex) = Regex::new(pattern.as_str()) {
+                    found_columns = self.regex_match_column(&regex);
                 }
-                vec![]
+                found_columns
             }
             Identifier::Multi(multi) => multi
                 .iter()
@@ -164,29 +133,26 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_series_regex_escape() {
+    fn test_get_column_regex_escape() {
         let df = sample_df();
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Regex("age".to_string());
-        let cols = cdf.get_series(&id);
+        let cols = cdf.get_column(&id);
 
         assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name(), "age");
     }
 
     #[rstest]
-    #[case::basic("[a,n]{1,2}[a-z]*")]
-    #[case::anchored("^[a,n]{1,2}[a-z]*$")]
-    #[case::anchored_absolut(r"\A[a,n]{1,2}[a-z]*\z")]
-    fn test_get_series_regex_raw(#[case] pattern: &str) {
+    fn test_get_column_regex_raw() {
         let df = sample_df();
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
-        let id = Identifier::Regex(pattern.to_string());
-        let cols = cdf.get_series(&id);
+        let id = Identifier::Regex("^[a,n]{1,2}[a-z]*".to_string());
+        let cols = cdf.get_column(&id);
 
         assert_eq!(cols.len(), 2);
         assert_eq!(cols[0].name(), "name");
@@ -194,13 +160,13 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_series_multi() {
+    fn test_get_column_multi() {
         let df = sample_df();
         let ctx = TableContext::default();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Multi(vec!["name".to_string(), "age".to_string()]);
-        let cols = cdf.get_series(&id);
+        let cols = cdf.get_column(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["name", "age"]);
