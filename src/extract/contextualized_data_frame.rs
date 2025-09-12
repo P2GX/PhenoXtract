@@ -48,6 +48,38 @@ impl ContextualizedDataFrame {
             })
             .collect()
     }
+
+    /// Retrieves one or more `Column` references from the underlying `DataFrame`
+    /// based on the provided [`Identifier`].
+    ///
+    /// # Behavior
+    /// - If the identifier is [`Identifier::Regex`], the method first tries to
+    ///   interpret the given string as a *literal* regex (escaped). If no matches
+    ///   are found, it then interprets the string as a true regex pattern and
+    ///   attempts to match full column names.
+    /// - If the identifier is [`Identifier::Multi`], each provided column name is
+    ///   resolved directly against the `DataFrame`.
+    ///
+    /// # Returns
+    /// A vector of references to matching [`Column`]s.
+    /// If no matches are found, an empty vector is returned.
+    ///
+    /// # Panics
+    /// - When an internally matched column name cannot be resolved in the
+    ///   `DataFrame` (this should only happen if the column set changes
+    ///   unexpectedly).
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let df = DataFrame::new(...)?;
+    /// let ctx_df = ContextualizedDataFrame::new(ctx, df);
+    ///
+    /// // Match columns by exact regex
+    /// let cols = ctx_df.get_series(&Identifier::Regex("^age$".into()));
+    ///
+    /// // Match multiple named columns
+    /// let cols = ctx_df.get_series(&Identifier::Multi(vec!["id".into(), "name".into()]));
+    /// ```
     #[allow(unused)]
     pub fn get_series(&self, id: &Identifier) -> Vec<&Column> {
         match id {
