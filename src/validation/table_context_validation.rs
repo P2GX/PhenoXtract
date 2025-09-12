@@ -1,52 +1,41 @@
-use crate::config::table_context::{Context, SeriesContext, TableContext};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use validator::ValidationError;
 
+//todo NOTE: this does not check whether each column has a unique context assigned to it. But we need a regex search function on a CDF to do that.
+// That validation function still needs to be written. When that is complete, it should replace this validation function.
 pub(crate) fn validate_unique_identifiers(
-    series_context: &[SeriesContext],
+    series_contexts: &[SeriesContext],
 ) -> Result<(), ValidationError> {
-    let mut unique_identifiers: HashSet<String> = HashSet::new();
+    let mut identifiers: Vec<String> = Vec::new();
 
-    let duplicates = series_context
+    series_contexts
         .iter()
-        .filter_map(|context| match context {
-            SeriesContext::Single(single) => {
-                if !unique_identifiers.insert(single.identifier.clone()) {
-                    Some(single.identifier.clone())
-                } else {
-                    None
-                }
+        .for_each(|sc| match sc.get_identifier() {
+            Identifier::Regex(regex) => {
+                identifiers.push(regex.to_string());
             }
-            SeriesContext::Multi(multi) => match &multi.multi_identifier {
-                crate::config::table_context::MultiIdentifier::Multi(multi_ids) => {
-                    let duplicates = multi_ids
-                        .iter()
-                        .filter_map(|multi_ids| {
-                            if !unique_identifiers.insert(multi_ids.clone()) {
-                                Some(multi_ids.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<String>>();
+            Identifier::Multi(multi_ids) => {
+                multi_ids.iter().for_each(|id| {
+                    identifiers.push(id.to_string());
+                });
+            }
+        });
 
-                    if !duplicates.is_empty() {
-                        return Some(duplicates.join(","));
-                    }
-                    None
-                }
-                crate::config::table_context::MultiIdentifier::Regex(regex) => {
-                    if !unique_identifiers.insert(regex.clone()) {
-                        Some(regex.clone())
-                    } else {
-                        None
-                    }
-                }
-            },
+    let mut unique_identifiers: HashSet<String> = HashSet::new();
+    let duplicates = identifiers
+        .iter()
+        .filter_map(|id| {
+            if !unique_identifiers.insert(id.clone()) {
+                Some(id.clone())
+            } else {
+                None
+            }
         })
         .collect::<Vec<String>>();
+
     fail_validation_on_duplicates(duplicates)
 }
 
@@ -54,8 +43,8 @@ pub(crate) fn validate_at_least_one_subject_id(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
     for column in &table_context.context {
-        if column.get_context() == Context::SubjectId
-            || column.get_cell_context() == Context::SubjectId
+        if column.get_header_context() == Context::SubjectId
+            || column.get_data_context() == Context::SubjectId
         {
             return Ok(());
         }
@@ -69,27 +58,20 @@ pub(crate) fn validate_at_least_one_subject_id(
 }
 
 pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<(), ValidationError> {
-    let all_link_ids: Vec<String> = table_context
+    let all_ids: Vec<Identifier> = table_context
         .context
         .iter()
-        .filter_map(|column| match column {
-            SeriesContext::Single(single) => Some(single.identifier.clone()),
-            _ => None,
-        })
+        .map(|column| column.get_identifier())
         .collect();
 
-    let all_target_ids: Vec<String> = table_context
+    let all_linking_ids: Vec<Identifier> = table_context
         .context
         .iter()
-        .filter_map(|column| match column {
-            SeriesContext::Single(single) => Some(single.linked_to.clone()),
-            _ => None,
-        })
-        .flatten()
+        .flat_map(|column| column.get_links())
         .collect();
 
-    for link_id in all_target_ids {
-        if !all_link_ids.contains(&link_id) {
+    for link_id in all_linking_ids {
+        if !all_ids.contains(&link_id) {
             let mut error = ValidationError::new("missing_link");
             error.add_param(Cow::from("linking_id"), &link_id);
             error.add_param(Cow::from("table_name"), &table_context.name);
@@ -102,94 +84,60 @@ pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<()
     Ok(())
 }
 
-pub(crate) fn validate_unique_series_linking(
-    table_context: &TableContext,
-) -> Result<(), ValidationError> {
-    let all_link_ids: Vec<String> = table_context
-        .context
-        .iter()
-        .filter_map(|column| match column {
-            SeriesContext::Single(single) => Some(single.identifier.clone()),
-            _ => None,
-        })
-        .collect();
-
-    let mut unique_linking_ids: HashSet<String> = HashSet::new();
-
-    let duplicates = all_link_ids
-        .iter()
-        .filter_map(|link_id| {
-            if !unique_linking_ids.insert(link_id.clone()) {
-                Some(link_id.clone())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>();
-
-    fail_validation_on_duplicates(duplicates)
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
         validate_at_least_one_subject_id, validate_series_linking, validate_unique_identifiers,
     };
-    use crate::config::table_context::{
-        Context, MultiIdentifier, MultiSeriesContext, SeriesContext, SingleSeriesContext,
-        TableContext,
-    };
+    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 
     use rstest::rstest;
 
-    fn single_name(name: &str) -> SeriesContext {
-        SeriesContext::Single(SingleSeriesContext::new(
-            name.to_string(),
+    fn regex(regex: &str) -> SeriesContext {
+        SeriesContext::new(
+            Identifier::Regex(regex.to_string()),
+            Context::None,
             Context::None,
             None,
+            None,
             vec![],
-        ))
+        )
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
-        SeriesContext::Multi(MultiSeriesContext::new(
-            MultiIdentifier::Multi(ids.into_iter().map(String::from).collect()),
+        SeriesContext::new(
+            Identifier::Multi(ids.iter().map(|id| id.to_string()).collect()),
+            Context::None,
             Context::None,
             None,
-        ))
-    }
-
-    fn multi_regex(regex: &str) -> SeriesContext {
-        SeriesContext::Multi(MultiSeriesContext::new(
-            MultiIdentifier::Regex(regex.to_string()),
-            Context::None,
             None,
-        ))
+            vec![],
+        )
     }
 
     #[rstest]
     #[case::empty_list(vec![], Ok(()))]
-    #[case::single_name_ok(vec![single_name("a")], Ok(()))]
+    #[case::single_name_ok(vec![regex("a")], Ok(()))]
     #[case::multi_ids_ok(vec![multi_ids(vec!["a", "b"])], Ok(()))]
-    #[case::multi_regex_ok(vec![multi_regex("a.*")], Ok(()))]
+    #[case::regex_ok(vec![regex("a.*")], Ok(()))]
     #[case::multiple_unique_contexts(
         vec![
-            single_name("name1"),
+            regex("name1"),
             multi_ids(vec!["id1", "id2"]),
-            multi_regex("regex1")
+            regex("regex1")
         ],
         Ok(())
     )]
     #[case::duplicate_name(
-        vec![single_name("dup"), single_name("dup")],
+        vec![regex("dup"), regex("dup")],
         Err("".to_string())
     )]
     #[case::duplicate_regex(
-        vec![multi_regex("dup"), multi_regex("dup")],
+        vec![regex("dup"), regex("dup")],
         Err("".to_string())
     )]
     #[case::duplicate_in_multi_list(
-        vec![multi_ids(vec!["a", "b"]), single_name("a")],
+        vec![multi_ids(vec!["a", "b"]), regex("a")],
         Err("".to_string())
     )]
     #[case::internal_duplicate_in_multi(
@@ -219,13 +167,13 @@ mod tests {
     #[case::subject_id_in_column_context(
         TableContext{
             name: "test".to_string(),
-            context: vec![single_name("test").with_context(Context::SubjectId)],
+            context: vec![regex("test").with_header_context(Context::SubjectId)],
             },
     )]
     #[case::subject_id_in_column_cell_context(
         TableContext{
             name: "test".to_string(),
-            context: vec![single_name("test").with_cell_context(Context::SubjectId)],
+            context: vec![regex("test").with_data_context(Context::SubjectId)],
             },
     )]
     fn test_validation_succeeds_when_subject_id_is_present(#[case] table_context: TableContext) {
@@ -239,8 +187,8 @@ mod tests {
         let table_context = TableContext::new(
             "table_without_subject_id".to_string(),
             vec![
-                single_name("test").with_context(Context::HpoId),
-                single_name("test").with_cell_context(Context::None),
+                regex("test").with_header_context(Context::HpoId),
+                regex("test").with_data_context(Context::None),
             ],
         );
 
@@ -272,18 +220,22 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "B".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
                     None,
-                    vec!["A".to_string()],
-                )),
+                    None,
+                    vec![Identifier::Regex("A".to_string())],
+                ),
             ],
         );
         assert!(validate_series_linking(&table_context).is_ok());
@@ -296,18 +248,22 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "B".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
                     None,
-                    vec!["non_existent_link".to_string()],
-                )),
+                    None,
+                    vec![Identifier::Regex("non_existent_link".to_string())],
+                ),
             ],
         );
 
@@ -341,18 +297,22 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "B".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
+                ),
             ],
         );
         assert!(validate_series_linking(&table_context).is_ok());
@@ -365,23 +325,30 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Multi(MultiSeriesContext::new(
-                    MultiIdentifier::Regex(".test".to_string()),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Multi(vec!["test".to_string()]),
+                    Context::None,
+                    Context::None,
                     None,
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "B".to_string(),
-                    Default::default(),
                     None,
-                    vec!["A".to_string()],
-                )),
+                    vec![],
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
+                    None,
+                    vec![Identifier::Regex("A".to_string())],
+                ),
             ],
         );
         assert!(validate_series_linking(&table_context).is_ok());
@@ -394,24 +361,33 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "B".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("C".to_string()),
+                    Context::None,
+                    Context::None,
                     None,
-                    vec!["A".to_string(), "B".to_string()],
-                )),
+                    None,
+                    vec![
+                        Identifier::Regex("A".to_string()),
+                        Identifier::Regex("B".to_string()),
+                    ],
+                ),
             ],
         );
         assert!(validate_series_linking(&table_context).is_ok());
@@ -424,18 +400,33 @@ mod tests {
         let table_context = TableContext::new(
             "test_table".to_string(),
             vec![
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "A".to_string(),
-                    Default::default(),
+                SeriesContext::new(
+                    Identifier::Regex("A".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
                     None,
                     vec![],
-                )),
-                SeriesContext::Single(SingleSeriesContext::new(
-                    "C".to_string(),
-                    Default::default(),
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("B".to_string()),
+                    Context::None,
+                    Context::None,
                     None,
-                    vec!["A".to_string(), "non_existent_link".to_string()],
-                )),
+                    None,
+                    vec![],
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("C".to_string()),
+                    Context::None,
+                    Context::None,
+                    None,
+                    None,
+                    vec![
+                        Identifier::Regex("A".to_string()),
+                        Identifier::Regex("non_existent_link".to_string()),
+                    ],
+                ),
             ],
         );
 
