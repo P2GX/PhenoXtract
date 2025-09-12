@@ -6,6 +6,8 @@ pub enum RegistryError {
     Http(reqwest::Error),
     #[allow(dead_code)]
     EnvironmentVarNotSet(String),
+    #[allow(dead_code)]
+    NotRegistered(String),
 }
 
 impl From<std::io::Error> for RegistryError {
