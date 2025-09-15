@@ -13,7 +13,7 @@ use std::path::PathBuf;
 ///
 /// This registry is responsible for fetching specific file assets from GitHub releases,
 /// storing them in a local directory, and retrieving the path to the cached file.
-struct GithubOntologyRegistry {
+pub(crate) struct GithubOntologyRegistry {
     /// The local file system path where ontology files will be stored.
     registry_path: PathBuf,
     /// The name of the GitHub repository to fetch releases from (e.g., "human-phenotype-ontology").
@@ -41,6 +41,16 @@ impl GithubOntologyRegistry {
             file_name,
             github_client: GithubReleaseClient::default(),
         }
+    }
+
+    pub fn with_registry_path(mut self, registry_path: PathBuf) -> Self {
+        self.registry_path = registry_path;
+        self
+    }
+
+    pub fn with_file_name(mut self, file_name: String) -> Self {
+        self.file_name = file_name;
+        self
     }
 
     /// Creates a default registry specifically for the Human Phenotype Ontology (HPO).
@@ -108,7 +118,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
     /// # Returns
     ///
     /// A `Result` containing the `PathBuf` to the locally cached ontology file on success,
-    /// or an `anyhow::Error` if the download, file creation, or API interaction fails.
+    /// or an `RegistryError` if the download, file creation, or API interaction fails.
     fn register(&self, version: &str) -> Result<PathBuf, RegistryError> {
         if !self.registry_path.exists() {
             std::fs::create_dir_all(&self.registry_path)?;

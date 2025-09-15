@@ -8,7 +8,7 @@ name = "phenoxtract"
 version = "0.1.0"
 
 [dependencies]
-config = "0.15.13"
+config = "0.15.15"
 polars = { version = "0.50.0", features = ["lazy"] }
 serde = "1.0.219"
 anyhow = "1.0.98"
@@ -20,6 +20,8 @@ log = "0.4.27"
 reqwest = { version = "0.12.23", features = ["blocking", "json"] }
 either = "1.15.0"
 chrono = "0.4.41"
+rayon = "=1.10.0"
+ontolius = "0.5.3"
 
 
 [dev-dependencies]
