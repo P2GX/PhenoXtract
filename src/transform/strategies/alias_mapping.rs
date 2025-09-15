@@ -3,16 +3,49 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
-use polars::frame::DataFrame;
-use polars::prelude::{AnyValue, NamedFrom, PlSmallStr, Series};
+use polars::prelude::AnyValue;
 use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+/// Given a contextualised dataframe, this strategy will apply all the aliases
+/// found in the SeriesContexts.
+/// For example if the Contextualised Dataframe has a SeriesContext consisting of a SubjectSex column
+/// and a ToString AliasMap which converts "M" to "Male" and "F" to "Female"
+/// then the strategy will apply those aliases to each cell.
+/// NOTE: does not transform the headers of the Dataframe.
 #[allow(dead_code)]
-pub struct AliasMapTransform {}
+pub struct AliasMapStrategy;
 
-impl Strategy for AliasMapTransform {
+impl AliasMapStrategy {
+    ///Applies aliases from a hash map to a vector of strings
+    pub fn map_values<T: FromStr + Copy>(
+        vec_to_alias: Vec<String>,
+        hm: HashMap<String, T>,
+        col_name: &str,
+        table_name: &str,
+    ) -> Result<Vec<T>, TransformError> {
+        vec_to_alias
+            .iter()
+            .map(|s| match hm.get(s) {
+                Some(&alias) => Ok(alias),
+                None => s.parse::<T>().map_err(|_e| {
+                    StrategyError(
+                        format!(
+                            "Could not convert column {} in table {} to a vector of type {}.",
+                            col_name,
+                            table_name,
+                            type_name::<T>()
+                        )
+                        .to_string(),
+                    )
+                }),
+            })
+            .collect()
+    }
+}
+
+impl Strategy for AliasMapStrategy {
     fn is_valid(&self, _table: &ContextualizedDataFrame) -> bool {
         true
     }
@@ -21,59 +54,11 @@ impl Strategy for AliasMapTransform {
         &self,
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
-        fn transform_vec_with_hash_map<T: FromStr + Copy>(
-            vec_of_strings: Vec<String>,
-            hm: HashMap<String, T>,
-            col_name: &PlSmallStr,
-            table_name: &String,
-        ) -> Result<Vec<T>, TransformError> {
-            vec_of_strings
-                .iter()
-                .map(|s| match hm.get(s) {
-                    Some(&alias) => Ok(alias),
-                    None => s.parse::<T>().map_err(|_e| {
-                        StrategyError(
-                            format!(
-                                "Could not convert column {} in table {} to a vector of type {}.",
-                                col_name,
-                                table_name,
-                                type_name::<T>()
-                            )
-                            .to_string(),
-                        )
-                    }),
-                })
-                .collect()
-        }
-
-        fn insert_vec_into_table<'a, T, Phantom: ?Sized>(
-            transformed_vec: Vec<T>,
-            col_name: &PlSmallStr,
-            table: &'a mut ContextualizedDataFrame,
-            table_name: &String,
-        ) -> Result<&'a mut DataFrame, TransformError>
-        where
-            Series: NamedFrom<Vec<T>, Phantom>,
-        {
-            let transformed_series = Series::new(col_name.clone(), transformed_vec);
-            table
-                .data_mut()
-                .replace(col_name, transformed_series)
-                .map_err(|_e| {
-                    StrategyError(
-                        format!(
-                            "Could not insert transformed column {col_name} into table {table_name}."
-                        )
-                        .to_string(),
-                    )
-                })
-        }
-
         let table_name = &table.context().name.clone();
 
         let mut col_alias_map_pairs = vec![];
-        for series_context in &table.context().context {
-            if let Some(am) = series_context.get_alias_map_opt() {
+        for series_context in table.get_series_contexts() {
+            if let Some(am) = series_context.get_alias_map() {
                 let cols = table.get_columns(&series_context.identifier);
                 for col_ref in cols {
                     col_alias_map_pairs.push((col_ref.clone(), am.clone()))
@@ -104,25 +89,25 @@ impl Strategy for AliasMapTransform {
                             None => s.clone(),
                         })
                         .collect();
-                    insert_vec_into_table(transformed_vec, col_name, table, table_name)?;
+                    table.replace_column(transformed_vec, col_name, table_name)?;
                     Ok(())
                 }
                 ToInt(hm) => {
                     let transformed_vec =
-                        transform_vec_with_hash_map(vec_of_strings, hm, col_name, table_name)?;
-                    insert_vec_into_table(transformed_vec, col_name, table, table_name)?;
+                        Self::map_values(vec_of_strings, hm, col_name, table_name)?;
+                    table.replace_column(transformed_vec, col_name, table_name)?;
                     Ok(())
                 }
                 ToFloat(hm) => {
                     let transformed_vec =
-                        transform_vec_with_hash_map(vec_of_strings, hm, col_name, table_name)?;
-                    insert_vec_into_table(transformed_vec, col_name, table, table_name)?;
+                        Self::map_values(vec_of_strings, hm, col_name, table_name)?;
+                    table.replace_column(transformed_vec, col_name, table_name)?;
                     Ok(())
                 }
                 ToBool(hm) => {
                     let transformed_vec =
-                        transform_vec_with_hash_map(vec_of_strings, hm, col_name, table_name)?;
-                    insert_vec_into_table(transformed_vec, col_name, table, table_name)?;
+                        Self::map_values(vec_of_strings, hm, col_name, table_name)?;
+                    table.replace_column(transformed_vec, col_name, table_name)?;
                     Ok(())
                 }
             }?;
@@ -138,7 +123,7 @@ mod tests {
     use crate::config::table_context::Context::{SmokerBool, SubjectAge, SubjectId, WeightInKg};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::transform::alias_mapping::AliasMapTransform;
+    use crate::transform::strategies::alias_mapping::AliasMapStrategy;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
     use polars::prelude::{Column, DataType};
@@ -146,7 +131,7 @@ mod tests {
     use std::collections::HashMap;
 
     #[fixture]
-    fn sc_P00X_to_patient_X() -> SeriesContext {
+    fn sc_string_aliases() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("patient_id".to_string()),
             Context::None,
@@ -163,7 +148,7 @@ mod tests {
     }
 
     #[fixture]
-    fn sc_11_to_22() -> SeriesContext {
+    fn sc_int_alias() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("age".to_string()),
             Context::None,
@@ -175,7 +160,7 @@ mod tests {
     }
 
     #[fixture]
-    fn sc_doubling() -> SeriesContext {
+    fn sc_float_aliases() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("weight".to_string()),
             Context::None,
@@ -192,7 +177,7 @@ mod tests {
     }
 
     #[fixture]
-    fn sc_no_false() -> SeriesContext {
+    fn sc_bool_alias() -> SeriesContext {
         SeriesContext::new(
             Identifier::Regex("smokes".to_string()),
             Context::None,
@@ -234,14 +219,19 @@ mod tests {
 
     #[fixture]
     fn tc(
-        sc_P00X_to_patient_X: SeriesContext,
-        sc_11_to_22: SeriesContext,
-        sc_doubling: SeriesContext,
-        sc_no_false: SeriesContext,
+        sc_string_aliases: SeriesContext,
+        sc_int_alias: SeriesContext,
+        sc_float_aliases: SeriesContext,
+        sc_bool_alias: SeriesContext,
     ) -> TableContext {
         TableContext::new(
             "patient_data".to_string(),
-            vec![sc_P00X_to_patient_X, sc_11_to_22, sc_doubling, sc_no_false],
+            vec![
+                sc_string_aliases,
+                sc_int_alias,
+                sc_float_aliases,
+                sc_bool_alias,
+            ],
         )
     }
 
@@ -291,10 +281,29 @@ mod tests {
         ContextualizedDataFrame::new(tc, df1)
     }
 
+    #[rstest]
+    fn test_map_values() {
+        let vec_of_strings = vec![
+            "P001".to_string(),
+            "P002".to_string(),
+            "P003".to_string(),
+            "P004".to_string(),
+        ];
+        let hm = HashMap::from([
+            ("P001".to_string(), 1001),
+            ("P002".to_string(), 1002),
+            ("P003".to_string(), 1003),
+            ("P004".to_string(), 1004),
+        ]);
+        let mapped_vec =
+            AliasMapStrategy::map_values(vec_of_strings, hm, "col_name", "table_name").unwrap();
+        assert_eq!(mapped_vec, vec![1001, 1002, 1003, 1004]);
+    }
+
     //tests that the alias map makes the desired changes
     #[rstest]
     fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
-        let alias_map_transform = AliasMapTransform {};
+        let alias_map_transform = AliasMapStrategy {};
         assert_eq!(
             alias_map_transform.transform(&mut cdf_aliasing).is_err(),
             false
@@ -323,7 +332,7 @@ mod tests {
     //tests that the alias map makes no change when none of the dataframe elements are keys
     #[rstest]
     fn test_no_aliasing(mut cdf_no_aliasing: ContextualizedDataFrame, df2: DataFrame) {
-        let alias_map_transform = AliasMapTransform {};
+        let alias_map_transform = AliasMapStrategy {};
         assert_eq!(
             alias_map_transform.transform(&mut cdf_no_aliasing).is_err(),
             false
@@ -333,8 +342,11 @@ mod tests {
 
     //tests that we get an error when we unsuccessfully change a column into a different type
     #[rstest]
-    fn test_error(mut cdf_convert_to_int_fail: ContextualizedDataFrame, df1: DataFrame) {
-        let alias_map_transform = AliasMapTransform {};
+    fn test_to_int_conversion_error(
+        mut cdf_convert_to_int_fail: ContextualizedDataFrame,
+        df1: DataFrame,
+    ) {
+        let alias_map_transform = AliasMapStrategy {};
         assert_eq!(
             alias_map_transform
                 .transform(&mut cdf_convert_to_int_fail)
@@ -348,7 +360,7 @@ mod tests {
     //tests that we can change column types if we have sufficient aliases
     #[rstest]
     fn test_type_change(mut cdf_convert_to_int_success: ContextualizedDataFrame) {
-        let alias_map_transform = AliasMapTransform {};
+        let alias_map_transform = AliasMapStrategy {};
         assert_eq!(
             alias_map_transform
                 .transform(&mut cdf_convert_to_int_success)
