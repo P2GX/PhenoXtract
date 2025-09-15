@@ -3,6 +3,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
+use log::info;
 use polars::prelude::AnyValue;
 use std::any::type_name;
 use std::collections::HashMap;
@@ -56,6 +57,7 @@ impl Strategy for AliasMapStrategy {
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
         let table_name = &table.context().name.clone();
+        info!("Applying alias mapping strategy to table: {table_name}");
 
         let mut col_alias_map_pairs = vec![];
         for series_context in table.get_series_contexts() {
@@ -69,6 +71,7 @@ impl Strategy for AliasMapStrategy {
 
         for (col, alias_map) in col_alias_map_pairs {
             let col_name = col.name();
+            info!("Applying alias mapping strategy to column: {col_name}");
             let vec_of_strings = col
                 .as_series()
                 .ok_or(StrategyError(format!(
@@ -114,6 +117,7 @@ impl Strategy for AliasMapStrategy {
             }?;
         }
 
+        info!("Alias mapping strategy successfully applied to table: {table_name}");
         Ok(())
     }
 }
