@@ -18,6 +18,7 @@ use std::str::FromStr;
 pub struct AliasMapStrategy;
 
 impl AliasMapStrategy {
+    #[allow(unused)]
     ///Applies aliases from a hash map to a vector of strings
     pub fn map_values<T: FromStr + Copy>(
         vec_to_alias: Vec<String>,
@@ -179,7 +180,7 @@ mod tests {
     #[fixture]
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::new(
-            Identifier::Regex("smokes".to_string()),
+            Identifier::Regex("smokes.".to_string()),
             Context::None,
             SmokerBool,
             None,
@@ -240,8 +241,9 @@ mod tests {
         let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
         let col2 = Column::new("age".into(), [11, 22, 33, 44]);
         let col3 = Column::new("weight".into(), [10.1, 20.2, 30.3, 40.4]);
-        let col4 = Column::new("smokes".into(), [true, true, false, false]);
-        DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
+        let col4 = Column::new("smokes1".into(), [true, true, false, false]);
+        let col5 = Column::new("smokes2".into(), [true, true, false, false]);
+        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
     }
 
     #[fixture]
@@ -324,8 +326,12 @@ mod tests {
             &Column::new("weight".into(), [20.2, 40.4, 60.6, 80.8])
         );
         assert_eq!(
-            cdf_aliasing.data.column("smokes").unwrap(),
-            &Column::new("smokes".into(), [true, true, true, true])
+            cdf_aliasing.data.column("smokes1").unwrap(),
+            &Column::new("smokes1".into(), [true, true, true, true])
+        );
+        assert_eq!(
+            cdf_aliasing.data.column("smokes2").unwrap(),
+            &Column::new("smokes2".into(), [true, true, true, true])
         );
     }
 

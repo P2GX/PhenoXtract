@@ -28,10 +28,12 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
+    #[allow(unused)]
     pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
         &self.context.context
     }
 
+    #[allow(unused)]
     pub fn data_mut(&mut self) -> &mut DataFrame {
         &mut self.data
     }
@@ -110,6 +112,7 @@ impl ContextualizedDataFrame {
         }
     }
 
+    #[allow(unused)]
     ///The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<'a, T, Phantom: ?Sized>(
         &'a mut self,
