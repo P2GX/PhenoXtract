@@ -77,13 +77,13 @@ impl Display for Context {
 #[serde(untagged)]
 pub(crate) enum CellValue {
     #[allow(unused)]
-    String(String),
+    StringValue(String),
     #[allow(unused)]
-    Int(i64),
+    IntValue(i64),
     #[allow(unused)]
-    Float(f64),
+    FloatValue(f64),
     #[allow(unused)]
-    Bool(bool),
+    BoolValue(bool),
 }
 
 /// The identifier will correspond to either one or multiple columns in a dataframe.
@@ -174,6 +174,11 @@ impl SeriesContext {
     #[allow(dead_code)]
     pub fn get_alias_map(&self) -> &Option<AliasMap> {
         &self.alias_map
+    }
+
+    #[allow(dead_code)]
+    pub fn get_fill_value(&self) -> &Option<CellValue> {
+        &self.fill_missing
     }
 
     pub fn get_links(&self) -> Vec<Identifier> {

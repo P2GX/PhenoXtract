@@ -297,7 +297,7 @@ meta_data:
                             Identifier::Regex("patient_id".to_string()),
                             PhenopacketContext::SubjectId,
                             PhenopacketContext::HpoLabel,
-                            Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                            Some(CellValue::StringValue("Zollinger-Ellison syndrome".to_string())),
                             Some(AliasMap::ToString(HashMap::from([
                                 (
                                     "null".to_string(),
@@ -338,7 +338,7 @@ meta_data:
                                 Identifier::Regex("lab_result_.*".to_string()),
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
-                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                                Some(CellValue::StringValue("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::ToFloat(HashMap::from([
                                     ("neoplasma".to_string(), 4.0),
                                     ("height".to_string(), 1.85),
@@ -357,7 +357,7 @@ meta_data:
                                 ]),
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
-                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
+                                Some(CellValue::StringValue("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::ToBool(HashMap::from([(
                                     "smoker".to_string(),
                                     true,
