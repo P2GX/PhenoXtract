@@ -214,6 +214,9 @@ data_sources:
           alias_map:
               "null": "Primary peritoneal carcinoma"
               "M": "Male"
+              102: "High quantity"
+              169.5: "Very high quantity"
+              true: "smoker"
           linked_to:
           - "visit_table"
           - "demographics_table"
@@ -301,6 +304,9 @@ meta_data:
                                     "Primary peritoneal carcinoma".to_string(),
                                 ),
                                 ("M".to_string(), "Male".to_string()),
+                                ("102".to_string(), "High quantity".to_string()),
+                                ("169.5".to_string(), "Very high quantity".to_string()),
+                                ("true".to_string(), "smoker".to_string()),
                             ]))),
                             vec![
                                 Identifier::Regex("visit_table".to_string()),

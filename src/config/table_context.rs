@@ -54,6 +54,10 @@ pub enum Context {
     SubjectSex,
     #[allow(unused)]
     SubjectAge,
+    #[allow(unused)]
+    WeightInKg,
+    #[allow(unused)]
+    SmokerBool,
     #[default]
     None,
     //...
@@ -101,7 +105,7 @@ pub(crate) enum AliasMap {
     #[allow(unused)]
     ToString(HashMap<String, String>),
     #[allow(unused)]
-    ToInt(HashMap<String, i64>),
+    ToInt(HashMap<String, i32>),
     #[allow(unused)]
     ToFloat(HashMap<String, f64>),
     #[allow(unused)]
@@ -165,6 +169,11 @@ impl SeriesContext {
 
     pub fn get_data_context(&self) -> Context {
         self.data_context.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_alias_map(&self) -> &Option<AliasMap> {
+        &self.alias_map
     }
 
     pub fn get_links(&self) -> Vec<Identifier> {

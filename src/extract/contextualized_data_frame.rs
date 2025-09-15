@@ -1,6 +1,8 @@
-use crate::config::table_context::{Identifier, TableContext};
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::transform::error::TransformError;
+use crate::transform::error::TransformError::StrategyError;
 use log::debug;
-use polars::prelude::{Column, DataFrame};
+use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
 use validator::Validate;
 
@@ -24,6 +26,16 @@ impl ContextualizedDataFrame {
     #[allow(unused)]
     pub fn context(&self) -> &TableContext {
         &self.context
+    }
+
+    #[allow(unused)]
+    pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
+        &self.context.context
+    }
+
+    #[allow(unused)]
+    pub fn data_mut(&mut self) -> &mut DataFrame {
+        &mut self.data
     }
 
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
@@ -97,6 +109,35 @@ impl ContextualizedDataFrame {
                 );
                 found_columns
             }
+        }
+    }
+
+    #[allow(unused)]
+    ///The column col_name will be replaced with the data inside the vector transformed_vec
+    pub fn replace_column<T, Phantom: ?Sized>(
+        &mut self,
+        transformed_vec: Vec<T>,
+        col_name: &str,
+    ) -> Result<&mut ContextualizedDataFrame, TransformError>
+    where
+        Series: NamedFrom<Vec<T>, Phantom>,
+    {
+        let table_name = self.context.name.clone();
+        let transformed_series = Series::new(col_name.into(), transformed_vec);
+        let transform_result = self
+            .data_mut()
+            .replace(col_name, transformed_series)
+            .map_err(|_e| {
+                StrategyError(
+                    format!(
+                        "Could not insert transformed column {col_name} into table {table_name}."
+                    )
+                    .to_string(),
+                )
+            });
+        match transform_result {
+            Ok(df) => Ok(self),
+            Err(e) => Err(e),
         }
     }
 }
@@ -196,5 +237,22 @@ mod tests {
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["user.name", "age"]);
+    }
+
+    #[rstest]
+    fn test_replace_column() {
+        let df = sample_df();
+        let ctx = TableContext::default();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let transformed_vec = vec![1001, 1002, 1003];
+        cdf.replace_column(transformed_vec, "user.name").unwrap();
+
+        let expected_df = df!(
+        "user.name" => &[1001,1002,1003],
+        "age" => &[25, 30, 40],
+        "location (some stuff)" => &["NY", "SF", "LA"]
+        )
+        .unwrap();
+        assert_eq!(cdf.data, expected_df);
     }
 }
