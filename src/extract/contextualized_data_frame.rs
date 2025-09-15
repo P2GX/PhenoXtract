@@ -114,17 +114,18 @@ impl ContextualizedDataFrame {
 
     #[allow(unused)]
     ///The column col_name will be replaced with the data inside the vector transformed_vec
-    pub fn replace_column<'a, T, Phantom: ?Sized>(
-        &'a mut self,
+    pub fn replace_column<T, Phantom: ?Sized>(
+        &mut self,
         transformed_vec: Vec<T>,
         col_name: &str,
-        table_name: &str,
-    ) -> Result<&'a mut DataFrame, TransformError>
+    ) -> Result<&mut ContextualizedDataFrame, TransformError>
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
+        let table_name = self.context.name.clone();
         let transformed_series = Series::new(col_name.into(), transformed_vec);
-        self.data_mut()
+        let transform_result = self
+            .data_mut()
             .replace(col_name, transformed_series)
             .map_err(|_e| {
                 StrategyError(
@@ -133,7 +134,11 @@ impl ContextualizedDataFrame {
                     )
                     .to_string(),
                 )
-            })
+            });
+        match transform_result {
+            Ok(df) => Ok(self),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -240,8 +245,7 @@ mod tests {
         let ctx = TableContext::default();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         let transformed_vec = vec![1001, 1002, 1003];
-        cdf.replace_column(transformed_vec, "user.name", "table_name")
-            .unwrap();
+        cdf.replace_column(transformed_vec, "user.name").unwrap();
 
         let expected_df = df!(
         "user.name" => &[1001,1002,1003],
