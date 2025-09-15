@@ -310,7 +310,7 @@ mod tests {
     #[rstest]
     fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        assert!(!alias_map_transform.transform(&mut cdf_aliasing).is_err());
+        assert!(alias_map_transform.transform(&mut cdf_aliasing).is_ok());
         assert_eq!(
             cdf_aliasing.data.column("patient_id").unwrap(),
             &Column::new(
@@ -340,7 +340,7 @@ mod tests {
     #[rstest]
     fn test_no_aliasing(mut cdf_no_aliasing: ContextualizedDataFrame, df2: DataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        assert!(!alias_map_transform.transform(&mut cdf_no_aliasing).is_err());
+        assert!(alias_map_transform.transform(&mut cdf_no_aliasing).is_ok());
         assert_eq!(cdf_no_aliasing.data, df2)
     }
 
@@ -365,9 +365,9 @@ mod tests {
     fn test_type_change(mut cdf_convert_to_int_success: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
         assert!(
-            !alias_map_transform
+            alias_map_transform
                 .transform(&mut cdf_convert_to_int_success)
-                .is_err()
+                .is_ok()
         );
         assert_eq!(
             cdf_convert_to_int_success
