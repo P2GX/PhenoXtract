@@ -10,7 +10,7 @@ use crate::transform::transform_module::TransformerModule;
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
 use crate::ontology::utils::init_ontolius;
-use log::{info, warn};
+use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;

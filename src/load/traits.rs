@@ -1,4 +1,3 @@
-use crate::config::meta_data::MetaData;
 use crate::load::error::LoadError;
 use phenopackets::schema::v2::Phenopacket;
 

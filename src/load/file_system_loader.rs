@@ -59,7 +59,6 @@ mod tests {
         let contents = fs::read_to_string(&output_path).unwrap();
         let json: Phenopacket = serde_json::from_str(&contents).unwrap();
 
-        dbg!(&json);
         assert_eq!(json.id, phenopacket.id);
     }
 }
