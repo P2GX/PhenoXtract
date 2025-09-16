@@ -54,6 +54,7 @@ mod tests {
 
     const YAML_DATA: &[u8] = br#"
     submitted_by: Magnus Knut Hansen
+    cohort_name: arkham 2025
     "#;
 
     #[fixture]
@@ -77,5 +78,6 @@ mod tests {
         let creator = default_meta_data.created_by.unwrap();
         assert!(creator.contains("phenoxtract"));
         assert_eq!(default_meta_data.submitted_by, "Magnus Knut Hansen");
+        assert_eq!(default_meta_data.cohort_name, "arkham 2025");
     }
 }
