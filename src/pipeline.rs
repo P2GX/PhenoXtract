@@ -63,16 +63,8 @@ impl Pipeline {
     }
 
     pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), PipelineError> {
-        info!("Start Loading");
-        for phenopacket in phenopackets {
-            if let Err(e) = self.loader_module.load(phenopacket) {
-                warn!(
-                    "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket.clone().subject.unwrap().id.as_str(),
-                    e
-                )
-            }
-        }
+        self.loader_module.load(phenopackets)?;
+
         info!("Concluded Loading");
         Ok(())
     }
