@@ -8,6 +8,7 @@ pub struct MetaData {
     pub created_by: Option<String>,
     #[allow(unused)]
     pub submitted_by: String,
+    pub cohort_name: String,
 }
 
 impl Default for MetaData {
@@ -15,6 +16,7 @@ impl Default for MetaData {
         MetaData {
             created_by: default_creator(),
             submitted_by: "".to_string(),
+            cohort_name: "".to_string(),
         }
     }
 }
