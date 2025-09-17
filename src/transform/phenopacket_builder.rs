@@ -5,7 +5,7 @@ use log::warn;
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::simple::SimpleTerm;
-use ontolius::term::{MinimalTerm, Synonymous, Term};
+use ontolius::term::{MinimalTerm, Synonymous};
 use ontolius::{Identified, TermId};
 use phenopackets::schema::v1::core::Evidence;
 use phenopackets::schema::v2::Phenopacket;
@@ -103,7 +103,6 @@ impl PhenopacketBuilder {
     ///     Err(e) => eprintln!("Error upserting feature: {}", e),
     /// }
     /// ```
-
     #[allow(dead_code)]
     pub fn upsert_phenotypic_feature(
         &mut self,
