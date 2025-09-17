@@ -57,6 +57,53 @@ impl PhenopacketBuilder {
         }
         Ok(term.unwrap().clone())
     }
+
+    /// Upserts a phenotypic feature within a specific phenopacket.
+    ///
+    /// This function adds or updates a `PhenotypicFeature` for a given phenopacket,
+    /// identified by `phenopacket_id`. If the phenopacket does not exist, it will be
+    /// created. If a feature with the same `phenotype` ID already exists within the
+    /// phenopacket, this function will update it (upsert).
+    ///
+    /// # Arguments
+    ///
+    /// * `phenopacket_id` - A `String` that uniquely identifies the target phenopacket.
+    /// * `phenotype` - A string slice (`&str`) representing the ontology term or id for the
+    ///   phenotype (e.g., `"HP:0000118" or "Phenotypic abnormality"`).
+    /// * `description` - An optional free-text description of the feature.
+    /// * `excluded` - An optional boolean indicating if the feature is explicitly absent.
+    /// * `severity` - An optional `String` describing the severity of the phenotype.
+    /// * `modifiers` - An optional `Vec<String>` of terms that modify the phenotype.
+    /// * `on_set` - An optional `TimeElement` representing the onset time of the feature.
+    /// * `resolution` - An optional `TimeElement` indicating when the feature resolved.
+    /// * `evidence` - An optional `Evidence` struct providing support for the feature.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an `Err` if the provided `phenotype` term cannot be
+    /// resolved into a valid `HpoTerm`.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on successful addition or update of the phenotypic feature.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Assuming `handler` is a mutable instance of the struct containing this method.
+    /// let phenopacket_id = "patient-1".to_string();
+    /// let phenotype_term = "HP:0000118"; // Corresponds to "Phenotypic abnormality"
+    ///
+    /// match handler.upsert_phenotypic_feature(
+    ///     phenopacket_id,
+    ///     phenotype_term,
+    ///     None, None, None, None, None, None, None
+    /// ) {
+    ///     Ok(()) => println!("Successfully upserted the phenotypic feature."),
+    ///     Err(e) => eprintln!("Error upserting feature: {}", e),
+    /// }
+    /// ```
+
     #[allow(dead_code)]
     pub fn upsert_phenotypic_feature(
         &mut self,
@@ -66,7 +113,7 @@ impl PhenopacketBuilder {
         excluded: Option<bool>,
         severity: Option<String>,
         modifiers: Option<Vec<String>>,
-        on_set: Option<String>,
+        on_set: Option<TimeElement>,
         resolution: Option<TimeElement>,
         evidence: Option<Evidence>,
     ) -> Result<(), anyhow::Error> {
