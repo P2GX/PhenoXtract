@@ -3,11 +3,14 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
+use crate::ontology::traits::OntologyRegistry;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
-use log::{info, warn};
+use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
+use crate::ontology::utils::init_ontolius;
+use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;
@@ -60,16 +63,8 @@ impl Pipeline {
     }
 
     pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), PipelineError> {
-        info!("Start Loading");
-        for phenopacket in phenopackets {
-            if let Err(e) = self.loader_module.load(phenopacket) {
-                warn!(
-                    "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket.clone().subject.unwrap().id.as_str(),
-                    e
-                )
-            }
-        }
+        self.loader_module.load(phenopackets)?;
+
         info!("Concluded Loading");
         Ok(())
     }
@@ -86,9 +81,12 @@ impl Pipeline {
     #[allow(unused)]
     #[allow(dead_code)]
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
-        /// In progress
-        let builder = PhenopacketBuilder::default();
-        let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::default());
+        // In progress
+        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()?;
+        // TOOD: Read hpo version from config later
+        let registry_path = hpo_registry.register("latest")?;
+        let hpo = init_ontolius(registry_path)?;
+        let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::new(hpo));
         let loader_module = FileSystemLoader {
             out_path: PathBuf::from("some/dir/"),
         };

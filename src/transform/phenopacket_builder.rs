@@ -1,17 +1,25 @@
 use crate::transform::error::TransformError;
+use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[allow(dead_code)]
-#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
+    hpo: Rc<FullCsrOntology>,
 }
 
 impl PhenopacketBuilder {
+    pub fn new(hpo: Rc<FullCsrOntology>) -> PhenopacketBuilder {
+        PhenopacketBuilder {
+            subject_to_phenopacket: HashMap::default(),
+            hpo,
+        }
+    }
     #[allow(dead_code)]
-    pub fn build(&self) -> Result<Vec<Phenopacket>, TransformError> {
-        Ok(Vec::new())
+    pub fn build(&self) -> Vec<Phenopacket> {
+        self.subject_to_phenopacket.values().cloned().collect()
     }
     #[allow(dead_code)]
     pub fn build_for_id(&self, #[allow(unused)] id: String) -> Result<Phenopacket, TransformError> {
@@ -19,7 +27,12 @@ impl PhenopacketBuilder {
     }
 
     #[allow(dead_code)]
-    pub fn add_phenotypic_feature(
+    pub fn upsert_individual(&mut self) -> Result<(), anyhow::Error> {
+        todo!()
+    }
+
+    #[allow(dead_code)]
+    pub fn upsert_phenotypic_feature(
         &mut self,
         #[allow(unused)] subject_id: String,
         #[allow(unused)] phenotype: String,

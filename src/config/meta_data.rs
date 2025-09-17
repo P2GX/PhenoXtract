@@ -8,6 +8,7 @@ pub struct MetaData {
     pub created_by: Option<String>,
     #[allow(unused)]
     pub submitted_by: String,
+    pub cohort_name: String,
 }
 
 impl Default for MetaData {
@@ -15,6 +16,7 @@ impl Default for MetaData {
         MetaData {
             created_by: default_creator(),
             submitted_by: "".to_string(),
+            cohort_name: "".to_string(),
         }
     }
 }
@@ -52,6 +54,7 @@ mod tests {
 
     const YAML_DATA: &[u8] = br#"
     submitted_by: Magnus Knut Hansen
+    cohort_name: arkham 2025
     "#;
 
     #[fixture]
@@ -75,5 +78,6 @@ mod tests {
         let creator = default_meta_data.created_by.unwrap();
         assert!(creator.contains("phenoxtract"));
         assert_eq!(default_meta_data.submitted_by, "Magnus Knut Hansen");
+        assert_eq!(default_meta_data.cohort_name, "arkham 2025");
     }
 }
