@@ -41,23 +41,6 @@ impl PhenopacketBuilder {
         todo!()
     }
 
-    fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, anyhow::Error> {
-        let term = TermId::from_str(raw_term)
-            .ok()
-            .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
-            .or_else(|| {
-                self.hpo.as_ref().iter_terms().find(|term| {
-                    !term.is_obsolete()
-                        && (term.name() == raw_term
-                            || term.synonyms().iter().any(|syn| syn.name == raw_term))
-                })
-            });
-        if term.is_none() {
-            return Err(anyhow!("Could not find ontology class for {raw_term}"));
-        }
-        Ok(term.unwrap().clone())
-    }
-
     /// Upserts a phenotypic feature within a specific phenopacket.
     ///
     /// This function adds or updates a `PhenotypicFeature` for a given phenopacket,
@@ -139,13 +122,7 @@ impl PhenopacketBuilder {
         }
 
         let term = self.raw_to_full_term(phenotype)?;
-        let phenopacket = self
-            .subject_to_phenopacket
-            .entry(phenopacket_id.clone())
-            .or_insert_with(|| Phenopacket {
-                id: phenopacket_id,
-                ..Default::default()
-            });
+        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
         let mut phenotypic_feature: PhenotypicFeature = phenopacket
             .phenotypic_features
@@ -165,6 +142,32 @@ impl PhenopacketBuilder {
         });
         phenopacket.phenotypic_features.push(phenotypic_feature);
         Ok(())
+    }
+
+    fn get_or_create_phenopacket(&mut self, phenopacket_id: String) -> &mut Phenopacket {
+        self.subject_to_phenopacket
+            .entry(phenopacket_id.clone())
+            .or_insert_with(|| Phenopacket {
+                id: phenopacket_id,
+                ..Default::default()
+            })
+    }
+
+    fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, anyhow::Error> {
+        let term = TermId::from_str(raw_term)
+            .ok()
+            .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
+            .or_else(|| {
+                self.hpo.as_ref().iter_terms().find(|term| {
+                    !term.is_obsolete()
+                        && (term.name() == raw_term
+                            || term.synonyms().iter().any(|syn| syn.name == raw_term))
+                })
+            });
+        if term.is_none() {
+            return Err(anyhow!("Could not find ontology class for {raw_term}"));
+        }
+        Ok(term.unwrap().clone())
     }
 }
 
