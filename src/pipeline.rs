@@ -10,7 +10,7 @@ use crate::transform::transform_module::TransformerModule;
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
 use crate::ontology::utils::init_ontolius;
-use log::{info, warn};
+use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;
@@ -63,16 +63,8 @@ impl Pipeline {
     }
 
     pub fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), PipelineError> {
-        info!("Start Loading");
-        for phenopacket in phenopackets {
-            if let Err(e) = self.loader_module.load(phenopacket) {
-                warn!(
-                    "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    phenopacket.clone().subject.unwrap().id.as_str(),
-                    e
-                )
-            }
-        }
+        self.loader_module.load(phenopackets)?;
+
         info!("Concluded Loading");
         Ok(())
     }
