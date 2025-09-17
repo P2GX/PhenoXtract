@@ -27,12 +27,12 @@ impl PhenopacketBuilder {
     }
 
     #[allow(dead_code)]
-    pub fn upset_individual(&mut self) -> Result<(), anyhow::Error> {
+    pub fn upsert_individual(&mut self) -> Result<(), anyhow::Error> {
         todo!()
     }
 
     #[allow(dead_code)]
-    pub fn upset_phenotypic_feature(
+    pub fn upsert_phenotypic_feature(
         &mut self,
         #[allow(unused)] subject_id: String,
         #[allow(unused)] phenotype: String,
