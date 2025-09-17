@@ -31,12 +31,12 @@ impl Collector {
     fn collect_phenotypic_features(&mut self, data: DataFrame, tc: TableContext) {
         // Find the necessary values to construct a phenotypic feature building block and upsert them to the PhenopacketBuilder
 
-        self.phenopacket_builder.upset_phenotypic_feature(
+        /*self.phenopacket_builder.upset_phenotypic_feature(
             "SOME_SUBJECT_ID".to_string(), // This is how we know which data belongs to which phenopacket
             "SOME_HPO_LABEL/ID".to_string(),
             None,
             None,
-        );
+        );*/
         todo!()
     }
 
