@@ -144,6 +144,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    // TODO: Add test after MVP
     fn get_or_create_phenopacket(&mut self, phenopacket_id: String) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.clone())
@@ -152,7 +153,7 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-
+    // TODO: Add test after MVP
     fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, anyhow::Error> {
         let term = TermId::from_str(raw_term)
             .ok()
@@ -312,7 +313,6 @@ mod tests {
         );
         assert!(result2.is_ok());
 
-        // Check both features exist
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
@@ -355,7 +355,6 @@ mod tests {
         );
         assert!(result2.is_ok());
 
-        // Check both phenopackets exist
         assert!(builder.subject_to_phenopacket.contains_key(&id1));
         assert!(builder.subject_to_phenopacket.contains_key(&id2));
         assert_eq!(builder.subject_to_phenopacket.len(), 2);
