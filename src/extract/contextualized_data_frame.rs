@@ -1,6 +1,6 @@
-use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::TransformError::Strategy;
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -10,7 +10,7 @@ use validator::Validate;
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Debug, PartialEq, Clone, Validate, Default)]
+#[derive(Clone, Validate, Default)]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -112,6 +112,19 @@ impl ContextualizedDataFrame {
         }
     }
 
+    pub fn get_columns_with_data_context(&self, context: Context) -> Vec<&Column> {
+        let mut columns = vec![];
+        for series_context in self.context.context.iter() {
+            if series_context.get_data_context() == context {
+                columns = columns
+                    .into_iter()
+                    .chain(self.get_columns(&series_context.identifier))
+                    .collect();
+            }
+        }
+
+        columns
+    }
     #[allow(unused)]
     ///The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(
@@ -128,7 +141,7 @@ impl ContextualizedDataFrame {
             .data_mut()
             .replace(col_name, transformed_series)
             .map_err(|_e| {
-                StrategyError(
+                Strategy(
                     format!(
                         "Could not insert transformed column {col_name} into table {table_name}."
                     )
