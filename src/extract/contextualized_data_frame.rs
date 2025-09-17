@@ -141,6 +141,7 @@ impl ContextualizedDataFrame {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_cols_with_data_context(&self, data_context: Context) -> Vec<&Column> {
         self.context()
             .context
