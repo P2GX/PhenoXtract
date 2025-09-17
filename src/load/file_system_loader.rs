@@ -6,15 +6,37 @@ use serde::Deserialize;
 use std::fs::File;
 use std::path::PathBuf;
 
+/// A loader that saves phenopackets as individual JSON files to the local file system.
+///
+/// This struct specifies an output directory where each `Phenopacket` will be
+/// serialized and saved.
 #[derive(Debug, Deserialize)]
 pub struct FileSystemLoader {
+    /// The path to the output directory where phenopacket files will be saved.
     #[allow(unused)]
     pub out_path: PathBuf,
 }
 
 impl Loadable for FileSystemLoader {
-    fn load(&self, phenopacket: &[Phenopacket]) -> Result<(), LoadError> {
-        for pp in phenopacket.iter() {
+    /// Saves a slice of `Phenopacket`s to the directory specified in `out_path`.
+    ///
+    /// Each `Phenopacket` is serialized into a pretty-printed JSON file. The filename
+    /// is derived from the phenopacket's ID, followed by the `.json` extension
+    /// (e.g., `PMIT-00001.json`).
+    ///
+    /// If serialization for a specific phenopacket fails, a warning is logged,
+    /// and the process continues with the next phenopacket.
+    ///
+    /// # Parameters
+    ///
+    /// * `phenopackets`: A slice of `Phenopacket`s to be saved.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the operation completes (even if individual file writes fail).
+    /// * `Err(LoadError)` if a file cannot be created due to an I/O error (e.g., permissions).
+    fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), LoadError> {
+        for pp in phenopackets.iter() {
             let file = File::create(self.out_path.join(format!("{}.json", pp.id)))?;
             let res = serde_json::to_writer_pretty(file, pp);
             if res.is_err() {
