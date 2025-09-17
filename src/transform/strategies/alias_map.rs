@@ -3,9 +3,10 @@ use crate::config::table_context::AliasMap::{ToBool, ToFloat, ToInt, ToString};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
+use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::info;
-use polars::prelude::{AnyValue, Column};
+use polars::prelude::Column;
 use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -72,26 +73,16 @@ impl Strategy for AliasMapStrategy {
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
         let table_name = &table.context().name.clone();
-        info!("Applying alias mapping strategy to table: {table_name}");
+        info!("Applying AliasMap strategy to table: {table_name}");
 
         for (col, alias_map) in AliasMapStrategy::get_col_alias_map_pairs(table) {
             let col_name = col.name();
-            info!("Applying alias mapping strategy to column: {col_name}");
-            let vec_to_alias = col
-                .as_series()
-                .ok_or(StrategyError(format!(
-                    "Could not convert column {col_name} to a series."
-                )))?
-                .iter()
-                .map(|val| match val {
-                    AnyValue::String(s) => s.to_string(),
-                    _ => val.to_string(),
-                })
-                .collect::<Vec<String>>();
+            info!("Applying AliasMap strategy to column: {col_name}");
+            let string_vec_to_alias = convert_col_to_string_vec(&col)?;
 
             match alias_map {
                 ToString(hm) => {
-                    let transformed_vec = vec_to_alias
+                    let transformed_vec = string_vec_to_alias
                         .iter()
                         .map(|s| match hm.get(s) {
                             Some(alias) => alias.clone(),
@@ -102,24 +93,27 @@ impl Strategy for AliasMapStrategy {
                     Ok(())
                 }
                 ToInt(hm) => {
-                    let transformed_vec = Self::map_values(vec_to_alias, hm, col_name, table_name)?;
+                    let transformed_vec =
+                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToFloat(hm) => {
-                    let transformed_vec = Self::map_values(vec_to_alias, hm, col_name, table_name)?;
+                    let transformed_vec =
+                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToBool(hm) => {
-                    let transformed_vec = Self::map_values(vec_to_alias, hm, col_name, table_name)?;
+                    let transformed_vec =
+                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
             }?;
         }
 
-        info!("Alias mapping strategy successfully applied to table: {table_name}");
+        info!("AliasMap strategy successfully applied to table: {table_name}");
         Ok(())
     }
 }
@@ -130,7 +124,7 @@ mod tests {
     use crate::config::table_context::Context::{SmokerBool, SubjectAge, SubjectId, WeightInKg};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::transform::strategies::alias_mapping::AliasMapStrategy;
+    use crate::transform::strategies::alias_map::AliasMapStrategy;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
     use polars::prelude::{Column, DataType};

@@ -1,4 +1,4 @@
-use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use log::debug;
@@ -140,29 +140,104 @@ impl ContextualizedDataFrame {
             Err(e) => Err(e),
         }
     }
+
+    pub fn get_cols_with_data_context(&self, data_context: Context) -> Vec<&Column> {
+        self.context()
+            .context
+            .iter()
+            .filter_map(|sc| {
+                if sc.get_data_context() == data_context {
+                    Some(self.get_columns(&sc.identifier))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect::<Vec<&Column>>()
+    }
+
+    #[allow(unused)]
+    pub fn get_cols_with_header_context(&self, header_context: Context) -> Vec<&Column> {
+        self.context()
+            .context
+            .iter()
+            .filter_map(|sc| {
+                if sc.get_header_context() == header_context {
+                    Some(self.get_columns(&sc.identifier))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect::<Vec<&Column>>()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use polars::prelude::*;
     use regex::Regex;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
 
+    #[fixture]
     fn sample_df() -> DataFrame {
         df!(
         "user.name" => &["Alice", "Bob", "Charlie"],
+        "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
-        "location (some stuff)" => &["NY", "SF", "LA"]
+        "location (some stuff)" => &["NY", "SF", "LA"],
+        "bronchitis" => &["Observed", "Not observed", "Observed"],
+        "overweight" => &["Not observed", "Not observed", "Observed"],
         )
         .unwrap()
+    }
+
+    #[fixture]
+    fn sample_ctx() -> TableContext {
+        TableContext {
+            name: "table".to_string(),
+            context: vec![
+                SeriesContext::new(
+                    Identifier::Multi(vec!["user.name".to_string(), "different".to_string()]),
+                    Context::None,
+                    Context::SubjectId,
+                    None,
+                    None,
+                    vec![],
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("age".to_string()),
+                    Context::None,
+                    Context::SubjectAge,
+                    None,
+                    None,
+                    vec![],
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("bronchitis".to_string()),
+                    Context::HpoLabel,
+                    Context::ObservationStatus,
+                    None,
+                    None,
+                    vec![],
+                ),
+                SeriesContext::new(
+                    Identifier::Regex("overweight".to_string()),
+                    Context::HpoLabel,
+                    Context::ObservationStatus,
+                    None,
+                    None,
+                    vec![],
+                ),
+            ],
+        }
     }
 
     #[rstest]
     fn test_regex_match_column_found() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let regex = Regex::new("^a.*").unwrap();
@@ -175,7 +250,7 @@ mod tests {
     #[rstest]
     fn test_regex_match_column_found_partial_matches() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let regex = Regex::new("a.*").unwrap();
@@ -190,7 +265,7 @@ mod tests {
     #[rstest]
     fn test_regex_match_column_none() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let regex = Regex::new("does_not_exist").unwrap();
@@ -202,7 +277,7 @@ mod tests {
     #[rstest]
     fn test_get_column_regex_escape() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Regex("location (some stuff)".to_string());
@@ -215,7 +290,7 @@ mod tests {
     #[rstest]
     fn test_get_column_regex_raw() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Regex("^[a,u]{1}[a-z.]*".to_string());
@@ -229,7 +304,7 @@ mod tests {
     #[rstest]
     fn test_get_column_multi() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         let id = Identifier::Multi(vec!["user.name".to_string(), "age".to_string()]);
@@ -242,17 +317,52 @@ mod tests {
     #[rstest]
     fn test_replace_column() {
         let df = sample_df();
-        let ctx = TableContext::default();
+        let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         let transformed_vec = vec![1001, 1002, 1003];
         cdf.replace_column(transformed_vec, "user.name").unwrap();
 
         let expected_df = df!(
         "user.name" => &[1001,1002,1003],
+        "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
-        "location (some stuff)" => &["NY", "SF", "LA"]
+        "location (some stuff)" => &["NY", "SF", "LA"],
+        "bronchitis" => &["Observed", "Not observed", "Observed"],
+        "overweight" => &["Not observed", "Not observed", "Observed"],
         )
         .unwrap();
         assert_eq!(cdf.data, expected_df);
+    }
+
+    #[rstest]
+    fn test_get_cols_with_data_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        assert_eq!(
+            cdf.get_cols_with_data_context(Context::SubjectId),
+            vec![
+                cdf.data.column("user.name").unwrap(),
+                cdf.data.column("different").unwrap()
+            ]
+        );
+        assert_eq!(
+            cdf.get_cols_with_data_context(Context::SubjectAge),
+            vec![cdf.data.column("age").unwrap()]
+        );
+    }
+
+    #[rstest]
+    fn test_get_cols_with_header_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        assert_eq!(
+            cdf.get_cols_with_header_context(Context::HpoLabel),
+            vec![
+                cdf.data.column("bronchitis").unwrap(),
+                cdf.data.column("overweight").unwrap()
+            ]
+        );
     }
 }

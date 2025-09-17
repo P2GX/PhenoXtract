@@ -1,5 +1,5 @@
 mod error;
-mod github_ontology_registry;
+pub(crate) mod github_ontology_registry;
 mod github_release_client;
-mod traits;
-mod utils;
+pub(crate) mod traits;
+pub(crate) mod utils;
