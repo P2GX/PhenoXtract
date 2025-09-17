@@ -24,10 +24,6 @@ impl TransformerModule {
                 };
             }
         });
-        // The tables should now be in the correct format.
-        // Iterate through them to doing a groupby("subject_id") for each and collecting
-        // the relevant values per subject with the phenopacket builder.
-        //let packets = self.phenopacket_builder.build()?;
         Ok(vec![])
     }
 
