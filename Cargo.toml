@@ -8,8 +8,8 @@ name = "phenoxtract"
 version = "0.1.0"
 
 [dependencies]
-config = "0.15.15"
-polars = { version = "0.50.0", features = ["lazy"] }
+config = "0.15.16"
+polars = { version = "0.51.0", features = ["lazy"] }
 serde = "1.0.219"
 anyhow = "1.0.98"
 phenopackets = { version = "0.2.2-post1", features = ["serde"] }
