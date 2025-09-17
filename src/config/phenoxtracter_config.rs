@@ -91,12 +91,14 @@ mod tests {
     meta_data:
       created_by: Rouven Reuter
       submitted_by: Magnus Knut Hansen
+      cohort_name: arkham asylum
     "#;
 
     const TOML_DATA: &[u8] = br#"
     [meta_data]
     created_by = "Rouven Reuter"
     submitted_by = "Magnus Knut Hansen"
+    cohort_name = "arkham asylum"
 
     [[data_sources]]
     type = "csv"
@@ -110,7 +112,8 @@ mod tests {
     {
       "meta_data": {
         "created_by": "Rouven Reuter",
-        "submitted_by": "Magnus Knut Hansen"
+        "submitted_by": "Magnus Knut Hansen",
+        "cohort_name": "arkham asylum"
       },
       "data_sources": [
         {
@@ -135,6 +138,7 @@ mod tests {
     meta_data: (
         created_by: "Rouven Reuter",
         submitted_by: "Magnus Knut Hansen",
+        cohort_name: "arkham asylum"
     ),
     data_sources: [
         (
@@ -265,6 +269,7 @@ pipeline:
 meta_data:
   created_by: Rouven Reuter
   submitted_by: Magnus Knut Hansen
+  cohort_name:  Arkham Asylum 2025
     "#;
 
         let file_path = temp_dir.path().join("config.yaml");
@@ -276,6 +281,7 @@ meta_data:
             meta_data: MetaData {
                 created_by: Some("Rouven Reuter".to_string()),
                 submitted_by: "Magnus Knut Hansen".to_string(),
+                cohort_name: "Arkham Asylum 2025".to_string(),
             },
             pipeline: Some(PipelineConfig::new(
                 vec!["alias_mapping".to_string(), "fill_null".to_string()],

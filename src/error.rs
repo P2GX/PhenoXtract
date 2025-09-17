@@ -1,10 +1,26 @@
 use crate::extract::error::ExtractionError;
+use crate::ontology::error::RegistryError;
 use crate::transform::error::TransformError;
+
 use validator::ValidationErrors;
 
 #[allow(dead_code)]
 pub enum ConstructionError {
     NotFound(String),
+    Registry(RegistryError),
+    Ontolius(anyhow::Error),
+}
+
+impl From<RegistryError> for ConstructionError {
+    fn from(err: RegistryError) -> Self {
+        ConstructionError::Registry(err)
+    }
+}
+
+impl From<anyhow::Error> for ConstructionError {
+    fn from(err: anyhow::Error) -> Self {
+        ConstructionError::Ontolius(err)
+    }
 }
 
 pub enum PipelineError {
