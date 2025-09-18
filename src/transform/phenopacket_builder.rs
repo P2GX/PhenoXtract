@@ -99,9 +99,6 @@ impl PhenopacketBuilder {
         resolution: Option<TimeElement>,
         evidence: Option<Evidence>,
     ) -> Result<(), anyhow::Error> {
-        if description.is_some() {
-            warn!("desciption phenotypic feature not implemented yet");
-        }
         if excluded.is_some() {
             warn!("is_observed phenotypic feature not implemented yet");
         }
@@ -124,23 +121,30 @@ impl PhenopacketBuilder {
         let term = self.raw_to_full_term(phenotype)?;
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
-        let mut phenotypic_feature: PhenotypicFeature = phenopacket
-            .phenotypic_features
-            .iter()
-            .find(|feature| {
-                if let Some(t) = &feature.r#type {
-                    return t.id == term.identifier().to_string();
-                };
+        if let Some(feature) = phenopacket.phenotypic_features.iter_mut().find(|feature| {
+            if let Some(t) = &feature.r#type {
+                t.id == term.identifier().to_string()
+            } else {
                 false
-            })
-            .cloned()
-            .unwrap_or_default();
+            }
+        }) {
+            feature.r#type = Some(OntologyClass {
+                id: term.identifier().to_string(),
+                label: term.name().to_string(),
+            });
+            feature.description = description.unwrap_or(&feature.description).parse()?
+        } else {
+            let new_feature = PhenotypicFeature {
+                r#type: Some(OntologyClass {
+                    id: term.identifier().to_string(),
+                    label: term.name().to_string(),
+                }),
+                description: description.unwrap_or_default().to_string(),
+                ..Default::default()
+            };
+            phenopacket.phenotypic_features.push(new_feature);
+        }
 
-        phenotypic_feature.r#type = Some(OntologyClass {
-            id: term.identifier().to_string(),
-            label: term.name().to_string(),
-        });
-        phenopacket.phenotypic_features.push(phenotypic_feature);
         Ok(())
     }
 
