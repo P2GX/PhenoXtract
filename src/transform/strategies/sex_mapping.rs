@@ -137,6 +137,8 @@ impl Strategy for SexMappingStrategy {
                                 .last()
                                 .unwrap()
                                 .to_string(),
+                            column: col_name.clone(),
+                            table: table.context().clone().name,
                             old_value: s.to_string(),
                             possible_mappings: self.synonym_map.clone(),
                         })
@@ -156,27 +158,69 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
+    use rstest::rstest;
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &["m", "f", "male", "female", "man", "woman", "diverse", "unknown"]
+            "sex" => &["m", "f", "male", "female", "man", "woman", "intersex", "mole"]
         ]
         .unwrap();
 
-        let mut tc = TableContext::default();
-        tc.context.push(SeriesContext::new(
-            Identifier::Regex("sex".to_string()),
-            Default::default(),
-            Context::SubjectSex,
-            None,
-            None,
-            vec![],
-        ));
+        let tc = TableContext::new(
+            "TestTable".to_string(),
+            vec![SeriesContext::new(
+                Identifier::Regex("sex".to_string()),
+                Default::default(),
+                Context::SubjectSex,
+                None,
+                None,
+                vec![],
+            )],
+        );
+
         ContextualizedDataFrame::new(tc, df)
     }
 
-    #[test]
-    fn test_sex_mapping_strategy_default() {
+    #[rstest]
+    fn test_sex_mapping_strategy_success() {
+        let mut table = make_test_dataframe();
+        let filtered_table = table
+            .data
+            .lazy()
+            .filter(col("sex").eq(lit("mole")).not())
+            .collect()
+            .unwrap();
+        table.data = filtered_table;
+        let strategy = SexMappingStrategy::default();
+
+        strategy.transform(&mut table).unwrap();
+
+        let sex_values: Vec<String> = table
+            .data
+            .column("sex")
+            .unwrap() // Get the column
+            .str()
+            .unwrap() // Ensure it's a Utf8Chunked
+            .into_no_null_iter() // Iterator over &str, skipping nulls
+            .map(|s| s.to_string()) // Convert &str to String
+            .collect();
+
+        assert_eq!(
+            sex_values,
+            vec![
+                "MALE",
+                "FEMALE",
+                "MALE",
+                "FEMALE",
+                "MALE",
+                "FEMALE",
+                "OTHER_SEX"
+            ]
+        );
+    }
+
+    #[rstest]
+    fn test_sex_mapping_strategy_err() {
         let mut table = make_test_dataframe();
         let strategy = SexMappingStrategy::default();
 
@@ -186,10 +230,14 @@ mod tests {
             Err(TransformError::MappingError {
                 strategy_name,
                 old_value,
+                column,
+                table,
                 possible_mappings: possibles_mappings,
             }) => {
                 assert_eq!(strategy_name, "SexMappingStrategy");
                 assert_eq!(old_value, "unknown");
+                assert_eq!(column, "sex");
+                assert_eq!(table, "TestTable");
                 assert_eq!(possibles_mappings, strategy.synonym_map);
             }
             _ => panic!("Unexpected error"),

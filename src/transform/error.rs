@@ -11,6 +11,8 @@ pub enum TransformError {
     #[allow(dead_code)]
     MappingError {
         strategy_name: String,
+        column: String,
+        table: String,
         old_value: String,
         possible_mappings: HashMap<String, String>,
     },
