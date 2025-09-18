@@ -27,7 +27,7 @@ use std::collections::HashMap;
 /// - The strategy processes each column identified by `Context::SubjectSex`.
 /// - For each value in the column, it converts the value to lowercase before looking it up in the map.
 /// - If a mapping is found, the original value is replaced with the standardized value.
-/// - If no mapping is found, the value is replaced with `Null`, and a warning is logged.
+/// - If no mapping is found an Err will be returned.
 ///
 /// # Examples
 ///
@@ -65,13 +65,13 @@ use std::collections::HashMap;
 /// assert_eq!(cdf.data, expected_df);
 /// ```
 struct SexMappingStrategy {
-    map: HashMap<String, String>,
+    synonym_map: HashMap<String, String>,
 }
 
 impl SexMappingStrategy {
     #[allow(dead_code)]
     pub fn new(map: HashMap<String, String>) -> Self {
-        Self { map }
+        Self { synonym_map: map }
     }
     #[allow(dead_code)]
     pub fn default() -> Self {
@@ -84,6 +84,10 @@ impl SexMappingStrategy {
             ("woman".to_string(), Sex::Female.as_str_name().to_string()),
             (
                 "diverse".to_string(),
+                Sex::OtherSex.as_str_name().to_string(),
+            ),
+            (
+                "intersex".to_string(),
                 Sex::OtherSex.as_str_name().to_string(),
             ),
         ]);
@@ -120,7 +124,7 @@ impl Strategy for SexMappingStrategy {
 
             let mapped_column: Result<Vec<AnyValue>, TransformError> = col_values
                 .iter()
-                .map(|s| match self.map.get(s.to_lowercase().trim()) {
+                .map(|s| match self.synonym_map.get(s.to_lowercase().trim()) {
                     Some(alias) => {
                         debug!("Converted {s} to {alias}");
                         Ok(AnyValue::String(alias))
@@ -134,7 +138,7 @@ impl Strategy for SexMappingStrategy {
                                 .unwrap()
                                 .to_string(),
                             old_value: s.to_string(),
-                            possible_mappings: self.map.clone(),
+                            possible_mappings: self.synonym_map.clone(),
                         })
                     }
                 })
@@ -182,11 +186,11 @@ mod tests {
             Err(TransformError::MappingError {
                 strategy_name,
                 old_value,
-                    possible_mappings: possibles_mappings,
+                possible_mappings: possibles_mappings,
             }) => {
                 assert_eq!(strategy_name, "SexMappingStrategy");
                 assert_eq!(old_value, "unknown");
-                assert_eq!(possibles_mappings, strategy.map);
+                assert_eq!(possibles_mappings, strategy.synonym_map);
             }
             _ => panic!("Unexpected error"),
         }
