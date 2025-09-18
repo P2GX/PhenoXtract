@@ -199,7 +199,7 @@ mod tests {
 
     #[fixture]
     fn another_phenotype() -> String {
-        "HP:0000252".to_string()
+        "Microcephaly".to_string()
     }
 
     #[fixture]
