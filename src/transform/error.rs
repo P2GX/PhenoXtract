@@ -12,7 +12,7 @@ pub enum TransformError {
     MappingError {
         strategy_name: String,
         old_value: String,
-        possibles_mappings: HashMap<String, String>,
+        possible_mappings: HashMap<String, String>,
     },
     #[allow(dead_code)]
     PolarsError(PolarsError),

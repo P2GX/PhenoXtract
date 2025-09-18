@@ -134,7 +134,7 @@ impl Strategy for SexMappingStrategy {
                                 .unwrap()
                                 .to_string(),
                             old_value: s.to_string(),
-                            possibles_mappings: self.map.clone(),
+                            possible_mappings: self.map.clone(),
                         })
                     }
                 })
@@ -182,7 +182,7 @@ mod tests {
             Err(TransformError::MappingError {
                 strategy_name,
                 old_value,
-                possibles_mappings,
+                    possible_mappings: possibles_mappings,
             }) => {
                 assert_eq!(strategy_name, "SexMappingStrategy");
                 assert_eq!(old_value, "unknown");
