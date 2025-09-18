@@ -2,6 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
+use std::any::type_name;
 
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Sex;
@@ -102,7 +103,7 @@ impl Strategy for SexMappingStrategy {
         let column_names: Vec<String> = table
             .get_columns_with_data_context(Context::SubjectSex)
             .iter()
-            .map(|col| col.name().as_str().to_string())
+            .map(|col| col.name().to_string())
             .collect();
 
         for col_name in column_names {
@@ -119,7 +120,7 @@ impl Strategy for SexMappingStrategy {
 
             let mapped_column: Result<Vec<AnyValue>, TransformError> = col_values
                 .iter()
-                .map(|s| match self.map.get(s.to_lowercase().as_str()) {
+                .map(|s| match self.map.get(s.to_lowercase().trim()) {
                     Some(alias) => {
                         debug!("Converted {s} to {alias}");
                         Ok(AnyValue::String(alias))
@@ -127,7 +128,11 @@ impl Strategy for SexMappingStrategy {
                     None => {
                         warn!("Unable to convert sex '{s}'");
                         Err(TransformError::MappingError {
-                            strategy_name: "SexMappingStrategy".to_string(),
+                            strategy_name: type_name::<Self>()
+                                .split("::")
+                                .last()
+                                .unwrap()
+                                .to_string(),
                             old_value: s.to_string(),
                             possibles_mappings: self.map.clone(),
                         })
