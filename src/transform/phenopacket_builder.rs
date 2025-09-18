@@ -161,14 +161,20 @@ impl PhenopacketBuilder {
             .or_else(|| {
                 self.hpo.as_ref().iter_terms().find(|term| {
                     !term.is_obsolete()
-                        && (term.name() == raw_term
-                            || term.synonyms().iter().any(|syn| syn.name == raw_term))
+                        && (term.name().to_lowercase() == raw_term.to_lowercase().trim()
+                            || term.synonyms().iter().any(|syn| {
+                                syn.name.to_lowercase() == raw_term.to_lowercase().trim()
+                            }))
                 })
             });
         if term.is_none() {
             return Err(anyhow!("Could not find ontology class for {raw_term}"));
         }
-        Ok(term.unwrap().clone())
+        let term = term.unwrap();
+        if term.is_obsolete() {
+            return Err(anyhow!("Could only find obsolete term for: {raw_term}"));
+        }
+        Ok(term.clone())
     }
 }
 
