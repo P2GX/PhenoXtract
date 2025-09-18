@@ -114,8 +114,8 @@ impl Strategy for SexMappingStrategy {
                 .str()
                 .map_err(TransformError::PolarsError)?
                 .into_iter()
-                .flatten() // Filters out None values
-                .map(|s| s.to_string()) // Converts &str to String
+                .flatten()
+                .map(|s| s.to_string())
                 .collect();
 
             let mapped_column: Result<Vec<AnyValue>, TransformError> = col_values
