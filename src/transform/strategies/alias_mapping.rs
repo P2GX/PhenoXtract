@@ -2,7 +2,7 @@ use crate::config::table_context::AliasMap;
 use crate::config::table_context::AliasMap::{ToBool, ToFloat, ToInt, ToString};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::Strategy as StrategyError;
+use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
 use log::info;
 use polars::prelude::{AnyValue, Column};

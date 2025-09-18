@@ -109,9 +109,9 @@ impl Strategy for SexMappingStrategy {
             let col_values: Vec<String> = table
                 .data
                 .column(&col_name)
-                .map_err(TransformError::Polars)?
+                .map_err(TransformError::PolarsError)?
                 .str()
-                .map_err(TransformError::Polars)?
+                .map_err(TransformError::PolarsError)?
                 .into_iter()
                 .flatten() // Filters out None values
                 .map(|s| s.to_string()) // Converts &str to String
@@ -126,7 +126,7 @@ impl Strategy for SexMappingStrategy {
                     }
                     None => {
                         warn!("Unable to convert sex '{s}'");
-                        Err(TransformError::Mapping {
+                        Err(TransformError::MappingError {
                             strategy_name: "SexMappingStrategy".to_string(),
                             old_value: s.to_string(),
                             possibles_mappings: self.map.clone(),
@@ -174,7 +174,7 @@ mod tests {
         let err = strategy.transform(&mut table);
 
         match err {
-            Err(TransformError::Mapping {
+            Err(TransformError::MappingError {
                 strategy_name,
                 old_value,
                 possibles_mappings,

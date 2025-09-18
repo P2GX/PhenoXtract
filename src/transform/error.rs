@@ -2,17 +2,18 @@ use polars::prelude::PolarsError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum TransformError {
     #[allow(dead_code)]
-    Building(String),
+    BuildingError(String),
     #[allow(dead_code)]
-    Strategy(String),
+    StrategyError(String),
     #[allow(dead_code)]
-    Mapping {
+    MappingError {
         strategy_name: String,
         old_value: String,
         possibles_mappings: HashMap<String, String>,
     },
     #[allow(dead_code)]
-    Polars(PolarsError),
+    PolarsError(PolarsError),
 }

@@ -1,6 +1,6 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::Strategy;
+use crate::transform::error::TransformError::StrategyError;
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -141,7 +141,7 @@ impl ContextualizedDataFrame {
             .data_mut()
             .replace(col_name, transformed_series)
             .map_err(|_e| {
-                Strategy(
+                StrategyError(
                     format!(
                         "Could not insert transformed column {col_name} into table {table_name}."
                     )
