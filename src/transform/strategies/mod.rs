@@ -1,3 +1,3 @@
 pub mod alias_map;
-mod get_hpo_labels;
+mod hpo_synonyms_to_primary_terms;
 mod utils;

@@ -1,28 +1,34 @@
 use crate::config::table_context::Context::HpoLabel;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-use crate::ontology::traits::OntologyRegistry;
-use crate::ontology::utils::init_ontolius;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
-use log::info;
+use log::{info, warn};
 use ontolius::ontology::OntologyTerms;
+use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{Column, DataType};
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
 /// for each of these columns, it will check if the cells contain a HPO term synonym. If they do, it will change them to the Primary HPO term.
 /// If any of the cells do not contain a HPO term synonym, then it will return an error.
 #[allow(dead_code)]
-pub struct GetHPOLabelsStrategy {
-    hpo_registry: GithubOntologyRegistry,
+pub struct HPOSynonymsToPrimaryTermsStrategy {
+    hpo_ontology: Rc<FullCsrOntology>,
 }
-impl Strategy for GetHPOLabelsStrategy {
+impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
         let hpo_cols = table.get_cols_with_data_context(HpoLabel);
-        hpo_cols.iter().all(|col| col.dtype() == &DataType::String)
+        let hpo_cols_are_str = hpo_cols.iter().all(|col| col.dtype() == &DataType::String);
+        if hpo_cols_are_str {
+            true
+        } else {
+            warn!("Not all columns with HPOLabel data context have string type.");
+            false
+        }
     }
 
     fn internal_transform(
@@ -30,73 +36,70 @@ impl Strategy for GetHPOLabelsStrategy {
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
         let table_name = &table.context().name.clone();
-        info!("Applying GetHPOLabels strategy to table: {table_name}");
+        info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
 
         let hpo_label_cols: Vec<Column> = table
             .get_cols_with_data_context(HpoLabel)
             .into_iter()
             .cloned()
             .collect();
-        let hpo_path = self.hpo_registry.register("latest").unwrap();
-        let hpo_ontology = init_ontolius(hpo_path).unwrap();
 
-        let mut unparseable_cells: Vec<String> = vec![];
-        let mut col_name_partially_parsed_col_pairs = vec![];
+        let mut unparseable_terms: Vec<String> = vec![];
 
-        for col in hpo_label_cols {
-            //todo This search is really not optimised. We could for example create a HashMap which stores HPO synonym searches which we have already performed
-            // so that we don't have to do them twice.
-            let string_vec_to_transform = convert_col_to_string_vec(&col)?;
-            let partially_parsed_col = string_vec_to_transform
-                .iter()
-                .map(|cell_data| {
-                    //first we search the HPO for primary terms that either match the cell data, or whose synonyms contain the cell data
-                    let primary_term_search_opt = hpo_ontology.iter_terms().find(|primary_term| {
-                        let synonyms = primary_term
-                            .synonyms()
-                            .iter()
-                            .map(|syn| syn.name.to_lowercase())
-                            .collect::<Vec<String>>();
-                        cell_data.to_lowercase() == primary_term.name().to_lowercase()
-                            || synonyms.contains(&cell_data.to_lowercase())
-                    });
-                    //if there was a matching primary term, we return it, otherwise we return an empty error
+        //first we create our hash map
+        let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
+        for col in &hpo_label_cols {
+            let stringified_col = convert_col_to_string_vec(col)?;
+            for cell_term in stringified_col.iter() {
+                // first we check if the cell term is already in the hash map
+                if synonym_to_primary_term_map.contains_key(cell_term) {
+                    continue;
+                } else {
+                    // if the term isn't already a key in the hash map
+                    // then we search the HPO for primary terms
+                    // that either match the cell term, or whose synonyms contain the cell term
+                    // and we insert the pair into the hash map
+                    let primary_term_search_opt =
+                        self.hpo_ontology.iter_terms().find(|primary_term| {
+                            let synonyms = primary_term
+                                .synonyms()
+                                .iter()
+                                .map(|syn| syn.name.to_lowercase())
+                                .collect::<Vec<String>>();
+                            (cell_term.to_lowercase().trim() == primary_term.name().to_lowercase()
+                                || synonyms.contains(&cell_term.to_lowercase()))
+                                && (primary_term.is_current())
+                        });
+                    //we insert the pair (cell_term,primary_term) if the Option is Some, and (cell_term,"") if the Option is None
                     match primary_term_search_opt {
-                        Some(primary_term) => Ok(primary_term.name().to_string()),
+                        Some(primary_term) => {
+                            synonym_to_primary_term_map
+                                .insert(cell_term.clone(), primary_term.name().to_string());
+                        }
                         None => {
-                            unparseable_cells.push(cell_data.clone());
-                            Err("".to_string())
+                            unparseable_terms.push(cell_term.clone());
+                            synonym_to_primary_term_map.insert(cell_term.clone(), "".to_string());
                         }
                     }
-                })
-                .collect::<Vec<Result<String, String>>>();
-            col_name_partially_parsed_col_pairs
-                .push((col.name().to_string(), partially_parsed_col));
-        }
-        let combined_result: Result<Vec<(String, Vec<String>)>, String> =
-            col_name_partially_parsed_col_pairs
-                .into_iter()
-                .map(|(col_name, vec_of_results)| {
-                    // Convert Vec<Result<String, String>> -> Result<Vec<String>, String>
-                    let result = vec_of_results
-                        .into_iter()
-                        .collect::<Result<Vec<String>, String>>();
-                    // Wrap the successfully parsed vectors with the column name
-                    result.map(|successfully_parsed_col| (col_name, successfully_parsed_col))
-                })
-                .collect();
-
-        // We only actually apply the change if every column was successfully parsed
-        match combined_result {
-            Ok(col_name_successfully_parsed_col_pairs) => {
-                for (col_name, successfully_parsed_col) in col_name_successfully_parsed_col_pairs {
-                    table.replace_column(successfully_parsed_col, &col_name)?;
                 }
-                Ok(())
             }
-            Err(_) => Err(StrategyError(format!(
-                "Could not parse {unparseable_cells:?} as HPO terms."
-            ))),
+        }
+
+        if !unparseable_terms.is_empty() {
+            Err(StrategyError(format!(
+                "Could not parse {unparseable_terms:?} as HPO terms."
+            )))
+        } else {
+            // we now only transform columns if we know every term can be parsed
+            for col in hpo_label_cols {
+                let string_vec_to_transform = convert_col_to_string_vec(&col)?;
+                let parsed_col = string_vec_to_transform
+                    .iter()
+                    .filter_map(|cell_term| synonym_to_primary_term_map.get(cell_term).cloned())
+                    .collect::<Vec<String>>();
+                table.replace_column(parsed_col, col.name())?;
+            }
+            Ok(())
         }
     }
 }
@@ -107,22 +110,27 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
+    use crate::ontology::traits::OntologyRegistry;
+    use crate::ontology::utils::init_ontolius;
     use crate::transform::error::TransformError;
-    use crate::transform::strategies::get_hpo_labels::GetHPOLabelsStrategy;
+    use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
+    use ontolius::ontology::csr::FullCsrOntology;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
+    use std::rc::Rc;
     use tempfile::TempDir;
-
     //todo why am I getting the warning: "Unknown synonym category "http://purl.obolibrary.org/obo/hp#allelic_requirement"" when I run these tests?
 
     #[fixture]
-    fn hpo_registry() -> GithubOntologyRegistry {
+    fn hpo_ontology() -> Rc<FullCsrOntology> {
         let tmp = TempDir::new().unwrap();
-        GithubOntologyRegistry::default_hpo_registry()
+        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into())
+            .with_registry_path(tmp.path().into());
+        let hpo_path = hpo_registry.register("latest").unwrap();
+        init_ontolius(hpo_path).unwrap()
     }
 
     #[fixture]
@@ -139,7 +147,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy(hpo_registry: GithubOntologyRegistry, tc: TableContext) {
+    fn test_get_hpo_labels_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_get_hpo_labels_strategy");
@@ -167,7 +175,7 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = GetHPOLabelsStrategy { hpo_registry };
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
         assert!(get_hpo_labels_strat.transform(&mut cdf).is_ok());
 
         let expected_col1 = Column::new(
@@ -183,7 +191,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy_fail(hpo_registry: GithubOntologyRegistry, tc: TableContext) {
+    fn test_get_hpo_labels_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_get_hpo_labels_strategy_fail");
@@ -206,7 +214,7 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = GetHPOLabelsStrategy { hpo_registry };
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
         let strat_result = get_hpo_labels_strat.transform(&mut cdf);
         let expected_unparseables = vec!["abcdef", "12355", "jimmy"];
         assert_eq!(

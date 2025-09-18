@@ -4,7 +4,6 @@ use polars::datatypes::AnyValue;
 use polars::prelude::Column;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
-    let col_name = col.name();
     match col.as_series() {
         Some(col_as_series) => Ok(col_as_series
             .iter()
@@ -14,7 +13,8 @@ pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformE
             })
             .collect::<Vec<String>>()),
         None => Err(StrategyError(format!(
-            "Could not convert column {col_name} to a series."
+            "Could not convert column {} to a series.",
+            col.name()
         ))),
     }
 }
