@@ -235,7 +235,7 @@ mod tests {
                 possible_mappings: possibles_mappings,
             }) => {
                 assert_eq!(strategy_name, "SexMappingStrategy");
-                assert_eq!(old_value, "unknown");
+                assert_eq!(old_value, "mole");
                 assert_eq!(column, "sex");
                 assert_eq!(table, "TestTable");
                 assert_eq!(possibles_mappings, strategy.synonym_map);
