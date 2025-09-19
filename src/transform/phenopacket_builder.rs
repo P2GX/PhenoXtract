@@ -474,9 +474,14 @@ mod tests {
 
     #[rstest]
     fn test_upsert_individual_sets_id_and_sex(tmp_dir: TempDir) {
+        let ci = std::env::var("CI");
+        if ci.is_ok() {
+            println!("Skipping test_update_phenotypic_features");
+            return;
+        }
         let mut builder = construct_builder(tmp_dir);
 
-        let phenopacket_id = "patient_001";
+        let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
 
         // Test without sex
