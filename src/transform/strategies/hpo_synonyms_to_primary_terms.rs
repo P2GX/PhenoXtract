@@ -133,7 +133,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
-    use crate::transform::error::TransformError;
+    use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
     use ontolius::ontology::csr::FullCsrOntology;
@@ -236,13 +236,39 @@ mod tests {
 
         let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
         let strat_result = get_hpo_labels_strat.transform(&mut cdf);
-        let expected_unparseables = vec!["abcdef", "12355", "jimmy"];
-        assert_eq!(
-            strat_result.unwrap_err(),
-            TransformError::StrategyError(format!(
-                "Could not parse {expected_unparseables:?} as HPO terms."
-            ))
-        );
+
+        if let Err(TransformError::MappingError {
+            strategy_name,
+            info,
+        }) = strat_result
+        {
+            assert_eq!(strategy_name, "HPOSynonymsToPrimaryTermsStrategy");
+            let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
+                MappingErrorInfo {
+                    column: "phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "abcdef".to_string(),
+                    possible_mappings: vec![],
+                },
+                MappingErrorInfo {
+                    column: "more_phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "jimmy".to_string(),
+                    possible_mappings: vec![],
+                },
+                MappingErrorInfo {
+                    column: "phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "12355".to_string(),
+                    possible_mappings: vec![],
+                },
+            ]);
+
+            for i in info {
+                println!("{:?}", i);
+                assert!(expected_error_info.contains(&i));
+            }
+        }
 
         let col1_after_strat = Column::new(
             "phenotypic_features".into(),
