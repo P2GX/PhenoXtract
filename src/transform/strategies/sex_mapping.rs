@@ -1,13 +1,13 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
+use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 use crate::transform::traits::Strategy;
 use std::any::type_name;
 
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::prelude::AnyValue;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// A transformation strategy to map various string representations of sex to the
 /// standardized `phenopackets::schema::v2::core::Sex` enum string representation.
@@ -110,6 +110,7 @@ impl Strategy for SexMappingStrategy {
             .map(|col| col.name().to_string())
             .collect();
 
+        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
         for col_name in column_names {
             let col_values: Vec<String> = table
                 .data
@@ -122,30 +123,33 @@ impl Strategy for SexMappingStrategy {
                 .map(|s| s.to_string())
                 .collect();
 
-            let mapped_column: Result<Vec<AnyValue>, TransformError> = col_values
+            let mapped_column: Vec<AnyValue> = col_values
                 .iter()
                 .map(|s| match self.synonym_map.get(s.to_lowercase().trim()) {
                     Some(alias) => {
                         debug!("Converted {s} to {alias}");
-                        Ok(AnyValue::String(alias))
+                        AnyValue::String(alias)
                     }
                     None => {
                         warn!("Unable to convert sex '{s}'");
-                        Err(TransformError::MappingError {
-                            strategy_name: type_name::<Self>()
-                                .split("::")
-                                .last()
-                                .unwrap()
-                                .to_string(),
+                        error_info.insert(MappingErrorInfo {
                             column: col_name.clone(),
                             table: table.context().clone().name,
-                            old_value: s.to_string(),
-                            possible_mappings: self.synonym_map.clone(),
-                        })
+                            old_value: s.clone(),
+                            possible_mappings: MappingSuggestion::from_hashmap(&self.synonym_map),
+                        });
+                        AnyValue::String(s)
                     }
                 })
                 .collect();
-            table.replace_column(mapped_column?, col_name.as_str())?;
+            table.replace_column(mapped_column, col_name.as_str())?;
+        }
+
+        if !error_info.is_empty() {
+            return Err(TransformError::MappingError {
+                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                info: error_info.into_iter().collect(),
+            });
         }
 
         Ok(())
@@ -198,11 +202,11 @@ mod tests {
         let sex_values: Vec<String> = table
             .data
             .column("sex")
-            .unwrap() // Get the column
+            .unwrap()
             .str()
-            .unwrap() // Ensure it's a Utf8Chunked
-            .into_no_null_iter() // Iterator over &str, skipping nulls
-            .map(|s| s.to_string()) // Convert &str to String
+            .unwrap()
+            .into_no_null_iter()
+            .map(ToOwned::to_owned)
             .collect();
 
         assert_eq!(
@@ -229,18 +233,43 @@ mod tests {
         match err {
             Err(TransformError::MappingError {
                 strategy_name,
-                old_value,
-                column,
-                table,
-                possible_mappings: possibles_mappings,
+                mut info,
             }) => {
+                let i = info.pop().unwrap();
                 assert_eq!(strategy_name, "SexMappingStrategy");
-                assert_eq!(old_value, "mole");
-                assert_eq!(column, "sex");
-                assert_eq!(table, "TestTable");
-                assert_eq!(possibles_mappings, strategy.synonym_map);
+                assert_eq!(i.old_value, "mole");
+                assert_eq!(i.column, "sex");
+                assert_eq!(i.table, "TestTable");
+                assert_eq!(
+                    MappingSuggestion::suggestions_to_hashmap(i.possible_mappings),
+                    strategy.synonym_map
+                );
             }
             _ => panic!("Unexpected error"),
         }
+
+        let sex_values: Vec<String> = table
+            .data
+            .column("sex")
+            .unwrap()
+            .str()
+            .unwrap()
+            .into_no_null_iter()
+            .map(ToOwned::to_owned)
+            .collect();
+
+        assert_eq!(
+            sex_values,
+            vec![
+                "MALE",
+                "FEMALE",
+                "MALE",
+                "FEMALE",
+                "MALE",
+                "FEMALE",
+                "OTHER_SEX",
+                "mole"
+            ]
+        );
     }
 }
