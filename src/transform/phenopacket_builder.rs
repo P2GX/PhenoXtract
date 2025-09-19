@@ -150,7 +150,7 @@ impl PhenopacketBuilder {
     }
 
     // TODO: Add test after MVP
-    fn get_or_create_phenopacket(&mut self, phenopacket_id: String) -> &mut Phenopacket {
+    pub fn get_or_create_phenopacket(&mut self, phenopacket_id: String) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.clone())
             .or_insert_with(|| Phenopacket {

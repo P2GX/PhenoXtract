@@ -77,8 +77,13 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                                 .insert(cell_term.clone(), primary_term.name().to_string());
                         }
                         None => {
-                            unparseable_terms.push(cell_term.clone());
                             synonym_to_primary_term_map.insert(cell_term.clone(), "".to_string());
+                            //this means that we won't get an error if a cell is empty
+                            //and that the AnyValue::Null cell will now truly be the string "null"
+                            //this is admittedly slightly strange behaviour. And we should perhaps come up with a better plan for how we deal with nulls.
+                            if cell_term != "null" {
+                                unparseable_terms.push(cell_term.clone());
+                            }
                         }
                     }
                 }
@@ -131,6 +136,7 @@ mod tests {
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
     use ontolius::ontology::csr::FullCsrOntology;
+    use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
@@ -161,7 +167,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
+    fn test_hpo_syns_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_get_hpo_labels_strategy");
@@ -205,7 +211,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
+    fn test_hpo_syns_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_get_hpo_labels_strategy_fail");
@@ -248,5 +254,60 @@ mod tests {
         );
         let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
         assert_eq!(cdf.data, df_after_strat);
+    }
+
+    #[rstest]
+    fn test_hpo_syns_strategy_with_nulls(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
+        let ci = std::env::var("CI");
+        if ci.is_ok() {
+            println!("Skipping test_get_hpo_labels_strategy");
+            return;
+        }
+
+        let col1 = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("bronchial asthma"),
+                AnyValue::String("Nail psoriasis"),
+                AnyValue::String("Big calvaria"),
+                AnyValue::Null,
+            ],
+        );
+        let col2 = Column::new(
+            "more_phenotypic_features".into(),
+            [
+                AnyValue::String("Reactive airway disease"),
+                AnyValue::Null,
+                AnyValue::String("asthma"),
+                AnyValue::String("nail psoriasis"),
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let mut cdf = ContextualizedDataFrame::new(tc, df);
+
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
+        assert!(get_hpo_labels_strat.transform(&mut cdf).is_ok());
+
+        let expected_col1 = Column::new(
+            "phenotypic_features".into(),
+            [
+                "Pneumonia",
+                "null",
+                "Asthma",
+                "Nail psoriasis",
+                "Macrocephaly",
+                "null",
+            ],
+        );
+        let expected_col2 = Column::new(
+            "more_phenotypic_features".into(),
+            ["Asthma", "null", "Asthma", "Nail psoriasis", "null", "null"],
+        );
+        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
+        assert_eq!(cdf.data, expected_df);
     }
 }
