@@ -43,7 +43,7 @@ impl Collector {
                 //this means that a phenopacket for the individual is created, even if there is no PF data
                 //will possibly be made obsolete by later collect functions
                 self.phenopacket_builder
-                    .get_or_create_phenopacket(phenopacket_id.clone());
+                    .get_or_create_phenopacket(&phenopacket_id);
 
                 let patient_df = cdf
                     .data
@@ -83,7 +83,7 @@ impl Collector {
                 } else {
                     self.phenopacket_builder
                         .upsert_phenotypic_feature(
-                            phenopacket_id.to_string(),
+                            phenopacket_id,
                             pf,
                             None,
                             None,
