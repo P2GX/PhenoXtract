@@ -7,6 +7,7 @@ use std::any::type_name;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Sex;
+use polars::datatypes::DataType;
 use polars::prelude::AnyValue;
 use std::collections::{HashMap, HashSet};
 
@@ -97,8 +98,22 @@ impl SexMappingStrategy {
 }
 
 impl Strategy for SexMappingStrategy {
-    fn is_valid(&self, _table: &ContextualizedDataFrame) -> bool {
-        true
+    fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
+        let data_context = Context::SubjectSex;
+        let dtype = DataType::String;
+
+        let columns = table.get_cols_with_data_context(data_context.clone());
+        let is_valid = columns.iter().all(|col| col.dtype() == &dtype);
+
+        if !is_valid {
+            warn!(
+                "Not all columns with {} data context have {} type in table {}.",
+                data_context,
+                dtype,
+                table.context().name
+            );
+        }
+        is_valid
     }
 
     fn internal_transform(

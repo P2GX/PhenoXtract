@@ -21,14 +21,21 @@ pub struct HPOSynonymsToPrimaryTermsStrategy {
 }
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        let hpo_cols = table.get_cols_with_data_context(HpoLabel);
-        let hpo_cols_are_str = hpo_cols.iter().all(|col| col.dtype() == &DataType::String);
-        if hpo_cols_are_str {
-            true
-        } else {
-            warn!("Not all columns with HPOLabel data context have string type.");
-            false
+        let data_context = HpoLabel;
+        let dtype = DataType::String;
+
+        let columns = table.get_cols_with_data_context(data_context.clone());
+        let is_valid = columns.iter().all(|col| col.dtype() == &dtype);
+
+        if !is_valid {
+            warn!(
+                "Not all columns with {} data context have {} type in table {}.",
+                data_context,
+                dtype,
+                table.context().name
+            );
         }
+        is_valid
     }
 
     fn internal_transform(
