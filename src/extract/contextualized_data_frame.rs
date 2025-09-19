@@ -112,19 +112,6 @@ impl ContextualizedDataFrame {
         }
     }
 
-    pub fn get_columns_with_data_context(&self, context: Context) -> Vec<&Column> {
-        let mut columns = vec![];
-        for series_context in self.context.context.iter() {
-            if series_context.get_data_context() == context {
-                columns = columns
-                    .into_iter()
-                    .chain(self.get_columns(&series_context.identifier))
-                    .collect();
-            }
-        }
-
-        columns
-    }
     #[allow(unused)]
     ///The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(

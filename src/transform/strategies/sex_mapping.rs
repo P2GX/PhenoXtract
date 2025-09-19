@@ -4,6 +4,7 @@ use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformErro
 use crate::transform::traits::Strategy;
 use std::any::type_name;
 
+use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::prelude::AnyValue;
@@ -105,23 +106,19 @@ impl Strategy for SexMappingStrategy {
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
         let column_names: Vec<String> = table
-            .get_columns_with_data_context(Context::SubjectSex)
+            .get_cols_with_data_context(Context::SubjectSex)
             .iter()
             .map(|col| col.name().to_string())
             .collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
         for col_name in column_names {
-            let col_values: Vec<String> = table
-                .data
-                .column(&col_name)
-                .map_err(|err| TransformError::StrategyError(err.to_string()))?
-                .str()
-                .map_err(|err| TransformError::StrategyError(err.to_string()))?
-                .into_iter()
-                .flatten()
-                .map(|s| s.to_string())
-                .collect();
+            let col_values: Vec<String> = convert_col_to_string_vec(
+                table
+                    .data
+                    .column(&col_name)
+                    .map_err(|err| TransformError::StrategyError(err.to_string()))?,
+            )?;
 
             let mapped_column: Vec<AnyValue> = col_values
                 .iter()
