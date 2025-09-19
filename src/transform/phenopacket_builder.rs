@@ -121,28 +121,29 @@ impl PhenopacketBuilder {
         let term = self.raw_to_full_term(phenotype)?;
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
-        if let Some(feature) = phenopacket.phenotypic_features.iter_mut().find(|feature| {
-            if let Some(t) = &feature.r#type {
-                t.id == term.identifier().to_string()
-            } else {
-                false
-            }
-        }) {
-            feature.r#type = Some(OntologyClass {
-                id: term.identifier().to_string(),
-                label: term.name().to_string(),
-            });
-            feature.description = description.unwrap_or(&feature.description).parse()?
+        let feature = if let Some(pos) =
+            phenopacket.phenotypic_features.iter().position(|feature| {
+                if let Some(t) = &feature.r#type {
+                    t.id == term.identifier().to_string()
+                } else {
+                    false
+                }
+            }) {
+            &mut phenopacket.phenotypic_features[pos]
         } else {
             let new_feature = PhenotypicFeature {
                 r#type: Some(OntologyClass {
                     id: term.identifier().to_string(),
                     label: term.name().to_string(),
                 }),
-                description: description.unwrap_or_default().to_string(),
                 ..Default::default()
             };
             phenopacket.phenotypic_features.push(new_feature);
+            phenopacket.phenotypic_features.last_mut().unwrap()
+        };
+
+        if let Some(desc) = description {
+            feature.description = desc.to_string();
         }
 
         Ok(())
