@@ -85,20 +85,35 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             }
         }
 
+        // we apply the primary term aliases when we can
+        // and we do not change the cell term in the cases where we could not find a HPO rimary term
+        for col in hpo_label_cols {
+            let string_vec_to_transform = convert_col_to_string_vec(&col)?;
+            let parsed_col = string_vec_to_transform
+                .iter()
+                .filter_map(|cell_term| {
+                    let primary_term = synonym_to_primary_term_map.get(cell_term);
+                    match primary_term {
+                        Some(primary_term) => {
+                            if primary_term == "" {
+                                Some(cell_term.clone())
+                            } else {
+                                Some(primary_term.clone())
+                            }
+                        }
+                        None => None,
+                    }
+                })
+                .collect::<Vec<String>>();
+            table.replace_column(parsed_col, col.name())?;
+        }
+
+        // return an error if not every cell term could be parsed
         if !unparseable_terms.is_empty() {
             Err(StrategyError(format!(
                 "Could not parse {unparseable_terms:?} as HPO terms."
             )))
         } else {
-            // we now only transform columns if we know every term can be parsed
-            for col in hpo_label_cols {
-                let string_vec_to_transform = convert_col_to_string_vec(&col)?;
-                let parsed_col = string_vec_to_transform
-                    .iter()
-                    .filter_map(|cell_term| synonym_to_primary_term_map.get(cell_term).cloned())
-                    .collect::<Vec<String>>();
-                table.replace_column(parsed_col, col.name())?;
-            }
             Ok(())
         }
     }
@@ -121,7 +136,6 @@ mod tests {
     use rstest::{fixture, rstest};
     use std::rc::Rc;
     use tempfile::TempDir;
-    //todo why am I getting the warning: "Unknown synonym category "http://purl.obolibrary.org/obo/hp#allelic_requirement"" when I run these tests?
 
     #[fixture]
     fn hpo_ontology() -> Rc<FullCsrOntology> {
@@ -223,5 +237,16 @@ mod tests {
                 "Could not parse {expected_unparseables:?} as HPO terms."
             ))
         );
+
+        let col1_after_strat = Column::new(
+            "phenotypic_features".into(),
+            ["abcdef", "Macrocephaly", "Arthritis", "12355"],
+        );
+        let col2_after_strat = Column::new(
+            "more_phenotypic_features".into(),
+            ["Asthma", "Asthma", "jimmy", "Nail psoriasis"],
+        );
+        let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
+        assert_eq!(cdf.data, df_after_strat);
     }
 }
