@@ -206,7 +206,7 @@ impl PhenopacketBuilder {
             .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
             .or_else(|| {
                 self.hpo.as_ref().iter_terms().find(|term| {
-                    !term.is_obsolete()
+                    term.is_current()
                         && (term.name().to_lowercase() == raw_term.to_lowercase().trim()
                             || term.synonyms().iter().any(|syn| {
                                 syn.name.to_lowercase() == raw_term.to_lowercase().trim()
