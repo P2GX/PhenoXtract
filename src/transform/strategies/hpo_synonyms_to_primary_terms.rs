@@ -95,7 +95,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                     let primary_term = synonym_to_primary_term_map.get(cell_term);
                     match primary_term {
                         Some(primary_term) => {
-                            if primary_term == "" {
+                            if primary_term.is_empty() {
                                 Some(cell_term.clone())
                             } else {
                                 Some(primary_term.clone())
