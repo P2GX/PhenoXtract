@@ -37,7 +37,7 @@ pub(crate) struct MappingErrorInfo {
     pub possible_mappings: Vec<MappingSuggestion>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum TransformError {
     #[allow(dead_code)]

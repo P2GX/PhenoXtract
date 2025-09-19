@@ -1888,14 +1888,15 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "ontolius"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2539656bd1fbf98147f46f1d78c2038f86ffac81e811cc6e01087534ec3f19e2"
+checksum = "02574a5b94aa2cd1ed5233035f4f839d67648c9cc5f70161da28dd8b645210a9"
 dependencies = [
  "anyhow",
  "curieosa",
  "graph_builder",
  "obographs-dev",
+ "rayon",
 ]
 
 [[package]]
@@ -2089,7 +2090,6 @@ dependencies = [
  "ontolius",
  "phenopackets",
  "polars",
- "rayon",
  "regex",
  "reqwest",
  "rstest",

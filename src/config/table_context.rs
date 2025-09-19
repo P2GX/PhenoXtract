@@ -58,6 +58,8 @@ pub enum Context {
     WeightInKg,
     #[allow(unused)]
     SmokerBool,
+    #[allow(unused)]
+    ObservationStatus,
     #[default]
     None,
     //...
