@@ -272,7 +272,6 @@ mod tests {
             ]);
 
             for i in info {
-                println!("{:?}", i);
                 assert!(expected_error_info.contains(&i));
             }
         }
