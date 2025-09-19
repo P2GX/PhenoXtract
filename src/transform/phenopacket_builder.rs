@@ -9,7 +9,9 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use ontolius::{Identified, TermId};
 use phenopackets::schema::v1::core::Evidence;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::{OntologyClass, PhenotypicFeature, TimeElement};
+use phenopackets::schema::v2::core::{
+    Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -37,8 +39,52 @@ impl PhenopacketBuilder {
     }
 
     #[allow(dead_code)]
-    pub fn upsert_individual(&mut self) -> Result<(), anyhow::Error> {
-        todo!()
+    pub fn upsert_individual(
+        &mut self,
+        phenopacket_id: &str,
+        individual_id: &str,
+        alternate_ids: Option<&[&str]>,
+        date_of_birth: Option<&str>,
+        time_at_last_encounter: Option<TimeElement>,
+        vital_status: Option<VitalStatus>,
+        sex: Option<&str>,
+        karyotypic_sex: Option<&str>,
+        gender: Option<&str>,
+        taxonomy: Option<&str>,
+    ) -> Result<(), anyhow::Error> {
+        if alternate_ids.is_some() {
+            warn!("alternate_ids - not implemented for individual yet");
+        }
+        if date_of_birth.is_some() {
+            warn!("date_of_birth - not implemented for individual yet");
+        }
+        if time_at_last_encounter.is_some() {
+            warn!("time_at_last_encounter - not implemented for individual yet");
+        }
+        if vital_status.is_some() {
+            warn!("vital_status - not implemented for individual yet");
+        }
+        if karyotypic_sex.is_some() {
+            warn!("karyotypic_sex - not implemented for individual yet");
+        }
+        if gender.is_some() {
+            warn!("gender - not implemented for individual yet");
+        }
+        if taxonomy.is_some() {
+            warn!("taxonomy - not implemented for individual yet");
+        }
+
+        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+
+        let individual = phenopacket.subject.get_or_insert(Individual::default());
+        individual.id = individual_id.to_string();
+
+        if let Some(sex) = sex {
+            individual.sex = Sex::from_str_name(sex)
+                .ok_or_else(|| anyhow!("Could not parse {sex}"))?
+                .into();
+        }
+        Ok(())
     }
 
     /// Upserts a phenotypic feature within a specific phenopacket.
@@ -89,12 +135,12 @@ impl PhenopacketBuilder {
     #[allow(dead_code)]
     pub fn upsert_phenotypic_feature(
         &mut self,
-        phenopacket_id: String,
+        phenopacket_id: &str,
         phenotype: &str,
         description: Option<&str>,
         excluded: Option<bool>,
-        severity: Option<String>,
-        modifiers: Option<Vec<String>>,
+        severity: Option<&str>,
+        modifiers: Option<Vec<&str>>,
         on_set: Option<TimeElement>,
         resolution: Option<TimeElement>,
         evidence: Option<Evidence>,
@@ -150,11 +196,11 @@ impl PhenopacketBuilder {
     }
 
     // TODO: Add test after MVP
-    fn get_or_create_phenopacket(&mut self, phenopacket_id: String) -> &mut Phenopacket {
+    fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
-            .entry(phenopacket_id.clone())
+            .entry(phenopacket_id.to_string())
             .or_insert_with(|| Phenopacket {
-                id: phenopacket_id,
+                id: phenopacket_id.to_string(),
                 ..Default::default()
             })
     }
@@ -165,7 +211,7 @@ impl PhenopacketBuilder {
             .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
             .or_else(|| {
                 self.hpo.as_ref().iter_terms().find(|term| {
-                    !term.is_obsolete()
+                    term.is_current()
                         && (term.name().to_lowercase() == raw_term.to_lowercase().trim()
                             || term.synonyms().iter().any(|syn| {
                                 syn.name.to_lowercase() == raw_term.to_lowercase().trim()
@@ -234,7 +280,7 @@ mod tests {
         }
         let mut builder = construct_builder(tmp_dir);
         let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.clone(),
+            phenopacket_id.as_str(),
             &valid_phenotype,
             None,
             None,
@@ -270,7 +316,7 @@ mod tests {
         let mut builder = construct_builder(tmp_dir);
 
         let result = builder.upsert_phenotypic_feature(
-            phenopacket_id,
+            phenopacket_id.as_str(),
             "invalid_term",
             None,
             None,
@@ -299,7 +345,7 @@ mod tests {
         let mut builder = construct_builder(tmp_dir);
 
         let result1 = builder.upsert_phenotypic_feature(
-            phenopacket_id.clone(),
+            phenopacket_id.as_str(),
             &valid_phenotype,
             None,
             None,
@@ -312,7 +358,7 @@ mod tests {
         assert!(result1.is_ok());
 
         let result2 = builder.upsert_phenotypic_feature(
-            phenopacket_id.clone(),
+            phenopacket_id.as_str(),
             &another_phenotype,
             None,
             None,
@@ -341,7 +387,7 @@ mod tests {
         let id2 = "pp_002".to_string();
 
         let result1 = builder.upsert_phenotypic_feature(
-            id1.clone(),
+            id1.as_str(),
             &valid_phenotype,
             None,
             None,
@@ -354,7 +400,7 @@ mod tests {
         assert!(result1.is_ok());
 
         let result2 = builder.upsert_phenotypic_feature(
-            id2.clone(),
+            id2.as_str(),
             &valid_phenotype,
             None,
             None,
@@ -414,7 +460,7 @@ mod tests {
 
         // Add another feature
         let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.clone(),
+            phenopacket_id.as_str(),
             &valid_phenotype,
             None,
             None,
@@ -429,5 +475,57 @@ mod tests {
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
+    }
+
+    #[rstest]
+    fn test_upsert_individual_sets_id_and_sex(tmp_dir: TempDir) {
+        let ci = std::env::var("CI");
+        if ci.is_ok() {
+            println!("Skipping test_update_phenotypic_features");
+            return;
+        }
+        let mut builder = construct_builder(tmp_dir);
+
+        let phenopacket_id = "pp_001";
+        let individual_id = "individual_001";
+
+        // Test without sex
+        let result = builder.upsert_individual(
+            phenopacket_id,
+            individual_id,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!(result.is_ok());
+
+        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let individual = phenopacket.subject.as_ref().unwrap();
+        assert_eq!(individual.id, individual_id);
+        assert_eq!(individual.sex, 0);
+
+        let result = builder.upsert_individual(
+            phenopacket_id,
+            individual_id,
+            None,
+            None,
+            None,
+            None,
+            Some("MALE"),
+            None,
+            None,
+            None,
+        );
+        assert!(result.is_ok());
+
+        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let individual = phenopacket.subject.as_ref().unwrap();
+
+        assert_eq!(individual.sex, Sex::Male as i32);
     }
 }
