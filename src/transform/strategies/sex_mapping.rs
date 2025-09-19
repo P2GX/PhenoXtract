@@ -115,9 +115,9 @@ impl Strategy for SexMappingStrategy {
             let col_values: Vec<String> = table
                 .data
                 .column(&col_name)
-                .map_err(TransformError::PolarsError)?
+                .map_err(|err| TransformError::StrategyError(err.to_string()))?
                 .str()
-                .map_err(TransformError::PolarsError)?
+                .map_err(|err| TransformError::StrategyError(err.to_string()))?
                 .into_iter()
                 .flatten()
                 .map(|s| s.to_string())

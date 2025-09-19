@@ -1,4 +1,3 @@
-use polars::prelude::PolarsError;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -47,6 +46,4 @@ pub enum TransformError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
     },
-    #[allow(dead_code)]
-    PolarsError(PolarsError),
 }

@@ -1,7 +1,6 @@
 use crate::config::table_context::Context::HpoLabel;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::{info, warn};
@@ -9,7 +8,8 @@ use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{Column, DataType};
-use std::collections::HashMap;
+use std::any::type_name;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
@@ -44,7 +44,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             .cloned()
             .collect();
 
-        let mut unparseable_terms: Vec<String> = vec![];
+        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         //first we create our hash map
         let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
@@ -77,7 +77,12 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                                 .insert(cell_term.clone(), primary_term.name().to_string());
                         }
                         None => {
-                            unparseable_terms.push(cell_term.clone());
+                            error_info.insert(MappingErrorInfo {
+                                column: col.name().to_string(),
+                                table: table.context().clone().name,
+                                old_value: cell_term.clone(),
+                                possible_mappings: vec![],
+                            });
                             synonym_to_primary_term_map.insert(cell_term.clone(), "".to_string());
                         }
                     }
@@ -109,10 +114,11 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         }
 
         // return an error if not every cell term could be parsed
-        if !unparseable_terms.is_empty() {
-            Err(StrategyError(format!(
-                "Could not parse {unparseable_terms:?} as HPO terms."
-            )))
+        if !error_info.is_empty() {
+            Err(TransformError::MappingError {
+                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                info: error_info.into_iter().collect(),
+            })
         } else {
             Ok(())
         }
