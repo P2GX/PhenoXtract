@@ -144,6 +144,10 @@ impl Strategy for SexMappingStrategy {
                     }
                     None => {
                         warn!("Unable to convert sex '{s}'");
+                        if s == "null" {
+                            return AnyValue::Null;
+                        }
+
                         error_info.insert(MappingErrorInfo {
                             column: col_name.clone(),
                             table: table.context().clone().name,
@@ -178,7 +182,7 @@ mod tests {
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &["m", "f", "male", "female", "man", "woman", "intersex", "mole"]
+            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null]
         ]
         .unwrap();
 
@@ -280,7 +284,8 @@ mod tests {
                 "MALE",
                 "FEMALE",
                 "OTHER_SEX",
-                "mole"
+                "mole",
+                "",
             ]
         );
     }
