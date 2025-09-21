@@ -73,7 +73,12 @@ struct SexMappingStrategy {
 impl SexMappingStrategy {
     #[allow(dead_code)]
     pub fn new(map: HashMap<String, String>) -> Self {
-        Self { synonym_map: map }
+        let mut default_synonym_map = Self::default().synonym_map;
+        default_synonym_map.extend(map);
+
+        Self {
+            synonym_map: default_synonym_map,
+        }
     }
     #[allow(dead_code)]
     pub fn default() -> Self {
