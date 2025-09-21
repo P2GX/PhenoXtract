@@ -10,6 +10,7 @@ use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
 use polars::prelude::AnyValue;
 use std::collections::{HashMap, HashSet};
+use std::string::ToString;
 
 /// A transformation strategy to map various string representations of sex to the
 /// standardized `phenopackets::schema::v2::core::Sex` enum string representation.
@@ -71,34 +72,43 @@ struct SexMappingStrategy {
 }
 
 impl SexMappingStrategy {
-    #[allow(dead_code)]
-    pub fn new(map: HashMap<String, String>) -> Self {
-        let mut default_synonym_map = Self::default().synonym_map;
-        default_synonym_map.extend(map);
+    pub fn add_alias(&mut self, alias: String, term: Sex) {
+        let term = term.as_str_name().to_string();
+        self.synonym_map.insert(alias.trim().to_lowercase(), term);
+    }
 
-        Self {
-            synonym_map: default_synonym_map,
-        }
+    fn default_synonym_map() -> HashMap<String, Sex> {
+        HashMap::from([
+            ("m".to_string(), Sex::Male),
+            ("f".to_string(), Sex::Female),
+            ("male".to_string(), Sex::Male),
+            ("female".to_string(), Sex::Female),
+            ("man".to_string(), Sex::Male),
+            ("woman".to_string(), Sex::Female),
+            ("diverse".to_string(), Sex::OtherSex),
+            ("intersex".to_string(), Sex::OtherSex),
+        ])
+    }
+    #[allow(dead_code)]
+    pub fn new(map: HashMap<String, Sex>) -> Self {
+        let mut strategy = Self {
+            synonym_map: HashMap::new(),
+        };
+        map.iter().for_each(|(k, v)| {
+            strategy.add_alias(k.clone(), v.to_owned());
+        });
+
+        SexMappingStrategy::default_synonym_map()
+            .iter()
+            .for_each(|(k, v)| {
+                strategy.add_alias(k.clone(), v.to_owned());
+            });
+
+        strategy
     }
     #[allow(dead_code)]
     pub fn default() -> Self {
-        let map = HashMap::from([
-            ("m".to_string(), Sex::Male.as_str_name().to_string()),
-            ("f".to_string(), Sex::Female.as_str_name().to_string()),
-            ("male".to_string(), Sex::Male.as_str_name().to_string()),
-            ("female".to_string(), Sex::Female.as_str_name().to_string()),
-            ("man".to_string(), Sex::Male.as_str_name().to_string()),
-            ("woman".to_string(), Sex::Female.as_str_name().to_string()),
-            (
-                "diverse".to_string(),
-                Sex::OtherSex.as_str_name().to_string(),
-            ),
-            (
-                "intersex".to_string(),
-                Sex::OtherSex.as_str_name().to_string(),
-            ),
-        ]);
-        SexMappingStrategy::new(map)
+        SexMappingStrategy::new(Self::default_synonym_map())
     }
 }
 
@@ -148,11 +158,11 @@ impl Strategy for SexMappingStrategy {
                         AnyValue::String(alias)
                     }
                     None => {
-                        warn!("Unable to convert sex '{s}'");
                         if s == "null" {
                             return AnyValue::Null;
                         }
 
+                        warn!("Unable to convert sex '{s}'");
                         error_info.insert(MappingErrorInfo {
                             column: col_name.clone(),
                             table: table.context().clone().name,
