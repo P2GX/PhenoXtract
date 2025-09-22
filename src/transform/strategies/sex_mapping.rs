@@ -304,4 +304,36 @@ mod tests {
             ]
         );
     }
+
+    #[rstest]
+    fn test_new_constructor_with_custom_and_default_mappings() {
+        let mut user_map = HashMap::new();
+        user_map.insert("gentleman".to_string(), Sex::Male);
+
+        let strategy = SexMappingStrategy::new(user_map);
+
+        assert_eq!(
+            strategy.synonym_map.get("gentleman"),
+            Some(&"MALE".to_string())
+        );
+
+        assert_eq!(strategy.synonym_map.get("f"), Some(&"FEMALE".to_string()));
+        assert_eq!(strategy.synonym_map.get("m"), Some(&"MALE".to_string()));
+        assert_eq!(
+            strategy.synonym_map.len(),
+            SexMappingStrategy::default_synonym_map().len() + 1
+        );
+    }
+
+    #[rstest]
+    fn test_new_constructor_with_empty_map() {
+        let user_map: HashMap<String, Sex> = HashMap::new();
+
+        let strategy = SexMappingStrategy::new(user_map);
+
+        assert_eq!(
+            strategy.synonym_map.len(),
+            SexMappingStrategy::default_synonym_map().len()
+        );
+    }
 }
