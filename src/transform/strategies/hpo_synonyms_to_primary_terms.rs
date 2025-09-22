@@ -1,4 +1,4 @@
-use crate::config::table_context::Context::{HpoLabel};
+use crate::config::table_context::Context::HpoLabel;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
