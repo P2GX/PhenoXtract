@@ -7,8 +7,8 @@ use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::simple::SimpleTerm;
 use ontolius::term::{MinimalTerm, Synonymous};
 use ontolius::{Identified, TermId};
-use phenopackets::schema::v1::core::Evidence;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::Evidence;
 use phenopackets::schema::v2::core::{
     Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
@@ -196,7 +196,7 @@ impl PhenopacketBuilder {
     }
 
     // TODO: Add test after MVP
-    pub fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
+    fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())
             .or_insert_with(|| Phenopacket {

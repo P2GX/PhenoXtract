@@ -1,23 +1,26 @@
-//todo get rid of these allowances below
-#![allow(dead_code)]
-#![allow(unused)]
-use crate::config::table_context::Context::{HpoLabel, Onset, SubjectId};
-use crate::config::table_context::TableContext;
+use crate::config::table_context::Context::{HpoLabel, SubjectId};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
-use phenopackets::schema::v1::core::PhenotypicFeature;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{ChunkCompareEq, DataFrame, IntoLazy, col, lit};
+use polars::prelude::{IntoLazy, col, lit};
 
+#[allow(dead_code)]
 struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
 }
 
+#[allow(dead_code)]
 impl Collector {
+    pub fn new(phenopacket_builder: PhenopacketBuilder, cohort_name: String) -> Collector {
+        Collector {
+            phenopacket_builder,
+            cohort_name,
+        }
+    }
     pub fn collect(
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
@@ -40,10 +43,6 @@ impl Collector {
 
             for patient_id in &unique_patient_ids {
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
-                //this means that a phenopacket for the individual is created, even if there is no PF data
-                //will possibly be made obsolete by later collect functions
-                self.phenopacket_builder
-                    .get_or_create_phenopacket(&phenopacket_id);
 
                 let patient_df = cdf
                     .data
@@ -59,9 +58,8 @@ impl Collector {
                         ))
                     })?;
                 let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
-                self.collect_phenotypic_features(&patient_cdf, &phenopacket_id);
-
-                //todo self.collect_individual(&patient_cdf, &phenopacket_id);
+                self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
+                self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
 
@@ -73,33 +71,27 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let single_pf_cols = patient_cdf.get_cols_with_data_context(HpoLabel);
+        let pf_cols = patient_cdf.get_cols_with_data_context(HpoLabel);
 
-        for single_pf_col in single_pf_cols {
-            let stringified_single_pf_col = convert_col_to_string_vec(single_pf_col)?;
-            for pf in &stringified_single_pf_col {
-                if pf == "null" {
-                    continue;
-                } else {
-                    self.phenopacket_builder
-                        .upsert_phenotypic_feature(
-                            phenopacket_id,
-                            pf,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                        )
-                        .map_err(|_err| {
-                            CollectionError(format!(
-                                "Error when upserting {}",
-                                single_pf_col.name()
-                            ))
-                        })?
-                }
+        for pf_col in pf_cols {
+            let stringified_pf_col_no_nulls = convert_col_to_string_vec(&pf_col.drop_nulls())?;
+            dbg!(&stringified_pf_col_no_nulls);
+            for hpo_label in &stringified_pf_col_no_nulls {
+                self.phenopacket_builder
+                    .upsert_phenotypic_feature(
+                        phenopacket_id,
+                        hpo_label,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .map_err(|_err| {
+                        CollectionError(format!("Error when upserting {}", pf_col.name()))
+                    })?
             }
         }
 
@@ -114,31 +106,51 @@ impl Collector {
         Ok(())
     }
 
-    fn collect_individual(&mut self, patient_cdf: &ContextualizedDataFrame, phenopacket_id: &str) {
+    fn collect_individual(
+        &mut self,
+        _patient_cdf: &ContextualizedDataFrame,
+        phenopacket_id: &str,
+        patient_id: &str,
+    ) -> Result<(), TransformError> {
         // Find the necessary values to construct an individual building block and upsert them to the PhenopacketBuilder
-        todo!()
+        // PLACEHOLDER CODE!
+        self.phenopacket_builder
+            .upsert_individual(
+                phenopacket_id,
+                patient_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .map_err(|_err| {
+                CollectionError(format!(
+                    "Error when upserting individual data for {phenopacket_id}"
+                ))
+            })?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::{HpoLabel, Onset, SubjectAge, SubjectId};
+    use crate::config::table_context::Context::{HpoLabel, Onset, SubjectId};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
     use crate::transform::collector::Collector;
-    use crate::transform::error::TransformError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
-    use crate::transform::traits::Strategy;
-    use ontolius::ontology::csr::FullCsrOntology;
-    use phenopackets::schema::v2::core::PhenotypicFeature;
+    use phenopackets::schema::v2::core::{Individual, OntologyClass, PhenotypicFeature};
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
-    use std::rc::Rc;
     use tempfile::TempDir;
 
     #[fixture]
@@ -185,8 +197,59 @@ mod tests {
         TableContext::new("patient_data".to_string(), vec![id_sc, pf_sc, onset_sc])
     }
 
+    #[fixture]
+    fn pf_pneumonia() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002090".to_string(),
+                label: "Pneumonia".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn pf_asthma() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002099".to_string(),
+                label: "Asthma".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn pf_nail_psoriasis() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0033327".to_string(),
+                label: "Nail psoriasis".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn pf_macrocephaly() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0000256".to_string(),
+                label: "Macrocephaly".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
     #[rstest]
-    fn test_collect(tc: TableContext, mut collector: Collector) {
+    fn test_collect(
+        tc: TableContext,
+        mut collector: Collector,
+        pf_pneumonia: PhenotypicFeature,
+        pf_asthma: PhenotypicFeature,
+        pf_nail_psoriasis: PhenotypicFeature,
+        pf_macrocephaly: PhenotypicFeature,
+    ) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_collect");
@@ -223,24 +286,62 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(tc, df);
 
         let collect_result = collector.collect(vec![cdf]);
-        let phenopackets = collector.phenopacket_builder.build();
+        let phenopackets = collect_result.unwrap();
+
+        let mut expected_p001 = phenopackets::schema::v2::Phenopacket {
+            id: "cohort2019-P001".to_string(),
+            ..Default::default()
+        };
+        let mut expected_p002 = phenopackets::schema::v2::Phenopacket {
+            id: "cohort2019-P002".to_string(),
+            ..Default::default()
+        };
+        let mut expected_p003 = phenopackets::schema::v2::Phenopacket {
+            id: "cohort2019-P003".to_string(),
+            ..Default::default()
+        };
+        let indiv1 = Individual {
+            id: "P001".to_string(),
+            ..Default::default()
+        };
+        let indiv2 = Individual {
+            id: "P002".to_string(),
+            ..Default::default()
+        };
+        let indiv3 = Individual {
+            id: "P003".to_string(),
+            ..Default::default()
+        };
+        expected_p001.subject = Some(indiv1);
+        expected_p001.phenotypic_features.push(pf_pneumonia);
+        expected_p002.subject = Some(indiv2);
+        expected_p002.phenotypic_features.push(pf_asthma);
+        expected_p002.phenotypic_features.push(pf_nail_psoriasis);
+        expected_p002.phenotypic_features.push(pf_macrocephaly);
+        expected_p003.subject = Some(indiv3);
 
         assert_eq!(phenopackets.len(), 3);
         for phenopacket in phenopackets {
             if phenopacket.id == "cohort2019-P001" {
-                assert_eq!(phenopacket.phenotypic_features.len(), 1);
+                assert_eq!(phenopacket, expected_p001);
             }
             if phenopacket.id == "cohort2019-P002" {
-                assert_eq!(phenopacket.phenotypic_features.len(), 3);
+                assert_eq!(phenopacket, expected_p002);
             }
             if phenopacket.id == "cohort2019-P003" {
-                assert_eq!(phenopacket.phenotypic_features.len(), 0);
+                assert_eq!(phenopacket, expected_p003);
             }
         }
     }
 
     #[rstest]
-    fn test_collect_phenotypic_features(tc: TableContext, mut collector: Collector) {
+    fn test_collect_phenotypic_features(
+        tc: TableContext,
+        mut collector: Collector,
+        pf_pneumonia: PhenotypicFeature,
+        pf_asthma: PhenotypicFeature,
+        pf_nail_psoriasis: PhenotypicFeature,
+    ) {
         let ci = std::env::var("CI");
         if ci.is_ok() {
             println!("Skipping test_collect_phenotypic_features");
@@ -269,13 +370,21 @@ mod tests {
         let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
-        let phenopacket_id = "cohort-P006".to_string();
+        let phenopacket_id = "cohort2019-P006".to_string();
 
         let collect_pfs_result = collector.collect_phenotypic_features(&cdf, &phenopacket_id);
+        assert!(collect_pfs_result.is_ok());
         let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = phenopackets::schema::v2::Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006.phenotypic_features.push(pf_pneumonia);
+        expected_p006.phenotypic_features.push(pf_asthma);
+        expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+
         assert_eq!(phenopackets.len(), 1);
-        assert_eq!(phenopackets[0].id, phenopacket_id);
-        assert_eq!(phenopackets[0].phenotypic_features.len(), 3);
-        //todo I am not actually sure how to look through the PFs to see if they are the right ones
+        assert_eq!(phenopackets[0], expected_p006);
     }
 }
