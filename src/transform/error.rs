@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct MappingSuggestion {
+pub struct MappingSuggestion {
     from: String,
     to: String,
 }
@@ -29,7 +29,7 @@ impl MappingSuggestion {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct MappingErrorInfo {
+pub struct MappingErrorInfo {
     pub column: String,
     pub table: String,
     pub old_value: String,

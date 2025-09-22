@@ -29,7 +29,7 @@ pub struct TableContext {
 
 impl TableContext {
     #[allow(dead_code)]
-    pub(crate) fn new(name: String, context: Vec<SeriesContext>) -> Self {
+    pub fn new(name: String, context: Vec<SeriesContext>) -> Self {
         TableContext { name, context }
     }
 }
@@ -77,7 +77,7 @@ impl Display for Context {
 /// of JSON values (string, integer, float, or boolean) into a single type.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
-pub(crate) enum CellValue {
+pub enum CellValue {
     #[allow(unused)]
     String(String),
     #[allow(unused)]
@@ -95,7 +95,7 @@ pub(crate) enum CellValue {
 /// If it has multi type, then the strings within the vector will be the headers of the relevant columns.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
-pub(crate) enum Identifier {
+pub enum Identifier {
     Regex(String),
     Multi(Vec<String>),
 }
@@ -103,7 +103,7 @@ pub(crate) enum Identifier {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 #[allow(clippy::enum_variant_names)]
-pub(crate) enum AliasMap {
+pub enum AliasMap {
     #[allow(unused)]
     ToString(HashMap<String, String>),
     #[allow(unused)]
@@ -117,9 +117,9 @@ pub(crate) enum AliasMap {
 /// Represents the context for one or more series in a table.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 #[validate(schema(function = "validate_identifier"))]
-pub(crate) struct SeriesContext {
+pub struct SeriesContext {
     /// The identifier for the (possibly multiple) series.
-    pub(crate) identifier: Identifier,
+    pub identifier: Identifier,
 
     /// The semantic context found in the header(s) of the series.
     header_context: Context,
@@ -143,7 +143,7 @@ pub(crate) struct SeriesContext {
 
 impl SeriesContext {
     #[allow(unused)]
-    pub(crate) fn new(
+    pub fn new(
         identifier: Identifier,
         header_context: Context,
         data_context: Context,

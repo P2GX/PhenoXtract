@@ -19,6 +19,13 @@ use std::rc::Rc;
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
 }
+
+impl HPOSynonymsToPrimaryTermsStrategy {
+    pub fn new(hpo_ontology: Rc<FullCsrOntology>) -> Self {
+        Self { hpo_ontology }
+    }
+}
+
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
         let data_context = HpoLabel;

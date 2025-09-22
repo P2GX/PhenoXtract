@@ -1,16 +1,24 @@
 #![allow(dead_code)]
 #![allow(unused)]
+
 use crate::config::table_context::TableContext;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
+use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::DataFrame;
+use std::rc::Rc;
 
-struct Collector {
+pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
 }
 
 impl Collector {
+    pub fn new(hpo: Rc<FullCsrOntology>) -> Self {
+        Self {
+            phenopacket_builder: PhenopacketBuilder::new(hpo),
+        }
+    }
     pub fn collect(&mut self, cdfs: Vec<ContextualizedDataFrame>) -> Vec<Phenopacket> {
         for cdf in cdfs {
             // Get SeriesContext with patient_id in data_context

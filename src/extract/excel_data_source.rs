@@ -32,7 +32,7 @@ pub struct ExcelDatasource {
 
 impl ExcelDatasource {
     #[allow(dead_code)]
-    pub(crate) fn new(
+    pub fn new(
         source: PathBuf,
         contexts: Vec<TableContext>,
         extraction_configs: Vec<ExtractionConfig>,

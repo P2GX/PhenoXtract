@@ -73,7 +73,7 @@ use std::string::ToString;
 ///
 /// assert_eq!(cdf.data, expected_df);
 /// ```
-struct SexMappingStrategy {
+pub struct SexMappingStrategy {
     synonym_map: HashMap<String, String>,
 }
 
@@ -113,8 +113,11 @@ impl SexMappingStrategy {
 
         strategy
     }
+}
+
+impl Default for SexMappingStrategy {
     #[allow(dead_code)]
-    pub fn default() -> Self {
+    fn default() -> Self {
         SexMappingStrategy::new(Self::default_synonym_map())
     }
 }

@@ -4,19 +4,19 @@ use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 use crate::ontology::traits::OntologyRegistry;
-use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
 use crate::ontology::utils::init_ontolius;
+use crate::transform::collector::Collector;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;
 
 #[allow(dead_code)]
-struct Pipeline {
+pub struct Pipeline {
     transformer_module: TransformerModule,
     loader_module: Box<dyn Loadable>,
 }
@@ -86,10 +86,10 @@ impl Pipeline {
         // TOOD: Read hpo version from config later
         let registry_path = hpo_registry.register("latest")?;
         let hpo = init_ontolius(registry_path)?;
-        let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::new(hpo));
-        let loader_module = FileSystemLoader {
-            out_path: PathBuf::from("some/dir/"),
-        };
+
+        let tf_module = TransformerModule::new(vec![], Collector::new(hpo));
+        let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
+
         Ok(Pipeline::new(tf_module, loader_module))
     }
 }

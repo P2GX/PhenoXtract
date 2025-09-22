@@ -1,11 +1,14 @@
-mod config;
-mod extract;
-mod load;
-mod pipeline;
-mod transform;
+pub mod config;
+pub mod extract;
+pub mod load;
+
+pub use pipeline::Pipeline;
+
+pub mod pipeline;
+pub mod transform;
 
 mod validation;
 
 mod error;
 
-mod ontology;
+pub mod ontology;

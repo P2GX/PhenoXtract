@@ -14,7 +14,13 @@ use std::path::PathBuf;
 pub struct FileSystemLoader {
     /// The path to the output directory where phenopacket files will be saved.
     #[allow(unused)]
-    pub out_path: PathBuf,
+    out_path: PathBuf,
+}
+
+impl FileSystemLoader {
+    pub fn new(out_path: PathBuf) -> Self {
+        Self { out_path }
+    }
 }
 
 impl Loadable for FileSystemLoader {
@@ -38,6 +44,7 @@ impl Loadable for FileSystemLoader {
     fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), LoadError> {
         for pp in phenopackets.iter() {
             let file = File::create(self.out_path.join(format!("{}.json", pp.id)))?;
+            warn!("Storing file to: {:?}", file);
             let res = serde_json::to_writer_pretty(file, pp);
             if res.is_err() {
                 warn!(

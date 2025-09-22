@@ -13,7 +13,7 @@ use std::path::PathBuf;
 ///
 /// This registry is responsible for fetching specific file assets from GitHub releases,
 /// storing them in a local directory, and retrieving the path to the cached file.
-pub(crate) struct GithubOntologyRegistry {
+pub struct GithubOntologyRegistry {
     /// The local file system path where ontology files will be stored.
     registry_path: PathBuf,
     /// The name of the GitHub repository to fetch releases from (e.g., "human-phenotype-ontology").
