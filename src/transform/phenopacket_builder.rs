@@ -141,7 +141,7 @@ impl PhenopacketBuilder {
         excluded: Option<bool>,
         severity: Option<&str>,
         modifiers: Option<Vec<&str>>,
-        on_set: Option<TimeElement>,
+        onset: Option<TimeElement>,
         resolution: Option<TimeElement>,
         evidence: Option<Evidence>,
     ) -> Result<(), anyhow::Error> {
@@ -154,7 +154,7 @@ impl PhenopacketBuilder {
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
         }
-        if on_set.is_some() {
+        if onset.is_some() {
             warn!("on_set phenotypic feature not implemented yet");
         }
         if resolution.is_some() {

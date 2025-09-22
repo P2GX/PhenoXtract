@@ -75,7 +75,6 @@ impl Collector {
 
         for pf_col in pf_cols {
             let stringified_pf_col_no_nulls = convert_col_to_string_vec(&pf_col.drop_nulls())?;
-            dbg!(&stringified_pf_col_no_nulls);
             for hpo_label in &stringified_pf_col_no_nulls {
                 self.phenopacket_builder
                     .upsert_phenotypic_feature(
@@ -146,6 +145,7 @@ mod tests {
     use crate::ontology::utils::init_ontolius;
     use crate::transform::collector::Collector;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
+    use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::{Individual, OntologyClass, PhenotypicFeature};
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
@@ -288,15 +288,15 @@ mod tests {
         let collect_result = collector.collect(vec![cdf]);
         let phenopackets = collect_result.unwrap();
 
-        let mut expected_p001 = phenopackets::schema::v2::Phenopacket {
+        let mut expected_p001 = Phenopacket {
             id: "cohort2019-P001".to_string(),
             ..Default::default()
         };
-        let mut expected_p002 = phenopackets::schema::v2::Phenopacket {
+        let mut expected_p002 = Phenopacket {
             id: "cohort2019-P002".to_string(),
             ..Default::default()
         };
-        let mut expected_p003 = phenopackets::schema::v2::Phenopacket {
+        let mut expected_p003 = Phenopacket {
             id: "cohort2019-P003".to_string(),
             ..Default::default()
         };
@@ -376,7 +376,7 @@ mod tests {
         assert!(collect_pfs_result.is_ok());
         let phenopackets = collector.phenopacket_builder.build();
 
-        let mut expected_p006 = phenopackets::schema::v2::Phenopacket {
+        let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             ..Default::default()
         };
