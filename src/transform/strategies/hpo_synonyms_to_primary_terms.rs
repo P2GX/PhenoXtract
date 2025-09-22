@@ -1,7 +1,6 @@
 use crate::config::table_context::Context::HpoLabel;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::{info, warn};
@@ -9,7 +8,8 @@ use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{Column, DataType};
-use std::collections::HashMap;
+use std::any::type_name;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
@@ -21,14 +21,21 @@ pub struct HPOSynonymsToPrimaryTermsStrategy {
 }
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        let hpo_cols = table.get_cols_with_data_context(HpoLabel);
-        let hpo_cols_are_str = hpo_cols.iter().all(|col| col.dtype() == &DataType::String);
-        if hpo_cols_are_str {
-            true
-        } else {
-            warn!("Not all columns with HPOLabel data context have string type.");
-            false
+        let data_context = HpoLabel;
+        let dtype = DataType::String;
+
+        let columns = table.get_cols_with_data_context(data_context.clone());
+        let is_valid = columns.iter().all(|col| col.dtype() == &dtype);
+
+        if !is_valid {
+            warn!(
+                "Not all columns with {} data context have {} type in table {}.",
+                data_context,
+                dtype,
+                table.context().name
+            );
         }
+        is_valid
     }
 
     fn internal_transform(
@@ -44,7 +51,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             .cloned()
             .collect();
 
-        let mut unparseable_terms: Vec<String> = vec![];
+        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         //first we create our hash map
         let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
@@ -77,13 +84,13 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                                 .insert(cell_term.clone(), primary_term.name().to_string());
                         }
                         None => {
+                            error_info.insert(MappingErrorInfo {
+                                column: col.name().to_string(),
+                                table: table.context().clone().name,
+                                old_value: cell_term.clone(),
+                                possible_mappings: vec![],
+                            });
                             synonym_to_primary_term_map.insert(cell_term.clone(), "".to_string());
-                            //this means that we won't get an error if a cell is empty
-                            //and that the AnyValue::Null cell will now truly be the string "null"
-                            //this is admittedly slightly strange behaviour. And we should perhaps come up with a better plan for how we deal with nulls.
-                            if cell_term != "null" {
-                                unparseable_terms.push(cell_term.clone());
-                            }
                         }
                     }
                 }
@@ -114,10 +121,11 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         }
 
         // return an error if not every cell term could be parsed
-        if !unparseable_terms.is_empty() {
-            Err(StrategyError(format!(
-                "Could not parse {unparseable_terms:?} as HPO terms."
-            )))
+        if !error_info.is_empty() {
+            Err(TransformError::MappingError {
+                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                info: error_info.into_iter().collect(),
+            })
         } else {
             Ok(())
         }
@@ -132,7 +140,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
-    use crate::transform::error::TransformError;
+    use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
     use ontolius::ontology::csr::FullCsrOntology;
@@ -236,13 +244,38 @@ mod tests {
 
         let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
         let strat_result = get_hpo_labels_strat.transform(&mut cdf);
-        let expected_unparseables = vec!["abcdef", "12355", "jimmy"];
-        assert_eq!(
-            strat_result.unwrap_err(),
-            TransformError::StrategyError(format!(
-                "Could not parse {expected_unparseables:?} as HPO terms."
-            ))
-        );
+
+        if let Err(TransformError::MappingError {
+            strategy_name,
+            info,
+        }) = strat_result
+        {
+            assert_eq!(strategy_name, "HPOSynonymsToPrimaryTermsStrategy");
+            let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
+                MappingErrorInfo {
+                    column: "phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "abcdef".to_string(),
+                    possible_mappings: vec![],
+                },
+                MappingErrorInfo {
+                    column: "more_phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "jimmy".to_string(),
+                    possible_mappings: vec![],
+                },
+                MappingErrorInfo {
+                    column: "phenotypic_features".to_string(),
+                    table: "patient_data".to_string(),
+                    old_value: "12355".to_string(),
+                    possible_mappings: vec![],
+                },
+            ]);
+
+            for i in info {
+                assert!(expected_error_info.contains(&i));
+            }
+        }
 
         let col1_after_strat = Column::new(
             "phenotypic_features".into(),
