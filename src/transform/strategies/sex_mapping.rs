@@ -30,7 +30,7 @@ use std::string::ToString;
 /// - The strategy processes each column identified by `Context::SubjectSex`.
 /// - For each value in the column, it converts the value to lowercase before looking it up in the map.
 /// - If a mapping is found, the original value is replaced with the standardized value.
-/// - If no mapping is found an Err will be returned.
+/// - If no mapping is found, the value will be left unchanged, and an Err will be returned once the strategy has been applied to every SubjectSex column.
 ///
 /// # Examples
 ///
@@ -47,12 +47,18 @@ use std::string::ToString;
 /// // Assume we have a DataFrame like this
 /// let df = df! {
 ///     "patient_id" => &[1, 2, 3, 4],
-///     "gender" => &["m", "female", "MAN", "other"],
+///     "gender" => &["m", "female", "MAN"],
 /// }.unwrap();
 ///
 /// // And a context mapping the "gender" column to SubjectSex
-/// let mut table_context = TableContext::new("patients".to_string());
-/// table_context.add_context("gender", Context::SubjectSex);
+/// let mut table_context = TableContext::new("patients".to_string(), context: vec![SeriesContext::new(
+///                     Identifier::Regex("gender".to_string()),
+///                     Context::None,
+///                     Context::SubjectSex,
+///                     None,
+///                     None,
+///                     vec![],
+///                 )]);
 /// let mut cdf = ContextualizedDataFrame::new(df, table_context);
 ///
 /// // Create and apply the strategy
@@ -62,7 +68,7 @@ use std::string::ToString;
 /// // The "gender" column is now standardized
 /// let expected_df = df! {
 ///     "patient_id" => &[1, 2, 3, 4],
-///     "gender" => &[Some("MALE"), Some("FEMALE"), Some("MALE"), None],
+///     "gender" => &[Some("MALE"), Some("FEMALE"), Some("MALE")],
 /// }.unwrap();
 ///
 /// assert_eq!(cdf.data, expected_df);
@@ -87,6 +93,7 @@ impl SexMappingStrategy {
             ("woman".to_string(), Sex::Female),
             ("diverse".to_string(), Sex::OtherSex),
             ("intersex".to_string(), Sex::OtherSex),
+            ("other".to_string(), Sex::OtherSex),
         ])
     }
     #[allow(dead_code)]
