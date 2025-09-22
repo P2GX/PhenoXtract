@@ -56,7 +56,7 @@ fn test_pipeline_integration() {
                         vec![],
                     ),
                     SeriesContext::new(
-                        Identifier::Regex("sex".to_string()),
+                        Identifier::Regex("SEX".to_string()),
                         Default::default(),
                         Context::SubjectSex,
                         None,
@@ -70,7 +70,7 @@ fn test_pipeline_integration() {
         DataSource::Excel(ExcelDatasource::new(
             excel_path,
             vec![TableContext::new(
-                "ExcelTable".to_string(),
+                "HPOLabels".to_string(),
                 vec![
                     SeriesContext::new(
                         Identifier::Regex("0".to_string()),
@@ -90,7 +90,7 @@ fn test_pipeline_integration() {
                     ),
                 ],
             )],
-            vec![ExtractionConfig::new("ExcelTable".to_string(), false, true)],
+            vec![ExtractionConfig::new("HPOLabels".to_string(), false, true)],
         )),
     ];
     let res = pipeline.run(&mut data_sources);
