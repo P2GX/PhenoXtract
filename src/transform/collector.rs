@@ -286,7 +286,7 @@ mod tests {
         let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
-        let collect_result = collector.collect(vec![cdf].as_slice());
+        let collect_result = collector.collect([cdf].as_slice());
         let phenopackets = collect_result.unwrap();
 
         let mut expected_p001 = Phenopacket {

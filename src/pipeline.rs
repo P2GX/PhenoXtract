@@ -56,7 +56,7 @@ impl Pipeline {
         tables.iter().try_for_each(|t| t.validate())?;
 
         let phenopackets = self.transformer_module.run(tables)?;
-        warn!(
+        info!(
             "Concluded Transformation. Found {:?} Phenopackets",
             phenopackets.len()
         );
