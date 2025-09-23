@@ -1,4 +1,5 @@
-pub mod collector;
+mod collector;
+pub use collector::Collector;
 pub mod error;
 pub mod phenopacket_builder;
 pub mod strategies;

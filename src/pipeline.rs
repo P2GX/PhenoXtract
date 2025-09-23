@@ -93,3 +93,17 @@ impl Pipeline {
         Ok(Pipeline::new(tf_module, loader_module))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::skip_in_ci;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_from_pipeline_config() {
+        skip_in_ci!();
+        let config = PipelineConfig::default();
+        let _ = Pipeline::from_config(&config);
+    }
+}

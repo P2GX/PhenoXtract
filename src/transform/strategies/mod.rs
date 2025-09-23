@@ -5,4 +5,4 @@ pub use hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
 pub use sex_mapping::SexMappingStrategy;
 pub mod sex_mapping;
 
-mod utils;
+pub mod utils;

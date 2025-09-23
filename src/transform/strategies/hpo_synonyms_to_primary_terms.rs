@@ -3,11 +3,11 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
-use log::{info, warn};
+use log::{debug, info};
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
-use polars::prelude::{Column, DataType};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -28,21 +28,7 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        let data_context = HpoLabel;
-        let dtype = DataType::String;
-
-        let columns = table.get_cols_with_data_context(data_context.clone());
-        let is_valid = columns.iter().all(|col| col.dtype() == &dtype);
-
-        if !is_valid {
-            warn!(
-                "Not all columns with {} data context have {} type in table {}.",
-                data_context,
-                dtype,
-                table.context().name
-            );
-        }
-        is_valid
+        table.check_contexts_have_data_type(HpoLabel, DataType::String)
     }
 
     fn internal_transform(
@@ -91,12 +77,14 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                                 .insert(cell_term.clone(), primary_term.name().to_string());
                         }
                         None => {
-                            error_info.insert(MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().clone().name,
-                                old_value: cell_term.clone(),
-                                possible_mappings: vec![],
-                            });
+                            if cell_term != "null" {
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_term.clone(),
+                                    possible_mappings: vec![],
+                                });
+                            }
                             synonym_to_primary_term_map.insert(cell_term.clone(), "".to_string());
                         }
                     }
@@ -105,26 +93,31 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         }
 
         // we apply the primary term aliases when we can
-        // and we do not change the cell term in the cases where we could not find a HPO rimary term
+        // and we do not change the cell term in the cases where we could not find a HPO primary term
         for col in hpo_label_cols {
             let string_vec_to_transform = convert_col_to_string_vec(&col)?;
-            let parsed_col = string_vec_to_transform
+            let mapped_col = string_vec_to_transform
                 .iter()
                 .filter_map(|cell_term| {
                     let primary_term = synonym_to_primary_term_map.get(cell_term);
-                    match primary_term {
-                        Some(primary_term) => {
-                            if primary_term.is_empty() {
-                                Some(cell_term.clone())
-                            } else {
-                                Some(primary_term.clone())
+                    if cell_term == "null" {
+                        Some(AnyValue::Null)
+                    } else {
+                        match primary_term {
+                            Some(primary_term) => {
+                                if primary_term.is_empty() {
+                                    Some(AnyValue::String(cell_term))
+                                } else {
+                                    debug!("Converted {cell_term} to {primary_term}");
+                                    Some(AnyValue::String(primary_term))
+                                }
                             }
+                            None => None,
                         }
-                        None => None,
                     }
                 })
-                .collect::<Vec<String>>();
-            table.replace_column(parsed_col, col.name())?;
+                .collect::<Vec<AnyValue>>();
+            table.replace_column(mapped_col, col.name())?;
         }
 
         // return an error if not every cell term could be parsed
@@ -147,10 +140,12 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
+    use crate::skip_in_ci;
     use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
     use ontolius::ontology::csr::FullCsrOntology;
+    use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
@@ -158,11 +153,14 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn hpo_ontology() -> Rc<FullCsrOntology> {
-        let tmp = TempDir::new().unwrap();
+    fn tmp_dir() -> TempDir {
+        TempDir::new().unwrap()
+    }
+
+    fn hpo_init_ontology(tmp_dir: TempDir) -> Rc<FullCsrOntology> {
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into());
+            .with_registry_path(tmp_dir.path().into());
         let hpo_path = hpo_registry.register("latest").unwrap();
         init_ontolius(hpo_path).unwrap()
     }
@@ -181,13 +179,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy");
-            return;
-        }
-
+    fn test_hpo_syns_strategy(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
@@ -225,13 +219,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy_fail");
-            return;
-        }
+    fn test_hpo_syns_strategy_fail(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
 
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             ["abcdef", "Big calvaria", "Joint inflammation", "12355"],
@@ -293,5 +284,64 @@ mod tests {
         );
         let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
         assert_eq!(cdf.data, df_after_strat);
+    }
+
+    #[rstest]
+    fn test_hpo_syns_strategy_with_nulls(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
+
+        let col1 = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("bronchial asthma"),
+                AnyValue::String("Nail psoriasis"),
+                AnyValue::String("Big calvaria"),
+                AnyValue::Null,
+            ],
+        );
+        let col2 = Column::new(
+            "more_phenotypic_features".into(),
+            [
+                AnyValue::String("Reactive airway disease"),
+                AnyValue::Null,
+                AnyValue::String("asthma"),
+                AnyValue::String("nail psoriasis"),
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let mut cdf = ContextualizedDataFrame::new(tc, df);
+
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
+        assert!(get_hpo_labels_strat.transform(&mut cdf).is_ok());
+
+        let expected_col1 = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("Pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+                AnyValue::String("Macrocephaly"),
+                AnyValue::Null,
+            ],
+        );
+        let expected_col2 = Column::new(
+            "more_phenotypic_features".into(),
+            [
+                AnyValue::String("Asthma"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
+        assert_eq!(cdf.data, expected_df);
     }
 }

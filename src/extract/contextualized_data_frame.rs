@@ -1,8 +1,8 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
-use log::debug;
-use polars::prelude::{Column, DataFrame, NamedFrom, Series};
+use log::{debug, warn};
+use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
 use regex::{Regex, escape};
 use validator::Validate;
 
@@ -110,6 +110,26 @@ impl ContextualizedDataFrame {
                 found_columns
             }
         }
+    }
+
+    //todo test after MVP
+    pub fn check_contexts_have_data_type(
+        &self,
+        data_context: Context,
+        desired_dtype: DataType,
+    ) -> bool {
+        let columns = self.get_cols_with_data_context(data_context.clone());
+        let contexts_have_desired_dtype = columns.iter().all(|col| col.dtype() == &desired_dtype);
+
+        if !contexts_have_desired_dtype {
+            warn!(
+                "Not all columns with {} data context have {} type in table {}.",
+                data_context,
+                desired_dtype,
+                self.context().name
+            );
+        }
+        contexts_have_desired_dtype
     }
 
     #[allow(unused)]

@@ -4,25 +4,33 @@ use polars::datatypes::AnyValue;
 use polars::prelude::Column;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
-    match col.as_series() {
-        Some(col_as_series) => Ok(col_as_series
+    match col {
+        Column::Series(series_col) => Ok(series_col
             .iter()
             .map(|val| match val {
                 AnyValue::String(s) => s.to_string(),
                 _ => val.to_string(),
             })
             .collect::<Vec<String>>()),
-        None => Err(StrategyError(format!(
-            "Could not convert column {} to a series.",
-            col.name()
-        ))),
+        Column::Partitioned(_partitioned_col) => Err(StrategyError(
+            "Cannot currently convert partitioned columns into vectors of strings.".to_string(),
+        )),
+        Column::Scalar(scalar_col) => Ok(scalar_col
+            .as_materialized_series()
+            .iter()
+            .map(|val| match val {
+                AnyValue::String(s) => s.to_string(),
+                _ => val.to_string(),
+            })
+            .collect::<Vec<String>>()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::transform::strategies::utils::convert_col_to_string_vec;
-    use polars::prelude::{AnyValue, Column};
+    use polars::prelude::DataType::Null;
+    use polars::prelude::{AnyValue, Column, Scalar};
     use rstest::rstest;
 
     #[rstest]
@@ -67,8 +75,8 @@ mod tests {
         );
     }
 
-    //you could argue it is a bug with our code, that in a string column like below
-    //there is no distinction between the string null and a null cell
+    // todo you could argue it is a bug with our code, that in a string column like below
+    // todo there is no distinction between the string null and a null cell
     #[rstest]
     fn test_convert_col_with_nulls_to_string_vec() {
         let vec_with_nulls = vec![
@@ -82,6 +90,24 @@ mod tests {
         assert_eq!(
             convert_col_to_string_vec(&col).unwrap(),
             vec!["Pneumonia", "null", "null", "Asthma", "null"]
+        );
+    }
+
+    #[rstest]
+    fn test_scalar_col() {
+        let col = Column::new_scalar("scalar_col".into(), Scalar::from(25), 3);
+        assert_eq!(
+            convert_col_to_string_vec(&col).unwrap(),
+            vec!["25", "25", "25"]
+        );
+    }
+
+    #[rstest]
+    fn test_scalar_null_col() {
+        let col = Column::new_scalar("null_col".into(), Scalar::new(Null, AnyValue::Null), 3);
+        assert_eq!(
+            convert_col_to_string_vec(&col).unwrap(),
+            vec!["null", "null", "null"]
         );
     }
 }
