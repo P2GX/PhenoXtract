@@ -143,6 +143,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
+    use crate::skip_in_ci;
     use crate::transform::collector::Collector;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
@@ -154,11 +155,14 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn collector() -> Collector {
-        let tmp = TempDir::new().unwrap();
+    fn tmp_dir() -> TempDir {
+        TempDir::new().unwrap()
+    }
+
+    fn init_collector(tmp_dir: TempDir) -> Collector {
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into());
+            .with_registry_path(tmp_dir.path().into());
         let hpo_path = hpo_registry.register("latest").unwrap();
         let hpo_ontology = init_ontolius(hpo_path).unwrap();
         let phenopacket_builder = PhenopacketBuilder::new(hpo_ontology);
@@ -244,17 +248,14 @@ mod tests {
     #[rstest]
     fn test_collect(
         tc: TableContext,
-        mut collector: Collector,
+        tmp_dir: TempDir,
         pf_pneumonia: PhenotypicFeature,
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
         pf_macrocephaly: PhenotypicFeature,
     ) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_collect");
-            return;
-        }
+        skip_in_ci!();
+        let mut collector = init_collector(tmp_dir);
 
         let id_col = Column::new(
             "subject_id".into(),
@@ -337,17 +338,14 @@ mod tests {
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
-        mut collector: Collector,
+        tmp_dir: TempDir,
         pf_pneumonia: PhenotypicFeature,
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
     ) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_collect_phenotypic_features");
-            return;
-        }
+        skip_in_ci!();
 
+        let mut collector = init_collector(tmp_dir);
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
         let pf_col = Column::new(
             "phenotypic_features".into(),
