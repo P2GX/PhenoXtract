@@ -152,11 +152,14 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn hpo_ontology() -> Rc<FullCsrOntology> {
-        let tmp = TempDir::new().unwrap();
+    fn tmp_dir() -> TempDir {
+        TempDir::new().unwrap()
+    }
+
+    fn hpo_init_ontology(tmp_dir: TempDir) -> Rc<FullCsrOntology> {
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into());
+            .with_registry_path(tmp_dir.path().into());
         let hpo_path = hpo_registry.register("latest").unwrap();
         init_ontolius(hpo_path).unwrap()
     }
@@ -175,9 +178,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
+    fn test_get_hpo_labels_strategy(tmp_dir: TempDir, tc: TableContext) {
         skip_in_ci!();
-
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
@@ -215,9 +218,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_hpo_labels_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
+    fn test_get_hpo_labels_strategy_fail(tmp_dir: TempDir, tc: TableContext) {
         skip_in_ci!();
 
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             ["abcdef", "Big calvaria", "Joint inflammation", "12355"],
