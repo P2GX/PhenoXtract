@@ -61,9 +61,6 @@ impl PhenopacketBuilder {
         if time_at_last_encounter.is_some() {
             warn!("time_at_last_encounter - not implemented for individual yet");
         }
-        if vital_status.is_some() {
-            warn!("vital_status - not implemented for individual yet");
-        }
         if karyotypic_sex.is_some() {
             warn!("karyotypic_sex - not implemented for individual yet");
         }
@@ -78,6 +75,10 @@ impl PhenopacketBuilder {
 
         let individual = phenopacket.subject.get_or_insert(Individual::default());
         individual.id = individual_id.to_string();
+
+        if let Some(vs) = vital_status {
+            individual.vital_status = Some(vs);
+        }
 
         if let Some(sex) = sex {
             individual.sex = Sex::from_str_name(sex)
