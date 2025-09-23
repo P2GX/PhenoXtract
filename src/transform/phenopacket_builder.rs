@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 #[allow(dead_code)]
-pub(crate) struct PhenopacketBuilder {
+pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hpo: Rc<FullCsrOntology>,
 }

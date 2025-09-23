@@ -13,7 +13,7 @@ pub struct TransformerModule {
 impl TransformerModule {
     #[allow(dead_code)]
     pub fn run(
-        &self,
+        &mut self,
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         tables.iter_mut().for_each(|table| {
@@ -24,7 +24,8 @@ impl TransformerModule {
                 };
             }
         });
-        Ok(vec![])
+
+        self.collector.collect(tables)
     }
 
     pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {

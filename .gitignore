@@ -16,4 +16,4 @@ target
 .idea/
 .vscode/
 
-tests/do_not_push/*
+./tests/assets/do_not_push/*

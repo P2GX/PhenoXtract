@@ -1,7 +1,6 @@
 use phenoxtract::Pipeline;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
-use phenoxtract::transform::collector::Collector;
 
 use phenoxtract::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::ExcelDatasource;
@@ -9,11 +8,11 @@ use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::GithubOntologyRegistry;
-use phenoxtract::transform::TransformerModule;
 use phenoxtract::transform::strategies::{
     AliasMapStrategy, HPOSynonymsToPrimaryTermsStrategy, SexMappingStrategy,
 };
 use phenoxtract::transform::traits::Strategy;
+use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use rstest::rstest;
 use std::path::PathBuf;
 
@@ -32,10 +31,10 @@ fn test_pipeline_integration() {
     let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let assets_path = manifest_path.join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
-    let collector = Collector::new(hpo);
+    let collector = Collector::new(PhenopacketBuilder::new(hpo), "test_cohort".to_owned());
     let tm = TransformerModule::new(strategies, collector);
     let loader = FileSystemLoader::new(assets_path.join("do_not_push"));
-    let pipeline = Pipeline::new(tm, loader);
+    let mut pipeline = Pipeline::new(tm, loader);
 
     let csv_path = assets_path.clone().join("test_data.csv");
     let excel_path = assets_path.clone().join("test_data.xlsx");

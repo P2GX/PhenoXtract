@@ -8,7 +8,7 @@ use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{IntoLazy, col, lit};
 
 #[allow(dead_code)]
-struct Collector {
+pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
 }
@@ -23,7 +23,7 @@ impl Collector {
     }
     pub fn collect(
         &mut self,
-        cdfs: Vec<ContextualizedDataFrame>,
+        cdfs: &[ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
             let subject_id_col =
@@ -286,7 +286,7 @@ mod tests {
         let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
-        let collect_result = collector.collect(vec![cdf]);
+        let collect_result = collector.collect(vec![cdf].as_slice());
         let phenopackets = collect_result.unwrap();
 
         let mut expected_p001 = Phenopacket {
