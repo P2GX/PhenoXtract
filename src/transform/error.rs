@@ -46,4 +46,6 @@ pub enum TransformError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
     },
+    #[allow(dead_code)]
+    CollectionError(String),
 }

@@ -1,14 +1,14 @@
-use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 use crate::transform::traits::Strategy;
 use std::any::type_name;
 
+use crate::config::table_context::Context::SubjectSex;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
-use polars::prelude::AnyValue;
+use polars::prelude::{AnyValue, Column};
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
@@ -121,76 +121,66 @@ impl SexMappingStrategy {
 
 impl Strategy for SexMappingStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        let data_context = Context::SubjectSex;
-        let dtype = DataType::String;
-
-        let columns = table.get_cols_with_data_context(data_context.clone());
-        let is_valid = columns.iter().all(|col| col.dtype() == &dtype);
-
-        if !is_valid {
-            warn!(
-                "Not all columns with {} data context have {} type in table {}.",
-                data_context,
-                dtype,
-                table.context().name
-            );
-        }
-        is_valid
+        table.check_contexts_have_data_type(SubjectSex, DataType::String)
     }
 
     fn internal_transform(
         &self,
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
-        let column_names: Vec<String> = table
-            .get_cols_with_data_context(Context::SubjectSex)
-            .iter()
-            .map(|col| col.name().to_string())
+        let table_name = &table.context().name.clone();
+        info!("Applying SexMapping strategy to table: {table_name}");
+
+        let subject_sex_cols: Vec<Column> = table
+            .get_cols_with_data_context(SubjectSex)
+            .into_iter()
+            .cloned()
             .collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
-        for col_name in column_names {
-            let col_values: Vec<String> = convert_col_to_string_vec(
-                table
-                    .data
-                    .column(&col_name)
-                    .map_err(|err| TransformError::StrategyError(err.to_string()))?,
-            )?;
 
-            let mapped_column: Vec<AnyValue> = col_values
+        for col in &subject_sex_cols {
+            let stringified_col = convert_col_to_string_vec(col)?;
+
+            let mapped_column: Vec<AnyValue> = stringified_col
                 .iter()
-                .map(|s| match self.synonym_map.get(s.to_lowercase().trim()) {
-                    Some(alias) => {
-                        debug!("Converted {s} to {alias}");
-                        AnyValue::String(alias)
-                    }
-                    None => {
-                        if s == "null" {
-                            return AnyValue::Null;
+                .map(|cell_term| {
+                    if cell_term == "null" {
+                        AnyValue::Null
+                    } else {
+                        match self.synonym_map.get(cell_term.to_lowercase().trim()) {
+                            Some(alias) => {
+                                debug!("Converted {cell_term} to {alias}");
+                                AnyValue::String(alias)
+                            }
+                            None => {
+                                warn!("Unable to convert sex '{cell_term}'");
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_term.clone(),
+                                    possible_mappings: MappingSuggestion::from_hashmap(
+                                        &self.synonym_map,
+                                    ),
+                                });
+                                AnyValue::String(cell_term)
+                            }
                         }
-
-                        warn!("Unable to convert sex '{s}'");
-                        error_info.insert(MappingErrorInfo {
-                            column: col_name.clone(),
-                            table: table.context().clone().name,
-                            old_value: s.clone(),
-                            possible_mappings: MappingSuggestion::from_hashmap(&self.synonym_map),
-                        });
-                        AnyValue::String(s)
                     }
                 })
                 .collect();
-            table.replace_column(mapped_column, col_name.as_str())?;
+            table.replace_column(mapped_column, col.name())?;
         }
 
+        // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
-            return Err(TransformError::MappingError {
+            Err(TransformError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
-            });
+            })
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 }
 

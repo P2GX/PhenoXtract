@@ -7,8 +7,8 @@ use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::simple::SimpleTerm;
 use ontolius::term::{MinimalTerm, Synonymous};
 use ontolius::{Identified, TermId};
-use phenopackets::schema::v1::core::Evidence;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::Evidence;
 use phenopackets::schema::v2::core::{
     Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
@@ -141,7 +141,7 @@ impl PhenopacketBuilder {
         excluded: Option<bool>,
         severity: Option<&str>,
         modifiers: Option<Vec<&str>>,
-        on_set: Option<TimeElement>,
+        onset: Option<TimeElement>,
         resolution: Option<TimeElement>,
         evidence: Option<Evidence>,
     ) -> Result<(), anyhow::Error> {
@@ -154,7 +154,7 @@ impl PhenopacketBuilder {
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
         }
-        if on_set.is_some() {
+        if onset.is_some() {
             warn!("on_set phenotypic feature not implemented yet");
         }
         if resolution.is_some() {
