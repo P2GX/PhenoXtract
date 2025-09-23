@@ -133,6 +133,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
+    use crate::skip_in_ci;
     use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
@@ -145,11 +146,14 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn hpo_ontology() -> Rc<FullCsrOntology> {
-        let tmp = TempDir::new().unwrap();
+    fn tmp_dir() -> TempDir {
+        TempDir::new().unwrap()
+    }
+
+    fn hpo_init_ontology(tmp_dir: TempDir) -> Rc<FullCsrOntology> {
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into());
+            .with_registry_path(tmp_dir.path().into());
         let hpo_path = hpo_registry.register("latest").unwrap();
         init_ontolius(hpo_path).unwrap()
     }
@@ -168,13 +172,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy");
-            return;
-        }
-
+    fn test_hpo_syns_strategy(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
@@ -212,13 +212,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy_fail");
-            return;
-        }
+    fn test_hpo_syns_strategy_fail(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
 
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
         let col1 = Column::new(
             "phenotypic_features".into(),
             ["abcdef", "Big calvaria", "Joint inflammation", "12355"],
@@ -283,12 +280,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy_with_nulls(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy");
-            return;
-        }
+    fn test_hpo_syns_strategy_with_nulls(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
 
         let col1 = Column::new(
             "phenotypic_features".into(),

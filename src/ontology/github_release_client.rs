@@ -246,6 +246,7 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
+    use crate::skip_in_ci;
     use regex::Regex;
     use rstest::{fixture, rstest};
 
@@ -261,12 +262,8 @@ mod integration_tests {
 
     #[rstest]
     fn test_get_latest_release_tag(repo_name: String, repo_owner: String) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_latest_release_tag");
-            return;
-        }
-        println!("Running integration test_get_latest_release_tag");
+        skip_in_ci!();
+
         let client = GithubReleaseClient::new();
 
         let version = client
@@ -279,12 +276,7 @@ mod integration_tests {
 
     #[rstest]
     fn test_get_release_file(repo_name: String, repo_owner: String) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_release_file");
-            return;
-        }
-        println!("Running integration test_get_release_file");
+        skip_in_ci!();
 
         let client = GithubReleaseClient::new();
 

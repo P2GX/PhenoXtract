@@ -16,6 +16,7 @@ mod tests {
     use super::*;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
+    use crate::skip_in_ci;
     use ontolius::ontology::OntologyTerms;
     use ontolius::term::MinimalTerm;
     use ontolius::{Identified, TermId};
@@ -24,11 +25,7 @@ mod tests {
 
     #[rstest]
     fn test_init_ontolius() {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_init_ontolius");
-            return;
-        }
+        skip_in_ci!();
 
         let tmp = TempDir::new().unwrap();
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
