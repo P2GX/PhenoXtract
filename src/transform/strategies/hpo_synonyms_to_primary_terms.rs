@@ -280,12 +280,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy_with_nulls(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy");
-            return;
-        }
+    fn test_hpo_syns_strategy_with_nulls(tmp_dir: TempDir, tc: TableContext) {
+        skip_in_ci!();
+        let hpo_ontology = hpo_init_ontology(tmp_dir);
 
         let col1 = Column::new(
             "phenotypic_features".into(),
