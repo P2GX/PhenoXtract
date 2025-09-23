@@ -235,6 +235,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
+    use crate::skip_in_ci;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -273,11 +274,8 @@ mod tests {
         valid_phenotype: String,
         tmp_dir: TempDir,
     ) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_upsert_phenotypic_feature_success");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -308,11 +306,8 @@ mod tests {
 
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term(tmp_dir: TempDir, phenopacket_id: String) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_upsert_phenotypic_feature_invalid_term");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
 
         let result = builder.upsert_phenotypic_feature(
@@ -337,11 +332,8 @@ mod tests {
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_multiple_phenotypic_features_same_phenopacket");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
 
         let result1 = builder.upsert_phenotypic_feature(
@@ -376,11 +368,8 @@ mod tests {
 
     #[rstest]
     fn test_different_phenopacket_ids(valid_phenotype: String, tmp_dir: TempDir) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_different_phenopacket_ids");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
 
         let id1 = "pp_001".to_string();
@@ -423,11 +412,8 @@ mod tests {
         phenopacket_id: String,
         valid_phenotype: String,
     ) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_update_phenotypic_features");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
 
         let existing_phenopacket = Phenopacket {
@@ -479,11 +465,8 @@ mod tests {
 
     #[rstest]
     fn test_upsert_individual_sets_id_and_sex(tmp_dir: TempDir) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_update_phenotypic_features");
-            return;
-        }
+        skip_in_ci!();
+
         let mut builder = construct_builder(tmp_dir);
 
         let phenopacket_id = "pp_001";

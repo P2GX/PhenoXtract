@@ -140,6 +140,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
+    use crate::skip_in_ci;
     use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
@@ -175,11 +176,7 @@ mod tests {
 
     #[rstest]
     fn test_get_hpo_labels_strategy(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy");
-            return;
-        }
+        skip_in_ci!();
 
         let col1 = Column::new(
             "phenotypic_features".into(),
@@ -219,11 +216,7 @@ mod tests {
 
     #[rstest]
     fn test_get_hpo_labels_strategy_fail(hpo_ontology: Rc<FullCsrOntology>, tc: TableContext) {
-        let ci = std::env::var("CI");
-        if ci.is_ok() {
-            println!("Skipping test_get_hpo_labels_strategy_fail");
-            return;
-        }
+        skip_in_ci!();
 
         let col1 = Column::new(
             "phenotypic_features".into(),
