@@ -177,9 +177,10 @@ mod tests {
     }
 
     fn construct_linter(tmp_dir: TempDir) -> PhenopacketLinter {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
-        //.with_registry_path(tmp_dir.path().into());
-        let path = hpo_registry.register("v2025-09-01").unwrap();
+        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
+            .unwrap()
+            .with_registry_path(tmp_dir.path().into());
+        let path = hpo_registry.register("latest").unwrap();
 
         PhenopacketLinter {
             hpo: init_ontolius(path).unwrap(),
