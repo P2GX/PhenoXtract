@@ -6,7 +6,7 @@ use crate::transform::error::TransformError::StrategyError;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::info;
-use polars::prelude::Column;
+use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -24,27 +24,36 @@ pub struct AliasMapStrategy;
 impl AliasMapStrategy {
     #[allow(unused)]
     ///Applies aliases from a hash map to a vector of strings
-    fn map_values<T: FromStr + Copy>(
-        vec_to_alias: Vec<String>,
+    fn map_values<'a, T: FromStr + Copy + Into<AnyValue<'a>>>(
+        stringified_col: Vec<String>,
         hm: HashMap<String, T>,
         col_name: &str,
         table_name: &str,
-    ) -> Result<Vec<T>, TransformError> {
-        vec_to_alias
+    ) -> Result<Vec<AnyValue<'a>>, TransformError> {
+        stringified_col
             .iter()
             .map(|s| match hm.get(s) {
-                Some(&alias) => Ok(alias),
-                None => s.parse::<T>().map_err(|_e| {
-                    StrategyError(
-                        format!(
-                            "Could not convert column {} in table {} to a vector of type {}.",
-                            col_name,
-                            table_name,
-                            type_name::<T>()
-                        )
-                        .to_string(),
-                    )
-                }),
+                Some(&alias) => Ok(alias.into()),
+                None => {
+                    if s == "null" {
+                        Ok(AnyValue::Null)
+                    } else {
+                        let attempted_parsed_val = s.parse::<T>();
+                        if let Ok(parsed_val) = attempted_parsed_val {
+                            Ok(parsed_val.into())
+                        } else {
+                            Err(StrategyError(
+                            format!(
+                                "Could not convert column {} in table {} to a vector of type {}.",
+                                col_name,
+                                table_name,
+                                type_name::<T>()
+                            )
+                                .to_string(),
+                        ))
+                        }
+                    }
+                }
             })
             .collect()
     }
@@ -78,15 +87,21 @@ impl Strategy for AliasMapStrategy {
         for (col, alias_map) in AliasMapStrategy::get_col_alias_map_pairs(table) {
             let col_name = col.name();
             info!("Applying AliasMap strategy to column: {col_name}");
-            let string_vec_to_alias = convert_col_to_string_vec(&col)?;
+            let stringified_col = convert_col_to_string_vec(&col)?;
 
             match alias_map {
                 ToString(hm) => {
-                    let transformed_vec = string_vec_to_alias
+                    let transformed_vec = stringified_col
                         .iter()
                         .map(|s| match hm.get(s) {
-                            Some(alias) => alias.clone(),
-                            None => s.clone(),
+                            Some(alias) => AnyValue::String(alias),
+                            None => {
+                                if s == "null" {
+                                    AnyValue::Null
+                                } else {
+                                    AnyValue::String(s)
+                                }
+                            }
                         })
                         .collect();
                     table.replace_column(transformed_vec, col_name)?;
@@ -94,19 +109,19 @@ impl Strategy for AliasMapStrategy {
                 }
                 ToInt(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToFloat(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToBool(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
@@ -127,7 +142,7 @@ mod tests {
     use crate::transform::strategies::alias_map::AliasMapStrategy;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
-    use polars::prelude::{Column, DataType};
+    use polars::prelude::{AnyValue, Column, DataType};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
 
@@ -283,6 +298,61 @@ mod tests {
         ContextualizedDataFrame::new(tc, df_aliasing)
     }
 
+    #[fixture]
+    fn df_nulls() -> DataFrame {
+        let col1 = Column::new(
+            "patient_id".into(),
+            [
+                AnyValue::String("P001"),
+                AnyValue::String("P002"),
+                AnyValue::Null,
+                AnyValue::String("P004"),
+            ],
+        );
+        let col2 = Column::new(
+            "age".into(),
+            [
+                AnyValue::Null,
+                AnyValue::Int32(22),
+                AnyValue::Null,
+                AnyValue::Int32(44),
+            ],
+        );
+        let col3 = Column::new(
+            "weight".into(),
+            [
+                AnyValue::Float64(10.1),
+                AnyValue::Float64(20.2),
+                AnyValue::Float64(30.3),
+                AnyValue::Null,
+            ],
+        );
+        let col4 = Column::new(
+            "smokes1".into(),
+            [
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let col5 = Column::new(
+            "smokes2".into(),
+            [
+                AnyValue::Boolean(true),
+                AnyValue::Null,
+                AnyValue::Boolean(false),
+                AnyValue::Boolean(false),
+            ],
+        );
+        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
+    }
+
+    #[fixture]
+    fn cdf_nulls(tc: TableContext, df_nulls: DataFrame) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(tc, df_nulls)
+    }
+
     #[rstest]
     fn test_map_values() {
         let vec_of_strings = vec![
@@ -290,6 +360,7 @@ mod tests {
             "P002".to_string(),
             "P003".to_string(),
             "P004".to_string(),
+            "null".to_string(),
         ];
         let hm = HashMap::from([
             ("P001".to_string(), 1001),
@@ -299,7 +370,16 @@ mod tests {
         ]);
         let mapped_vec =
             AliasMapStrategy::map_values(vec_of_strings, hm, "col_name", "table_name").unwrap();
-        assert_eq!(mapped_vec, vec![1001, 1002, 1003, 1004]);
+        assert_eq!(
+            mapped_vec,
+            vec![
+                AnyValue::Int32(1001),
+                AnyValue::Int32(1002),
+                AnyValue::Int32(1003),
+                AnyValue::Int32(1004),
+                AnyValue::Null
+            ]
+        );
     }
 
     //tests that the alias map makes the desired changes
@@ -329,6 +409,72 @@ mod tests {
         assert_eq!(
             cdf_aliasing.data.column("smokes2").unwrap(),
             &Column::new("smokes2".into(), [true, true, true, true])
+        );
+    }
+
+    #[rstest]
+    fn test_aliasing_with_nulls(mut cdf_nulls: ContextualizedDataFrame) {
+        let alias_map_transform = AliasMapStrategy {};
+        assert!(alias_map_transform.transform(&mut cdf_nulls).is_ok());
+        assert_eq!(
+            cdf_nulls.data.column("patient_id").unwrap(),
+            &Column::new(
+                "patient_id".into(),
+                [
+                    AnyValue::String("patient_1"),
+                    AnyValue::String("patient_2"),
+                    AnyValue::Null,
+                    AnyValue::String("patient_4")
+                ]
+            )
+        );
+        assert_eq!(
+            cdf_nulls.data.column("age").unwrap(),
+            &Column::new(
+                "age".into(),
+                [
+                    AnyValue::Null,
+                    AnyValue::Int32(22),
+                    AnyValue::Null,
+                    AnyValue::Int32(44)
+                ]
+            )
+        );
+        assert_eq!(
+            cdf_nulls.data.column("weight").unwrap(),
+            &Column::new(
+                "weight".into(),
+                [
+                    AnyValue::Float64(20.2),
+                    AnyValue::Float64(40.4),
+                    AnyValue::Float64(60.6),
+                    AnyValue::Null
+                ]
+            )
+        );
+        assert_eq!(
+            cdf_nulls.data.column("smokes1").unwrap(),
+            &Column::new(
+                "smokes1".into(),
+                [
+                    AnyValue::Null,
+                    AnyValue::Null,
+                    AnyValue::Null,
+                    AnyValue::Null
+                ]
+            )
+        );
+        assert_eq!(
+            cdf_nulls.data.column("smokes2").unwrap(),
+            &Column::new(
+                "smokes2".into(),
+                [
+                    AnyValue::Boolean(true),
+                    AnyValue::Null,
+                    AnyValue::Boolean(true),
+                    AnyValue::Boolean(true)
+                ]
+            )
         );
     }
 
