@@ -159,7 +159,7 @@ impl Collector {
     }
 
     //todo! test after MVP
-    /// Given a CDF corresponding to a single patient and a desired property ("element type")
+    /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
     /// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
     /// this function will:
     /// -find all values for that context
@@ -168,10 +168,10 @@ impl Collector {
     /// return Ok(unique_val) if there is a single unique value
     fn collect_single_multiplicity_element(
         patient_cdf: &ContextualizedDataFrame,
-        element_type: Context,
+        context: Context,
         patient_id: &str,
     ) -> Result<Option<String>, TransformError> {
-        let cols_of_element_type = patient_cdf.get_cols_with_data_context(element_type.clone());
+        let cols_of_element_type = patient_cdf.get_cols_with_data_context(context.clone());
 
         if cols_of_element_type.is_empty() {
             return Ok(None);
@@ -190,7 +190,7 @@ impl Collector {
 
         if unique_values_vec.len() > 1 {
             Err(CollectionError(format!(
-                "Found multiple values of {element_type} for {patient_id}: {unique_values_vec:?}."
+                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values_vec:?}."
             )))
         } else {
             Ok(unique_values_vec.first().cloned())
@@ -211,8 +211,9 @@ mod tests {
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
-        Individual, OntologyClass, PhenotypicFeature, VitalStatus,
+        Individual, OntologyClass, PhenotypicFeature, Sex, VitalStatus,
     };
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
@@ -418,18 +419,18 @@ mod tests {
         };
         let indiv1 = Individual {
             id: "P001".to_string(),
-            sex: 2,
+            sex: Sex::Male as i32,
             vital_status: Some(VitalStatus {
-                status: 0,
+                status: Status::UnknownStatus as i32,
                 ..Default::default()
             }),
             ..Default::default()
         };
         let indiv2 = Individual {
             id: "P002".to_string(),
-            sex: 1,
+            sex: Sex::Female as i32,
             vital_status: Some(VitalStatus {
-                status: 1,
+                status: Status::Alive as i32,
                 ..Default::default()
             }),
             ..Default::default()
@@ -437,7 +438,7 @@ mod tests {
         let indiv3 = Individual {
             id: "P003".to_string(),
             vital_status: Some(VitalStatus {
-                status: 2,
+                status: Status::Deceased as i32,
                 ..Default::default()
             }),
             ..Default::default()
@@ -530,15 +531,6 @@ mod tests {
                 AnyValue::String("Nail psoriasis"),
             ],
         );
-        let onset_col = Column::new(
-            "onset_age".into(),
-            [
-                AnyValue::Int32(15),
-                AnyValue::Null,
-                AnyValue::Int32(65),
-                AnyValue::Int32(82),
-            ],
-        );
         let subject_sex_col = Column::new(
             "sex".into(),
             [
@@ -554,17 +546,10 @@ mod tests {
                 AnyValue::String("ALIVE"),
                 AnyValue::String("ALIVE"),
                 AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
+                AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![
-            id_col,
-            pf_col,
-            onset_col,
-            subject_sex_col,
-            vital_status_col,
-        ])
-        .unwrap();
+        let df = DataFrame::new(vec![id_col, pf_col, subject_sex_col, vital_status_col]).unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
         let phenopacket_id = "cohort2019-P006".to_string();
@@ -576,9 +561,9 @@ mod tests {
 
         let indiv = Individual {
             id: "P006".to_string(),
-            sex: 1,
+            sex: Sex::Female as i32,
             vital_status: Some(VitalStatus {
-                status: 1,
+                status: Status::Alive as i32,
                 ..Default::default()
             }),
             ..Default::default()
@@ -626,11 +611,17 @@ mod tests {
 
         let collect_pfs_result = collector.collect_individual(&cdf, &phenopacket_id, &patient_id);
         assert!(collect_pfs_result.is_err());
-        assert_eq!(
-            collect_pfs_result.err().unwrap(),
-            CollectionError(
-                "Found multiple values of SubjectSex for P006: [\"MALE\", \"FEMALE\"].".to_string(),
-            )
+        assert!(
+            collect_pfs_result.as_ref().err().unwrap()
+                == &CollectionError(
+                    "Found multiple values of SubjectSex for P006 when there should only be one: [\"MALE\", \"FEMALE\"]."
+                        .to_string(),
+                )
+                || collect_pfs_result.as_ref().err().unwrap()
+                    == &CollectionError(
+                        "Found multiple values of SubjectSex for P006 when there should only be one: [\"FEMALE\", \"MALE\"]."
+                            .to_string(),
+                    )
         )
     }
 }

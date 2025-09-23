@@ -464,8 +464,9 @@ mod tests {
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
+    //todo to be updated when upsert individual is fully implemented
     #[rstest]
-    fn test_upsert_individual_sets_id_and_sex(tmp_dir: TempDir) {
+    fn test_upsert_individual(tmp_dir: TempDir) {
         skip_in_ci!();
 
         let mut builder = construct_builder(tmp_dir);
@@ -473,7 +474,7 @@ mod tests {
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
 
-        // Test without sex
+        // Test just upserting the individual id
         let result = builder.upsert_individual(
             phenopacket_id,
             individual_id,
@@ -488,10 +489,17 @@ mod tests {
         );
         assert!(result.is_ok());
 
+        // Test upserting the other entries
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
         assert_eq!(individual.id, individual_id);
         assert_eq!(individual.sex, 0);
+        assert_eq!(individual.vital_status, None);
+
+        let vs = VitalStatus {
+            status: 1,
+            ..Default::default()
+        };
 
         let result = builder.upsert_individual(
             phenopacket_id,
@@ -499,7 +507,7 @@ mod tests {
             None,
             None,
             None,
-            None,
+            Some(vs.clone()),
             Some("MALE"),
             None,
             None,
@@ -511,5 +519,6 @@ mod tests {
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(individual.sex, Sex::Male as i32);
+        assert_eq!(individual.vital_status, Some(vs));
     }
 }
