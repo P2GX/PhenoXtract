@@ -47,8 +47,6 @@ pub enum Context {
     #[allow(unused)]
     Onset,
     #[allow(unused)]
-    OnsetDate,
-    #[allow(unused)]
     SubjectId,
     #[allow(unused)]
     SubjectSex,

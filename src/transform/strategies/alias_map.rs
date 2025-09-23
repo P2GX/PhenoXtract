@@ -6,7 +6,7 @@ use crate::transform::error::TransformError::StrategyError;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::info;
-use polars::prelude::Column;
+use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -24,27 +24,40 @@ pub struct AliasMapStrategy;
 impl AliasMapStrategy {
     #[allow(unused)]
     ///Applies aliases from a hash map to a vector of strings
-    fn map_values<T: FromStr + Copy>(
-        vec_to_alias: Vec<String>,
+    fn map_values<'a, T: FromStr + Copy + Into<AnyValue<'a>>>(
+        stringified_col: Vec<String>,
         hm: HashMap<String, T>,
         col_name: &str,
         table_name: &str,
     ) -> Result<Vec<T>, TransformError> {
-        vec_to_alias
+
+        fn create_any_value<'a, T>(value: T) -> Option<AnyValue<'a>>
+        where
+            T: Into<AnyValue<'a>>,
+        {
+            Some(value.into())
+        }
+
+        stringified_col
             .iter()
             .map(|s| match hm.get(s) {
-                Some(&alias) => Ok(alias),
-                None => s.parse::<T>().map_err(|_e| {
-                    StrategyError(
-                        format!(
-                            "Could not convert column {} in table {} to a vector of type {}.",
-                            col_name,
-                            table_name,
-                            type_name::<T>()
+                Some(&alias) => Ok(create_any_value(alias)),
+                None => { if s == "null" {
+                    Ok(AnyValue::Null)
+                } else {
+                    create_any_value(s.parse::<T>()).map_err(|_e| {
+                        StrategyError(
+                            format!(
+                                "Could not convert column {} in table {} to a vector of type {}.",
+                                col_name,
+                                table_name,
+                                type_name::<T>()
+                            )
+                                .to_string(),
                         )
-                        .to_string(),
-                    )
-                }),
+                    })
+                }
+                    },
             })
             .collect()
     }
@@ -78,15 +91,21 @@ impl Strategy for AliasMapStrategy {
         for (col, alias_map) in AliasMapStrategy::get_col_alias_map_pairs(table) {
             let col_name = col.name();
             info!("Applying AliasMap strategy to column: {col_name}");
-            let string_vec_to_alias = convert_col_to_string_vec(&col)?;
+            let stringified_col = convert_col_to_string_vec(&col)?;
 
             match alias_map {
                 ToString(hm) => {
-                    let transformed_vec = string_vec_to_alias
+                    let transformed_vec = stringified_col
                         .iter()
                         .map(|s| match hm.get(s) {
-                            Some(alias) => alias.clone(),
-                            None => s.clone(),
+                            Some(alias) => AnyValue::String(alias),
+                            None => {
+                                if s == "null" {
+                                    AnyValue::Null
+                                } else {
+                                    AnyValue::String(s)
+                                }
+                            }
                         })
                         .collect();
                     table.replace_column(transformed_vec, col_name)?;
@@ -94,19 +113,19 @@ impl Strategy for AliasMapStrategy {
                 }
                 ToInt(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToFloat(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
                 ToBool(hm) => {
                     let transformed_vec =
-                        Self::map_values(string_vec_to_alias, hm, col_name, table_name)?;
+                        Self::map_values(stringified_col, hm, col_name, table_name)?;
                     table.replace_column(transformed_vec, col_name)?;
                     Ok(())
                 }
