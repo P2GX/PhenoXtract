@@ -1,0 +1,16 @@
+{
+  "id": "test-cohort-PID_3",
+  "subject": {
+    "id": "PID_3",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:6000997",
+        "label": "Intranasal mass"
+      }
+    }
+  ]
+}

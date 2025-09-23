@@ -1,0 +1,16 @@
+{
+  "id": "test-cohort-PID_2",
+  "subject": {
+    "id": "PID_2",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0009930",
+        "label": "Asymmetry of the nares"
+      }
+    }
+  ]
+}

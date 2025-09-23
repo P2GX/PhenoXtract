@@ -127,7 +127,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
         let resolved_version = self.resolve_version(version);
 
         let mut out_path = self.registry_path.clone();
-        out_path.push(self.construct_file_name(version));
+        out_path.push(self.construct_file_name(&resolved_version));
 
         if out_path.exists() {
             debug!(

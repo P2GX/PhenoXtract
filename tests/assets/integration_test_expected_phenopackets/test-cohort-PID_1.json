@@ -1,0 +1,22 @@
+{
+  "id": "test-cohort-PID_1",
+  "subject": {
+    "id": "PID_1",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0000448",
+        "label": "Prominent nose"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0012720",
+        "label": "Neoplasm of the nose"
+      }
+    }
+  ]
+}
