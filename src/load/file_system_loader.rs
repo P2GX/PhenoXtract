@@ -1,6 +1,6 @@
 use crate::load::error::LoadError;
 use crate::load::traits::Loadable;
-use log::warn;
+use log::{debug, warn};
 use phenopackets::schema::v2::Phenopacket;
 use serde::Deserialize;
 use std::fs::File;
@@ -44,7 +44,7 @@ impl Loadable for FileSystemLoader {
     fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), LoadError> {
         for pp in phenopackets.iter() {
             let file = File::create(self.out_path.join(format!("{}.json", pp.id)))?;
-            warn!("Storing file to: {:?}", file);
+            debug!("Storing file to: {:?}", file);
             let res = serde_json::to_writer_pretty(file, pp);
             if res.is_err() {
                 warn!(
