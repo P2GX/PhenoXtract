@@ -11,7 +11,7 @@ use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
 use crate::ontology::utils::init_ontolius;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
-use log::{info, warn};
+use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;
