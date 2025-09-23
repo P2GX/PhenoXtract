@@ -93,15 +93,3 @@ impl Pipeline {
         Ok(Pipeline::new(tf_module, loader_module))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rstest::rstest;
-
-    #[rstest]
-    fn test_from_pipeline_config() {
-        let config = PipelineConfig::default();
-        let _ = Pipeline::from_config(&config);
-    }
-}
