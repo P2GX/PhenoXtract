@@ -186,14 +186,12 @@ impl Collector {
             });
         }
 
-        let unique_values_vec: Vec<String> = unique_values.into_iter().collect();
-
-        if unique_values_vec.len() > 1 {
+        if unique_values.len() > 1 {
             Err(CollectionError(format!(
-                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values_vec:?}."
+                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
             )))
         } else {
-            Ok(unique_values_vec.first().cloned())
+            Ok(unique_values.iter().next().cloned())
         }
     }
 }
@@ -614,12 +612,12 @@ mod tests {
         assert!(
             collect_pfs_result.as_ref().err().unwrap()
                 == &CollectionError(
-                    "Found multiple values of SubjectSex for P006 when there should only be one: [\"MALE\", \"FEMALE\"]."
+                    "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
                         .to_string(),
                 )
                 || collect_pfs_result.as_ref().err().unwrap()
                     == &CollectionError(
-                        "Found multiple values of SubjectSex for P006 when there should only be one: [\"FEMALE\", \"MALE\"]."
+                        "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
                             .to_string(),
                     )
         )

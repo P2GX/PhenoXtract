@@ -61,6 +61,9 @@ impl PhenopacketBuilder {
         if time_at_last_encounter.is_some() {
             warn!("time_at_last_encounter - not implemented for individual yet");
         }
+        if vital_status.is_some() {
+            warn!("vital_status - not fully implemented for individual yet");
+        }
         if karyotypic_sex.is_some() {
             warn!("karyotypic_sex - not implemented for individual yet");
         }
