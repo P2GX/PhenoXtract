@@ -10,7 +10,7 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::Age;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{Age as age_struct, TimeElement, VitalStatus};
-use polars::prelude::{IntoLazy, col, lit};
+use polars::prelude::{Column, IntoLazy, col, lit};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -87,36 +87,47 @@ impl Collector {
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols =
-                patient_cdf.get_linked_cols_with_certain_data_context(pf_sc, OnsetAge);
+            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, OnsetAge);
+            // it is very unclear how linking would work otherwise
+            let valid_onset_linking = linked_onset_cols.len() == 1;
 
-            // it is very unclear how linking would work if these were not both equal to one
-            let valid_onset_linking = pf_cols.len() == 1 && linked_onset_cols.len() == 1;
-
-            if valid_onset_linking {
-                let pf_col = pf_cols.first().unwrap();
-                let onset_col = linked_onset_cols.first().unwrap();
+            for pf_col in pf_cols {
+                let onset_col = if valid_onset_linking {
+                    linked_onset_cols.first().unwrap()
+                } else {
+                    &&Column::new("OnsetAge".into(), vec!["null"; pf_col.len()])
+                };
 
                 let stringified_pf_col = convert_col_to_string_vec(pf_col)?;
                 let stringified_onset_col = convert_col_to_string_vec(onset_col)?;
+
                 let pf_onset_pairs: Vec<(&String, &String)> = stringified_pf_col
                     .iter()
                     .zip(stringified_onset_col.iter())
                     .collect();
+
                 for (hpo_label, onset_age) in pf_onset_pairs {
-                    if hpo_label == "null" && onset_age == "null" {
+                    if hpo_label == "null" {
+                        if onset_age != "null" {
+                            warn!(
+                                "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
+                                onset_age,
+                                patient_cdf.context().name,
+                                phenopacket_id
+                            );
+                        }
                         continue;
-                    }
-                    if hpo_label == "null" && onset_age != "null" {
-                        warn!(
-                            "Non-null Onset {} found for null hpo_label in table {} for phenopacket {}",
-                            onset_age,
-                            patient_cdf.context().name,
-                            phenopacket_id
-                        );
-                        continue;
-                    }
-                    if hpo_label != "null" && onset_age == "null" {
+                    } else {
+                        let onset_te = if onset_age == "null" {
+                            None
+                        } else {
+                            Some(TimeElement {
+                                element: Some(Age(age_struct {
+                                    iso8601duration: onset_age.to_string(),
+                                })),
+                            })
+                        };
+
                         self.phenopacket_builder
                             .upsert_phenotypic_feature(
                                 phenopacket_id,
@@ -125,7 +136,7 @@ impl Collector {
                                 None,
                                 None,
                                 None,
-                                None,
+                                onset_te,
                                 None,
                                 None,
                             )
@@ -136,77 +147,6 @@ impl Collector {
                                     pf_col.name()
                                 ))
                             })?;
-                        continue;
-                    }
-                    if hpo_label != "null" && onset_age != "null" {
-                        //todo deal with DateTimes
-                        /*
-                        let onset_dt: Datetime<Utc> = onset.parse().map_err(|_err| CollectionError....)?;
-                        let seconds = dt.timestamp();
-                        let nanos = dt.timestamp_subsec_nanos() as i32;
-                        let onset_time_element = TimeElement {
-                            element: Some(Timestamp(TimestampProst {
-                                seconds, nanos,
-                            })),
-                        };
-                        */
-
-                        let onset_time_element = TimeElement {
-                            element: Some(Age(age_struct {
-                                iso8601duration: onset_age.to_string(),
-                            })),
-                        };
-
-                        self.phenopacket_builder
-                            .upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo_label,
-                                None,
-                                None,
-                                None,
-                                None,
-                                Some(onset_time_element),
-                                None,
-                                None,
-                            )
-                            .map_err(|_err| {
-                                CollectionError(format!(
-                                    "Error when upserting HPO term {} and datetime {} in column {}",
-                                    hpo_label,
-                                    onset_age,
-                                    pf_col.name()
-                                ))
-                            })?;
-                    }
-                }
-            } else {
-                if !linked_onset_cols.is_empty() {
-                    let id = pf_sc.identifier.clone();
-                    let table_name = patient_cdf.context().name.clone();
-                    warn!(
-                        "Onset columns linked to phenotypic feature series context {id:?} in table {table_name} could not yet be understood."
-                    );
-                }
-
-                for pf_col in pf_cols {
-                    let stringified_pf_col_no_nulls =
-                        convert_col_to_string_vec(&pf_col.drop_nulls())?;
-                    for hpo_label in &stringified_pf_col_no_nulls {
-                        self.phenopacket_builder
-                            .upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo_label,
-                                None,
-                                None,
-                                None,
-                                None,
-                                None,
-                                None,
-                                None,
-                            )
-                            .map_err(|_err| {
-                                CollectionError(format!("Error when upserting {}", pf_col.name()))
-                            })?
                     }
                 }
             }

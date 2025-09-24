@@ -159,7 +159,7 @@ impl PhenopacketBuilder {
             warn!("modifiers phenotypic feature not implemented yet");
         }
         if onset.is_some() {
-            warn!("on_set phenotypic feature is not fully implemented yet");
+            warn!("onset phenotypic feature is not fully implemented yet");
         }
         if resolution.is_some() {
             warn!("resolution phenotypic feature not implemented yet");
@@ -244,6 +244,8 @@ mod tests {
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
     use crate::skip_in_ci;
+    use phenopackets::schema::v2::core::Age as age_struct;
+    use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -255,6 +257,24 @@ mod tests {
     #[fixture]
     fn valid_phenotype() -> String {
         "HP:0001166".to_string()
+    }
+
+    #[fixture]
+    fn onset_te() -> Option<TimeElement> {
+        Some(TimeElement {
+            element: Some(Age(age_struct {
+                iso8601duration: "P48Y4M21D".to_string(),
+            })),
+        })
+    }
+
+    #[fixture]
+    fn onset_te_alt() -> Option<TimeElement> {
+        Some(TimeElement {
+            element: Some(Age(age_struct {
+                iso8601duration: "P12Y5M028D".to_string(),
+            })),
+        })
     }
 
     #[fixture]
@@ -280,6 +300,7 @@ mod tests {
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
         valid_phenotype: String,
+        onset_te: Option<TimeElement>,
         tmp_dir: TempDir,
     ) {
         skip_in_ci!();
@@ -292,7 +313,7 @@ mod tests {
             None,
             None,
             None,
-            None,
+            onset_te.clone(),
             None,
             None,
         );
@@ -310,6 +331,10 @@ mod tests {
         let ontology_class = feature.r#type.as_ref().unwrap();
         assert_eq!(ontology_class.id, "HP:0001166");
         assert_eq!(ontology_class.label, "Arachnodactyly");
+
+        assert!(feature.onset.is_some());
+        let feature_onset = feature.onset.as_ref().unwrap();
+        assert_eq!(feature_onset, &onset_te.unwrap());
     }
 
     #[rstest]
@@ -469,6 +494,59 @@ mod tests {
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
+    }
+
+    #[rstest]
+    fn test_update_onset_of_phenotypic_feature(
+        tmp_dir: TempDir,
+        phenopacket_id: String,
+        onset_te: Option<TimeElement>,
+        onset_te_alt: Option<TimeElement>,
+        valid_phenotype: String,
+    ) {
+        skip_in_ci!();
+
+        let mut builder = construct_builder(tmp_dir);
+
+        // Add a feature
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                onset_te,
+                None,
+                None,
+            )
+            .unwrap();
+
+        // Update the same feature
+        let result = builder.upsert_phenotypic_feature(
+            phenopacket_id.as_str(),
+            &valid_phenotype,
+            None,
+            None,
+            None,
+            None,
+            onset_te_alt.clone(),
+            None,
+            None,
+        );
+
+        assert!(result.is_ok());
+
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        assert_eq!(phenopacket.phenotypic_features.len(), 1);
+
+        let feature = &phenopacket.phenotypic_features[0];
+        assert!(feature.r#type.is_some());
+
+        assert!(feature.onset.is_some());
+        let feature_onset = feature.onset.as_ref().unwrap();
+        assert_eq!(feature_onset, &onset_te_alt.unwrap());
     }
 
     //todo to be updated when upsert individual is fully implemented

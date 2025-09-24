@@ -209,7 +209,7 @@ impl ContextualizedDataFrame {
 
     //todo test after MVP
     #[allow(unused)]
-    pub fn get_linked_cols_with_certain_data_context(
+    pub fn get_linked_cols_with_data_context(
         &self,
         sc: &SeriesContext,
         data_context: Context,
