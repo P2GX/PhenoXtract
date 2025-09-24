@@ -79,8 +79,8 @@ impl PhenopacketLinter {
         let mut seen: HashSet<String> = HashSet::new();
 
         for pf in phenotypic_features {
-            if let Some(ontology_class) = pf.r#type.clone() {
-                let pf_id = ontology_class.id;
+            if let Some(feature_type) = pf.r#type.clone() {
+                let pf_id = feature_type.id;
                 if seen.contains(pf_id.as_str()) {
                     duplicates.insert(pf_id.clone());
                 }
@@ -100,11 +100,11 @@ impl PhenopacketLinter {
 
         for pf in phenotypic_features {
             if let Some(feature_type) = pf.r#type.clone() {
-                let term = TermId::from_str(feature_type.id.as_str()).unwrap();
-                if !pf.excluded || pf.onset.is_some() || !pf.modifiers.is_empty() {
-                    observed.insert(term);
+                let phenotypic_term = TermId::from_str(feature_type.id.as_str()).unwrap();
+                if !pf.excluded {
+                    observed.insert(phenotypic_term);
                 } else {
-                    excluded.insert(term);
+                    excluded.insert(phenotypic_term);
                 }
             }
         }
@@ -114,7 +114,7 @@ impl PhenopacketLinter {
         // Which means, if we find a term that is more general then another, we deem the more general term invalid.
         let invalid_observed_ancestors = observed
             .iter()
-            .flat_map(|term| self.find_ancestors(&observed, term))
+            .flat_map(|phenotypic_term| self.find_ancestors(&observed, phenotypic_term))
             .collect::<HashSet<TermId>>();
 
         debug!(
@@ -127,7 +127,7 @@ impl PhenopacketLinter {
         // In this case we assume that the excluded term is invalid, because a specific ancestor was annotated
         let invalid_excluded_observed_descendents = observed
             .iter()
-            .flat_map(|term| self.find_descendents(&excluded, term))
+            .flat_map(|phenotypic_term| self.find_descendents(&excluded, phenotypic_term))
             .collect::<HashSet<TermId>>();
 
         debug!(
@@ -135,11 +135,11 @@ impl PhenopacketLinter {
             invalid_excluded_observed_descendents
         );
 
-        // Case 1: Invalidate all descendents of a family for an excluded term
+        // Case 3: Invalidate all descendents of a family for an excluded term
         // Because, if you can exclude a general phenotype the specific one can also be excluded.
         let invalid_excluded_descendents = excluded
             .iter()
-            .flat_map(|term| self.find_descendents(&excluded, term))
+            .flat_map(|phenotypic_term| self.find_descendents(&excluded, phenotypic_term))
             .collect::<HashSet<TermId>>();
 
         debug!(
