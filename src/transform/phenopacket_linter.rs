@@ -157,6 +157,40 @@ impl PhenopacketLinter {
             .collect()
     }
 
+    /// Finds all ancestor terms of a given scion term within a provided ancestry set.
+    ///
+    /// This method filters the provided ancestry set to return only those terms that are
+    /// ancestors of the specified scion term, excluding the scion term itself from the results.
+    /// An ancestor is a term that is higher in the ontology hierarchy and has a path leading
+    /// down to the scion term.
+    ///
+    /// # Arguments
+    ///
+    /// * `ancestry` - A reference to a HashSet containing TermIds to search within
+    /// * `scion` - A reference to the TermId for which to find ancestors
+    ///
+    /// # Returns
+    ///
+    /// A HashSet<TermId> containing all terms from the ancestry set that are ancestors
+    /// of the scion term. The scion term itself is excluded from the results.
+    ///
+    /// # Behaviour
+    ///
+    /// Ancestry:
+    ///
+    /// Abnormality of the musculoskeletal system ━┓
+    /// Abnormal musculoskeletal physiology        ┣━ These will be returned
+    /// Limb pain                                 ━┛
+    /// Lower limb pain -> Selected as scion
+    /// Foot pain
+    ///
+    /// # Examples
+    /// ```ignore
+    /// ```rust
+    /// let ancestry_set: HashSet<TermId> = [term1, term2, term3, scion_term].iter().cloned().collect();
+    /// let ancestors = obj.find_ancestors(&ancestry_set, &scion_term);
+    /// // ancestors will contain only those terms from ancestry_set that are ancestors of scion_term
+    /// ```
     fn find_ancestors(&self, ancestry: &HashSet<TermId>, scion: &TermId) -> HashSet<TermId> {
         ancestry
             .iter()
@@ -165,6 +199,40 @@ impl PhenopacketLinter {
             .collect()
     }
 
+    /// Finds all descendant terms of a given progenitor term within a provided ancestry set.
+    ///
+    /// This method filters the provided ancestry set to return only those terms that are
+    /// descendants of the specified progenitor term, excluding the progenitor term itself
+    /// from the results. A descendant is a term that is lower in the ontology hierarchy
+    /// and can be reached by following paths down from the progenitor term.
+    ///
+    /// # Arguments
+    ///
+    /// * `ancestry` - A reference to a HashSet containing TermIds to search within
+    /// * `progenitor` - A reference to the TermId for which to find descendants
+    ///
+    /// # Returns
+    ///
+    /// A HashSet<TermId> containing all terms from the ancestry set that are descendants
+    /// of the progenitor term. The progenitor term itself is excluded from the results.
+    ///
+    /// # Behaviour
+    ///
+    /// Ancestry:
+    ///
+    /// Abnormality of the musculoskeletal system
+    /// Abnormal musculoskeletal physiology -> Selected as progenitor
+    /// Limb pain                                 ━┓
+    /// Lower limb pain                            ┣━ These will be returned
+    /// Foot pain                                 ━┛
+    ///
+    /// # Examples
+    /// ```ignore
+    /// ```rust
+    /// let ancestry_set: HashSet<TermId> = [progenitor_term, term1, term2, term3].iter().cloned().collect();
+    /// let descendants = obj.find_descendents(&ancestry_set, &progenitor_term);
+    /// // descendants will contain only those terms from ancestry_set that are descendants of progenitor_term
+    /// ```
     fn find_descendents(&self, ancestry: &HashSet<TermId>, progenitor: &TermId) -> HashSet<TermId> {
         ancestry
             .iter()
