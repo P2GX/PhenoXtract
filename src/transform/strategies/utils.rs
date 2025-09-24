@@ -2,6 +2,7 @@ use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use polars::datatypes::AnyValue;
 use polars::prelude::Column;
+use regex::Regex;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
     match col {
@@ -24,6 +25,15 @@ pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformE
             })
             .collect::<Vec<String>>()),
     }
+}
+
+//todo test after MVP
+pub fn get_hpo_ids_from_string(string_to_search: &str) -> Vec<String> {
+    let hpo_regex = Regex::new(r"HP:\d{7}").unwrap();
+    hpo_regex
+        .find_iter(string_to_search)
+        .map(|mat| mat.as_str().to_string())
+        .collect()
 }
 
 #[cfg(test)]

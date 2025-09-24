@@ -45,6 +45,8 @@ pub enum Context {
     #[allow(unused)]
     HpoLabel,
     #[allow(unused)]
+    MultiHpoId,
+    #[allow(unused)]
     Onset,
     #[allow(unused)]
     SubjectId,
