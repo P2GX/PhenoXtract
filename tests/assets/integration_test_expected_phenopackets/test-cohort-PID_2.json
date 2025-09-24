@@ -2,7 +2,7 @@
   "id": "test-cohort-PID_2",
   "subject": {
     "id": "PID_2",
-    "sex": "UNKNOWN_SEX",
+    "sex": "FEMALE",
     "karyotypicSex": "UNKNOWN_KARYOTYPE"
   },
   "phenotypicFeatures": [
