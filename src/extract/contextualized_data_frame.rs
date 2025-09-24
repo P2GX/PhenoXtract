@@ -112,6 +112,11 @@ impl ContextualizedDataFrame {
         }
     }
 
+    #[allow(unused)]
+    pub fn get_sc_from_id(&self, id: &Identifier) -> Option<&SeriesContext> {
+        self.context.context.iter().find(|sc| &sc.identifier == id)
+    }
+
     //todo test after MVP
     pub fn check_contexts_have_data_type(
         &self,
@@ -190,6 +195,37 @@ impl ContextualizedDataFrame {
                 }
             })
             .flatten()
+            .collect::<Vec<&Column>>()
+    }
+
+    #[allow(unused)]
+    pub fn get_scs_with_data_context(&self, data_context: Context) -> Vec<&SeriesContext> {
+        self.context
+            .context
+            .iter()
+            .filter(|sc| sc.get_data_context() == data_context)
+            .collect()
+    }
+
+    //todo test after MVP
+    #[allow(unused)]
+    pub fn get_linked_cols_with_certain_data_context(
+        &self,
+        sc: &SeriesContext,
+        data_context: Context,
+    ) -> Vec<&Column> {
+        let linked_scs = sc
+            .linked_to
+            .iter()
+            .filter_map(|id| self.get_sc_from_id(id))
+            .collect::<Vec<&SeriesContext>>();
+        let linked_scs_filtered = linked_scs
+            .iter()
+            .filter(|linked_sc| linked_sc.get_data_context() == data_context)
+            .collect::<Vec<&&SeriesContext>>();
+        linked_scs_filtered
+            .iter()
+            .flat_map(|linked_sc| self.get_columns(&linked_sc.identifier))
             .collect::<Vec<&Column>>()
     }
 }

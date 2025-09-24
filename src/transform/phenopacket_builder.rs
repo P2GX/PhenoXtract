@@ -159,7 +159,7 @@ impl PhenopacketBuilder {
             warn!("modifiers phenotypic feature not implemented yet");
         }
         if onset.is_some() {
-            warn!("on_set phenotypic feature not implemented yet");
+            warn!("on_set phenotypic feature is not fully implemented yet");
         }
         if resolution.is_some() {
             warn!("resolution phenotypic feature not implemented yet");
@@ -194,6 +194,10 @@ impl PhenopacketBuilder {
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
+        }
+
+        if let Some(onset) = onset {
+            feature.onset = Some(onset);
         }
 
         Ok(())
