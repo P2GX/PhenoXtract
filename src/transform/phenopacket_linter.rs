@@ -72,7 +72,7 @@ impl PhenopacketLinter {
 
         for pf in phenotypic_features {
             if let Some(feature_type) = pf.r#type.clone() {
-                let term = PhenopacketLinter::ontology_class_to_term_id(&feature_type);
+                let term = TermId::from_str(feature_type.id.as_str()).unwrap();
                 if !pf.excluded || pf.onset.is_some() || !pf.modifiers.is_empty() {
                     observed.insert(term);
                 } else {
@@ -143,10 +143,6 @@ impl PhenopacketLinter {
             .filter(|term| *term != progenitor && self.hpo.is_descendant_of(*term, progenitor))
             .cloned()
             .collect()
-    }
-
-    fn ontology_class_to_term_id(ontology_class: &OntologyClass) -> TermId {
-        TermId::from_str(ontology_class.id.as_str()).unwrap()
     }
 }
 
