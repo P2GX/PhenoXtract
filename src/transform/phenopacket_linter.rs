@@ -15,10 +15,38 @@ use std::str::FromStr;
 struct PhenopacketLinter {
     hpo: Rc<FullCsrOntology>,
 }
-struct LintReport;
+
+struct LintingViolations;
+
+struct LintReport {
+    report_info: HashMap<String, LintingViolations>,
+}
+
+impl LintReport {
+    fn new() -> LintReport {
+        LintReport {
+            report_info: HashMap::new(),
+        }
+    }
+
+    pub fn save() {
+        todo!()
+    }
+
+    pub fn get_info() {
+        todo!()
+    }
+    pub fn get_info_for_id() {
+        todo!()
+    }
+    pub fn print() {
+        todo!()
+    }
+}
+
 impl PhenopacketLinter {
     pub fn lint(&self, phenopackets: &[Phenopacket], fix: bool) -> LintReport {
-        let lint_report = LintReport {};
+        let lint_report = LintReport::new();
 
         for pp in phenopackets {
             let duplicates =
