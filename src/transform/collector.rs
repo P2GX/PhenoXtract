@@ -83,6 +83,10 @@ impl Collector {
         let pf_cols = patient_cdf.get_cols_with_data_context(HpoLabel);
 
         for pf_col in pf_cols {
+            #[allow(clippy::dbg_macro)]
+            {
+                dbg!(&pf_col);
+            }
             let stringified_pf_col_no_nulls = convert_col_to_string_vec(&pf_col.drop_nulls())?;
             for hpo_label in &stringified_pf_col_no_nulls {
                 self.phenopacket_builder
