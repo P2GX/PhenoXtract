@@ -1,11 +1,15 @@
-use crate::config::table_context::Context::{HpoLabel, SubjectId};
+use crate::config::table_context::Context;
+use crate::config::table_context::Context::{HpoLabel, Living, SubjectId, SubjectSex};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::VitalStatus;
+use phenopackets::schema::v2::core::vital_status::Status;
 use polars::prelude::{IntoLazy, col, lit};
+use std::collections::HashSet;
 
 #[allow(dead_code)]
 pub struct Collector {
@@ -26,13 +30,18 @@ impl Collector {
         cdfs: &[ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
-            let subject_id_col =
-                cdf.get_cols_with_data_context(SubjectId)
-                    .pop()
-                    .ok_or(CollectionError(format!(
-                        "Could not find SubjectID column in table {}",
-                        cdf.context().name
-                    )))?;
+            let subject_id_cols = cdf.get_cols_with_data_context(SubjectId);
+            if subject_id_cols.len() > 1 {
+                return Err(CollectionError(format!(
+                    "Multiple SubjectID columns were found in table {}.",
+                    cdf.context().name
+                )));
+            }
+
+            let subject_id_col = subject_id_cols.last().ok_or(CollectionError(format!(
+                "Could not find SubjectID column in table {}",
+                cdf.context().name
+            )))?;
             let subject_id_col_name = subject_id_col.name().to_string();
             let unique_patient_ids =
                 convert_col_to_string_vec(&subject_id_col.unique().map_err(|_err| {
@@ -107,12 +116,27 @@ impl Collector {
 
     fn collect_individual(
         &mut self,
-        _patient_cdf: &ContextualizedDataFrame,
+        patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
         patient_id: &str,
     ) -> Result<(), TransformError> {
-        // Find the necessary values to construct an individual building block and upsert them to the PhenopacketBuilder
-        // PLACEHOLDER CODE!
+        let subject_sex =
+            Self::collect_single_multiplicity_element(patient_cdf, SubjectSex, patient_id)?;
+        let vital_status_string =
+            Self::collect_single_multiplicity_element(patient_cdf, Living, patient_id)?;
+        let vital_status = match vital_status_string {
+            None => None,
+            Some(s) => {
+                let status = Status::from_str_name(s.as_str()).ok_or(CollectionError(format!(
+                    "Could not interpret {s} as status for {patient_id}."
+                )))? as i32;
+                Some(VitalStatus {
+                    status,
+                    ..Default::default()
+                })
+            }
+        };
+
         self.phenopacket_builder
             .upsert_individual(
                 phenopacket_id,
@@ -120,8 +144,8 @@ impl Collector {
                 None,
                 None,
                 None,
-                None,
-                None,
+                vital_status,
+                subject_sex.as_deref(),
                 None,
                 None,
                 None,
@@ -133,11 +157,48 @@ impl Collector {
             })?;
         Ok(())
     }
+
+    //todo! test after MVP
+    /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
+    /// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
+    /// this function will:
+    /// -find all values for that context
+    /// -throw an error if it finds multiple distinct values
+    /// return Ok(None) if it finds no values
+    /// return Ok(unique_val) if there is a single unique value
+    fn collect_single_multiplicity_element(
+        patient_cdf: &ContextualizedDataFrame,
+        context: Context,
+        patient_id: &str,
+    ) -> Result<Option<String>, TransformError> {
+        let cols_of_element_type = patient_cdf.get_cols_with_data_context(context.clone());
+
+        if cols_of_element_type.is_empty() {
+            return Ok(None);
+        }
+
+        let mut unique_values: HashSet<String> = HashSet::new();
+
+        for col in cols_of_element_type {
+            let stringified_col_no_nulls = convert_col_to_string_vec(&col.drop_nulls())?;
+            stringified_col_no_nulls.iter().for_each(|val| {
+                unique_values.insert(val.clone());
+            });
+        }
+
+        if unique_values.len() > 1 {
+            Err(CollectionError(format!(
+                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
+            )))
+        } else {
+            Ok(unique_values.iter().next().cloned())
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::{HpoLabel, Onset, SubjectId};
+    use crate::config::table_context::Context::{HpoLabel, Living, Onset, SubjectId, SubjectSex};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -145,9 +206,13 @@ mod tests {
     use crate::ontology::utils::init_ontolius;
     use crate::skip_in_ci;
     use crate::transform::collector::Collector;
+    use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::{Individual, OntologyClass, PhenotypicFeature};
+    use phenopackets::schema::v2::core::vital_status::Status;
+    use phenopackets::schema::v2::core::{
+        Individual, OntologyClass, PhenotypicFeature, Sex, VitalStatus,
+    };
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
@@ -198,7 +263,26 @@ mod tests {
             None,
             vec![],
         );
-        TableContext::new("patient_data".to_string(), vec![id_sc, pf_sc, onset_sc])
+        let sex_sc = SeriesContext::new(
+            Identifier::Regex("sex".to_string()),
+            Context::None,
+            SubjectSex,
+            None,
+            None,
+            vec![],
+        );
+        let vital_status_sc = SeriesContext::new(
+            Identifier::Regex("vital_status".to_string()),
+            Context::None,
+            Living,
+            None,
+            None,
+            vec![],
+        );
+        TableContext::new(
+            "patient_data".to_string(),
+            vec![id_sc, pf_sc, onset_sc, sex_sc, vital_status_sc],
+        )
     }
 
     #[fixture]
@@ -283,7 +367,37 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
+        let subject_sex_col = Column::new(
+            "sex".into(),
+            [
+                AnyValue::String("MALE"),
+                AnyValue::String("MALE"),
+                AnyValue::Null,
+                AnyValue::String("FEMALE"),
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let vital_status_col = Column::new(
+            "vital_status".into(),
+            [
+                AnyValue::String("UNKNOWN_STATUS"),
+                AnyValue::Null,
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::String("DECEASED"),
+            ],
+        );
+
+        let df = DataFrame::new(vec![
+            id_col,
+            pf_col,
+            onset_col,
+            subject_sex_col,
+            vital_status_col,
+        ])
+        .unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
         let collect_result = collector.collect([cdf].as_slice());
@@ -303,14 +417,28 @@ mod tests {
         };
         let indiv1 = Individual {
             id: "P001".to_string(),
+            sex: Sex::Male as i32,
+            vital_status: Some(VitalStatus {
+                status: Status::UnknownStatus as i32,
+                ..Default::default()
+            }),
             ..Default::default()
         };
         let indiv2 = Individual {
             id: "P002".to_string(),
+            sex: Sex::Female as i32,
+            vital_status: Some(VitalStatus {
+                status: Status::Alive as i32,
+                ..Default::default()
+            }),
             ..Default::default()
         };
         let indiv3 = Individual {
             id: "P003".to_string(),
+            vital_status: Some(VitalStatus {
+                status: Status::Deceased as i32,
+                ..Default::default()
+            }),
             ..Default::default()
         };
         expected_p001.subject = Some(indiv1);
@@ -384,5 +512,114 @@ mod tests {
 
         assert_eq!(phenopackets.len(), 1);
         assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_individual(tc: TableContext, tmp_dir: TempDir) {
+        skip_in_ci!();
+
+        let mut collector = init_collector(tmp_dir);
+        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
+        let pf_col = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("Pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+            ],
+        );
+        let subject_sex_col = Column::new(
+            "sex".into(),
+            [
+                AnyValue::String("FEMALE"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let vital_status_col = Column::new(
+            "vital_status".into(),
+            [
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::Null,
+            ],
+        );
+        let df = DataFrame::new(vec![id_col, pf_col, subject_sex_col, vital_status_col]).unwrap();
+        let cdf = ContextualizedDataFrame::new(tc, df);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        let patient_id = "P006".to_string();
+
+        let collect_pfs_result = collector.collect_individual(&cdf, &phenopacket_id, &patient_id);
+        assert!(collect_pfs_result.is_ok());
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let indiv = Individual {
+            id: "P006".to_string(),
+            sex: Sex::Female as i32,
+            vital_status: Some(VitalStatus {
+                status: Status::Alive as i32,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            subject: Some(indiv),
+            ..Default::default()
+        };
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_individual_err(tc: TableContext, tmp_dir: TempDir) {
+        skip_in_ci!();
+
+        let mut collector = init_collector(tmp_dir);
+        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
+        let pf_col = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("Pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+            ],
+        );
+        let subject_sex_col = Column::new(
+            "sex".into(),
+            [
+                AnyValue::String("FEMALE"),
+                AnyValue::Null,
+                AnyValue::String("MALE"),
+                AnyValue::Null,
+            ],
+        );
+        let df = DataFrame::new(vec![id_col, pf_col, subject_sex_col]).unwrap();
+        let cdf = ContextualizedDataFrame::new(tc, df);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        let patient_id = "P006".to_string();
+
+        let collect_pfs_result = collector.collect_individual(&cdf, &phenopacket_id, &patient_id);
+        assert!(collect_pfs_result.is_err());
+        assert!(
+            collect_pfs_result.as_ref().err().unwrap()
+                == &CollectionError(
+                    "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
+                        .to_string(),
+                )
+                || collect_pfs_result.as_ref().err().unwrap()
+                    == &CollectionError(
+                        "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
+                            .to_string(),
+                    )
+        )
     }
 }
