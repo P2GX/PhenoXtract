@@ -10,6 +10,7 @@ use phenopackets::schema::v2::core::PhenotypicFeature;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::{OntologyClass, TimeElement};
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -29,16 +30,16 @@ impl LintReport {
     }
 
     pub fn save() {
-        todo!()
+        todo!("Implement saving the report as a json")
     }
 
-    pub fn get_info() {
+    pub fn get_info() -> Vec<LintingInfo> {
         todo!()
     }
-    pub fn get_info_for_id() {
+    pub fn get_info_for_id(key: &str) -> LintingInfo {
         todo!()
     }
-    pub fn print() {
+    pub fn print(&self) {
         todo!()
     }
 
@@ -47,11 +48,23 @@ impl LintReport {
     }
 }
 
+impl Display for LintReport {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+impl Debug for LintReport {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.print();
+        todo!()
+    }
+}
 struct PhenopacketLinter {
     hpo: Rc<FullCsrOntology>,
     phenotypic_abnormality: TermId,
     clinical_modifiers: TermId,
     onsets: TermId,
+    severity: TermId,
 }
 
 impl PhenopacketLinter {
@@ -61,9 +74,10 @@ impl PhenopacketLinter {
             phenotypic_abnormality: TermId::from_str("HP:0000118").unwrap(),
             clinical_modifiers: TermId::from_str("HP:0012823").unwrap(),
             onsets: TermId::from_str("HP:0003674").unwrap(),
+            severity: TermId::from_str("HP:0012824").unwrap(),
         }
     }
-    pub fn lint(&self, phenopackets: &mut [Phenopacket], fix: bool) -> Result<(), LintReport> {
+    pub fn lint(&self, phenopackets: &mut [Phenopacket], fix: bool) -> Option<LintReport> {
         let lint_report = LintReport::new();
 
         for pp in phenopackets {
@@ -80,8 +94,8 @@ impl PhenopacketLinter {
         }
 
         match lint_report.has_violations() {
-            true => Err(lint_report),
-            false => Ok(()),
+            true => Some(lint_report),
+            false => None,
         }
     }
 
@@ -143,6 +157,23 @@ impl PhenopacketLinter {
                     }
                     None
                 })
+            })
+            .collect::<HashSet<String>>()
+    }
+
+    fn find_non_severity(&self, phenotypic_features: &[PhenotypicFeature]) -> HashSet<String> {
+        phenotypic_features
+            .iter()
+            .filter_map(|feature_type| {
+                if let Some(f) = &feature_type.severity
+                    && !self.hpo.is_ancestor_of(
+                        &TermId::from_str(&f.id).unwrap(),
+                        &self.phenotypic_abnormality,
+                    )
+                {
+                    return Some(f.id.clone());
+                }
+                None
             })
             .collect::<HashSet<String>>()
     }
@@ -582,5 +613,22 @@ mod tests {
 
         let filtered = linter.find_non_onsets(&phenotypic_features);
         assert!(filtered.contains("HP:0002197"));
+    }
+
+    #[rstest]
+    fn test_find_non_severity(tmp_dir: TempDir) {
+        skip_in_ci!();
+
+        let linter = construct_linter(tmp_dir);
+        let phenotypic_features = vec![PhenotypicFeature {
+            severity: Some(OntologyClass {
+                id: "HP:0410401".to_string(),
+                label: "Worse in evening".to_string(),
+            }),
+            ..Default::default()
+        }];
+
+        let filtered = linter.find_non_severity(&phenotypic_features);
+        assert!(filtered.contains("HP:0410401"));
     }
 }
