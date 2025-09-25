@@ -5,6 +5,7 @@ use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 use crate::ontology::traits::OntologyRegistry;
 use crate::transform::transform_module::TransformerModule;
+use std::fmt::Debug;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -17,6 +18,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Pipeline {
     transformer_module: TransformerModule,
     loader_module: Box<dyn Loadable>,

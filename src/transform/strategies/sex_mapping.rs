@@ -73,6 +73,7 @@ use std::string::ToString;
 ///
 /// assert_eq!(cdf.data, expected_df);
 /// ```
+#[derive(Debug)]
 pub struct SexMappingStrategy {
     synonym_map: HashMap<String, String>,
 }

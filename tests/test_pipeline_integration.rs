@@ -115,7 +115,6 @@ pub fn test_pipeline_integration() {
         )),
     ];
     let res = pipeline.run(&mut data_sources);
-
     assert!(res.is_ok());
 
     let expected_phenopackets_files =

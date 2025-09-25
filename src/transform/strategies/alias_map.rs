@@ -19,6 +19,7 @@ use std::str::FromStr;
 /// # NOTE
 /// This does not transform the headers of the Dataframe.
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct AliasMapStrategy;
 
 impl AliasMapStrategy {

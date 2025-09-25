@@ -10,6 +10,7 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::rc::Rc;
 
 /// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
@@ -18,6 +19,14 @@ use std::rc::Rc;
 #[allow(dead_code)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
+}
+
+impl fmt::Debug for HPOSynonymsToPrimaryTermsStrategy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HPOSynonymsToPrimaryTermsStrategy")
+            .field("hpo_ontology", &"...") // placeholder since FullCsrOntology isn’t Debug
+            .finish()
+    }
 }
 
 impl HPOSynonymsToPrimaryTermsStrategy {
