@@ -1,5 +1,5 @@
 use crate::config::table_context::Context;
-use crate::config::table_context::Context::{HpoLabel, Living, OnsetAge, SubjectId, SubjectSex};
+use crate::config::table_context::Context::{HpoLabel, OnsetAge, SubjectId, SubjectSex, VitalStat};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
@@ -167,7 +167,7 @@ impl Collector {
         let subject_sex =
             Self::collect_single_multiplicity_element(patient_cdf, SubjectSex, patient_id)?;
         let vital_status_string =
-            Self::collect_single_multiplicity_element(patient_cdf, Living, patient_id)?;
+            Self::collect_single_multiplicity_element(patient_cdf, VitalStat, patient_id)?;
         let vital_status = match vital_status_string {
             None => None,
             Some(s) => {
@@ -243,7 +243,7 @@ impl Collector {
 #[cfg(test)]
 mod tests {
     use crate::config::table_context::Context::{
-        HpoLabel, Living, OnsetAge, SubjectId, SubjectSex,
+        HpoLabel, OnsetAge, SubjectId, SubjectSex, VitalStat,
     };
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
@@ -322,7 +322,7 @@ mod tests {
         let vital_status_sc = SeriesContext::new(
             Identifier::Regex("vital_status".to_string()),
             Context::None,
-            Living,
+            VitalStat,
             None,
             None,
             vec![],
@@ -552,7 +552,7 @@ mod tests {
             [
                 AnyValue::String("P40Y10M05D"),
                 AnyValue::Null,
-                AnyValue::String("P12Y5M028D"),
+                AnyValue::String("P12Y5M28D"),
                 AnyValue::String("P48Y4M21D"),
             ],
         );

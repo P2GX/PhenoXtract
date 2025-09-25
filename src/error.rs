@@ -24,6 +24,7 @@ impl From<anyhow::Error> for ConstructionError {
     }
 }
 
+#[derive(Debug)]
 pub enum PipelineError {
     #[allow(dead_code)]
     Extraction(ExtractionError),

@@ -53,7 +53,7 @@ pub enum Context {
     #[allow(unused)]
     SubjectSex,
     #[allow(unused)]
-    Living,
+    VitalStat,
     #[allow(unused)]
     SubjectAge,
     #[allow(unused)]
