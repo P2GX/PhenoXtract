@@ -4,36 +4,31 @@ use polars::datatypes::AnyValue;
 use polars::prelude::Column;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
-    #![allow(clippy::dbg_macro)]
-    {
-        dbg!(&col);
-        dbg!(col.dtype());
-        dbg!(col.null_count());
-        dbg!(col.name());
-    }
-
     match col {
         Column::Series(series_col) => {
-            dbg!(&series_col);
-            Ok(series_col
+            let stringified_col = series_col
                 .iter()
                 .map(|val| match val {
                     AnyValue::String(s) => s.to_string(),
                     _ => val.to_string(),
                 })
-                .collect::<Vec<String>>())
+                .collect::<Vec<String>>();
+            Ok(stringified_col)
         }
         Column::Partitioned(_partitioned_col) => Err(StrategyError(
             "Cannot currently convert partitioned columns into vectors of strings.".to_string(),
         )),
-        Column::Scalar(scalar_col) => Ok(scalar_col
-            .as_materialized_series()
-            .iter()
-            .map(|val| match val {
-                AnyValue::String(s) => s.to_string(),
-                _ => val.to_string(),
-            })
-            .collect::<Vec<String>>()),
+        Column::Scalar(scalar_col) => {
+            let stringified_col = scalar_col
+                .as_materialized_series()
+                .iter()
+                .map(|val| match val {
+                    AnyValue::String(s) => s.to_string(),
+                    _ => val.to_string(),
+                })
+                .collect::<Vec<String>>();
+            Ok(stringified_col)
+        }
     }
 }
 
