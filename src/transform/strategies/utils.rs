@@ -13,13 +13,16 @@ pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformE
     }
 
     match col {
-        Column::Series(series_col) => Ok(series_col
+        Column::Series(series_col) => {
+            dbg!(&series_col);
+            Ok(series_col
             .iter()
             .map(|val| match val {
                 AnyValue::String(s) => s.to_string(),
                 _ => val.to_string(),
             })
-            .collect::<Vec<String>>()),
+            .collect::<Vec<String>>())
+        },
         Column::Partitioned(_partitioned_col) => Err(StrategyError(
             "Cannot currently convert partitioned columns into vectors of strings.".to_string(),
         )),
