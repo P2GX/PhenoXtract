@@ -7,6 +7,7 @@ pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformE
     match col {
         Column::Series(series_col) => {
             let stringified_col = series_col
+                .rechunk()
                 .iter()
                 .map(|val| match val {
                     AnyValue::String(s) => s.to_string(),
