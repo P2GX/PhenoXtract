@@ -18,7 +18,6 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
