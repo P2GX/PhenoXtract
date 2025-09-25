@@ -92,7 +92,6 @@ impl Collector {
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
             for pf_col in pf_cols {
-                
                 let onset_col = if valid_onset_linking {
                     linked_onset_cols.first().unwrap()
                 } else {
