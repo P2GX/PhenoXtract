@@ -23,7 +23,7 @@ use std::path::PathBuf;
 #[rstest]
 pub fn test_pipeline_integration() {
     // TODO: Load pipeline from config file. Can not be done yet, because strategies are not ready to be loaded from file
-    let cohort_name = "test-cohort";
+    let cohort_name = "test_cohort";
     let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
     let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
 
