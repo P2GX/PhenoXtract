@@ -92,10 +92,7 @@ impl Collector {
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
             for pf_col in pf_cols {
-                #[allow(clippy::dbg_macro)]
-                {
-                    dbg!(&pf_col);
-                }
+                
                 let onset_col = if valid_onset_linking {
                     linked_onset_cols.first().unwrap()
                 } else {
