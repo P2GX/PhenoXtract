@@ -132,11 +132,6 @@ pub fn test_pipeline_integration() {
         let data = fs::read_to_string(pp_file_dir.unwrap().path()).unwrap();
         let pp: Phenopacket = serde_json::from_str(&data).unwrap();
         let pp_id = pp.id.clone();
-        #[allow(clippy::dbg_macro)]
-        {
-            dbg!(&pp);
-            dbg!(&expected_phenopackets.get(&pp_id)).unwrap();
-        }
         assert_eq!(pp, expected_phenopackets.get(&pp_id).unwrap().clone());
     }
 }

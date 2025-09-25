@@ -4,6 +4,13 @@ use polars::datatypes::AnyValue;
 use polars::prelude::Column;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
+    #![allow(clippy::dbg_macro)]{
+        dbg!(&col);
+        dbg!(col.dtype());
+        dbg!(col.null_count());
+        dbg!(col.name());
+    }
+
     match col {
         Column::Series(series_col) => Ok(series_col
             .iter()
