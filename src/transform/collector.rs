@@ -116,7 +116,6 @@ impl Collector {
                                 phenopacket_id
                             );
                         }
-                        continue;
                     } else {
                         let onset_te = if onset_age == "null" {
                             None
