@@ -18,6 +18,7 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Instant;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
@@ -201,10 +202,8 @@ fn test_phenoxtract_first_version(csv_context: TableContext, excel_context: Vec<
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
-
     //run the pipeline on the data sources
     let res = pipeline.run(&mut data_sources);
-    dbg!(&res);
 
     assert!(res.is_ok());
 }
