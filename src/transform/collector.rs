@@ -1,14 +1,16 @@
 use crate::config::table_context::Context;
-use crate::config::table_context::Context::{HpoLabel, Living, SubjectId, SubjectSex};
+use crate::config::table_context::Context::{HpoLabel, Living, OnsetAge, SubjectId, SubjectSex};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
+use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::VitalStatus;
+use phenopackets::schema::v2::core::time_element::Element::Age;
 use phenopackets::schema::v2::core::vital_status::Status;
-use polars::prelude::{IntoLazy, col, lit};
+use phenopackets::schema::v2::core::{Age as age_struct, TimeElement, VitalStatus};
+use polars::prelude::{Column, IntoLazy, col, lit};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -75,41 +77,83 @@ impl Collector {
         Ok(self.phenopacket_builder.build())
     }
 
+    //todo better tests after MVP, e.g. test the errors appear when they should
     fn collect_phenotypic_features(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_cols = patient_cdf.get_cols_with_data_context(HpoLabel);
+        let pf_scs = patient_cdf.get_scs_with_data_context(HpoLabel);
 
-        for pf_col in pf_cols {
-            let stringified_pf_col_no_nulls = convert_col_to_string_vec(&pf_col.drop_nulls())?;
-            for hpo_label in &stringified_pf_col_no_nulls {
-                self.phenopacket_builder
-                    .upsert_phenotypic_feature(
-                        phenopacket_id,
-                        hpo_label,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                    )
-                    .map_err(|_err| {
-                        CollectionError(format!("Error when upserting {}", pf_col.name()))
-                    })?
+        for pf_sc in pf_scs {
+            let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
+            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, OnsetAge);
+            // it is very unclear how linking would work otherwise
+            let valid_onset_linking = linked_onset_cols.len() == 1;
+
+            for pf_col in pf_cols {
+                let onset_col = if valid_onset_linking {
+                    linked_onset_cols.first().unwrap()
+                } else {
+                    &&Column::new("OnsetAge".into(), vec!["null"; pf_col.len()])
+                };
+
+                let stringified_pf_col = convert_col_to_string_vec(pf_col)?;
+                let stringified_onset_col = convert_col_to_string_vec(onset_col)?;
+
+                let pf_onset_pairs: Vec<(&String, &String)> = stringified_pf_col
+                    .iter()
+                    .zip(stringified_onset_col.iter())
+                    .collect();
+
+                for (hpo_label, onset_age) in pf_onset_pairs {
+                    if hpo_label == "null" {
+                        if onset_age != "null" {
+                            warn!(
+                                "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
+                                onset_age,
+                                patient_cdf.context().name,
+                                phenopacket_id
+                            );
+                        }
+                    } else {
+                        let onset_te = if onset_age == "null" {
+                            None
+                        } else {
+                            Some(TimeElement {
+                                element: Some(Age(age_struct {
+                                    iso8601duration: onset_age.to_string(),
+                                })),
+                            })
+                        };
+
+                        self.phenopacket_builder
+                            .upsert_phenotypic_feature(
+                                phenopacket_id,
+                                hpo_label,
+                                None,
+                                None,
+                                None,
+                                None,
+                                onset_te,
+                                None,
+                                None,
+                            )
+                            .map_err(|_err| {
+                                CollectionError(format!(
+                                    "Error when upserting HPO term {} in column {}",
+                                    hpo_label,
+                                    pf_col.name()
+                                ))
+                            })?;
+                    }
+                }
             }
         }
 
         // todo deal with other types of pf col
-        /*let pf_observation_cols = patient_cdf.get_cols_with_header_and_data_context(HpoLabel,ObservationStatus);*/
-        /*let multi_pf_cols = patient_cdf.get_cols_with_data_context(MultiHpoLabel);*/
-
-        // todo deal with onset, severity etc.
-        // todo I think this will involve refactoring linking a lot, if we want to do this well and logically
-        /*let onset_scs = patient_cdf.get_cols_with_data_context(Onset);*/
+        //ideally we will create a multi_pf col to several single_pf cols strategy
+        //and we also want to deal with pf columns with observation status as data context
 
         Ok(())
     }
@@ -198,7 +242,9 @@ impl Collector {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::{HpoLabel, Living, Onset, SubjectId, SubjectSex};
+    use crate::config::table_context::Context::{
+        HpoLabel, Living, OnsetAge, SubjectId, SubjectSex,
+    };
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -209,9 +255,11 @@ mod tests {
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
-        Individual, OntologyClass, PhenotypicFeature, Sex, VitalStatus,
+        Age as age_struct, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
+        VitalStatus,
     };
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
@@ -253,15 +301,15 @@ mod tests {
             HpoLabel,
             None,
             None,
-            vec![],
+            vec![Identifier::Regex("onset_age".to_string())],
         );
         let onset_sc = SeriesContext::new(
             Identifier::Regex("onset_age".to_string()),
             Context::None,
-            Onset,
+            OnsetAge,
             None,
             None,
-            vec![],
+            vec![Identifier::Regex("phenotypic_features".to_string())],
         );
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
@@ -292,6 +340,11 @@ mod tests {
                 id: "HP:0002090".to_string(),
                 label: "Pneumonia".to_string(),
             }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P40Y10M05D".to_string(),
+                })),
+            }),
             ..Default::default()
         }
     }
@@ -303,6 +356,11 @@ mod tests {
                 id: "HP:0002099".to_string(),
                 label: "Asthma".to_string(),
             }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P12Y5M028D".to_string(),
+                })),
+            }),
             ..Default::default()
         }
     }
@@ -313,6 +371,11 @@ mod tests {
             r#type: Some(OntologyClass {
                 id: "HP:0033327".to_string(),
                 label: "Nail psoriasis".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P48Y4M21D".to_string(),
+                })),
             }),
             ..Default::default()
         }
@@ -359,11 +422,11 @@ mod tests {
         let onset_col = Column::new(
             "onset_age".into(),
             [
-                AnyValue::Int32(15),
+                AnyValue::String("P40Y10M05D"),
                 AnyValue::Null,
-                AnyValue::Int32(65),
-                AnyValue::Int32(82),
-                AnyValue::Int32(20),
+                AnyValue::String("P12Y5M028D"),
+                AnyValue::String("P48Y4M21D"),
+                AnyValue::Null,
                 AnyValue::Null,
             ],
         );
@@ -487,10 +550,10 @@ mod tests {
         let onset_col = Column::new(
             "onset_age".into(),
             [
-                AnyValue::Int32(15),
+                AnyValue::String("P40Y10M05D"),
                 AnyValue::Null,
-                AnyValue::Int32(65),
-                AnyValue::Int32(82),
+                AnyValue::String("P12Y5M028D"),
+                AnyValue::String("P48Y4M21D"),
             ],
         );
         let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
