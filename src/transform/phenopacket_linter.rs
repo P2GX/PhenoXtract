@@ -63,11 +63,7 @@ impl PhenopacketLinter {
             onsets: TermId::from_str("HP:0003674").unwrap(),
         }
     }
-    pub fn lint(
-        &self,
-        phenopackets: &mut [Phenopacket],
-        fix: bool,
-    ) -> Result<LintReport, LintReport> {
+    pub fn lint(&self, phenopackets: &mut [Phenopacket], fix: bool) -> Result<(), LintReport> {
         let lint_report = LintReport::new();
 
         for pp in phenopackets {
@@ -85,7 +81,7 @@ impl PhenopacketLinter {
 
         match lint_report.has_violations() {
             true => Err(lint_report),
-            false => Ok(lint_report),
+            false => Ok(()),
         }
     }
 
