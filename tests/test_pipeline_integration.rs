@@ -104,7 +104,7 @@ pub fn test_pipeline_integration() {
                     SeriesContext::new(
                         Identifier::Regex("4".to_string()),
                         Default::default(),
-                        Context::Onset,
+                        Context::OnsetAge,
                         None,
                         None,
                         vec![],
