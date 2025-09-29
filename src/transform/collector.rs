@@ -82,11 +82,12 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(&HpoLabel);
+        let pf_scs = patient_cdf.get_scs_with_data_context(&Context::HpoLabel);
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, &OnsetAge);
+            let linked_onset_cols =
+                patient_cdf.get_linked_cols_with_data_context(pf_sc, &Context::OnsetAge);
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 

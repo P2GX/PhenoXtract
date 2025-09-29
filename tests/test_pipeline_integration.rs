@@ -10,9 +10,9 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::GithubOntologyRegistry;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
-use phenoxtract::transform::strategies::{
-    AliasMapStrategy, HPOSynonymsToPrimaryTermsStrategy, SexMappingStrategy,
-};
+use phenoxtract::transform::strategies::alias_map::AliasMapStrategy;
+use phenoxtract::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
+use phenoxtract::transform::strategies::mapping::MappingStrategy;
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use rstest::{fixture, rstest};
@@ -183,7 +183,7 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(HPOSynonymsToPrimaryTermsStrategy::new(hpo.clone())),
-        Box::new(SexMappingStrategy::default()),
+        Box::new(MappingStrategy::default_sex_mapping_strategy()),
     ];
 
     //Create the pipeline
