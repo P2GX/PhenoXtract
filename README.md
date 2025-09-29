@@ -18,7 +18,7 @@ It provides a flexible configuration-driven approach to map clinical cohort data
 - **Transform**
  - Context-driven table interpretation (`TableContext`, `SeriesContext`).
  - Maps raw values into Phenopacket semantic fields (HPO IDs, subject sex, ages, etc.).
- - Transformation strategies like alias mapping, filling missing values, and column linking.
+ - Transformation strategies such as alias mapping, where cell values are mapped to other aliases (e.g. "M" to "Male"), and strategies to find HPO synonyms of cell values.
  - Integrated with ontologies via **Ontolius** and the **HPO GitHub registry**.
 
 - **Load**
