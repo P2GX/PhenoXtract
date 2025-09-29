@@ -167,12 +167,27 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(dead_code)]
-    pub fn get_cols_with_data_context(&self, data_context: Context) -> Vec<&Column> {
+    pub fn get_cols_with_contexts(
+        &self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> Vec<&Column> {
         self.context()
             .context
             .iter()
             .filter_map(|sc| {
                 if sc.get_data_context() == data_context {
+                if sc.get_data_context() == *data_context
+                    && sc.get_header_context() == *header_context
+                {
+                    Some(self.get_columns(&sc.identifier))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect::<Vec<&Column>>()
+    }
                     Some(self.get_columns(&sc.identifier))
                 } else {
                     None
@@ -405,6 +420,24 @@ mod tests {
         );
         assert_eq!(
             cdf.get_cols_with_data_context(Context::SubjectAge),
+            vec![cdf.data.column("age").unwrap()]
+        );
+    }
+
+    #[rstest]
+    fn test_get_cols_with_contexts() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        assert_eq!(
+            cdf.get_cols_with_contexts(&Context::None, &Context::SubjectId),
+            vec![
+                cdf.data.column("user.name").unwrap(),
+                cdf.data.column("different").unwrap()
+            ]
+        );
+        assert_eq!(
+            cdf.get_cols_with_data_context(&Context::SubjectAge),
             vec![cdf.data.column("age").unwrap()]
         );
     }
