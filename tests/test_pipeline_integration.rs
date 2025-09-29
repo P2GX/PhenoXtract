@@ -204,10 +204,10 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
-    //run the pipeline on the data sources
+    //Run the pipeline on the data sources
     let res = pipeline.run(&mut data_sources);
 
-    //check that everything was as expected
+    //Check that everything was as expected
     assert!(res.is_ok());
 
     let expected_phenopackets_files =
