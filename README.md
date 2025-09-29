@@ -89,19 +89,19 @@ data_sources:
  has_headers: true
  patients_are_rows: true
  context:
- name: "patient_table"
- context:
- - identifier: "patient_id"
- header_context: subject_id
- data_context: hpo_label
- alias_map:
- "M": "Male"
- "F": "Female"
+  name: "patient_table"
+  context:
+   - identifier: "patient_id"
+  header_context: subject_id
+  data_context: hpo_label
+  alias_map:
+   "M": "Male"
+   "F": "Female"
 
 pipeline:
  transform_strategies:
- - "alias_mapping"
- - "fill_null"
+  - "alias_mapping"
+  - "fill_null"
  loader: "file_system"
 
 meta_data:
