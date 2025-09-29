@@ -1,6 +1,6 @@
 # PhenoXtract
 
-**PhenoXtract** is a configurable **ETL (Extract-Transform-Load) pipeline and library** written in Rust for converting structured tabular data sources (CSV, Excel, and potentially others) into **[Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/)**.
+**PhenoXtract** is a configurable **ETL (Extract-Transform-Load) pipeline and crate** written in Rust for converting structured tabular data sources (CSV, Excel, and potentially others) into **[Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/)**.
 
 It provides a flexible configuration-driven approach to map clinical cohort data into standardized, ontology-aware **Phenopacket JSON objects**, ready for downstream analysis, sharing, or storage.
 
