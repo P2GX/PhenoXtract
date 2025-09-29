@@ -1,4 +1,4 @@
-use crate::config::table_context::Context::HpoLabel;
+use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
@@ -28,7 +28,7 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(HpoLabel, DataType::String)
+        table.check_contexts_have_data_type(&Context::None, &Context::HpoLabel, &DataType::String)
     }
 
     fn internal_transform(
@@ -39,7 +39,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
 
         let hpo_label_cols: Vec<Column> = table
-            .get_cols_with_data_context(HpoLabel)
+            .get_cols_with_data_context(&Context::HpoLabel)
             .into_iter()
             .cloned()
             .collect();
