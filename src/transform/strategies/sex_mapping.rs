@@ -11,6 +11,32 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
+/// A strategy for mapping string values to standardized terms using a synonym dictionary.
+///
+/// `MappingStrategy` transforms data by replacing cell values with their corresponding
+/// mapped values from a synonym map. It's commonly used for data normalization tasks
+/// such as standardizing gender/sex values, categorical data, or controlled vocabulary.
+///
+/// # Fields
+///
+/// * `synonym_map` - A mapping from input values (lowercase, trimmed) to their standardized output values
+/// * `data_context` - The context type of the data being transformed (e.g., `Context::SubjectSex`)
+/// * `header_context` - The context type of the column headers to match
+/// * `column_dtype` - The expected data type of the input columns
+/// * `out_dtype` - The desired data type of the output columns after mapping
+///
+/// # Example
+///
+/// ```ignore
+/// let sex_mapping = MappingStrategy::default_sex_mapping_strategy();
+/// // Maps variations like "m", "male", "man" → "MALE"
+/// // and "f", "female", "woman" → "FEMALE"
+/// ```
+///
+/// # Errors
+///
+/// Returns `TransformError::MappingError` if any values in the data cannot be found
+/// in the synonym map, providing details about unmapped values and suggestions.
 struct MappingStrategy {
     synonym_map: HashMap<String, String>,
     data_context: Context,
