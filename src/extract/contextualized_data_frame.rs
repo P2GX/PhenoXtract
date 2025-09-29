@@ -120,11 +120,12 @@ impl ContextualizedDataFrame {
     //todo test after MVP
     pub fn check_contexts_have_data_type(
         &self,
-        data_context: Context,
-        desired_dtype: DataType,
+        header_context: &Context,
+        data_context: &Context,
+        desired_dtype: &DataType,
     ) -> bool {
-        let columns = self.get_cols_with_data_context(data_context.clone());
-        let contexts_have_desired_dtype = columns.iter().all(|col| col.dtype() == &desired_dtype);
+        let columns = self.get_cols_with_contexts(header_context, data_context);
+        let contexts_have_desired_dtype = columns.iter().all(|col| col.dtype() == desired_dtype);
 
         if !contexts_have_desired_dtype {
             warn!(
@@ -138,7 +139,7 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    ///The column col_name will be replaced with the data inside the vector transformed_vec
+    /// The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(
         &mut self,
         transformed_vec: Vec<T>,
@@ -152,7 +153,7 @@ impl ContextualizedDataFrame {
         let transform_result = self
             .data_mut()
             .replace(col_name, transformed_series)
-            .map_err(|_e| {
+            .map_err(|_| {
                 StrategyError(
                     format!(
                         "Could not insert transformed column {col_name} into table {table_name}."
@@ -167,7 +168,29 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(dead_code)]
-    pub fn get_cols_with_data_context(&self, data_context: Context) -> Vec<&Column> {
+    pub fn get_cols_with_contexts(
+        &self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> Vec<&Column> {
+        self.context()
+            .context
+            .iter()
+            .filter_map(|sc| {
+                if sc.get_data_context() == data_context
+                    && sc.get_header_context() == header_context
+                {
+                    Some(self.get_columns(&sc.identifier))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect::<Vec<&Column>>()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_cols_with_data_context(&self, data_context: &Context) -> Vec<&Column> {
         self.context()
             .context
             .iter()
@@ -183,7 +206,7 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_cols_with_header_context(&self, header_context: Context) -> Vec<&Column> {
+    pub fn get_cols_with_header_context(&self, header_context: &Context) -> Vec<&Column> {
         self.context()
             .context
             .iter()
@@ -199,7 +222,7 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_scs_with_data_context(&self, data_context: Context) -> Vec<&SeriesContext> {
+    pub fn get_scs_with_data_context(&self, data_context: &Context) -> Vec<&SeriesContext> {
         self.context
             .context
             .iter()
@@ -212,7 +235,7 @@ impl ContextualizedDataFrame {
     pub fn get_linked_cols_with_data_context(
         &self,
         sc: &SeriesContext,
-        data_context: Context,
+        data_context: &Context,
     ) -> Vec<&Column> {
         let linked_scs = sc
             .linked_to
@@ -397,14 +420,32 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
         assert_eq!(
-            cdf.get_cols_with_data_context(Context::SubjectId),
+            cdf.get_cols_with_data_context(&Context::SubjectId),
             vec![
                 cdf.data.column("user.name").unwrap(),
                 cdf.data.column("different").unwrap()
             ]
         );
         assert_eq!(
-            cdf.get_cols_with_data_context(Context::SubjectAge),
+            cdf.get_cols_with_data_context(&Context::SubjectAge),
+            vec![cdf.data.column("age").unwrap()]
+        );
+    }
+
+    #[rstest]
+    fn test_get_cols_with_contexts() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        assert_eq!(
+            cdf.get_cols_with_contexts(&Context::None, &Context::SubjectId),
+            vec![
+                cdf.data.column("user.name").unwrap(),
+                cdf.data.column("different").unwrap()
+            ]
+        );
+        assert_eq!(
+            cdf.get_cols_with_data_context(&Context::SubjectAge),
             vec![cdf.data.column("age").unwrap()]
         );
     }
@@ -415,7 +456,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
         assert_eq!(
-            cdf.get_cols_with_header_context(Context::HpoLabel),
+            cdf.get_cols_with_header_context(&Context::HpoLabel),
             vec![
                 cdf.data.column("bronchitis").unwrap(),
                 cdf.data.column("overweight").unwrap()
