@@ -1,0 +1,12 @@
+{
+  "id": "my_cohort-P004",
+  "subject": {
+    "id": "P004",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "MALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  }
+}
