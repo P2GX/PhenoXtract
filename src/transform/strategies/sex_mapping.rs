@@ -1,79 +1,16 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
-use crate::transform::strategies::utils::convert_col_to_string_vec;
+
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
-use polars::prelude::{AnyValue, ChunkApply, ChunkCast, Column, StringChunked};
+use polars::prelude::ChunkCast;
 use std::any::type_name;
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::fmt::format;
 use std::string::ToString;
 
-/// A transformation strategy to map various string representations of sex to the
-/// standardized `phenopackets::schema::v2::core::Sex` enum string representation.
-///
-/// This strategy identifies columns annotated with `Context::SubjectSex` and attempts
-/// to convert their string values into a standard format (e.g., "MALE", "FEMALE").
-/// It uses an internal `HashMap` for the mappings.
-///
-/// # Fields
-///
-/// * `map`: A `HashMap<String, String>` where the key is the input string (e.g., "m", "female")
-///   and the value is the standardized string from the `phenopackets::schema::v2::core::Sex` enum
-///   (e.g., "MALE", "FEMALE").
-///
-/// # Behavior
-///
-/// - The strategy processes each column identified by `Context::SubjectSex`.
-/// - For each value in the column, it converts the value to lowercase before looking it up in the map.
-/// - If a mapping is found, the original value is replaced with the standardized value.
-/// - If no mapping is found, the value will be left unchanged, and an Err will be returned once the strategy has been applied to every SubjectSex column.
-///
-/// # Examples
-///
-/// The `default()` constructor provides a common set of mappings.
-///
-/// ```ignore
-/// use crate::transform::sex_mapping::SexMappingStrategy;
-/// use crate::transform::traits::Strategy;
-/// use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-/// use crate::config::table_context::{TableContext, Context};
-/// use polars::prelude::*;
-/// use std::collections::HashMap;
-///
-/// // Assume we have a DataFrame like this
-/// let df = df! {
-///     "patient_id" => &[1, 2, 3, 4],
-///     "gender" => &["m", "female", "MAN"],
-/// }.unwrap();
-///
-/// // And a context mapping the "gender" column to SubjectSex
-/// let mut table_context = TableContext::new("patients".to_string(), context: vec![SeriesContext::new(
-///                     Identifier::Regex("gender".to_string()),
-///                     Context::None,
-///                     Context::SubjectSex,
-///                     None,
-///                     None,
-///                     vec![],
-///                 )]);
-/// let mut cdf = ContextualizedDataFrame::new(df, table_context);
-///
-/// // Create and apply the strategy
-/// let strategy = SexMappingStrategy::default();
-/// strategy.transform(&mut cdf).unwrap();
-///
-/// // The "gender" column is now standardized
-/// let expected_df = df! {
-///     "patient_id" => &[1, 2, 3, 4],
-///     "gender" => &[Some("MALE"), Some("FEMALE"), Some("MALE")],
-/// }.unwrap();
-///
-/// assert_eq!(cdf.data, expected_df);
-/// ```
 struct MappingStrategy {
     synonym_map: HashMap<String, String>,
     data_context: Context,
@@ -302,7 +239,7 @@ mod tests {
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
         let err = strategy.transform(&mut table);
-        dbg!(&err);
+
         match err {
             Err(TransformError::MappingError {
                 strategy_name,
