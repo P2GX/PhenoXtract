@@ -86,7 +86,8 @@ impl Collector {
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, Context::OnsetAge);
+            let linked_onset_cols =
+                patient_cdf.get_linked_cols_with_data_context(pf_sc, Context::OnsetAge);
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
@@ -163,10 +164,16 @@ impl Collector {
         phenopacket_id: &str,
         patient_id: &str,
     ) -> Result<(), TransformError> {
-        let subject_sex =
-            Self::collect_single_multiplicity_element(patient_cdf, Context::SubjectSex, patient_id)?;
-        let vital_status_string =
-            Self::collect_single_multiplicity_element(patient_cdf, Context::VitalStatus, patient_id)?;
+        let subject_sex = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::SubjectSex,
+            patient_id,
+        )?;
+        let vital_status_string = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::VitalStatus,
+            patient_id,
+        )?;
         let vital_status = match vital_status_string {
             None => None,
             Some(s) => {

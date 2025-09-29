@@ -1,3 +1,4 @@
+use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
 use phenoxtract::config::table_context::{
     AliasMap, Context, Identifier, SeriesContext, TableContext,
@@ -18,7 +19,6 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use phenopackets::schema::v2::Phenopacket;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
@@ -154,12 +154,8 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     let cohort_name = "my_cohort";
     let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
     let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
-    let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-        PathBuf::from(file!())
-            .parent()
-            .unwrap()
-            .join("assets"),
-    );
+    let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
     //Configure data sources and contexts
     let csv_path = assets_path.clone().join("csv_data.csv");
@@ -224,6 +220,9 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
         let data = fs::read_to_string(extracted_pp_file.unwrap().path()).unwrap();
         let extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
         let extracted_pp_id = extracted_pp.id.clone();
-        assert_eq!(extracted_pp, expected_phenopackets.get(&extracted_pp_id).unwrap().clone());
+        assert_eq!(
+            extracted_pp,
+            expected_phenopackets.get(&extracted_pp_id).unwrap().clone()
+        );
     }
 }
