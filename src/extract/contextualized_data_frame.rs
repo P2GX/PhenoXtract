@@ -472,11 +472,27 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         //check it can recognise true positives
-        assert!(cdf.check_contexts_have_data_type(&Context::None, &Context::SubjectId,&DataType::String));
-        assert!(cdf.check_contexts_have_data_type(&Context::None, &Context::SubjectAge,&DataType::Int32));
+        assert!(cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectId,
+            &DataType::String
+        ));
+        assert!(cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectAge,
+            &DataType::Int32
+        ));
 
         //check it can recognise true negatives
-        assert!(!cdf.check_contexts_have_data_type(&Context::HpoLabel, &Context::ObservationStatus,&DataType::Float64));
-        assert!(!cdf.check_contexts_have_data_type(&Context::None, &Context::SubjectId,&DataType::Boolean));
+        assert!(!cdf.check_contexts_have_data_type(
+            &Context::HpoLabel,
+            &Context::ObservationStatus,
+            &DataType::Float64
+        ));
+        assert!(!cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectId,
+            &DataType::Boolean
+        ));
     }
 }
