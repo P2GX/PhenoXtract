@@ -2,16 +2,16 @@
 use crate::transform::error::TransformError;
 use anyhow::anyhow;
 use log::warn;
-use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::ontology::OntologyTerms;
+use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::simple::SimpleTerm;
 use ontolius::term::{MinimalTerm, Synonymous};
 use ontolius::{Identified, TermId};
+use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::Evidence;
 use phenopackets::schema::v2::core::{
     Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
-use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -245,8 +245,8 @@ mod tests {
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
     use crate::skip_in_ci;
-    use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::Age as age_struct;
+    use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
     use tempfile::TempDir;
 
