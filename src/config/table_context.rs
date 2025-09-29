@@ -163,16 +163,16 @@ impl SeriesContext {
         }
     }
 
-    pub fn get_identifier(&self) -> Identifier {
-        self.identifier.clone()
+    pub fn get_identifier(&self) -> &Identifier {
+        &self.identifier
     }
 
-    pub fn get_header_context(&self) -> Context {
-        self.header_context.clone()
+    pub fn get_header_context(&self) -> &Context {
+        &self.header_context
     }
 
-    pub fn get_data_context(&self) -> Context {
-        self.data_context.clone()
+    pub fn get_data_context(&self) -> &Context {
+        &self.data_context
     }
 
     #[allow(dead_code)]
