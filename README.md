@@ -133,8 +133,7 @@ The project includes extensive **unit tests** using [`rstest`](https://crates.io
 Run tests with:
 
 ```bash
-cargo test
-```
+cargo nextest run --workspace --lib --all-targets --all-features
 
 ---
 
