@@ -86,7 +86,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                 SeriesContext::new(
                     Identifier::Regex("Living".to_string()),
                     Default::default(),
-                    Context::VitalStat,
+                    Context::VitalStatus,
                     None,
                     Some(vital_status_aliases),
                     vec![],

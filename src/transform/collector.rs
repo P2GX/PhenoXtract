@@ -1,5 +1,4 @@
 use crate::config::table_context::Context;
-use crate::config::table_context::Context::{HpoLabel, OnsetAge, SubjectId, SubjectSex, VitalStat};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
@@ -32,7 +31,7 @@ impl Collector {
         cdfs: &[ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf.get_cols_with_data_context(SubjectId);
+            let subject_id_cols = cdf.get_cols_with_data_context(Context::SubjectId);
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
                     "Multiple SubjectID columns were found in table {}.",
@@ -83,11 +82,11 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(HpoLabel);
+        let pf_scs = patient_cdf.get_scs_with_data_context(Context::HpoLabel);
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, OnsetAge);
+            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, Context::OnsetAge);
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
@@ -165,9 +164,9 @@ impl Collector {
         patient_id: &str,
     ) -> Result<(), TransformError> {
         let subject_sex =
-            Self::collect_single_multiplicity_element(patient_cdf, SubjectSex, patient_id)?;
+            Self::collect_single_multiplicity_element(patient_cdf, Context::SubjectSex, patient_id)?;
         let vital_status_string =
-            Self::collect_single_multiplicity_element(patient_cdf, VitalStat, patient_id)?;
+            Self::collect_single_multiplicity_element(patient_cdf, Context::VitalStatus, patient_id)?;
         let vital_status = match vital_status_string {
             None => None,
             Some(s) => {
@@ -242,9 +241,6 @@ impl Collector {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::{
-        HpoLabel, OnsetAge, SubjectId, SubjectSex, VitalStat,
-    };
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -290,7 +286,7 @@ mod tests {
         let id_sc = SeriesContext::new(
             Identifier::Regex("subject_id".to_string()),
             Context::None,
-            SubjectId,
+            Context::SubjectId,
             None,
             None,
             vec![],
@@ -298,7 +294,7 @@ mod tests {
         let pf_sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
             Context::None,
-            HpoLabel,
+            Context::HpoLabel,
             None,
             None,
             vec![Identifier::Regex("onset_age".to_string())],
@@ -306,7 +302,7 @@ mod tests {
         let onset_sc = SeriesContext::new(
             Identifier::Regex("onset_age".to_string()),
             Context::None,
-            OnsetAge,
+            Context::OnsetAge,
             None,
             None,
             vec![Identifier::Regex("phenotypic_features".to_string())],
@@ -314,7 +310,7 @@ mod tests {
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
             Context::None,
-            SubjectSex,
+            Context::SubjectSex,
             None,
             None,
             vec![],
@@ -322,7 +318,7 @@ mod tests {
         let vital_status_sc = SeriesContext::new(
             Identifier::Regex("vital_status".to_string()),
             Context::None,
-            VitalStat,
+            Context::VitalStatus,
             None,
             None,
             vec![],
