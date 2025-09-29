@@ -4,8 +4,8 @@ use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::{debug, info};
-use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontolius::ontology::OntologyTerms;
 use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
@@ -16,6 +16,7 @@ use std::rc::Rc;
 /// for each of these columns, it will check if the cells contain a HPO term synonym. If they do, it will change them to the Primary HPO term.
 /// If any of the cells do not contain a HPO term synonym, then it will return an error.
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
 }

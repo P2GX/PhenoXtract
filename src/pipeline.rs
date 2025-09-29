@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct Pipeline {
     transformer_module: TransformerModule,
     loader_module: Box<dyn Loadable>,
