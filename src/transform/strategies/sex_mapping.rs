@@ -1,15 +1,16 @@
+use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
-use crate::transform::traits::Strategy;
-use std::any::type_name;
-
-use crate::config::table_context::Context::SubjectSex;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
+use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
-use polars::prelude::{AnyValue, Column};
+use polars::prelude::{AnyValue, ChunkApply, ChunkCast, Column, StringChunked};
+use std::any::type_name;
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::fmt::format;
 use std::string::ToString;
 
 /// A transformation strategy to map various string representations of sex to the
@@ -73,106 +74,129 @@ use std::string::ToString;
 ///
 /// assert_eq!(cdf.data, expected_df);
 /// ```
-struct SexMappingStrategy {
+struct MappingStrategy {
     synonym_map: HashMap<String, String>,
+    data_context: Context,
+    header_context: Context,
+    column_dtype: DataType,
+    out_dtype: DataType,
 }
 
-impl SexMappingStrategy {
-    pub fn add_alias(&mut self, alias: String, term: Sex) {
-        let term = term.as_str_name().to_string();
-        self.synonym_map.insert(alias.trim().to_lowercase(), term);
+impl MappingStrategy {
+    #[allow(unused)]
+    pub fn add_alias(&mut self, alias: &str, term: &str) {
+        self.synonym_map
+            .insert(alias.trim().to_lowercase(), term.to_string());
     }
 
-    fn default_synonym_map() -> HashMap<String, Sex> {
-        HashMap::from([
-            ("m".to_string(), Sex::Male),
-            ("f".to_string(), Sex::Female),
-            ("male".to_string(), Sex::Male),
-            ("female".to_string(), Sex::Female),
-            ("man".to_string(), Sex::Male),
-            ("woman".to_string(), Sex::Female),
-            ("diverse".to_string(), Sex::OtherSex),
-            ("intersex".to_string(), Sex::OtherSex),
-            ("other".to_string(), Sex::OtherSex),
-        ])
-    }
-    #[allow(dead_code)]
-    pub fn new(map: HashMap<String, Sex>) -> Self {
-        let mut strategy = Self {
-            synonym_map: HashMap::new(),
-        };
-        map.iter().for_each(|(k, v)| {
-            strategy.add_alias(k.clone(), v.to_owned());
-        });
-
-        SexMappingStrategy::default_synonym_map()
-            .iter()
-            .for_each(|(k, v)| {
-                strategy.add_alias(k.clone(), v.to_owned());
-            });
-
-        strategy
+    #[allow(unused)]
+    fn default_sex_mapping_strategy() -> MappingStrategy {
+        MappingStrategy::new(
+            HashMap::from([
+                ("m".to_string(), Sex::Male.as_str_name().to_string()),
+                ("f".to_string(), Sex::Female.as_str_name().to_string()),
+                ("male".to_string(), Sex::Male.as_str_name().to_string()),
+                ("female".to_string(), Sex::Female.as_str_name().to_string()),
+                ("man".to_string(), Sex::Male.as_str_name().to_string()),
+                ("woman".to_string(), Sex::Female.as_str_name().to_string()),
+                (
+                    "diverse".to_string(),
+                    Sex::OtherSex.as_str_name().to_string(),
+                ),
+                (
+                    "intersex".to_string(),
+                    Sex::OtherSex.as_str_name().to_string(),
+                ),
+                ("other".to_string(), Sex::OtherSex.as_str_name().to_string()),
+            ]),
+            Context::SubjectSex,
+            Context::None,
+            DataType::String,
+            DataType::String,
+        )
     }
     #[allow(dead_code)]
-    pub fn default() -> Self {
-        SexMappingStrategy::new(Self::default_synonym_map())
+    pub fn new(
+        synonym_map: HashMap<String, String>,
+        data_context: Context,
+        header_context: Context,
+        column_dtype: DataType,
+        out_dtype: DataType,
+    ) -> Self {
+        Self {
+            synonym_map,
+            data_context,
+            header_context,
+            column_dtype,
+            out_dtype,
+        }
     }
 }
 
-impl Strategy for SexMappingStrategy {
+impl Strategy for MappingStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(SubjectSex, DataType::String)
+        table.check_contexts_have_data_type(
+            &self.header_context,
+            &self.data_context,
+            &self.column_dtype,
+        )
     }
 
     fn internal_transform(
         &self,
         table: &mut ContextualizedDataFrame,
     ) -> Result<(), TransformError> {
-        let table_name = &table.context().name.clone();
-        info!("Applying SexMapping strategy to table: {table_name}");
+        info!(
+            "Applying SexMapping strategy to table: {}",
+            table.context().name
+        );
 
-        let subject_sex_cols: Vec<Column> = table
-            .get_cols_with_data_context(SubjectSex)
-            .into_iter()
-            .cloned()
+        let col_names: Vec<String> = table
+            .get_cols_with_contexts(&self.header_context, &self.data_context)
+            .iter()
+            .map(|col| col.name().to_string())
             .collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        for col in &subject_sex_cols {
-            let stringified_col = convert_col_to_string_vec(col)?;
+        for col_name in col_names {
+            let col = table.data.column(&col_name).unwrap();
+            let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
+                if cell_value.is_empty() {
+                    return cell_value;
+                }
 
-            let mapped_column: Vec<AnyValue> = stringified_col
-                .iter()
-                .map(|cell_term| {
-                    if cell_term == "null" {
-                        AnyValue::Null
-                    } else {
-                        match self.synonym_map.get(cell_term.to_lowercase().trim()) {
-                            Some(alias) => {
-                                debug!("Converted {cell_term} to {alias}");
-                                AnyValue::String(alias)
-                            }
-                            None => {
-                                warn!("Unable to convert sex '{cell_term}'");
-                                error_info.insert(MappingErrorInfo {
-                                    column: col.name().to_string(),
-                                    table: table.context().clone().name,
-                                    old_value: cell_term.clone(),
-                                    possible_mappings: MappingSuggestion::from_hashmap(
-                                        &self.synonym_map,
-                                    ),
-                                });
-                                AnyValue::String(cell_term)
-                            }
-                        }
+                match self.synonym_map.get(cell_value.to_lowercase().trim()) {
+                    Some(alias) => {
+                        debug!("Converted '{cell_value}' to '{alias}'");
+                        alias
                     }
-                })
-                .collect();
-            table.replace_column(mapped_column, col.name())?;
-        }
+                    None => {
+                        warn!("Unable to convert map '{cell_value}'");
+                        error_info.insert(MappingErrorInfo {
+                            column: col.name().to_string(),
+                            table: table.context().clone().name,
+                            old_value: cell_value.to_string(),
+                            possible_mappings: MappingSuggestion::from_hashmap(&self.synonym_map),
+                        });
+                        cell_value
+                    }
+                }
+            });
 
-        // return an error if not every cell term could be parsed
+            table
+                .data
+                .replace(
+                    &col_name,
+                    mapped_column.cast(&self.out_dtype).map_err(|_| {
+                        TransformError::StrategyError(format!(
+                            "Unable to cast column from {} to {}",
+                            self.column_dtype, self.out_dtype
+                        ))
+                    })?,
+                )
+                .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+        }
         if !error_info.is_empty() {
             Err(TransformError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
@@ -223,7 +247,7 @@ mod tests {
             .collect()
             .unwrap();
         table.data = filtered_table;
-        let strategy = SexMappingStrategy::default();
+        let strategy = MappingStrategy::default_sex_mapping_strategy();
 
         strategy.transform(&mut table).unwrap();
 
@@ -252,19 +276,40 @@ mod tests {
     }
 
     #[rstest]
+    fn test_float_cast() {
+        let mut table = make_test_dataframe();
+        let filtered_table = table
+            .data
+            .lazy()
+            .filter(col("sex").eq(lit("male")))
+            .collect()
+            .unwrap();
+        table.data = filtered_table;
+        let mut strategy = MappingStrategy::default_sex_mapping_strategy();
+        strategy.synonym_map = HashMap::from([("male".to_string(), "5.6".to_string())]);
+        strategy.out_dtype = DataType::Float64;
+
+        strategy.transform(&mut table).unwrap();
+        assert_eq!(
+            table.data.column("sex").unwrap().dtype(),
+            &strategy.out_dtype
+        );
+    }
+
+    #[rstest]
     fn test_sex_mapping_strategy_err() {
         let mut table = make_test_dataframe();
-        let strategy = SexMappingStrategy::default();
+        let strategy = MappingStrategy::default_sex_mapping_strategy();
 
         let err = strategy.transform(&mut table);
-
+        dbg!(&err);
         match err {
             Err(TransformError::MappingError {
                 strategy_name,
                 mut info,
             }) => {
                 let i = info.pop().unwrap();
-                assert_eq!(strategy_name, "SexMappingStrategy");
+                assert_eq!(strategy_name, "MappingStrategy");
                 assert_eq!(i.old_value, "mole");
                 assert_eq!(i.column, "sex");
                 assert_eq!(i.table, "TestTable");
@@ -299,38 +344,6 @@ mod tests {
                 "mole",
                 "",
             ]
-        );
-    }
-
-    #[rstest]
-    fn test_new_constructor_with_custom_and_default_mappings() {
-        let mut user_map = HashMap::new();
-        user_map.insert("gentleman".to_string(), Sex::Male);
-
-        let strategy = SexMappingStrategy::new(user_map);
-
-        assert_eq!(
-            strategy.synonym_map.get("gentleman"),
-            Some(&"MALE".to_string())
-        );
-
-        assert_eq!(strategy.synonym_map.get("f"), Some(&"FEMALE".to_string()));
-        assert_eq!(strategy.synonym_map.get("m"), Some(&"MALE".to_string()));
-        assert_eq!(
-            strategy.synonym_map.len(),
-            SexMappingStrategy::default_synonym_map().len() + 1
-        );
-    }
-
-    #[rstest]
-    fn test_new_constructor_with_empty_map() {
-        let user_map: HashMap<String, Sex> = HashMap::new();
-
-        let strategy = SexMappingStrategy::new(user_map);
-
-        assert_eq!(
-            strategy.synonym_map.len(),
-            SexMappingStrategy::default_synonym_map().len()
         );
     }
 }
