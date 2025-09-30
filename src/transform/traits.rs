@@ -1,5 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
+use std::fmt::Debug;
 
 #[allow(dead_code)]
 /// Represents a strategy for transforming a `ContextualizedDataFrame`.
@@ -13,7 +14,7 @@ use crate::transform::error::TransformError;
 /// defined in `internal_transform`. This pattern ensures that transformations are
 /// only attempted when the context is appropriate, preventing unnecessary work or
 /// potential errors.
-pub trait Strategy {
+pub trait Strategy: Debug {
     fn transform(&self, table: &mut ContextualizedDataFrame) -> Result<(), TransformError> {
         match self.is_valid(table) {
             true => self.internal_transform(table),
