@@ -3,7 +3,7 @@ use crate::transform::error::TransformError;
 use std::fmt::Debug;
 
 #[allow(dead_code)]
-/// Represents a strategy for transforming a `ContextualizedDataFrame`.
+/// Represents a strategy for transforming a collection of references to `ContextualizedDataFrame` structs.
 ///
 /// This trait defines a standard interface for applying a conditional transformation
 /// to a data structure in place. It decouples the decision of *whether* a transformation

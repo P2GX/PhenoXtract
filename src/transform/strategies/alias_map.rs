@@ -11,9 +11,9 @@ use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-/// Given a contextualised dataframe, this strategy will apply all the aliases
+/// Given a collection of contextualised dataframes, this strategy will apply all the aliases
 /// found in the SeriesContexts.
-/// For example if the Contextualised Dataframe has a SeriesContext consisting of a SubjectSex column
+/// For example if a Contextualised Dataframe has a SeriesContext consisting of a SubjectSex column
 /// and a ToString AliasMap which converts "M" to "Male" and "F" to "Female"
 /// then the strategy will apply those aliases to each cell.
 /// # NOTE

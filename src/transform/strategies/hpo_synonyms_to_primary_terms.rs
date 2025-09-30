@@ -12,7 +12,7 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-/// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
+/// Given a collection of contextualised dataframes, this strategy will find all columns with HpoLabel as their data context
 /// for each of these columns, it will check if the cells contain a HPO term synonym. If they do, it will change them to the Primary HPO term.
 /// If any of the cells do not contain a HPO term synonym, then it will return an error.
 #[allow(dead_code)]
