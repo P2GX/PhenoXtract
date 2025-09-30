@@ -556,7 +556,7 @@ mod tests {
             [
                 AnyValue::String("P40Y10M05D"),
                 AnyValue::Null,
-                AnyValue::String("P12Y5M28D"),
+                AnyValue::String("P12Y5M028D"),
                 AnyValue::String("P48Y4M21D"),
             ],
         );
