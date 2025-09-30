@@ -22,6 +22,7 @@ pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformE
         Column::Scalar(scalar_col) => {
             let stringified_col = scalar_col
                 .as_materialized_series()
+                .rechunk()
                 .iter()
                 .map(|val| match val {
                     AnyValue::String(s) => s.to_string(),
