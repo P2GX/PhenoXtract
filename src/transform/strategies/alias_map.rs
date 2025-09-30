@@ -137,7 +137,6 @@ impl Strategy for AliasMapStrategy {
 #[cfg(test)]
 mod tests {
     use crate::config::table_context::AliasMap::{ToBool, ToFloat, ToInt, ToString};
-    use crate::config::table_context::Context::{SmokerBool, SubjectAge, SubjectId, WeightInKg};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
@@ -152,7 +151,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("patient_id".to_string()),
             Context::None,
-            SubjectId,
+            Context::SubjectId,
             None,
             Some(ToString(HashMap::from([
                 ("P001".to_string(), "patient_1".to_string()),
@@ -169,7 +168,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("age".to_string()),
             Context::None,
-            SubjectAge,
+            Context::SubjectAge,
             None,
             Some(ToInt(HashMap::from([("11".to_string(), 22)]))),
             vec![],
@@ -181,7 +180,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("weight".to_string()),
             Context::None,
-            WeightInKg,
+            Context::WeightInKg,
             None,
             Some(ToFloat(HashMap::from([
                 ("10.1".to_string(), 20.2),
@@ -198,7 +197,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("smokes.".to_string()),
             Context::None,
-            SmokerBool,
+            Context::SmokerBool,
             None,
             Some(ToBool(HashMap::from([("false".to_string(), true)]))),
             vec![],
@@ -210,7 +209,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("patient_id".to_string()),
             Context::None,
-            SubjectId,
+            Context::SubjectId,
             None,
             Some(ToInt(HashMap::from([("P001".to_string(), 1001)]))),
             vec![],
@@ -222,7 +221,7 @@ mod tests {
         SeriesContext::new(
             Identifier::Regex("patient_id".to_string()),
             Context::None,
-            SubjectId,
+            Context::SubjectId,
             None,
             Some(ToInt(HashMap::from([
                 ("P001".to_string(), 1001),

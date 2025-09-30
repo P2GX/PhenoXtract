@@ -1,5 +1,6 @@
 pub mod error;
-pub(crate) mod github_ontology_registry;
+pub mod github_ontology_registry;
+pub use github_ontology_registry::GithubOntologyRegistry;
 mod github_release_client;
-pub(crate) mod traits;
-pub(crate) mod utils;
+pub mod traits;
+pub mod utils;

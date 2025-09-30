@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 #[allow(dead_code)]
-pub(crate) fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, anyhow::Error> {
+pub fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, anyhow::Error> {
     let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
     let ontolius = loader.load_from_path(hpo_path.clone())?;

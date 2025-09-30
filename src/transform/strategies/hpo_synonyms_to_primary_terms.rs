@@ -20,6 +20,13 @@ use std::rc::Rc;
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
 }
+
+impl HPOSynonymsToPrimaryTermsStrategy {
+    pub fn new(hpo_ontology: Rc<FullCsrOntology>) -> Self {
+        Self { hpo_ontology }
+    }
+}
+
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
         table.check_contexts_have_data_type(&Context::None, &Context::HpoLabel, &DataType::String)
@@ -128,7 +135,6 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::HpoLabel;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -164,7 +170,7 @@ mod tests {
         let sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
             Context::None,
-            HpoLabel,
+            Context::HpoLabel,
             None,
             None,
             vec![],

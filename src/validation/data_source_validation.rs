@@ -191,7 +191,7 @@ mod tests {
                 })
                 .collect();
             let reconstructed_duplicates = reconstructed_duplicates.unwrap();
-            println!("reconstructed_duplicates: {:?}", reconstructed_duplicates);
+
             assert_eq!(
                 reconstructed_duplicates.first().unwrap().to_string(),
                 "ConfigA".to_string()
@@ -201,8 +201,6 @@ mod tests {
                 "ConfigB".to_string()
             );
         }
-
-        println!("{}", duplicates_str);
     }
 
     #[test]

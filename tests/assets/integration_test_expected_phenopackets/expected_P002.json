@@ -1,0 +1,31 @@
+{
+  "id": "my_cohort-P002",
+  "subject": {
+    "id": "P002",
+    "vitalStatus": {
+      "status": "DECEASED",
+      "survivalTimeInDays": 0
+    },
+    "sex": "MALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0000256",
+        "label": "Macrocephaly"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P1Y2M3D"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002099",
+        "label": "Asthma"
+      }
+    }
+  ]
+}

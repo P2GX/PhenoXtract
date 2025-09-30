@@ -10,7 +10,7 @@ use validator::Validate;
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Clone, Validate, Default)]
+#[derive(Clone, Validate, Default, Debug)]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -117,7 +117,8 @@ impl ContextualizedDataFrame {
         self.context.context.iter().find(|sc| &sc.identifier == id)
     }
 
-    //todo test after MVP
+    /// Searches a CDF for columns whose header_context and data_context are certain specific values
+    /// and ensures that the columns' data_type is equal to desired_dtype
     pub fn check_contexts_have_data_type(
         &self,
         header_context: &Context,
@@ -462,5 +463,36 @@ mod tests {
                 cdf.data.column("overweight").unwrap()
             ]
         );
+    }
+
+    #[rstest]
+    fn test_check_contexts_have_data_type() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+
+        //check it can recognise true positives
+        assert!(cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectId,
+            &DataType::String
+        ));
+        assert!(cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectAge,
+            &DataType::Int32
+        ));
+
+        //check it can recognise true negatives
+        assert!(!cdf.check_contexts_have_data_type(
+            &Context::HpoLabel,
+            &Context::ObservationStatus,
+            &DataType::Float64
+        ));
+        assert!(!cdf.check_contexts_have_data_type(
+            &Context::None,
+            &Context::SubjectId,
+            &DataType::Boolean
+        ));
     }
 }

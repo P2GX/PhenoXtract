@@ -18,7 +18,9 @@ use crate::extract::utils::{
 };
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
+
 use std::sync::Arc;
+use validator::{Validate, ValidationErrors};
 
 /// An enumeration of all supported data source types.
 ///
@@ -32,6 +34,15 @@ pub enum DataSource {
     Excel(ExcelDatasource),
 }
 
+impl Validate for DataSource {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        match self {
+            DataSource::Csv(csv) => csv.validate()?,
+            DataSource::Excel(excel) => excel.validate()?,
+        };
+        Ok(())
+    }
+}
 impl DataSource {
     fn conditional_transpose(
         mut cdf: ContextualizedDataFrame,

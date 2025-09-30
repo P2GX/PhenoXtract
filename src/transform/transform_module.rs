@@ -1,6 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::transform::collector::Collector;
 use crate::transform::error::TransformError;
-use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
 
@@ -8,13 +8,13 @@ use phenopackets::schema::v2::Phenopacket;
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
-    phenopacket_builder: PhenopacketBuilder,
+    collector: Collector,
 }
 
 impl TransformerModule {
     #[allow(dead_code)]
     pub fn run(
-        &self,
+        &mut self,
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for table in tables.iter_mut() {
@@ -22,16 +22,14 @@ impl TransformerModule {
                 strategy.transform(table)?;
             }
         }
-        Ok(vec![])
+
+        self.collector.collect(tables)
     }
 
-    pub(crate) fn new(
-        strategies: Vec<Box<dyn Strategy>>,
-        phenopacket_builder: PhenopacketBuilder,
-    ) -> Self {
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
         TransformerModule {
             strategies,
-            phenopacket_builder,
+            collector,
         }
     }
 }
