@@ -3,11 +3,12 @@ use crate::ontology::traits::OntologyRegistry;
 
 use crate::ontology::error::RegistryError;
 use crate::ontology::github_release_client::GithubReleaseClient;
+use fs2::FileExt;
 use log::debug;
-use std::env;
-use std::fs::{File, remove_file};
+use std::fs::File;
 use std::io::copy;
 use std::path::PathBuf;
+use std::{env, fs};
 
 /// Manages the download and local caching of ontology files from a GitHub repository.
 ///
@@ -121,7 +122,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
     /// or an `RegistryError` if the download, file creation, or API interaction fails.
     fn register(&self, version: &str) -> Result<PathBuf, RegistryError> {
         if !self.registry_path.exists() {
-            std::fs::create_dir_all(&self.registry_path)?;
+            fs::create_dir_all(&self.registry_path)?;
         }
 
         let resolved_version = self.resolve_version(version);
@@ -129,6 +130,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
 
+        // Fast path: check if file already exists
         if out_path.exists() {
             debug!(
                 "Ontology version already registered. {}",
@@ -137,24 +139,74 @@ impl OntologyRegistry for GithubOntologyRegistry {
             return Ok(out_path);
         }
 
-        let mut resp = self.github_client.get_release_file(
-            self.repo_owner.as_str(),
-            self.repo_name.as_str(),
-            self.file_name.as_str(),
-            &resolved_version,
-        )?;
+        // Create a lock file path
+        let lock_path = out_path.with_extension("lock");
 
-        let mut out = File::create(out_path.clone())?;
+        // Create or open the lock file
+        let lock_file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&lock_path)?;
 
-        copy(&mut resp, &mut out)?;
-        debug!(
-            "Registered {} ({} bytes)",
-            out_path.display(),
-            out.metadata()?.len()
-        );
+        // Acquire an exclusive lock (this will block until available)
+        lock_file.lock_exclusive()?;
 
-        Ok(out_path)
+        // Now we have exclusive access
+        // Double-check the file doesn't exist (another process might have created it)
+        if out_path.exists() {
+            // Unlock and return the existing file
+            lock_file.unlock()?;
+            debug!(
+                "Ontology version was registered by another process. {}",
+                out_path.display()
+            );
+            return Ok(out_path);
+        }
+
+        // Download to a temporary file first to avoid partial reads
+        let temp_path = out_path.with_extension("tmp");
+
+        let download_result = (|| -> Result<(), RegistryError> {
+            let mut resp = self.github_client.get_release_file(
+                self.repo_owner.as_str(),
+                self.repo_name.as_str(),
+                self.file_name.as_str(),
+                &resolved_version,
+            )?;
+
+            let mut out = File::create(&temp_path)?;
+            copy(&mut resp, &mut out)?;
+
+            // Ensure all data is written to disk
+            out.sync_all()?;
+
+            // Atomically move the temp file to the final location
+            fs::rename(&temp_path, &out_path)?;
+
+            debug!(
+                "Registered {} ({} bytes)",
+                out_path.display(),
+                fs::metadata(&out_path)?.len()
+            );
+
+            Ok(())
+        })();
+
+        // Clean up temp file if it still exists (in case of error)
+        if temp_path.exists() {
+            let _ = fs::remove_file(&temp_path);
+        }
+
+        // Unlock the file (this also happens automatically when lock_file is dropped)
+        lock_file.unlock()?;
+
+        // Optionally clean up the lock file (not strictly necessary)
+        let _ = fs::remove_file(&lock_path);
+
+        download_result.map(|_| out_path)
     }
+
     #[allow(dead_code)]
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
@@ -169,10 +221,11 @@ impl OntologyRegistry for GithubOntologyRegistry {
                 format!("Version: {resolved_version} not registered in registry").to_string(),
             ));
         }
-        remove_file(file_path.clone())?;
+        fs::remove_file(file_path.clone())?;
         debug!("Deregistered {}", file_path.display());
         Ok(())
     }
+
     #[allow(dead_code)]
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Option<PathBuf> {
@@ -357,7 +410,7 @@ mod tests {
             .path()
             .join(format!("{repo_name}_v1.0.0_{release_file_name}"));
 
-        std::fs::write(&file_path, "already here").unwrap();
+        fs::write(&file_path, "already here").unwrap();
 
         let registry = build_registry(
             &tmp,
