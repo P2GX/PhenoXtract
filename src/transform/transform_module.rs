@@ -5,6 +5,7 @@ use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
     collector: Collector,
@@ -16,14 +17,11 @@ impl TransformerModule {
         &mut self,
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
-        tables.iter_mut().for_each(|table| {
+        for table in tables.iter_mut() {
             for strategy in &self.strategies {
-                if let Err(_e) = strategy.transform(table) {
-                    //TODO: Log error here.
-                    continue;
-                };
+                strategy.transform(table)?;
             }
-        });
+        }
 
         self.collector.collect(tables)
     }

@@ -37,6 +37,7 @@ use std::string::ToString;
 ///
 /// Returns `TransformError::MappingError` if any values in the data cannot be found
 /// in the synonym map, providing details about unmapped values and suggestions.
+#[derive(Debug)]
 pub struct MappingStrategy {
     synonym_map: HashMap<String, String>,
     data_context: Context,

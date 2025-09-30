@@ -16,6 +16,7 @@ use std::rc::Rc;
 /// for each of these columns, it will check if the cells contain a HPO term synonym. If they do, it will change them to the Primary HPO term.
 /// If any of the cells do not contain a HPO term synonym, then it will return an error.
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
 }
@@ -64,10 +65,11 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                             let synonyms = primary_term
                                 .synonyms()
                                 .iter()
-                                .map(|syn| syn.name.to_lowercase())
+                                .map(|syn| syn.name.trim().to_lowercase())
                                 .collect::<Vec<String>>();
-                            (cell_term.to_lowercase().trim() == primary_term.name().to_lowercase()
-                                || synonyms.contains(&cell_term.to_lowercase()))
+                            (cell_term.to_lowercase().trim()
+                                == primary_term.name().trim().to_lowercase()
+                                || synonyms.contains(&cell_term.trim().to_lowercase()))
                                 && (primary_term.is_current())
                         });
                     //we insert the pair (cell_term,primary_term) if the Option is Some, and (cell_term,"") if the Option is None
