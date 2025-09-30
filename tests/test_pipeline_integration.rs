@@ -203,8 +203,7 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     //Run the pipeline on the data sources
     let res = pipeline.run(&mut data_sources);
 
-    //Check that everything was as expected
-    assert!(res.is_ok());
+    res.unwrap();
 
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
