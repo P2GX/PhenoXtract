@@ -515,16 +515,16 @@ mod tests {
             .get_sc_from_id(&Identifier::Regex("age".to_string()))
             .unwrap();
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(&subject_id_sc, &Context::ObservationStatus),
+            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::ObservationStatus),
             vec![cdf.data.column("bronchitis").unwrap()]
         );
         let no_column_vec: Vec<&Column> = Vec::new();
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(&subject_id_sc, &Context::VitalStatus),
+            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::VitalStatus),
             no_column_vec
         );
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(&subject_age_sc, &Context::ObservationStatus),
+            cdf.get_linked_cols_with_data_context(subject_age_sc, &Context::ObservationStatus),
             no_column_vec
         );
     }
