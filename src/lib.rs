@@ -5,6 +5,9 @@ pub use pipeline::Pipeline;
 mod error;
 pub mod ontology;
 pub mod pipeline;
-mod test_utils;
+
 pub mod transform;
 mod validation;
+
+#[cfg(test)]
+mod test_utils;
