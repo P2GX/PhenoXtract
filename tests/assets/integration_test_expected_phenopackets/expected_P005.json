@@ -1,0 +1,26 @@
+{
+  "id": "my_cohort-P005",
+  "subject": {
+    "id": "P005",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "OTHER_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0000256",
+        "label": "Macrocephaly"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002090",
+        "label": "Pneumonia"
+      }
+    }
+  ]
+}

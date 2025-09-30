@@ -1,7 +1,7 @@
 use crate::ontology::error::RegistryError;
 use std::path::PathBuf;
 
-pub(crate) trait OntologyRegistry {
+pub trait OntologyRegistry {
     #[allow(dead_code)]
     fn register(&self, version: &str) -> Result<PathBuf, RegistryError>;
     #[allow(dead_code)]

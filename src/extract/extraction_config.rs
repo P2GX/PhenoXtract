@@ -19,11 +19,11 @@ pub struct ExtractionConfig {
 
 impl ExtractionConfig {
     #[allow(dead_code)]
-    pub(crate) fn new(name: String, has_headers: bool, patient_orientation: bool) -> Self {
+    pub fn new(name: String, has_headers: bool, patients_are_rows: bool) -> Self {
         ExtractionConfig {
             name,
             has_headers,
-            patients_are_rows: patient_orientation,
+            patients_are_rows,
         }
     }
 }
