@@ -1,14 +1,12 @@
-mod config;
-mod extract;
-mod load;
-mod pipeline;
-mod transform;
-
-mod validation;
-
+pub mod config;
+pub mod extract;
+pub mod load;
+pub use pipeline::Pipeline;
 mod error;
-
-mod ontology;
+pub mod ontology;
+pub mod pipeline;
+pub mod transform;
+mod validation;
 
 #[macro_export]
 macro_rules! skip_in_ci {

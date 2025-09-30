@@ -13,7 +13,8 @@ use polars::prelude::{Column, IntoLazy, col, lit};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
-struct Collector {
+#[derive(Debug)]
+pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
 }
@@ -28,7 +29,7 @@ impl Collector {
     }
     pub fn collect(
         &mut self,
-        cdfs: Vec<ContextualizedDataFrame>,
+        cdfs: &[ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
             let subject_id_cols = cdf.get_cols_with_data_context(&Context::SubjectId);
@@ -466,7 +467,7 @@ mod tests {
         .unwrap();
         let cdf = ContextualizedDataFrame::new(tc, df);
 
-        let collect_result = collector.collect(vec![cdf]);
+        let collect_result = collector.collect([cdf].as_slice());
         let phenopackets = collect_result.unwrap();
 
         let mut expected_p001 = Phenopacket {

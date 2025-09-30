@@ -4,19 +4,21 @@ use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 use crate::ontology::traits::OntologyRegistry;
-use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
 use crate::ontology::utils::init_ontolius;
+use crate::transform::Collector;
+use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
 use validator::Validate;
 
 #[allow(dead_code)]
-struct Pipeline {
+#[derive(Debug)]
+pub struct Pipeline {
     transformer_module: TransformerModule,
     loader_module: Box<dyn Loadable>,
 }
@@ -24,7 +26,7 @@ struct Pipeline {
 impl Pipeline {
     #[allow(dead_code)]
     pub fn run(
-        &self,
+        &mut self,
         extractables: &mut [impl Extractable + Validate],
     ) -> Result<(), PipelineError> {
         let mut data = self.extract(extractables)?;
@@ -48,7 +50,7 @@ impl Pipeline {
     }
 
     pub fn transform(
-        &self,
+        &mut self,
         tables: &mut [ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, PipelineError> {
         info!("Starting Transformation");
@@ -86,10 +88,11 @@ impl Pipeline {
         // TOOD: Read hpo version from config later
         let registry_path = hpo_registry.register("latest")?;
         let hpo = init_ontolius(registry_path)?;
-        let tf_module = TransformerModule::new(vec![], PhenopacketBuilder::new(hpo));
-        let loader_module = FileSystemLoader {
-            out_path: PathBuf::from("some/dir/"),
-        };
+        let builder = PhenopacketBuilder::new(hpo);
+        let tf_module =
+            TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
+        let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
+
         Ok(Pipeline::new(tf_module, loader_module))
     }
 }

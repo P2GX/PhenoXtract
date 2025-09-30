@@ -37,7 +37,8 @@ use std::string::ToString;
 ///
 /// Returns `TransformError::MappingError` if any values in the data cannot be found
 /// in the synonym map, providing details about unmapped values and suggestions.
-struct MappingStrategy {
+#[derive(Debug)]
+pub struct MappingStrategy {
     synonym_map: HashMap<String, String>,
     data_context: Context,
     header_context: Context,
@@ -53,7 +54,7 @@ impl MappingStrategy {
     }
 
     #[allow(unused)]
-    fn default_sex_mapping_strategy() -> MappingStrategy {
+    pub fn default_sex_mapping_strategy() -> MappingStrategy {
         MappingStrategy::new(
             HashMap::from([
                 ("m".to_string(), Sex::Male.as_str_name().to_string()),

@@ -1,0 +1,54 @@
+{
+  "id": "my_cohort-P001",
+  "subject": {
+    "id": "P001",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "FEMALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0001945",
+        "label": "Fever"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0000246",
+        "label": "Sinusitis"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0000822",
+        "label": "Hypertension"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002090",
+        "label": "Pneumonia"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P12Y5M28D"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002099",
+        "label": "Asthma"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P15Y12M6D"
+        }
+      }
+    }
+  ]
+}
