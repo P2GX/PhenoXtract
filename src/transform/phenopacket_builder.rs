@@ -245,7 +245,6 @@ mod tests {
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
     use crate::skip_in_ci;
-    use phenopackets::schema::v1::core::Sex::Male;
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
