@@ -27,7 +27,7 @@ impl AliasMapStrategy {
     ///Applies aliases from a hash map to a vector of strings
     fn map_values<'a, T: FromStr + Copy + Into<AnyValue<'a>>>(
         stringified_col: Vec<String>,
-        hm: HashMap<String, T>,
+        hm: &HashMap<String, T>,
         col_name: &str,
         table_name: &str,
     ) -> Result<Vec<AnyValue<'a>>, TransformError> {
@@ -73,26 +73,32 @@ impl AliasMapStrategy {
     }
 }
 
+// Implementation with proper mutable iteration
 impl Strategy for AliasMapStrategy {
-    fn is_valid(&self, _table: &ContextualizedDataFrame) -> bool {
+    fn is_valid(&self, _tables: &[&mut ContextualizedDataFrame]) -> bool {
         true
     }
 
     fn internal_transform(
         &self,
-        table: &mut ContextualizedDataFrame,
+        tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), TransformError> {
-        let table_name = &table.context().name.clone();
-        info!("Applying AliasMap strategy to table: {table_name}");
+        info!("Applying AliasMap strategy to data.");
 
-        for (col, alias_map) in AliasMapStrategy::get_col_alias_map_pairs(table) {
-            let col_name = col.name();
-            info!("Applying AliasMap strategy to column: {col_name}");
-            let stringified_col = convert_col_to_string_vec(&col)?;
+        for table in tables.iter_mut() {
+            let table_name = table.context().name.clone();
+            info!("Applying AliasMap strategy to table: {table_name}");
 
-            match alias_map {
-                ToString(hm) => {
-                    let transformed_vec = stringified_col
+            // Get the column-alias map pairs
+            let col_alias_pairs = AliasMapStrategy::get_col_alias_map_pairs(table);
+
+            for (col, alias_map) in col_alias_pairs {
+                let col_name = col.name().to_string(); // Clone the name to avoid borrow issues
+                info!("Applying AliasMap strategy to column: {col_name}.");
+                let stringified_col = convert_col_to_string_vec(&col)?;
+
+                let transformed_vec = match &alias_map {
+                    ToString(hm) => stringified_col
                         .iter()
                         .map(|s| match hm.get(s) {
                             Some(alias) => AnyValue::String(alias),
@@ -104,32 +110,17 @@ impl Strategy for AliasMapStrategy {
                                 }
                             }
                         })
-                        .collect();
-                    table.replace_column(transformed_vec, col_name)?;
-                    Ok(())
-                }
-                ToInt(hm) => {
-                    let transformed_vec =
-                        Self::map_values(stringified_col, hm, col_name, table_name)?;
-                    table.replace_column(transformed_vec, col_name)?;
-                    Ok(())
-                }
-                ToFloat(hm) => {
-                    let transformed_vec =
-                        Self::map_values(stringified_col, hm, col_name, table_name)?;
-                    table.replace_column(transformed_vec, col_name)?;
-                    Ok(())
-                }
-                ToBool(hm) => {
-                    let transformed_vec =
-                        Self::map_values(stringified_col, hm, col_name, table_name)?;
-                    table.replace_column(transformed_vec, col_name)?;
-                    Ok(())
-                }
-            }?;
-        }
+                        .collect(),
+                    ToInt(hm) => Self::map_values(stringified_col, hm, &col_name, &table_name)?,
+                    ToFloat(hm) => Self::map_values(stringified_col, hm, &col_name, &table_name)?,
+                    ToBool(hm) => Self::map_values(stringified_col, hm, &col_name, &table_name)?,
+                };
 
-        info!("AliasMap strategy successfully applied to table: {table_name}");
+                table.replace_column(transformed_vec, &col_name)?;
+            }
+
+            info!("AliasMap strategy successfully applied to table: {table_name}");
+        }
         Ok(())
     }
 }
@@ -369,7 +360,7 @@ mod tests {
             ("P004".to_string(), 1004),
         ]);
         let mapped_vec =
-            AliasMapStrategy::map_values(vec_of_strings, hm, "col_name", "table_name").unwrap();
+            AliasMapStrategy::map_values(vec_of_strings, &hm, "col_name", "table_name").unwrap();
         assert_eq!(
             mapped_vec,
             vec![
@@ -386,28 +377,32 @@ mod tests {
     #[rstest]
     fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        assert!(alias_map_transform.transform(&mut cdf_aliasing).is_ok());
+        assert!(
+            alias_map_transform
+                .transform(&mut [&mut cdf_aliasing])
+                .is_ok()
+        );
         assert_eq!(
-            cdf_aliasing.data.column("patient_id").unwrap(),
+            cdf_aliasing.clone().data.column("patient_id").unwrap(),
             &Column::new(
                 "patient_id".into(),
                 ["patient_1", "patient_2", "patient_3", "patient_4"]
             )
         );
         assert_eq!(
-            cdf_aliasing.data.column("age").unwrap(),
+            cdf_aliasing.clone().data.column("age").unwrap(),
             &Column::new("age".into(), [22, 22, 33, 44])
         );
         assert_eq!(
-            cdf_aliasing.data.column("weight").unwrap(),
+            cdf_aliasing.clone().data.column("weight").unwrap(),
             &Column::new("weight".into(), [20.2, 40.4, 60.6, 80.8])
         );
         assert_eq!(
-            cdf_aliasing.data.column("smokes1").unwrap(),
+            cdf_aliasing.clone().data.column("smokes1").unwrap(),
             &Column::new("smokes1".into(), [true, true, true, true])
         );
         assert_eq!(
-            cdf_aliasing.data.column("smokes2").unwrap(),
+            cdf_aliasing.clone().data.column("smokes2").unwrap(),
             &Column::new("smokes2".into(), [true, true, true, true])
         );
     }
@@ -415,7 +410,7 @@ mod tests {
     #[rstest]
     fn test_aliasing_with_nulls(mut cdf_nulls: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        assert!(alias_map_transform.transform(&mut cdf_nulls).is_ok());
+        assert!(alias_map_transform.transform(&mut [&mut cdf_nulls]).is_ok());
         assert_eq!(
             cdf_nulls.data.column("patient_id").unwrap(),
             &Column::new(
@@ -482,7 +477,11 @@ mod tests {
     #[rstest]
     fn test_no_aliasing(mut cdf_no_aliasing: ContextualizedDataFrame, df_no_aliasing: DataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        assert!(alias_map_transform.transform(&mut cdf_no_aliasing).is_ok());
+        assert!(
+            alias_map_transform
+                .transform(&mut [&mut cdf_no_aliasing])
+                .is_ok()
+        );
         assert_eq!(cdf_no_aliasing.data, df_no_aliasing)
     }
 
@@ -495,7 +494,7 @@ mod tests {
         let alias_map_transform = AliasMapStrategy {};
         assert!(
             alias_map_transform
-                .transform(&mut cdf_convert_to_int_fail)
+                .transform(&mut [&mut cdf_convert_to_int_fail])
                 .is_err()
         );
         //make sure that nothing has changed despite the error
@@ -508,7 +507,7 @@ mod tests {
         let alias_map_transform = AliasMapStrategy {};
         assert!(
             alias_map_transform
-                .transform(&mut cdf_convert_to_int_success)
+                .transform(&mut [&mut cdf_convert_to_int_success])
                 .is_ok()
         );
         assert_eq!(
