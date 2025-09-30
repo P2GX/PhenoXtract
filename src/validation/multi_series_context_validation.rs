@@ -5,7 +5,7 @@ use validator::ValidationError;
 
 pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), ValidationError> {
     match series_context.get_identifier() {
-        Identifier::Regex(r) => validate_regex(&r),
+        Identifier::Regex(r) => validate_regex(r),
         Identifier::Multi(vec) => {
             if vec.is_empty() {
                 let mut error = ValidationError::new("invalid_multi_identifier");

@@ -43,8 +43,8 @@ pub(crate) fn validate_at_least_one_subject_id(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
     for column in &table_context.context {
-        if column.get_header_context() == Context::SubjectId
-            || column.get_data_context() == Context::SubjectId
+        if column.get_header_context() == &Context::SubjectId
+            || column.get_data_context() == &Context::SubjectId
         {
             return Ok(());
         }
@@ -58,7 +58,7 @@ pub(crate) fn validate_at_least_one_subject_id(
 }
 
 pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<(), ValidationError> {
-    let all_ids: Vec<Identifier> = table_context
+    let all_ids: Vec<&Identifier> = table_context
         .context
         .iter()
         .map(|column| column.get_identifier())
@@ -71,7 +71,7 @@ pub(crate) fn validate_series_linking(table_context: &TableContext) -> Result<()
         .collect();
 
     for link_id in all_linking_ids {
-        if !all_ids.contains(&link_id) {
+        if !all_ids.contains(&&link_id) {
             let mut error = ValidationError::new("missing_link");
             error.add_param(Cow::from("linking_id"), &link_id);
             error.add_param(Cow::from("table_name"), &table_context.name);

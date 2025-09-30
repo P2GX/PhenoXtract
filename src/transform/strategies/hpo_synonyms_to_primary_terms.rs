@@ -1,4 +1,4 @@
-use crate::config::table_context::Context::HpoLabel;
+use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
@@ -19,9 +19,16 @@ use std::rc::Rc;
 pub struct HPOSynonymsToPrimaryTermsStrategy {
     hpo_ontology: Rc<FullCsrOntology>,
 }
+
+impl HPOSynonymsToPrimaryTermsStrategy {
+    pub fn new(hpo_ontology: Rc<FullCsrOntology>) -> Self {
+        Self { hpo_ontology }
+    }
+}
+
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(HpoLabel, DataType::String)
+        table.check_contexts_have_data_type(&Context::None, &Context::HpoLabel, &DataType::String)
     }
 
     fn internal_transform(
@@ -32,7 +39,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
 
         let hpo_label_cols: Vec<Column> = table
-            .get_cols_with_data_context(HpoLabel)
+            .get_cols_with_data_context(&Context::HpoLabel)
             .into_iter()
             .cloned()
             .collect();
@@ -127,7 +134,6 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::HpoLabel;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
@@ -163,7 +169,7 @@ mod tests {
         let sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
             Context::None,
-            HpoLabel,
+            Context::HpoLabel,
             None,
             None,
             vec![],

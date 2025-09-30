@@ -1,5 +1,4 @@
 use crate::config::table_context::Context;
-use crate::config::table_context::Context::{HpoLabel, Living, OnsetAge, SubjectId, SubjectSex};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
@@ -14,7 +13,7 @@ use polars::prelude::{Column, IntoLazy, col, lit};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
-struct Collector {
+pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
 }
@@ -29,10 +28,10 @@ impl Collector {
     }
     pub fn collect(
         &mut self,
-        cdfs: Vec<ContextualizedDataFrame>,
+        cdfs: &[ContextualizedDataFrame],
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf.get_cols_with_data_context(SubjectId);
+            let subject_id_cols = cdf.get_cols_with_data_context(&Context::SubjectId);
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
                     "Multiple SubjectID columns were found in table {}.",
@@ -46,7 +45,7 @@ impl Collector {
             )))?;
             let subject_id_col_name = subject_id_col.name().to_string();
             let unique_patient_ids =
-                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_err| {
+                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_| {
                     CollectionError(format!(
                         "Failed to extract unique subject IDs from {subject_id_col_name}"
                     ))
@@ -61,7 +60,7 @@ impl Collector {
                     .lazy()
                     .filter(col(&subject_id_col_name).eq(lit(patient_id.clone())))
                     .collect()
-                    .map_err(|_err| {
+                    .map_err(|_| {
                         CollectionError(format!(
                             "Could not extract sub-Dataframe for patient {} in table {}.",
                             patient_id,
@@ -83,11 +82,12 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(HpoLabel);
+        let pf_scs = patient_cdf.get_scs_with_data_context(&Context::HpoLabel);
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, OnsetAge);
+            let linked_onset_cols =
+                patient_cdf.get_linked_cols_with_data_context(pf_sc, &Context::OnsetAge);
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
@@ -139,7 +139,7 @@ impl Collector {
                                 None,
                                 None,
                             )
-                            .map_err(|_err| {
+                            .map_err(|_| {
                                 CollectionError(format!(
                                     "Error when upserting HPO term {} in column {}",
                                     hpo_label,
@@ -164,10 +164,16 @@ impl Collector {
         phenopacket_id: &str,
         patient_id: &str,
     ) -> Result<(), TransformError> {
-        let subject_sex =
-            Self::collect_single_multiplicity_element(patient_cdf, SubjectSex, patient_id)?;
-        let vital_status_string =
-            Self::collect_single_multiplicity_element(patient_cdf, Living, patient_id)?;
+        let subject_sex = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::SubjectSex,
+            patient_id,
+        )?;
+        let vital_status_string = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::VitalStatus,
+            patient_id,
+        )?;
         let vital_status = match vital_status_string {
             None => None,
             Some(s) => {
@@ -194,7 +200,7 @@ impl Collector {
                 None,
                 None,
             )
-            .map_err(|_err| {
+            .map_err(|_| {
                 CollectionError(format!(
                     "Error when upserting individual data for {phenopacket_id}"
                 ))
@@ -214,7 +220,7 @@ impl Collector {
         context: Context,
         patient_id: &str,
     ) -> Result<Option<String>, TransformError> {
-        let cols_of_element_type = patient_cdf.get_cols_with_data_context(context.clone());
+        let cols_of_element_type = patient_cdf.get_cols_with_data_context(&context);
 
         if cols_of_element_type.is_empty() {
             return Ok(None);
@@ -318,7 +324,7 @@ mod tests {
         let vital_status_sc = SeriesContext::new(
             Identifier::Regex("vital_status".to_string()),
             Context::None,
-            Context::Living,
+            Context::VitalStatus,
             None,
             None,
             vec![],
@@ -513,7 +519,7 @@ mod tests {
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
-        let collect_result = collector.collect(vec![cdf]);
+        let collect_result = collector.collect([cdf].as_slice());
         let phenopackets = collect_result.unwrap();
 
         let mut expected_p001 = Phenopacket {
