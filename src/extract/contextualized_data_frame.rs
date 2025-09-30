@@ -230,7 +230,8 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
-    //todo test after MVP
+    /// Given a series context sc, this functions gets all columns which are linked to sc
+    /// and which have a certain data context
     #[allow(unused)]
     pub fn get_linked_cols_with_data_context(
         &self,
@@ -462,5 +463,10 @@ mod tests {
                 cdf.data.column("overweight").unwrap()
             ]
         );
+    }
+
+    #[rstest]
+    fn test_get_linked_cols_with_data_context() {
+        //todo!
     }
 }
