@@ -246,7 +246,6 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::skip_in_ci;
     use regex::Regex;
     use rstest::{fixture, rstest};
 
@@ -262,8 +261,6 @@ mod integration_tests {
 
     #[rstest]
     fn test_get_latest_release_tag(repo_name: String, repo_owner: String) {
-        skip_in_ci!();
-
         let client = GithubReleaseClient::new();
 
         let version = client
@@ -276,8 +273,6 @@ mod integration_tests {
 
     #[rstest]
     fn test_get_release_file(repo_name: String, repo_owner: String) {
-        skip_in_ci!();
-
         let client = GithubReleaseClient::new();
 
         let response = client
