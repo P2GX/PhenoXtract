@@ -647,11 +647,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element(
+    fn test_collect_single_multiplicity_element_nulls_and_non_nulls(
         tc: TableContext,
-        mut df_single_patient: DataFrame,
+        df_single_patient: DataFrame,
     ) {
-        //check it succeeds when there are nulls and a single subject_sex for the patient
         let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
         let sme = Collector::collect_single_multiplicity_element(
             &patient_cdf,
@@ -661,8 +660,13 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(sme, "FEMALE");
+    }
 
-        //check it succeeds when the col is just nulls
+    #[rstest]
+    fn test_collect_single_multiplicity_element_nulls(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
         let null_subject_sex_col = Series::new(
             "sex".into(),
             [
@@ -683,8 +687,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(sme, None);
+    }
 
-        //check it succeeds when the col contains multiple of the same string
+    #[rstest]
+    fn test_collect_single_multiplicity_element_multiple(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
         let many_subject_sex_col = Series::new(
             "sex".into(),
             [
@@ -706,8 +715,13 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(sme, "MALE");
+    }
 
-        //check we get an error when there are multiple distinct values for the single multiplicity element
+    #[rstest]
+    fn test_collect_single_multiplicity_element_err(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
         let invalid_subject_sex_col = Series::new(
             "sex".into(),
             [
