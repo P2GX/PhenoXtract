@@ -154,6 +154,7 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     let cohort_name = "my_cohort";
     let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
     let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
+
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 

@@ -11,9 +11,10 @@ use phenopackets::schema::v2::core::PhenotypicFeature;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 struct PhenopacketLinter {
-    hpo: Rc<FullCsrOntology>,
+    hpo: Arc<FullCsrOntology>,
 }
 
 struct LintingViolations;
@@ -249,7 +250,7 @@ mod tests {
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -269,19 +270,11 @@ mod tests {
     }
 
     fn construct_linter(tmp_dir: TempDir) -> PhenopacketLinter {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let path = hpo_registry.register("latest").unwrap();
-
-        PhenopacketLinter {
-            hpo: init_ontolius(path).unwrap(),
-        }
+        PhenopacketLinter { hpo: HPO.clone() }
     }
 
     #[rstest]
     fn test_find_ancestors(tmp_dir: TempDir, term_ancestry: Vec<TermId>) {
-        skip_in_ci!();
         let linter = construct_linter(tmp_dir);
 
         let ancestors = linter.find_ancestors(
@@ -295,7 +288,6 @@ mod tests {
 
     #[rstest]
     fn test_find_descendents(tmp_dir: TempDir, term_ancestry: Vec<TermId>) {
-        skip_in_ci!();
         let linter = construct_linter(tmp_dir);
 
         let ancestors = linter.find_descendents(
@@ -308,7 +300,6 @@ mod tests {
 
     #[rstest]
     fn test_find_related_phenotypic_features_case_1(tmp_dir: TempDir) {
-        skip_in_ci!();
         let linter = construct_linter(tmp_dir);
 
         let phenotypic_features = vec![
@@ -343,7 +334,6 @@ mod tests {
 
     #[rstest]
     fn test_find_related_phenotypic_features_case_2(tmp_dir: TempDir) {
-        skip_in_ci!();
         let linter = construct_linter(tmp_dir);
 
         let phenotypic_features = vec![
@@ -374,7 +364,6 @@ mod tests {
 
     #[rstest]
     fn test_find_related_phenotypic_features_case_3(tmp_dir: TempDir) {
-        skip_in_ci!();
         let linter = construct_linter(tmp_dir);
 
         let phenotypic_features = vec![
@@ -403,8 +392,6 @@ mod tests {
 
     #[rstest]
     fn test_find_duplicate_phenotypic_features(tmp_dir: TempDir) {
-        skip_in_ci!();
-
         let linter = construct_linter(tmp_dir);
 
         let phenotypic_features = vec![

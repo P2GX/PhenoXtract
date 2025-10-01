@@ -13,18 +13,18 @@ use phenopackets::schema::v2::core::{
     Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    hpo: Rc<FullCsrOntology>,
+    hpo: Arc<FullCsrOntology>,
 }
 
 impl PhenopacketBuilder {
-    pub fn new(hpo: Rc<FullCsrOntology>) -> PhenopacketBuilder {
+    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketBuilder {
         PhenopacketBuilder {
             subject_to_phenopacket: HashMap::default(),
             hpo,
@@ -241,14 +241,10 @@ impl PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-    use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO;
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
-    use tempfile::TempDir;
 
     #[fixture]
     fn phenopacket_id() -> String {
@@ -283,30 +279,13 @@ mod tests {
         "Microcephaly".to_string()
     }
 
-    #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    fn construct_builder(tmp_dir: TempDir) -> PhenopacketBuilder {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let path = hpo_registry.register("latest").unwrap();
-
-        PhenopacketBuilder::new(init_ontolius(path).unwrap())
-    }
-
     #[rstest]
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
         valid_phenotype: String,
         onset_te: Option<TimeElement>,
-        tmp_dir: TempDir,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
             &valid_phenotype,
@@ -339,10 +318,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_invalid_term(tmp_dir: TempDir, phenopacket_id: String) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -361,14 +338,11 @@ mod tests {
 
     #[rstest]
     fn test_multiple_phenotypic_features_same_phenopacket(
-        tmp_dir: TempDir,
         phenopacket_id: String,
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let result1 = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -401,10 +375,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_different_phenopacket_ids(valid_phenotype: String, tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_different_phenopacket_ids(valid_phenotype: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -441,14 +413,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_phenotypic_features(
-        tmp_dir: TempDir,
-        phenopacket_id: String,
-        valid_phenotype: String,
-    ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -499,15 +465,12 @@ mod tests {
 
     #[rstest]
     fn test_update_onset_of_phenotypic_feature(
-        tmp_dir: TempDir,
         phenopacket_id: String,
         onset_te: Option<TimeElement>,
         onset_te_alt: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         // Add a feature
         builder
@@ -552,10 +515,8 @@ mod tests {
 
     //todo to be updated when upsert individual is fully implemented
     #[rstest]
-    fn test_upsert_individual(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_upsert_individual() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -609,10 +570,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_or_create_phenopacket(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_get_or_create_phenopacket() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
