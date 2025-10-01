@@ -235,16 +235,6 @@ impl ContextualizedDataFrame {
             .context
             .iter()
             .filter(|sc| {
-                println!("header_context: {:?}", header_context);
-                println!("data_context: {:?}", data_context);
-                println!("sc.get_header_context(): {:?}", sc.get_header_context());
-                println!("sc.get_data_context(): {:?}", sc.get_data_context());
-                println!(
-                    "match: {:?}",
-                    sc.get_header_context() == header_context
-                        && sc.get_data_context() == data_context
-                );
-                println!("------");
                 sc.get_header_context() == header_context && sc.get_data_context() == data_context
             })
             .collect()
@@ -261,7 +251,6 @@ impl ContextualizedDataFrame {
     ) -> Vec<&Column> {
         match block_id {
             None => {
-                println!("none");
                 vec![]
             }
             Some(id) => self
