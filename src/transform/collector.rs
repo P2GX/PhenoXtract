@@ -93,6 +93,7 @@ impl Collector {
                 &Context::None,
                 &Context::OnsetAge,
             );
+
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 

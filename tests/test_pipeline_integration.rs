@@ -110,7 +110,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::HpoLabel,
                     None,
                     None,
-                    Some("Block_1".to_string()),
+                    Some("block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Age of onset".to_string()),
