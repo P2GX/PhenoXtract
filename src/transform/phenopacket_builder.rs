@@ -568,4 +568,16 @@ mod tests {
         assert_eq!(individual.sex, Sex::Male as i32);
         assert_eq!(individual.vital_status, Some(vs));
     }
+
+    #[rstest]
+    fn test_get_or_create_phenopacket(tmp_dir: TempDir) {
+        skip_in_ci!();
+
+        let mut builder = construct_builder(tmp_dir);
+        let phenopacket_id = "pp_001";
+        builder.get_or_create_phenopacket(phenopacket_id);
+        let pp = builder.get_or_create_phenopacket(phenopacket_id);
+        assert_eq!(pp.id, phenopacket_id);
+        assert_eq!(builder.subject_to_phenopacket.len(), 1);
+    }
 }
