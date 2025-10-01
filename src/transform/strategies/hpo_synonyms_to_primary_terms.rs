@@ -1,5 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::transform::error::TransformError::StrategyError;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
@@ -7,7 +8,7 @@ use log::{debug, info};
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
-use polars::prelude::{AnyValue, Column, DataType};
+use polars::prelude::{AnyValue, Column, DataType, PlSmallStr};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -49,12 +50,18 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         //first we create our hash map
         let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
         for table in tables.iter_mut() {
-            let hpo_label_cols: Vec<Column> = table
+            let names_of_hpo_label_cols: Vec<&PlSmallStr> = table
                 .get_cols_with_data_context(&Context::HpoLabel)
-                .into_iter()
-                .cloned()
+                .iter()
+                .map(|col| col.name())
                 .collect();
-            for col in &hpo_label_cols {
+
+            for col_name in names_of_hpo_label_cols {
+                let col = table.data.column(col_name.as_str()).map_err(|_| {
+                    StrategyError(format!(
+                        "Unexpectedly could not find column {col_name} in DataFrame."
+                    ))
+                })?;
                 let stringified_col = convert_col_to_string_vec(col)?;
                 for cell_term in stringified_col.iter() {
                     // first we check if the cell term is already in the hash map

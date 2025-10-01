@@ -73,7 +73,6 @@ impl AliasMapStrategy {
     }
 }
 
-// Implementation with proper mutable iteration
 impl Strategy for AliasMapStrategy {
     fn is_valid(&self, _tables: &[&mut ContextualizedDataFrame]) -> bool {
         true
