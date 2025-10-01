@@ -155,7 +155,7 @@ mod tests {
             Context::HpoLabel,
             None,
             None,
-            vec![],
+            None,
         );
         TableContext::new("patient_data".to_string(), vec![sc])
     }

@@ -83,12 +83,16 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(&Context::HpoLabel);
+        let pf_scs =
+            patient_cdf.get_series_context_with_contexts(&Context::None, &Context::HpoLabel);
 
         for pf_sc in pf_scs {
-            let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols =
-                patient_cdf.get_linked_cols_with_data_context(pf_sc, &Context::OnsetAge);
+            let pf_cols = patient_cdf.get_columns(pf_sc.get_identifier());
+            let linked_onset_cols = patient_cdf.get_building_block_with_contexts(
+                pf_sc.get_building_block_id(),
+                &Context::None,
+                &Context::OnsetAge,
+            );
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
@@ -282,7 +286,7 @@ mod tests {
             Context::SubjectId,
             None,
             None,
-            vec![],
+            None,
         );
         let pf_sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
@@ -290,7 +294,7 @@ mod tests {
             Context::HpoLabel,
             None,
             None,
-            vec![Identifier::Regex("onset_age".to_string())],
+            Some("Block_1".to_string()),
         );
         let onset_sc = SeriesContext::new(
             Identifier::Regex("onset_age".to_string()),
@@ -298,7 +302,7 @@ mod tests {
             Context::OnsetAge,
             None,
             None,
-            vec![Identifier::Regex("phenotypic_features".to_string())],
+            Some("Block_1".to_string()),
         );
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
@@ -306,7 +310,7 @@ mod tests {
             Context::SubjectSex,
             None,
             None,
-            vec![],
+            None,
         );
         let vital_status_sc = SeriesContext::new(
             Identifier::Regex("vital_status".to_string()),
@@ -314,7 +318,7 @@ mod tests {
             Context::VitalStatus,
             None,
             None,
-            vec![],
+            None,
         );
         TableContext::new(
             "patient_data".to_string(),

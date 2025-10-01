@@ -39,7 +39,7 @@ fn csv_context() -> TableContext {
                 Context::SubjectId,
                 None,
                 None,
-                vec![],
+                None,
             ),
             SeriesContext::new(
                 Identifier::Regex("1".to_string()),
@@ -47,7 +47,7 @@ fn csv_context() -> TableContext {
                 Context::HpoLabel,
                 None,
                 None,
-                vec![],
+                None,
             ),
             SeriesContext::new(
                 Identifier::Regex("2".to_string()),
@@ -55,7 +55,7 @@ fn csv_context() -> TableContext {
                 Context::HpoLabel,
                 None,
                 None,
-                vec![],
+                None,
             ),
         ],
     )
@@ -73,7 +73,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Sex".to_string()),
@@ -81,7 +81,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectSex,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Living".to_string()),
@@ -89,7 +89,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::VitalStatus,
                     None,
                     Some(vital_status_aliases),
-                    vec![],
+                    None,
                 ),
             ],
         ),
@@ -102,7 +102,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Phenotypic Features".to_string()),
@@ -110,7 +110,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::HpoLabel,
                     None,
                     None,
-                    vec![Identifier::Regex("Age of onset".to_string())],
+                    Some("Block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Age of onset".to_string()),
@@ -118,7 +118,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::OnsetAge,
                     None,
                     None,
-                    vec![],
+                    Some("block_1".to_string()),
                 ),
             ],
         ),
@@ -131,7 +131,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex(r"Phenotypic Features \d+".to_string()),
@@ -139,7 +139,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::HpoLabel,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
             ],
         ),

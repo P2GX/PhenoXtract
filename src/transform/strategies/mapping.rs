@@ -194,7 +194,7 @@ mod tests {
                 Context::SubjectSex,
                 None,
                 None,
-                vec![],
+                None,
             )],
         );
 

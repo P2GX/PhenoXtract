@@ -114,7 +114,10 @@ impl ContextualizedDataFrame {
 
     #[allow(unused)]
     pub fn get_sc_from_id(&self, id: &Identifier) -> Option<&SeriesContext> {
-        self.context.context.iter().find(|sc| &sc.identifier == id)
+        self.context
+            .context
+            .iter()
+            .find(|sc| sc.get_identifier() == id)
     }
 
     /// Searches a CDF for columns whose header_context and data_context are certain specific values
@@ -181,7 +184,7 @@ impl ContextualizedDataFrame {
                 if sc.get_data_context() == data_context
                     && sc.get_header_context() == header_context
                 {
-                    Some(self.get_columns(&sc.identifier))
+                    Some(self.get_columns(sc.get_identifier()))
                 } else {
                     None
                 }
@@ -197,7 +200,7 @@ impl ContextualizedDataFrame {
             .iter()
             .filter_map(|sc| {
                 if sc.get_data_context() == data_context {
-                    Some(self.get_columns(&sc.identifier))
+                    Some(self.get_columns(sc.get_identifier()))
                 } else {
                     None
                 }
@@ -213,7 +216,7 @@ impl ContextualizedDataFrame {
             .iter()
             .filter_map(|sc| {
                 if sc.get_header_context() == header_context {
-                    Some(self.get_columns(&sc.identifier))
+                    Some(self.get_columns(sc.get_identifier()))
                 } else {
                     None
                 }
@@ -223,35 +226,55 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_scs_with_data_context(&self, data_context: &Context) -> Vec<&SeriesContext> {
+    pub fn get_series_context_with_contexts(
+        &self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> Vec<&SeriesContext> {
         self.context
             .context
             .iter()
-            .filter(|sc| sc.get_data_context() == data_context)
+            .filter(|sc| {
+                println!("header_context: {:?}", header_context);
+                println!("data_context: {:?}", data_context);
+                println!("sc.get_header_context(): {:?}", sc.get_header_context());
+                println!("sc.get_data_context(): {:?}", sc.get_data_context());
+                println!(
+                    "match: {:?}",
+                    sc.get_header_context() == header_context
+                        && sc.get_data_context() == data_context
+                );
+                println!("------");
+                sc.get_header_context() == header_context && sc.get_data_context() == data_context
+            })
             .collect()
     }
 
     /// Given a SeriesContext sc, this functions gets all columns which are linked to sc
     /// and which have a certain data context
     #[allow(unused)]
-    pub fn get_linked_cols_with_data_context(
+    pub fn get_building_block_with_contexts(
         &self,
-        sc: &SeriesContext,
+        block_id: &Option<String>,
+        header_context: &Context,
         data_context: &Context,
     ) -> Vec<&Column> {
-        let linked_scs = sc
-            .linked_to
-            .iter()
-            .filter_map(|id| self.get_sc_from_id(id))
-            .collect::<Vec<&SeriesContext>>();
-        let linked_scs_filtered = linked_scs
-            .iter()
-            .filter(|linked_sc| linked_sc.get_data_context() == data_context)
-            .collect::<Vec<&&SeriesContext>>();
-        linked_scs_filtered
-            .iter()
-            .flat_map(|linked_sc| self.get_columns(&linked_sc.identifier))
-            .collect::<Vec<&Column>>()
+        match block_id {
+            None => {
+                println!("none");
+                vec![]
+            }
+            Some(id) => self
+                .get_series_context_with_contexts(header_context, data_context)
+                .iter()
+                .flat_map(|sc| {
+                    if sc.get_building_block_id() == block_id {
+                        return self.get_columns(sc.get_identifier());
+                    }
+                    vec![]
+                })
+                .collect(),
+        }
     }
 }
 
@@ -286,10 +309,7 @@ mod tests {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![
-                        Identifier::Regex("age".to_string()),
-                        Identifier::Regex("bronchitis".to_string()),
-                    ],
+                    Some("block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("age".to_string()),
@@ -297,7 +317,7 @@ mod tests {
                     Context::SubjectAge,
                     None,
                     None,
-                    vec![],
+                    Some("block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("bronchitis".to_string()),
@@ -305,7 +325,7 @@ mod tests {
                     Context::ObservationStatus,
                     None,
                     None,
-                    vec![],
+                    Some("block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("overweight".to_string()),
@@ -313,7 +333,7 @@ mod tests {
                     Context::ObservationStatus,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
             ],
         }
@@ -501,30 +521,34 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_linked_cols_with_data_context() {
+    fn test_get_building_block_with_contexts() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
-        let subject_id_sc = cdf
-            .get_sc_from_id(&Identifier::Multi(vec![
-                "user.name".to_string(),
-                "different".to_string(),
-            ]))
-            .unwrap();
-        let subject_age_sc = cdf
-            .get_sc_from_id(&Identifier::Regex("age".to_string()))
-            .unwrap();
+
+        let block_id = Some("block_1".to_string());
+
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::ObservationStatus),
+            cdf.get_building_block_with_contexts(
+                &block_id,
+                &Context::HpoLabel,
+                &Context::ObservationStatus
+            ),
             vec![cdf.data.column("bronchitis").unwrap()]
         );
+
         let no_column_vec: Vec<&Column> = Vec::new();
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::VitalStatus),
+            cdf.get_building_block_with_contexts(&block_id, &Context::None, &Context::VitalStatus),
             no_column_vec
         );
+
         assert_eq!(
-            cdf.get_linked_cols_with_data_context(subject_age_sc, &Context::ObservationStatus),
+            cdf.get_building_block_with_contexts(
+                &block_id,
+                &Context::None,
+                &Context::ObservationStatus
+            ),
             no_column_vec
         );
     }
