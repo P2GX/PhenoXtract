@@ -570,10 +570,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_or_create_phenopacket(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_get_or_create_phenopacket() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
