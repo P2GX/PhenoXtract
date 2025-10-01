@@ -2087,6 +2087,7 @@ dependencies = [
  "either",
  "log",
  "mockito",
+ "once_cell",
  "ontolius",
  "phenopackets",
  "polars",

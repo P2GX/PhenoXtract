@@ -17,18 +17,18 @@ use phenopackets::schema::v2::core::{
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    hpo: Rc<FullCsrOntology>,
+    hpo: Arc<FullCsrOntology>,
 }
 
 impl PhenopacketBuilder {
-    pub fn new(hpo: Rc<FullCsrOntology>) -> PhenopacketBuilder {
+    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketBuilder {
         PhenopacketBuilder {
             subject_to_phenopacket: HashMap::default(),
             hpo,
@@ -327,14 +327,10 @@ impl PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-    use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO;
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
-    use tempfile::TempDir;
 
     #[fixture]
     fn phenopacket_id() -> String {
@@ -381,6 +377,11 @@ mod tests {
     }
 
     #[fixture]
+    fn another_phenotype() -> String {
+        "Microcephaly".to_string()
+    }
+
+    #[fixture]
     fn tmp_dir() -> TempDir {
         TempDir::new().unwrap()
     }
@@ -400,11 +401,8 @@ mod tests {
         valid_phenotype: String,
         onset_age: Option<&str>,
         onset_age_te: Option<TimeElement>,
-        tmp_dir: TempDir,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
             &valid_phenotype,
@@ -437,10 +435,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_invalid_term(tmp_dir: TempDir, phenopacket_id: String) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -459,14 +455,11 @@ mod tests {
 
     #[rstest]
     fn test_multiple_phenotypic_features_same_phenopacket(
-        tmp_dir: TempDir,
         phenopacket_id: String,
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let result1 = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -499,10 +492,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_different_phenopacket_ids(valid_phenotype: String, tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_different_phenopacket_ids(valid_phenotype: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -539,14 +530,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_phenotypic_features(
-        tmp_dir: TempDir,
-        phenopacket_id: String,
-        valid_phenotype: String,
-    ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -597,16 +582,13 @@ mod tests {
 
     #[rstest]
     fn test_update_onset_of_phenotypic_feature(
-        tmp_dir: TempDir,
         phenopacket_id: String,
         onset_age: Option<&str>,
         onset_timestamp: Option<&str>,
         onset_timestamp_te: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         // Add a feature
         builder
@@ -650,10 +632,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_individual(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_upsert_individual() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -811,5 +791,15 @@ mod tests {
         assert!(result.is_err());
         let result = PhenopacketBuilder::parse_timestamp("2020-20-15T09:17:39Z");
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_get_or_create_phenopacket() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let phenopacket_id = "pp_001";
+        builder.get_or_create_phenopacket(phenopacket_id);
+        let pp = builder.get_or_create_phenopacket(phenopacket_id);
+        assert_eq!(pp.id, phenopacket_id);
+        assert_eq!(builder.subject_to_phenopacket.len(), 1);
     }
 }
