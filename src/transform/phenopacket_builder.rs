@@ -376,25 +376,6 @@ mod tests {
         })
     }
 
-    #[fixture]
-    fn another_phenotype() -> String {
-        "Microcephaly".to_string()
-    }
-
-    #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    fn construct_builder(tmp_dir: TempDir) -> PhenopacketBuilder {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let path = hpo_registry.register("latest").unwrap();
-
-        PhenopacketBuilder::new(init_ontolius(path).unwrap())
-    }
-
     #[rstest]
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
@@ -686,10 +667,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_vital_status(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let mut builder = construct_builder(tmp_dir);
+    fn test_upsert_vital_status() {
+        let mut builder = PhenopacketBuilder::new(HPO.clone());
 
         let phenopacket_id = "pp_001";
 
