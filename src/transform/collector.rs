@@ -250,10 +250,7 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-    use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO;
     use crate::transform::collector::Collector;
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -268,20 +265,9 @@ mod tests {
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
 
-    #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    fn init_collector(tmp_dir: TempDir) -> Collector {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let hpo_path = hpo_registry.register("latest").unwrap();
-        let hpo_ontology = init_ontolius(hpo_path).unwrap();
-        let phenopacket_builder = PhenopacketBuilder::new(hpo_ontology);
+    fn init_collector() -> Collector {
+        let phenopacket_builder = PhenopacketBuilder::new(HPO.clone());
         Collector {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),
@@ -509,14 +495,12 @@ mod tests {
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
-        tmp_dir: TempDir,
         pf_pneumonia: PhenotypicFeature,
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
         pf_macrocephaly: PhenotypicFeature,
     ) {
-        skip_in_ci!();
-        let mut collector = init_collector(tmp_dir);
+        let mut collector = init_collector();
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
@@ -586,15 +570,12 @@ mod tests {
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
-        tmp_dir: TempDir,
         pf_pneumonia: PhenotypicFeature,
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
         df_single_patient: DataFrame,
     ) {
-        skip_in_ci!();
-
-        let mut collector = init_collector(tmp_dir);
+        let mut collector = init_collector();
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -618,10 +599,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_individual(tc: TableContext, tmp_dir: TempDir, df_single_patient: DataFrame) {
-        skip_in_ci!();
-
-        let mut collector = init_collector(tmp_dir);
+    fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame) {
+        let mut collector = init_collector();
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 

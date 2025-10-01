@@ -231,7 +231,8 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
-    //todo test after MVP
+    /// Given a SeriesContext sc, this functions gets all columns which are linked to sc
+    /// and which have a certain data context
     #[allow(unused)]
     pub fn get_linked_cols_with_data_context(
         &self,
@@ -285,7 +286,10 @@ mod tests {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    vec![
+                        Identifier::Regex("age".to_string()),
+                        Identifier::Regex("bronchitis".to_string()),
+                    ],
                 ),
                 SeriesContext::new(
                     Identifier::Regex("age".to_string()),
@@ -494,5 +498,34 @@ mod tests {
             &Context::SubjectId,
             &DataType::Boolean
         ));
+    }
+
+    #[rstest]
+    fn test_get_linked_cols_with_data_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let subject_id_sc = cdf
+            .get_sc_from_id(&Identifier::Multi(vec![
+                "user.name".to_string(),
+                "different".to_string(),
+            ]))
+            .unwrap();
+        let subject_age_sc = cdf
+            .get_sc_from_id(&Identifier::Regex("age".to_string()))
+            .unwrap();
+        assert_eq!(
+            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::ObservationStatus),
+            vec![cdf.data.column("bronchitis").unwrap()]
+        );
+        let no_column_vec: Vec<&Column> = Vec::new();
+        assert_eq!(
+            cdf.get_linked_cols_with_data_context(subject_id_sc, &Context::VitalStatus),
+            no_column_vec
+        );
+        assert_eq!(
+            cdf.get_linked_cols_with_data_context(subject_age_sc, &Context::ObservationStatus),
+            no_column_vec
+        );
     }
 }

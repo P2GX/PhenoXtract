@@ -1,14 +1,14 @@
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[allow(dead_code)]
-pub fn init_ontolius(hpo_path: PathBuf) -> Result<Rc<FullCsrOntology>, anyhow::Error> {
+pub fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
     let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
     let ontolius = loader.load_from_path(hpo_path.clone())?;
-    Ok(Rc::new(ontolius))
+    Ok(Arc::new(ontolius))
 }
 
 #[cfg(test)]
@@ -16,7 +16,6 @@ mod tests {
     use super::*;
     use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
-    use crate::skip_in_ci;
     use ontolius::ontology::OntologyTerms;
     use ontolius::term::MinimalTerm;
     use ontolius::{Identified, TermId};
@@ -25,8 +24,6 @@ mod tests {
 
     #[rstest]
     fn test_init_ontolius() {
-        skip_in_ci!();
-
         let tmp = TempDir::new().unwrap();
         let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
             .unwrap()
