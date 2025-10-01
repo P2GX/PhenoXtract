@@ -253,16 +253,20 @@ impl ContextualizedDataFrame {
             None => {
                 vec![]
             }
-            Some(id) => self
-                .get_series_context_with_contexts(header_context, data_context)
-                .iter()
-                .flat_map(|sc| {
-                    if sc.get_building_block_id() == block_id {
-                        return self.get_columns(sc.get_identifier());
-                    }
-                    vec![]
-                })
-                .collect(),
+            Some(id) => {
+                let block_id = block_id.clone().unwrap();
+                self.get_series_context_with_contexts(header_context, data_context)
+                    .iter()
+                    .flat_map(|sc| {
+                        if let Some(other_id) = sc.get_building_block_id() {
+                            if other_id.to_lowercase() == block_id.to_lowercase() {
+                                return self.get_columns(sc.get_identifier());
+                            }
+                        }
+                        vec![]
+                    })
+                    .collect()
+            }
         }
     }
 }
