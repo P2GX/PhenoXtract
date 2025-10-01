@@ -258,10 +258,10 @@ impl ContextualizedDataFrame {
                 self.get_series_context_with_contexts(header_context, data_context)
                     .iter()
                     .flat_map(|sc| {
-                        if let Some(other_id) = sc.get_building_block_id() {
-                            if other_id.to_lowercase() == block_id.to_lowercase() {
-                                return self.get_columns(sc.get_identifier());
-                            }
+                        if let Some(other_id) = sc.get_building_block_id()
+                            && other_id.to_lowercase() == block_id.to_lowercase()
+                        {
+                            return self.get_columns(sc.get_identifier());
                         }
                         vec![]
                     })
