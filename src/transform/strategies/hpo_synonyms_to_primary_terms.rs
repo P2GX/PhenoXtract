@@ -8,7 +8,7 @@ use log::{debug, info};
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
-use polars::prelude::{AnyValue, Column, DataType, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries, PlSmallStr};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -111,38 +111,43 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             let table_name = &table.context().name.clone();
             info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
 
-            let hpo_label_cols: Vec<Column> = table
+            let names_of_hpo_label_cols: Vec<PlSmallStr> = table
                 .get_cols_with_data_context(&Context::HpoLabel)
-                .into_iter()
+                .iter()
+                .map(|col| col.name())
                 .cloned()
                 .collect();
 
             // we apply the primary term aliases when we can
             // and we do not change the cell term in the cases where we could not find a HPO primary term
-            for col in hpo_label_cols {
-                let string_vec_to_transform = convert_col_to_string_vec(&col)?;
-                let mapped_col = string_vec_to_transform
-                    .iter()
-                    .filter_map(|cell_term| {
-                        let primary_term = synonym_to_primary_term_map.get(cell_term);
-                        if cell_term == "null" {
-                            Some(AnyValue::Null)
-                        } else {
-                            match primary_term {
-                                Some(primary_term) => {
-                                    if primary_term.is_empty() {
-                                        Some(AnyValue::String(cell_term))
-                                    } else {
-                                        debug!("Converted {cell_term} to {primary_term}");
-                                        Some(AnyValue::String(primary_term))
-                                    }
+            for col_name in names_of_hpo_label_cols {
+                let col = table.data.column(&col_name).unwrap();
+                let mapped_col = col.str().unwrap().apply_mut(|cell_term| {
+                    let primary_term = synonym_to_primary_term_map.get(cell_term);
+                    if cell_term.is_empty() {
+                        cell_term
+                    } else {
+                        match primary_term {
+                            Some(primary_term) => {
+                                if primary_term.is_empty() {
+                                    cell_term
+                                } else {
+                                    debug!("Converted {cell_term} to {primary_term}");
+                                    primary_term
                                 }
-                                None => None,
                             }
+                            None => cell_term,
                         }
-                    })
-                    .collect::<Vec<AnyValue>>();
-                table.replace_column(mapped_col, col.name())?;
+                    }
+                });
+                table
+                    .data
+                    .replace(&col_name, mapped_col.into_series())
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Could not replace {col_name} column in {table_name}."
+                        ))
+                    })?;
             }
         }
 
