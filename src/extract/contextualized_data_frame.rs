@@ -113,7 +113,7 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_sc_from_id(&self, id: &Identifier) -> Option<&SeriesContext> {
+    pub fn get_series_context_by_id(&self, id: &Identifier) -> Option<&SeriesContext> {
         self.context
             .context
             .iter()
@@ -122,7 +122,7 @@ impl ContextualizedDataFrame {
 
     /// Searches a CDF for columns whose header_context and data_context are certain specific values
     /// and ensures that the columns' data_type is equal to desired_dtype
-    pub fn check_contexts_have_data_type(
+    pub fn contexts_have_dtype(
         &self,
         header_context: &Context,
         data_context: &Context,
@@ -226,7 +226,7 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_series_context_with_contexts(
+    pub fn get_series_contexts_with_contexts(
         &self,
         header_context: &Context,
         data_context: &Context,
@@ -255,7 +255,7 @@ impl ContextualizedDataFrame {
             }
             Some(id) => {
                 let block_id = block_id.clone().unwrap();
-                self.get_series_context_with_contexts(header_context, data_context)
+                self.get_series_contexts_with_contexts(header_context, data_context)
                     .iter()
                     .flat_map(|sc| {
                         if let Some(other_id) = sc.get_building_block_id()
@@ -489,28 +489,16 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         //check it can recognise true positives
-        assert!(cdf.check_contexts_have_data_type(
-            &Context::None,
-            &Context::SubjectId,
-            &DataType::String
-        ));
-        assert!(cdf.check_contexts_have_data_type(
-            &Context::None,
-            &Context::SubjectAge,
-            &DataType::Int32
-        ));
+        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::String));
+        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectAge, &DataType::Int32));
 
         //check it can recognise true negatives
-        assert!(!cdf.check_contexts_have_data_type(
+        assert!(!cdf.contexts_have_dtype(
             &Context::HpoLabel,
             &Context::ObservationStatus,
             &DataType::Float64
         ));
-        assert!(!cdf.check_contexts_have_data_type(
-            &Context::None,
-            &Context::SubjectId,
-            &DataType::Boolean
-        ));
+        assert!(!cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::Boolean));
     }
 
     #[rstest]

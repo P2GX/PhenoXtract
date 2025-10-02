@@ -84,7 +84,7 @@ impl Collector {
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
         let pf_scs =
-            patient_cdf.get_series_context_with_contexts(&Context::None, &Context::HpoLabel);
+            patient_cdf.get_series_contexts_with_contexts(&Context::None, &Context::HpoLabel);
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(pf_sc.get_identifier());

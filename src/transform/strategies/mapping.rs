@@ -99,11 +99,7 @@ impl MappingStrategy {
 
 impl Strategy for MappingStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(
-            &self.header_context,
-            &self.data_context,
-            &self.column_dtype,
-        )
+        table.contexts_have_dtype(&self.header_context, &self.data_context, &self.column_dtype)
     }
 
     fn internal_transform(

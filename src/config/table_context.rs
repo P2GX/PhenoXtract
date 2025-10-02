@@ -137,7 +137,7 @@ pub struct SeriesContext {
     alias_map: Option<AliasMap>,
 
     #[serde(default)]
-    /// List of IDs that link to other tables, can be used to determine the relationship between these columns.
+    /// An ID that associates this series with a building block of a phenopacket. If the same ID is shared with other series, the pipeline will try to construct a building block from them.
     building_block_id: Option<String>,
 }
 
