@@ -1,33 +1,33 @@
 #![allow(clippy::too_many_arguments)]
+use crate::ontology::hpo_bidict::HPOBiDict;
 use crate::transform::error::TransformError;
 use anyhow::anyhow;
 use log::warn;
-use ontolius::ontology::OntologyTerms;
-use ontolius::ontology::csr::FullCsrOntology;
-use ontolius::term::simple::SimpleTerm;
-use ontolius::term::{MinimalTerm, Synonymous};
-use ontolius::{Identified, TermId};
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::Evidence;
 use phenopackets::schema::v2::core::{
     Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
+
+struct HPOIdTermPair {
+    pub name: String,
+    pub id: String,
+}
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    hpo: Arc<FullCsrOntology>,
+    hpo_dict: Arc<HPOBiDict>,
 }
 
 impl PhenopacketBuilder {
-    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketBuilder {
+    pub fn new(hpo_dict: Arc<HPOBiDict>) -> PhenopacketBuilder {
         PhenopacketBuilder {
             subject_to_phenopacket: HashMap::default(),
-            hpo,
+            hpo_dict,
         }
     }
     #[allow(dead_code)]
@@ -175,7 +175,7 @@ impl PhenopacketBuilder {
         let feature = if let Some(pos) =
             phenopacket.phenotypic_features.iter().position(|feature| {
                 if let Some(t) = &feature.r#type {
-                    t.id == term.identifier().to_string()
+                    t.id == term.id
                 } else {
                     false
                 }
@@ -184,8 +184,8 @@ impl PhenopacketBuilder {
         } else {
             let new_feature = PhenotypicFeature {
                 r#type: Some(OntologyClass {
-                    id: term.identifier().to_string(),
-                    label: term.name().to_string(),
+                    id: term.id,
+                    label: term.name,
                 }),
                 ..Default::default()
             };
@@ -214,34 +214,28 @@ impl PhenopacketBuilder {
             })
     }
     // TODO: Add test after MVP
-    fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, anyhow::Error> {
-        let term = TermId::from_str(raw_term)
-            .ok()
-            .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
-            .or_else(|| {
-                self.hpo.as_ref().iter_terms().find(|term| {
-                    term.is_current()
-                        && (term.name().to_lowercase() == raw_term.to_lowercase().trim()
-                            || term.synonyms().iter().any(|syn| {
-                                syn.name.to_lowercase() == raw_term.to_lowercase().trim()
-                            }))
-                })
-            });
-        if term.is_none() {
-            return Err(anyhow!("Could not find ontology class for {raw_term}"));
-        }
-        let term = term.unwrap();
-        if term.is_obsolete() {
-            return Err(anyhow!("Could only find obsolete term for: {raw_term}"));
-        }
-        Ok(term.clone())
+    fn raw_to_full_term(&self, raw_term: &str) -> Result<HPOIdTermPair, anyhow::Error> {
+        self.hpo_dict
+            .get(raw_term)
+            .ok_or_else(|| anyhow!("Could not find ontology class for {raw_term}"))
+            .and_then(|found| {
+                let corresponding_term = self.hpo_dict.get(found).ok_or_else(|| {
+                    anyhow!("Inconsistent ontology: No corresponding term for {found}")
+                })?;
+                let (term, id) = if self.hpo_dict.is_primary_term(found) {
+                    (found.to_string(), corresponding_term.to_string())
+                } else {
+                    (corresponding_term.to_string(), found.to_string())
+                };
+                Ok(HPOIdTermPair { name: term, id })
+            })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::HPO;
+    use crate::test_utils::HPO_DICT;
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
@@ -285,7 +279,7 @@ mod tests {
         valid_phenotype: String,
         onset_te: Option<TimeElement>,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
             &valid_phenotype,
@@ -319,7 +313,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -342,7 +336,7 @@ mod tests {
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let result1 = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -376,7 +370,7 @@ mod tests {
 
     #[rstest]
     fn test_different_phenopacket_ids(valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -414,7 +408,7 @@ mod tests {
 
     #[rstest]
     fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -470,7 +464,7 @@ mod tests {
         onset_te_alt: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         // Add a feature
         builder
@@ -516,7 +510,7 @@ mod tests {
     //todo to be updated when upsert individual is fully implemented
     #[rstest]
     fn test_upsert_individual() {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -571,7 +565,7 @@ mod tests {
 
     #[rstest]
     fn test_get_or_create_phenopacket() {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
