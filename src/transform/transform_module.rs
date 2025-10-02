@@ -15,15 +15,17 @@ impl TransformerModule {
     #[allow(dead_code)]
     pub fn run(
         &mut self,
-        tables: &mut [ContextualizedDataFrame],
+        mut data: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, TransformError> {
-        for table in tables.iter_mut() {
-            for strategy in &self.strategies {
-                strategy.transform(table)?;
-            }
+        let mut tables_refs = data
+            .iter_mut()
+            .collect::<Vec<&mut ContextualizedDataFrame>>();
+
+        for strategy in &self.strategies {
+            strategy.transform(tables_refs.as_mut_slice())?;
         }
 
-        self.collector.collect(tables)
+        self.collector.collect(data)
     }
 
     pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
