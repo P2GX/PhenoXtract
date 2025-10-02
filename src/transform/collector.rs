@@ -29,7 +29,7 @@ impl Collector {
     }
     pub fn collect(
         &mut self,
-        cdfs: &[ContextualizedDataFrame],
+        cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
             let subject_id_cols = cdf.get_cols_with_data_context(&Context::SubjectId);
@@ -509,7 +509,7 @@ mod tests {
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
-        let collect_result = collector.collect([cdf].as_slice());
+        let collect_result = collector.collect(vec![cdf]);
         let phenopackets = collect_result.unwrap();
 
         let mut expected_p001 = Phenopacket {
