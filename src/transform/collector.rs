@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{Column, IntoLazy, col, lit};
+use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -106,20 +106,20 @@ impl Collector {
                 let onset_col = if valid_onset_linking {
                     linked_onset_cols.first().unwrap()
                 } else {
-                    &&Column::new("Null_onset_column".into(), vec!["null"; pf_col.len()])
+                    &&Column::new_empty("Null_onset_col".into(), &DataType::String)
                 };
 
-                let stringified_pf_col = convert_col_to_string_vec(pf_col)?;
-                let stringified_onset_col = convert_col_to_string_vec(onset_col)?;
+                for (index, phenotype) in pf_col.str().unwrap().iter().enumerate() {
+                    let onset = onset_col.get(index).ok().and_then(|any_value| {
+                        if let AnyValue::String(onset) = any_value {
+                            Some(onset)
+                        } else {
+                            None
+                        }
+                    });
 
-                let pf_onset_pairs: Vec<(&String, &String)> = stringified_pf_col
-                    .iter()
-                    .zip(stringified_onset_col.iter())
-                    .collect();
-
-                for (hpo_label, onset) in pf_onset_pairs {
-                    if hpo_label == "null" {
-                        if onset != "null" {
+                    if phenotype.is_none() {
+                        if let Some(onset) = onset {
                             warn!(
                                 "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
                                 onset,
@@ -128,16 +128,10 @@ impl Collector {
                             );
                         }
                     } else {
-                        let onset = if onset == "null" {
-                            None
-                        } else {
-                            Some(onset.as_str())
-                        };
-
                         self.phenopacket_builder
                             .upsert_phenotypic_feature(
                                 phenopacket_id,
-                                hpo_label,
+                                phenotype.unwrap(),
                                 None,
                                 None,
                                 None,
@@ -149,7 +143,7 @@ impl Collector {
                             .map_err(|_| {
                                 CollectionError(format!(
                                     "Error when upserting HPO term {} in column {}",
-                                    hpo_label,
+                                    phenotype.unwrap(),
                                     pf_col.name()
                                 ))
                             })?;
@@ -686,10 +680,9 @@ mod tests {
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
         let phenopacket_id = "cohort2019-P006".to_string();
-
-        let collect_pfs_result =
-            collector.collect_phenotypic_features(&patient_cdf, &phenopacket_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_phenotypic_features(&patient_cdf, &phenopacket_id)
+            .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
         let mut expected_p006 = Phenopacket {
@@ -713,9 +706,10 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
         let patient_id = "P006".to_string();
 
-        let collect_pfs_result =
-            collector.collect_individual(&patient_cdf, &phenopacket_id, &patient_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_individual(&patient_cdf, &phenopacket_id, &patient_id)
+            .unwrap();
+
         let phenopackets = collector.phenopacket_builder.build();
 
         let indiv = Individual {
