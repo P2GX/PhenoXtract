@@ -30,7 +30,7 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().all(|table| {
-            table.check_contexts_have_data_type(
+            table.check_correct_data_type(
                 &Context::None,
                 &Context::HpoLabel,
                 &DataType::String,

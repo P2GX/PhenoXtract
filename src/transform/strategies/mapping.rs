@@ -101,7 +101,7 @@ impl MappingStrategy {
 impl Strategy for MappingStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().all(|table| {
-            table.check_contexts_have_data_type(
+            table.check_correct_data_type(
                 &self.header_context,
                 &self.data_context,
                 &self.column_dtype,
