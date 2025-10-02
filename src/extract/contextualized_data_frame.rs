@@ -119,7 +119,7 @@ impl ContextualizedDataFrame {
 
     /// Searches a CDF for columns whose header_context and data_context are certain specific values
     /// and ensures that the columns' data_type is equal to desired_dtype
-    pub fn check_contexts_have_data_type(
+    pub fn check_correct_data_type(
         &self,
         header_context: &Context,
         data_context: &Context,
@@ -476,24 +476,24 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
         //check it can recognise true positives
-        assert!(cdf.check_contexts_have_data_type(
+        assert!(cdf.check_correct_data_type(
             &Context::None,
             &Context::SubjectId,
             &DataType::String
         ));
-        assert!(cdf.check_contexts_have_data_type(
+        assert!(cdf.check_correct_data_type(
             &Context::None,
             &Context::SubjectAge,
             &DataType::Int32
         ));
 
         //check it can recognise true negatives
-        assert!(!cdf.check_contexts_have_data_type(
+        assert!(!cdf.check_correct_data_type(
             &Context::HpoLabel,
             &Context::ObservationStatus,
             &DataType::Float64
         ));
-        assert!(!cdf.check_contexts_have_data_type(
+        assert!(!cdf.check_correct_data_type(
             &Context::None,
             &Context::SubjectId,
             &DataType::Boolean

@@ -2,6 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 
+use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
@@ -98,71 +99,90 @@ impl MappingStrategy {
 }
 
 impl Strategy for MappingStrategy {
-    fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(
-            &self.header_context,
-            &self.data_context,
-            &self.column_dtype,
-        )
+    fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
+        tables.iter().all(|table| {
+            table.check_correct_data_type(
+                &self.header_context,
+                &self.data_context,
+                &self.column_dtype,
+            )
+        })
     }
 
     fn internal_transform(
         &self,
-        table: &mut ContextualizedDataFrame,
+        tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), TransformError> {
         info!(
-            "Applying SexMapping strategy to table: {}",
-            table.context().name
+            "Applying Mapping strategy to data. Applying synonyms to columns with header_context {} and data_context {}.",
+            self.header_context, self.data_context
         );
-
-        let col_names: Vec<String> = table
-            .get_cols_with_contexts(&self.header_context, &self.data_context)
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        for col_name in col_names {
-            let col = table.data.column(&col_name).unwrap();
-            let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
-                if cell_value.is_empty() {
-                    return cell_value;
-                }
+        for table in tables.iter_mut() {
+            info!(
+                "Applying Mapping strategy to table: {}",
+                table.context().name
+            );
 
-                match self.synonym_map.get(cell_value.to_lowercase().trim()) {
-                    Some(alias) => {
-                        debug!("Converted '{cell_value}' to '{alias}'");
-                        alias
-                    }
-                    None => {
-                        warn!("Unable to convert map '{cell_value}'");
-                        error_info.insert(MappingErrorInfo {
-                            column: col.name().to_string(),
-                            table: table.context().clone().name,
-                            old_value: cell_value.to_string(),
-                            possible_mappings: MappingSuggestion::from_hashmap(&self.synonym_map),
-                        });
-                        cell_value
-                    }
-                }
-            });
+            let col_names: Vec<String> = table
+                .get_cols_with_contexts(&self.header_context, &self.data_context)
+                .iter()
+                .map(|col| col.name().to_string())
+                .collect();
 
-            table
-                .data
-                .replace(
-                    &col_name,
-                    mapped_column.cast(&self.out_dtype).map_err(|_| {
-                        TransformError::StrategyError(format!(
-                            "Unable to cast column from {} to {}",
-                            self.column_dtype, self.out_dtype
+            for col_name in col_names {
+                let col = table.data.column(&col_name).unwrap();
+                let mapped_column = col
+                    .str()
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Unexpectedly could not convert column {col_name} to string column."
                         ))
-                    })?,
-                )
-                .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                    })?
+                    .apply_mut(|cell_value| {
+                        if cell_value.is_empty() {
+                            return cell_value;
+                        }
+
+                        match self.synonym_map.get(cell_value.to_lowercase().trim()) {
+                            Some(alias) => {
+                                debug!("Converted '{cell_value}' to '{alias}'");
+                                alias
+                            }
+                            None => {
+                                warn!("Unable to convert map '{cell_value}'");
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_value.to_string(),
+                                    possible_mappings: MappingSuggestion::from_hashmap(
+                                        &self.synonym_map,
+                                    ),
+                                });
+                                cell_value
+                            }
+                        }
+                    });
+
+                table
+                    .data
+                    .replace(
+                        &col_name,
+                        mapped_column.cast(&self.out_dtype).map_err(|_| {
+                            StrategyError(format!(
+                                "Unable to cast column from {} to {}",
+                                self.column_dtype, self.out_dtype
+                            ))
+                        })?,
+                    )
+                    .map_err(|err| StrategyError(err.to_string()))?;
+            }
         }
+
         if !error_info.is_empty() {
-            Err(TransformError::MappingError {
+            Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })
@@ -213,7 +233,7 @@ mod tests {
         table.data = filtered_table;
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
-        strategy.transform(&mut table).unwrap();
+        strategy.transform(&mut [&mut table]).unwrap();
 
         let sex_values: Vec<String> = table
             .data
@@ -253,7 +273,7 @@ mod tests {
         strategy.synonym_map = HashMap::from([("male".to_string(), "5.6".to_string())]);
         strategy.out_dtype = DataType::Float64;
 
-        strategy.transform(&mut table).unwrap();
+        strategy.transform(&mut [&mut table]).unwrap();
         assert_eq!(
             table.data.column("sex").unwrap().dtype(),
             &strategy.out_dtype
@@ -265,7 +285,7 @@ mod tests {
         let mut table = make_test_dataframe();
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
-        let err = strategy.transform(&mut table);
+        let err = strategy.transform(&mut [&mut table]);
 
         match err {
             Err(TransformError::MappingError {

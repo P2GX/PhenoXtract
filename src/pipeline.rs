@@ -29,8 +29,8 @@ impl Pipeline {
         &mut self,
         extractables: &mut [impl Extractable + Validate],
     ) -> Result<(), PipelineError> {
-        let mut data = self.extract(extractables)?;
-        let phenopackets = self.transform(data.as_mut_slice())?;
+        let data = self.extract(extractables)?;
+        let phenopackets = self.transform(data)?;
         self.load(phenopackets.as_slice())?;
         Ok(())
     }
@@ -51,12 +51,12 @@ impl Pipeline {
 
     pub fn transform(
         &mut self,
-        tables: &mut [ContextualizedDataFrame],
+        data: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, PipelineError> {
         info!("Starting Transformation");
-        tables.iter().try_for_each(|t| t.validate())?;
+        data.iter().try_for_each(|t| t.validate())?;
 
-        let phenopackets = self.transformer_module.run(tables)?;
+        let phenopackets = self.transformer_module.run(data)?;
         info!(
             "Concluded Transformation. Found {:?} Phenopackets",
             phenopackets.len()
