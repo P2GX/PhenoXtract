@@ -3,7 +3,7 @@ use crate::transform::error::TransformError;
 use std::fmt::Debug;
 
 #[allow(dead_code)]
-/// Represents a strategy for transforming a `ContextualizedDataFrame`.
+/// Represents a strategy for transforming a collection of references to `ContextualizedDataFrame` structs.
 ///
 /// This trait defines a standard interface for applying a conditional transformation
 /// to a data structure in place. It decouples the decision of *whether* a transformation
@@ -15,15 +15,17 @@ use std::fmt::Debug;
 /// only attempted when the context is appropriate, preventing unnecessary work or
 /// potential errors.
 pub trait Strategy: Debug {
-    fn transform(&self, table: &mut ContextualizedDataFrame) -> Result<(), TransformError> {
-        match self.is_valid(table) {
-            true => self.internal_transform(table),
+    fn transform(&self, tables: &mut [&mut ContextualizedDataFrame]) -> Result<(), TransformError> {
+        match self.is_valid(tables) {
+            true => self.internal_transform(tables),
             false => Ok(()),
         }
     }
 
-    fn is_valid(&self, table: &ContextualizedDataFrame) -> bool;
+    fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool;
 
-    fn internal_transform(&self, table: &mut ContextualizedDataFrame)
-    -> Result<(), TransformError>;
+    fn internal_transform(
+        &self,
+        tables: &mut [&mut ContextualizedDataFrame],
+    ) -> Result<(), TransformError>;
 }
