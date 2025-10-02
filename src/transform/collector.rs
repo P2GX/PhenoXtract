@@ -111,10 +111,11 @@ impl Collector {
 
                 for (index, phenotype) in pf_col.str().unwrap().iter().enumerate() {
                     let onset = onset_col.get(index).ok().and_then(|any_value| {
-                        if let AnyValue::String(onset) = any_value {
-                            Some(onset)
-                        } else {
-                            None
+                        match any_value {
+                            AnyValue::String(onset) => Some(onset.to_string()),
+                            //this seems to occur when onset_col is a scalar col
+                            AnyValue::StringOwned(onset) => Some(onset.to_string()),
+                            _ => None,
                         }
                     });
 
@@ -136,7 +137,7 @@ impl Collector {
                                 None,
                                 None,
                                 None,
-                                onset,
+                                onset.as_deref(),
                                 None,
                                 None,
                             )

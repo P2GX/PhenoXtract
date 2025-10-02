@@ -15,6 +15,12 @@
         "id": "HP:0025044",
         "label": "Lung abscess"
       }
+    },
+    {
+      "type": {
+        "id": "HP:0001631",
+        "label": "Atrial septal defect"
+      }
     }
   ]
 }
