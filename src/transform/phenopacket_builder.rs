@@ -1,7 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
-use chrono::{NaiveDate, TimeZone, Utc};
+use crate::utils::{try_parse_string_date, try_parse_string_datetime};
+use chrono::{TimeZone, Utc};
 use log::warn;
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -305,21 +306,17 @@ impl PhenopacketBuilder {
     }
 
     fn parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, TransformError> {
-        //this will allow either full datetimes e.g. 2005-10-01T12:34:56Z or dates e.g. 2005-10-01
-        let dt = ts_string
-            .parse::<chrono::DateTime<Utc>>()
-            .or_else(|_| {
-                NaiveDate::parse_from_str(ts_string, "%Y-%m-%d")
-                    .map(|date| Utc.from_utc_datetime(&date.and_hms_opt(0, 0, 0).unwrap()))
-            })
-            .map_err(|_| {
+        let utc_dt = try_parse_string_datetime(ts_string)
+            .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
+            .map(|naive| Utc.from_utc_datetime(&naive))
+            .ok_or_else(|| {
                 CollectionError(format!(
                     "Could not parse {ts_string} as a Protobuf Timestamp."
                 ))
             })?;
 
-        let seconds = dt.timestamp();
-        let nanos = dt.timestamp_subsec_nanos() as i32;
+        let seconds = utc_dt.timestamp();
+        let nanos = utc_dt.timestamp_subsec_nanos() as i32;
         Ok(TimestampProtobuf { seconds, nanos })
     }
 }
