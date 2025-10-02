@@ -219,14 +219,15 @@ impl Collector {
                 patient_cdf,
                 Context::SurvivalTimeDays,
                 patient_id,
-            )?
-            .map(|str| str.parse::<u32>())
-            .transpose()
-            .map_err(|_| {
-                CollectionError(format!(
-                    "Could not parse survival time in days as u32 for {phenopacket_id}."
-                ))
-            })?;
+            )?;
+            let survival_time_days = survival_time_days
+                .map(|str| str.parse::<f64>().map(|f| f as u32))
+                .transpose()
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Could not parse survival time in days as u32 for {phenopacket_id}."
+                    ))
+                })?;
 
             self.phenopacket_builder
                 .upsert_vital_status(
