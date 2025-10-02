@@ -45,7 +45,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             let table_name = table.context().name.to_string();
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
-                .get_cols_with_data_context(&Context::HpoLabel)
+                .get_cols_with_contexts(&Context::None, &Context::HpoLabel)
                 .iter()
                 .map(|col| col.name())
                 .cloned()
