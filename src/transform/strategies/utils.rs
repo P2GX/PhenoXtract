@@ -5,24 +5,32 @@ use polars::prelude::Column;
 
 pub fn convert_col_to_string_vec(col: &Column) -> Result<Vec<String>, TransformError> {
     match col {
-        Column::Series(series_col) => Ok(series_col
-            .iter()
-            .map(|val| match val {
-                AnyValue::String(s) => s.to_string(),
-                _ => val.to_string(),
-            })
-            .collect::<Vec<String>>()),
+        Column::Series(series_col) => {
+            let stringified_col = series_col
+                .rechunk()
+                .iter()
+                .map(|val| match val {
+                    AnyValue::String(s) => s.to_string(),
+                    _ => val.to_string(),
+                })
+                .collect::<Vec<String>>();
+            Ok(stringified_col)
+        }
         Column::Partitioned(_partitioned_col) => Err(StrategyError(
             "Cannot currently convert partitioned columns into vectors of strings.".to_string(),
         )),
-        Column::Scalar(scalar_col) => Ok(scalar_col
-            .as_materialized_series()
-            .iter()
-            .map(|val| match val {
-                AnyValue::String(s) => s.to_string(),
-                _ => val.to_string(),
-            })
-            .collect::<Vec<String>>()),
+        Column::Scalar(scalar_col) => {
+            let stringified_col = scalar_col
+                .as_materialized_series()
+                .rechunk()
+                .iter()
+                .map(|val| match val {
+                    AnyValue::String(s) => s.to_string(),
+                    _ => val.to_string(),
+                })
+                .collect::<Vec<String>>();
+            Ok(stringified_col)
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::config::table_context::Context::HpoLabel;
+use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::strategies::utils::convert_col_to_string_vec;
@@ -10,18 +10,26 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Given a contextualised dataframe, this strategy will find all columns with HpoLabel as their data context
 /// for each of these columns, it will check if the cells contain a HPO term synonym. If they do, it will change them to the Primary HPO term.
 /// If any of the cells do not contain a HPO term synonym, then it will return an error.
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
-    hpo_ontology: Rc<FullCsrOntology>,
+    hpo_ontology: Arc<FullCsrOntology>,
 }
+
+impl HPOSynonymsToPrimaryTermsStrategy {
+    pub fn new(hpo_ontology: Arc<FullCsrOntology>) -> Self {
+        Self { hpo_ontology }
+    }
+}
+
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, table: &ContextualizedDataFrame) -> bool {
-        table.check_contexts_have_data_type(HpoLabel, DataType::String)
+        table.check_contexts_have_data_type(&Context::None, &Context::HpoLabel, &DataType::String)
     }
 
     fn internal_transform(
@@ -32,7 +40,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
 
         let hpo_label_cols: Vec<Column> = table
-            .get_cols_with_data_context(HpoLabel)
+            .get_cols_with_data_context(&Context::HpoLabel)
             .into_iter()
             .cloned()
             .collect();
@@ -57,10 +65,11 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                             let synonyms = primary_term
                                 .synonyms()
                                 .iter()
-                                .map(|syn| syn.name.to_lowercase())
+                                .map(|syn| syn.name.trim().to_lowercase())
                                 .collect::<Vec<String>>();
-                            (cell_term.to_lowercase().trim() == primary_term.name().to_lowercase()
-                                || synonyms.contains(&cell_term.to_lowercase()))
+                            (cell_term.to_lowercase().trim()
+                                == primary_term.name().trim().to_lowercase()
+                                || synonyms.contains(&cell_term.trim().to_lowercase()))
                                 && (primary_term.is_current())
                         });
                     //we insert the pair (cell_term,primary_term) if the Option is Some, and (cell_term,"") if the Option is None
@@ -127,43 +136,23 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::HpoLabel;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-    use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO;
     use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
-    use ontolius::ontology::csr::FullCsrOntology;
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
-    use std::rc::Rc;
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    fn hpo_init_ontology(tmp_dir: TempDir) -> Rc<FullCsrOntology> {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let hpo_path = hpo_registry.register("latest").unwrap();
-        init_ontolius(hpo_path).unwrap()
-    }
 
     #[fixture]
     fn tc() -> TableContext {
         let sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
             Context::None,
-            HpoLabel,
+            Context::HpoLabel,
             None,
             None,
             vec![],
@@ -172,9 +161,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy(tmp_dir: TempDir, tc: TableContext) {
-        skip_in_ci!();
-        let hpo_ontology = hpo_init_ontology(tmp_dir);
+    fn test_hpo_syns_strategy(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
@@ -196,7 +183,9 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
+            hpo_ontology: HPO.clone(),
+        };
         assert!(get_hpo_labels_strat.transform(&mut cdf).is_ok());
 
         let expected_col1 = Column::new(
@@ -212,10 +201,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy_fail(tmp_dir: TempDir, tc: TableContext) {
-        skip_in_ci!();
-
-        let hpo_ontology = hpo_init_ontology(tmp_dir);
+    fn test_hpo_syns_strategy_fail(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
             ["abcdef", "Big calvaria", "Joint inflammation", "12355"],
@@ -232,7 +218,9 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
+            hpo_ontology: HPO.clone(),
+        };
         let strat_result = get_hpo_labels_strat.transform(&mut cdf);
 
         if let Err(TransformError::MappingError {
@@ -280,10 +268,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_hpo_syns_strategy_with_nulls(tmp_dir: TempDir, tc: TableContext) {
-        skip_in_ci!();
-        let hpo_ontology = hpo_init_ontology(tmp_dir);
-
+    fn test_hpo_syns_strategy_with_nulls(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
@@ -309,7 +294,9 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy { hpo_ontology };
+        let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
+            hpo_ontology: HPO.clone(),
+        };
         assert!(get_hpo_labels_strat.transform(&mut cdf).is_ok());
 
         let expected_col1 = Column::new(

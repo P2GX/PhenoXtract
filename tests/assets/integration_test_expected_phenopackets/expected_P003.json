@@ -1,0 +1,20 @@
+{
+  "id": "my_cohort-P003",
+  "subject": {
+    "id": "P003",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "FEMALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0025044",
+        "label": "Lung abscess"
+      }
+    }
+  ]
+}
