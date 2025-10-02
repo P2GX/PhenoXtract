@@ -86,13 +86,13 @@ impl HPOBiDict {
     }
 
     pub fn is_primary_term(&self, term: &str) -> bool {
-        self.term_to_id.contains_key(&term.to_lowercase())
+        self.term_to_id.contains_key(&term.trim().to_lowercase())
     }
     pub fn is_synonym(&self, term: &str) -> bool {
-        self.synonym_to_id.contains_key(&term.to_lowercase())
+        self.synonym_to_id.contains_key(&term.trim().to_lowercase())
     }
     pub fn is_id(&self, term: &str) -> bool {
-        self.id_to_term.contains_key(&term.to_lowercase())
+        self.id_to_term.contains_key(&term.trim().to_lowercase())
     }
 }
 

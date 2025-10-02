@@ -63,7 +63,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                     if let Some(hpo_id) = hpo_id {
                         return self.hpo_dict.get(hpo_id).unwrap();
                     }
-                    if !cell_value.is_empty() && cell_value != "null" {
+                    if !cell_value.is_empty() {
                         error_info.insert(MappingErrorInfo {
                             column: col.name().to_string(),
                             table: table.context().clone().name,
