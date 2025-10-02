@@ -36,14 +36,16 @@ impl HPOBiDict {
         let mut id_to_term: HashMap<String, String> = HashMap::new();
 
         hpo.iter_terms().for_each(|term| {
-            term_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
-            term.synonyms().iter().for_each(|syn| {
-                synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
-            });
-            id_to_term.insert(
-                term.identifier().to_string().to_lowercase(),
-                term.name().to_string(),
-            );
+            if term.is_current() {
+                term_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
+                term.synonyms().iter().for_each(|syn| {
+                    synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
+                });
+                id_to_term.insert(
+                    term.identifier().to_string().to_lowercase(),
+                    term.name().to_string(),
+                );
+            }
         });
 
         HPOBiDict {
