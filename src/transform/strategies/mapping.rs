@@ -2,6 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 
+use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
@@ -133,48 +134,55 @@ impl Strategy for MappingStrategy {
 
             for col_name in col_names {
                 let col = table.data.column(&col_name).unwrap();
-                let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
-                    if cell_value.is_empty() {
-                        return cell_value;
-                    }
+                let mapped_column = col
+                    .str()
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Unexpectedly could not convert column {col_name} to string column."
+                        ))
+                    })?
+                    .apply_mut(|cell_value| {
+                        if cell_value.is_empty() {
+                            return cell_value;
+                        }
 
-                    match self.synonym_map.get(cell_value.to_lowercase().trim()) {
-                        Some(alias) => {
-                            debug!("Converted '{cell_value}' to '{alias}'");
-                            alias
+                        match self.synonym_map.get(cell_value.to_lowercase().trim()) {
+                            Some(alias) => {
+                                debug!("Converted '{cell_value}' to '{alias}'");
+                                alias
+                            }
+                            None => {
+                                warn!("Unable to convert map '{cell_value}'");
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_value.to_string(),
+                                    possible_mappings: MappingSuggestion::from_hashmap(
+                                        &self.synonym_map,
+                                    ),
+                                });
+                                cell_value
+                            }
                         }
-                        None => {
-                            warn!("Unable to convert map '{cell_value}'");
-                            error_info.insert(MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().clone().name,
-                                old_value: cell_value.to_string(),
-                                possible_mappings: MappingSuggestion::from_hashmap(
-                                    &self.synonym_map,
-                                ),
-                            });
-                            cell_value
-                        }
-                    }
-                });
+                    });
 
                 table
                     .data
                     .replace(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
-                            TransformError::StrategyError(format!(
+                            StrategyError(format!(
                                 "Unable to cast column from {} to {}",
                                 self.column_dtype, self.out_dtype
                             ))
                         })?,
                     )
-                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                    .map_err(|err| StrategyError(err.to_string()))?;
             }
         }
 
         if !error_info.is_empty() {
-            Err(TransformError::MappingError {
+            Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })

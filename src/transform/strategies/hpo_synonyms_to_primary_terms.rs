@@ -1,8 +1,7 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::error::{MappingErrorInfo, TransformError};
-use crate::transform::strategies::utils::convert_col_to_string_vec;
 use crate::transform::traits::Strategy;
 use log::{debug, info};
 use ontolius::ontology::OntologyTerms;
@@ -50,20 +49,30 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         //first we create our hash map
         let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
         for table in tables.iter_mut() {
-            let names_of_hpo_label_cols: Vec<&PlSmallStr> = table
+            let names_of_hpo_label_cols: Vec<PlSmallStr> = table
                 .get_cols_with_data_context(&Context::HpoLabel)
                 .iter()
                 .map(|col| col.name())
+                .cloned()
                 .collect();
 
             for col_name in names_of_hpo_label_cols {
-                let col = table.data.column(col_name.as_str()).map_err(|_| {
+                let col = table.data.column(&col_name).map_err(|_| {
                     StrategyError(format!(
                         "Unexpectedly could not find column {col_name} in DataFrame."
                     ))
                 })?;
-                let stringified_col = convert_col_to_string_vec(col)?;
-                for cell_term in stringified_col.iter() {
+
+                for cell_term in col
+                    .str()
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Unexpectedly could not convert column {col_name} to string column."
+                        ))
+                    })?
+                    .into_iter()
+                    .flatten()
+                {
                     // first we check if the cell term is already in the hash map
                     if synonym_to_primary_term_map.contains_key(cell_term) {
                         continue;
@@ -88,19 +97,20 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                         match primary_term_search_opt {
                             Some(primary_term) => {
                                 synonym_to_primary_term_map
-                                    .insert(cell_term.clone(), primary_term.name().to_string());
+                                    .insert(cell_term.to_string(), primary_term.name().to_string());
                             }
                             None => {
+                                // we do not consider cells with the string "null" as being errors
                                 if cell_term != "null" {
                                     error_info.insert(MappingErrorInfo {
                                         column: col.name().to_string(),
                                         table: table.context().clone().name,
-                                        old_value: cell_term.clone(),
+                                        old_value: cell_term.to_string(),
                                         possible_mappings: vec![],
                                     });
                                 }
                                 synonym_to_primary_term_map
-                                    .insert(cell_term.clone(), "".to_string());
+                                    .insert(cell_term.to_string(), "".to_string());
                             }
                         }
                     }
@@ -122,24 +132,31 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             // and we do not change the cell term in the cases where we could not find a HPO primary term
             for col_name in names_of_hpo_label_cols {
                 let col = table.data.column(&col_name).unwrap();
-                let mapped_col = col.str().unwrap().apply_mut(|cell_term| {
-                    let primary_term = synonym_to_primary_term_map.get(cell_term);
-                    if cell_term.is_empty() {
-                        cell_term
-                    } else {
-                        match primary_term {
-                            Some(primary_term) => {
-                                if primary_term.is_empty() {
-                                    cell_term
-                                } else {
-                                    debug!("Converted {cell_term} to {primary_term}");
-                                    primary_term
+                let mapped_col = col
+                    .str()
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Unexpectedly could not convert column {col_name} to string column."
+                        ))
+                    })?
+                    .apply_mut(|cell_term| {
+                        let primary_term = synonym_to_primary_term_map.get(cell_term);
+                        if cell_term.is_empty() {
+                            cell_term
+                        } else {
+                            match primary_term {
+                                Some(primary_term) => {
+                                    if primary_term.is_empty() {
+                                        cell_term
+                                    } else {
+                                        debug!("Converted {cell_term} to {primary_term}");
+                                        primary_term
+                                    }
                                 }
+                                None => cell_term,
                             }
-                            None => cell_term,
                         }
-                    }
-                });
+                    });
                 table
                     .data
                     .replace(&col_name, mapped_col.into_series())
@@ -153,7 +170,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
         // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
-            Err(TransformError::MappingError {
+            Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })

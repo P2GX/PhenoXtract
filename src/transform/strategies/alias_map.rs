@@ -92,7 +92,7 @@ impl Strategy for AliasMapStrategy {
             let col_alias_pairs = AliasMapStrategy::get_col_alias_map_pairs(table);
 
             for (col, alias_map) in col_alias_pairs {
-                let col_name = col.name().to_string(); // Clone the name to avoid borrow issues
+                let col_name = col.name().to_string();
                 info!("Applying AliasMap strategy to column: {col_name}.");
                 let stringified_col = convert_col_to_string_vec(&col)?;
 
