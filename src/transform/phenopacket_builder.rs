@@ -13,7 +13,8 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as AgeStruct, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    Age as IndividualAge, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
+    VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -292,7 +293,7 @@ impl PhenopacketBuilder {
         let is_iso8601_dur = re.is_match(te_string);
         if is_iso8601_dur {
             let age_te = TimeElement {
-                element: Some(Age(AgeStruct {
+                element: Some(Age(IndividualAge {
                     iso8601duration: te_string.to_string(),
                 })),
             };
@@ -381,19 +382,19 @@ mod tests {
         onset_age_te: Option<TimeElement>,
     ) {
         let mut builder = PhenopacketBuilder::new(HPO.clone());
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            onset_age,
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                onset_age,
+                None,
+                None,
+            )
+            .unwrap();
 
         assert!(builder.subject_to_phenopacket.contains_key(&phenopacket_id));
 
@@ -439,31 +440,33 @@ mod tests {
     ) {
         let mut builder = PhenopacketBuilder::new(HPO.clone());
 
-        let result1 = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result1.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
-        let result2 = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &another_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result2.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &another_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
@@ -476,31 +479,33 @@ mod tests {
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
 
-        let result1 = builder.upsert_phenotypic_feature(
-            id1.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result1.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                id1.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
-        let result2 = builder.upsert_phenotypic_feature(
-            id2.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result2.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                id2.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         assert!(builder.subject_to_phenopacket.contains_key(&id1));
         assert!(builder.subject_to_phenopacket.contains_key(&id2));
@@ -540,19 +545,19 @@ mod tests {
             .insert(phenopacket_id.clone(), existing_phenopacket);
 
         // Add another feature
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
@@ -584,19 +589,19 @@ mod tests {
             .unwrap();
 
         // Update the same feature
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            onset_timestamp,
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                onset_timestamp,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
@@ -617,18 +622,19 @@ mod tests {
         let individual_id = "individual_001";
 
         // Test just upserting the individual id
-        let result = builder.upsert_individual(
-            phenopacket_id,
-            individual_id,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result.is_ok());
+        builder
+            .upsert_individual(
+                phenopacket_id,
+                individual_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
@@ -637,18 +643,19 @@ mod tests {
         assert_eq!(individual.vital_status, None);
 
         // Test upserting the other entries
-        let result = builder.upsert_individual(
-            phenopacket_id,
-            individual_id,
-            None,
-            Some("2001-01-29"),
-            None,
-            Some("MALE"),
-            None,
-            None,
-            None,
-        );
-        assert!(result.is_ok());
+        builder
+            .upsert_individual(
+                phenopacket_id,
+                individual_id,
+                None,
+                Some("2001-01-29"),
+                None,
+                Some("MALE"),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
@@ -669,14 +676,9 @@ mod tests {
 
         let phenopacket_id = "pp_001";
 
-        let result = builder.upsert_vital_status(
-            phenopacket_id,
-            "ALIVE",
-            Some("P81Y5M13D"),
-            None,
-            Some(322),
-        );
-        assert!(result.is_ok());
+        builder
+            .upsert_vital_status(phenopacket_id, "ALIVE", Some("P81Y5M13D"), None, Some(322))
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
@@ -686,7 +688,7 @@ mod tests {
             Some(VitalStatus {
                 status: 1,
                 time_of_death: Some(TimeElement {
-                    element: Some(Age(AgeStruct {
+                    element: Some(Age(IndividualAge {
                         iso8601duration: "P81Y5M13D".to_string()
                     }))
                 }),
@@ -702,7 +704,7 @@ mod tests {
         assert_eq!(
             te,
             TimeElement {
-                element: Some(Age(AgeStruct {
+                element: Some(Age(IndividualAge {
                     iso8601duration: "P81Y5M13D".to_string()
                 }))
             }
@@ -734,14 +736,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_parse_time_element_invalid() {
-        let result = PhenopacketBuilder::parse_time_element("P81D5M13Y");
-        assert!(result.is_err());
-        let result = PhenopacketBuilder::parse_time_element("8D5M13Y");
-        assert!(result.is_err());
-        let result = PhenopacketBuilder::parse_time_element("09:17:39Z");
-        assert!(result.is_err());
-        let result = PhenopacketBuilder::parse_time_element("2020-20-15T09:17:39Z");
+    #[case("P81D5M13Y")]
+    #[case("8D5M13Y")]
+    #[case("09:17:39Z")]
+    #[case("2020-20-15T09:17:39Z")]
+    fn test_parse_time_element_invalid(#[case] date_str: &str) {
+        let result = PhenopacketBuilder::parse_time_element(date_str);
         assert!(result.is_err());
     }
 

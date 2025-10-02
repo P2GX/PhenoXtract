@@ -83,7 +83,7 @@ impl Collector {
         let pf_scs = patient_cdf.get_scs_with_data_context(&Context::HpoLabel);
 
         for pf_sc in pf_scs {
-            let sc_id = &pf_sc.identifier;
+            let sc_id = pf_sc.get_identifier();
 
             let pf_cols = patient_cdf.get_columns(sc_id);
 
