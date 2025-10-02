@@ -6,8 +6,9 @@ use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
-use polars::prelude::ChunkCast;
+use polars::prelude::{ChunkCast, Column};
 use std::any::type_name;
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
@@ -124,7 +125,17 @@ impl Strategy for MappingStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for col_name in col_names {
-            let col = table.data.column(&col_name).unwrap();
+            let original_column = table.data.column(&col_name).unwrap();
+
+            let col: Cow<Column> = if original_column.dtype() != &DataType::String {
+                let casted_col = original_column
+                    .cast(&DataType::String)
+                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                Cow::Owned(casted_col)
+            } else {
+                Cow::Borrowed(original_column)
+            };
+
             let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
                 if cell_value.is_empty() {
                     return cell_value;
@@ -242,22 +253,31 @@ mod tests {
     #[rstest]
     fn test_float_cast() {
         let mut table = make_test_dataframe();
-        let filtered_table = table
-            .data
-            .lazy()
-            .filter(col("sex").eq(lit("male")))
-            .collect()
-            .unwrap();
-        table.data = filtered_table;
+
+        let series = Series::new("sex".into(), vec![5.6]);
+        table.data.replace("sex", series.clone()).unwrap();
+
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
-        strategy.synonym_map = HashMap::from([("male".to_string(), "5.6".to_string())]);
-        strategy.out_dtype = DataType::Float64;
+        strategy.synonym_map = HashMap::from([("5.6".to_string(), "male".to_string())]);
+        strategy.column_dtype = DataType::Float64;
+        strategy.out_dtype = DataType::String;
 
         strategy.transform(&mut table).unwrap();
         assert_eq!(
             table.data.column("sex").unwrap().dtype(),
             &strategy.out_dtype
         );
+
+        table
+            .data
+            .column(series.name())
+            .unwrap()
+            .str()
+            .unwrap()
+            .apply_mut(|cell| {
+                assert_eq!(cell, "male");
+                cell
+            });
     }
 
     #[rstest]
