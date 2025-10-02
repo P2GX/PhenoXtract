@@ -136,14 +136,14 @@ impl Strategy for MappingStrategy {
             for col_name in col_names {
                 let original_column = table.data.column(&col_name).unwrap();
 
-            let col: Cow<Column> = if original_column.dtype() != &DataType::String {
-                let casted_col = original_column
-                    .cast(&DataType::String)
-                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
-                Cow::Owned(casted_col)
-            } else {
-                Cow::Borrowed(original_column)
-            };
+                let col: Cow<Column> = if original_column.dtype() != &DataType::String {
+                    let casted_col = original_column
+                        .cast(&DataType::String)
+                        .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                    Cow::Owned(casted_col)
+                } else {
+                    Cow::Borrowed(original_column)
+                };
 
                 let mapped_column = col
                     .str()
