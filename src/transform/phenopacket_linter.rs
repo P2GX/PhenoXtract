@@ -15,9 +15,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 
-struct PhenopacketLinter {
-    hpo: Arc<FullCsrOntology>,
-}
+struct LintingError;
 
 struct LintingInfo;
 
@@ -63,7 +61,7 @@ impl Debug for LintReport {
     }
 }
 struct PhenopacketLinter {
-    hpo: Rc<FullCsrOntology>,
+    hpo: Arc<FullCsrOntology>,
     phenotypic_abnormality: TermId,
     clinical_modifiers: TermId,
     onsets: TermId,
@@ -71,7 +69,7 @@ struct PhenopacketLinter {
 }
 
 impl PhenopacketLinter {
-    pub fn new(hpo: Rc<FullCsrOntology>) -> PhenopacketLinter {
+    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketLinter {
         PhenopacketLinter {
             hpo,
             phenotypic_abnormality: TermId::from_str("HP:0000118").unwrap(),
@@ -390,11 +388,6 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    #[fixture]
     fn term_ancestry() -> Vec<TermId> {
         vec![
             "HP:0000448".parse().unwrap(), // scion
@@ -404,13 +397,13 @@ mod tests {
         ]
     }
 
-    fn construct_linter(tmp_dir: TempDir) -> PhenopacketLinter {
-        PhenopacketLinter { hpo: HPO.clone() }
+    fn construct_linter() -> PhenopacketLinter {
+        PhenopacketLinter::new(HPO.clone())
     }
 
     #[rstest]
-    fn test_find_ancestors(tmp_dir: TempDir, term_ancestry: Vec<TermId>) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_ancestors(term_ancestry: Vec<TermId>) {
+        let linter = construct_linter();
 
         let ancestors = linter.find_ancestors(
             &term_ancestry.iter().cloned().collect(),
@@ -422,8 +415,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_descendents(tmp_dir: TempDir, term_ancestry: Vec<TermId>) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_descendents(term_ancestry: Vec<TermId>) {
+        let linter = construct_linter();
 
         let ancestors = linter.find_descendents(
             &term_ancestry.iter().cloned().collect(),
@@ -434,8 +427,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_related_phenotypic_features_case_1(tmp_dir: TempDir) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_related_phenotypic_features_case_1() {
+        let linter = construct_linter();
 
         let phenotypic_features = vec![
             PhenotypicFeature {
@@ -468,8 +461,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_related_phenotypic_features_case_2(tmp_dir: TempDir) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_related_phenotypic_features_case_2() {
+        let linter = construct_linter();
 
         let phenotypic_features = vec![
             PhenotypicFeature {
@@ -498,8 +491,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_related_phenotypic_features_case_3(tmp_dir: TempDir) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_related_phenotypic_features_case_3() {
+        let linter = construct_linter();
 
         let phenotypic_features = vec![
             PhenotypicFeature {
@@ -526,8 +519,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_duplicate_phenotypic_features(tmp_dir: TempDir) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_duplicate_phenotypic_features() {
+        let linter = construct_linter();
 
         let phenotypic_features = vec![
             PhenotypicFeature {
@@ -555,10 +548,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_non_phenotypic_abnormalities(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let linter = construct_linter(tmp_dir);
+    fn test_find_non_phenotypic_abnormalities() {
+        let linter = construct_linter();
         let phenotypic_features = vec![PhenotypicFeature {
             r#type: Some(OntologyClass {
                 id: "HP:0410401".to_string(),
@@ -572,10 +563,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_non_modifiers(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let linter = construct_linter(tmp_dir);
+    fn test_find_non_modifiers() {
+        let linter = construct_linter();
         let phenotypic_features = vec![PhenotypicFeature {
             modifiers: vec![OntologyClass {
                 id: "HP:0002197".to_string(),
@@ -589,10 +578,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_non_onsets(tmp_dir: TempDir) {
-        skip_in_ci!();
-
-        let linter = construct_linter(tmp_dir);
+    fn test_find_non_onsets() {
+        let linter = construct_linter();
         let phenotypic_features = vec![PhenotypicFeature {
             onset: Some(TimeElement {
                 element: Some(Element::OntologyClass(OntologyClass {
@@ -608,8 +595,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_find_non_severity(tmp_dir: TempDir) {
-        let linter = construct_linter(tmp_dir);
+    fn test_find_non_severity() {
+        let linter = construct_linter();
         let phenotypic_features = vec![PhenotypicFeature {
             severity: Some(OntologyClass {
                 id: "HP:0410401".to_string(),
