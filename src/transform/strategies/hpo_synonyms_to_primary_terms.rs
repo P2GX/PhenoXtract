@@ -60,18 +60,19 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                 let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
                     let hpo_id = self.hpo_dict.get(cell_value);
 
-                    if let Some(hpo_id) = hpo_id {
-                        return self.hpo_dict.get(hpo_id).unwrap();
-                    }
-                    if !cell_value.is_empty() {
-                        error_info.insert(MappingErrorInfo {
-                            column: col.name().to_string(),
-                            table: table.context().clone().name,
-                            old_value: cell_value.to_string(),
-                            possible_mappings: vec![],
-                        });
-                    }
-                    cell_value
+                    hpo_id
+                        .and_then(|id| self.hpo_dict.get(id))
+                        .unwrap_or_else(|| {
+                            if !cell_value.is_empty() {
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_value.to_string(),
+                                    possible_mappings: vec![],
+                                });
+                            }
+                            cell_value
+                        })
                 });
                 table.data.replace(&col_name, mapped_column).map_err(|_| {
                     StrategyError(format!(
