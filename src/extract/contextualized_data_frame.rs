@@ -122,6 +122,8 @@ impl ContextualizedDataFrame {
 
     /// Searches a CDF for columns whose header_context and data_context are certain specific values
     /// and ensures that the columns' data_type is equal to desired_dtype
+    /// Returns true if all columns with the given contexts also feature the same dtype. Also returns true if no columns have the contexts.
+    /// Returns false if any of the found columns does not feature the give dtype.
     pub fn contexts_have_dtype(
         &self,
         header_context: &Context,
