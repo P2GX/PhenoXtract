@@ -48,4 +48,6 @@ pub enum TransformError {
     },
     #[allow(dead_code)]
     CollectionError(String),
+    #[allow(dead_code)]
+    BuilderError(String),
 }
