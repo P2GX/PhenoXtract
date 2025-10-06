@@ -29,7 +29,7 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().all(|table| {
-            table.check_correct_data_type(&Context::None, &Context::HpoLabel, &DataType::String)
+            table.contexts_have_dtype(&Context::None, &Context::HpoLabel, &DataType::String)
         })
     }
 
@@ -115,7 +115,7 @@ mod tests {
             Context::HpoLabel,
             None,
             None,
-            vec![],
+            None,
         );
         TableContext::new("patient_data".to_string(), vec![sc])
     }
