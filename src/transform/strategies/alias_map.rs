@@ -63,7 +63,7 @@ impl AliasMapStrategy {
         let mut col_alias_map_pairs = vec![];
         for series_context in cdf.get_series_contexts() {
             if let Some(am) = series_context.get_alias_map() {
-                let cols = cdf.get_columns(&series_context.identifier);
+                let cols = cdf.get_columns(series_context.get_identifier());
                 for col_ref in cols {
                     col_alias_map_pairs.push((col_ref.clone(), am.clone()))
                 }
@@ -149,7 +149,7 @@ mod tests {
                 ("P003".to_string(), "patient_3".to_string()),
                 ("P004".to_string(), "patient_4".to_string()),
             ]))),
-            vec![],
+            None,
         )
     }
 
@@ -161,7 +161,7 @@ mod tests {
             Context::SubjectAge,
             None,
             Some(ToInt(HashMap::from([("11".to_string(), 22)]))),
-            vec![],
+            None,
         )
     }
 
@@ -178,7 +178,7 @@ mod tests {
                 ("30.3".to_string(), 60.6),
                 ("40.4".to_string(), 80.8),
             ]))),
-            vec![],
+            None,
         )
     }
 
@@ -190,7 +190,7 @@ mod tests {
             Context::SmokerBool,
             None,
             Some(ToBool(HashMap::from([("false".to_string(), true)]))),
-            vec![],
+            None,
         )
     }
 
@@ -202,7 +202,7 @@ mod tests {
             Context::SubjectId,
             None,
             Some(ToInt(HashMap::from([("P001".to_string(), 1001)]))),
-            vec![],
+            None,
         )
     }
 
@@ -219,7 +219,7 @@ mod tests {
                 ("P003".to_string(), 1003),
                 ("P004".to_string(), 1004),
             ]))),
-            vec![],
+            None,
         )
     }
 
