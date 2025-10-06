@@ -6,10 +6,8 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::time_element::Element::Age;
-use phenopackets::schema::v2::core::vital_status::Status;
-use phenopackets::schema::v2::core::{Age as age_struct, TimeElement, VitalStatus};
-use polars::prelude::{Column, IntoLazy, col, lit};
+use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -88,67 +86,74 @@ impl Collector {
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(pf_sc.get_identifier());
-            let linked_onset_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
+            let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
                 pf_sc.get_building_block_id(),
                 &Context::None,
                 &Context::OnsetAge,
             );
 
+            let linked_onset_dt_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
+                pf_sc.get_building_block_id(),
+                &Context::None,
+                &Context::OnsetDateTime,
+            );
+            let linked_onset_cols = [linked_onset_age_cols, linked_onset_dt_cols].concat();
+
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
+
+            if linked_onset_cols.len() > 1 {
+                warn!(
+                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
+                );
+            }
+
+            let null_onset_col = &Column::new_empty("Null_onset_col".into(), &DataType::String);
 
             for pf_col in pf_cols {
                 let onset_col = if valid_onset_linking {
                     linked_onset_cols.first().unwrap()
                 } else {
-                    &&Column::new("OnsetAge".into(), vec!["null"; pf_col.len()])
+                    null_onset_col
                 };
 
-                let stringified_pf_col = convert_col_to_string_vec(pf_col)?;
-                let stringified_onset_col = convert_col_to_string_vec(onset_col)?;
+                for (index, phenotype) in pf_col.str().unwrap().iter().enumerate() {
+                    let onset: Option<Cow<str>> =
+                        onset_col
+                            .get(index)
+                            .ok()
+                            .and_then(|any_value| match any_value {
+                                AnyValue::String(s) => Some(Cow::Borrowed(s)),
+                                AnyValue::StringOwned(s) => Some(Cow::Owned(s.into())),
+                                _ => None,
+                            });
 
-                let pf_onset_pairs: Vec<(&String, &String)> = stringified_pf_col
-                    .iter()
-                    .zip(stringified_onset_col.iter())
-                    .collect();
-
-                for (hpo_label, onset_age) in pf_onset_pairs {
-                    if hpo_label == "null" {
-                        if onset_age != "null" {
+                    if phenotype.is_none() {
+                        if let Some(onset) = onset {
                             warn!(
                                 "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
-                                onset_age,
+                                onset,
                                 patient_cdf.context().name,
                                 phenopacket_id
                             );
                         }
                     } else {
-                        let onset_te = if onset_age == "null" {
-                            None
-                        } else {
-                            Some(TimeElement {
-                                element: Some(Age(age_struct {
-                                    iso8601duration: onset_age.to_string(),
-                                })),
-                            })
-                        };
-
                         self.phenopacket_builder
                             .upsert_phenotypic_feature(
                                 phenopacket_id,
-                                hpo_label,
+                                phenotype.unwrap(),
                                 None,
                                 None,
                                 None,
                                 None,
-                                onset_te,
+                                onset.as_deref(),
                                 None,
                                 None,
                             )
                             .map_err(|_| {
                                 CollectionError(format!(
                                     "Error when upserting HPO term {} in column {}",
-                                    hpo_label,
+                                    phenotype.unwrap(),
                                     pf_col.name()
                                 ))
                             })?;
@@ -170,37 +175,25 @@ impl Collector {
         phenopacket_id: &str,
         patient_id: &str,
     ) -> Result<(), TransformError> {
+        let date_of_birth = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::DateOfBirth,
+            patient_id,
+        )?;
+
         let subject_sex = Self::collect_single_multiplicity_element(
             patient_cdf,
             Context::SubjectSex,
             patient_id,
         )?;
-        let vital_status_string = Self::collect_single_multiplicity_element(
-            patient_cdf,
-            Context::VitalStatus,
-            patient_id,
-        )?;
-        let vital_status = match vital_status_string {
-            None => None,
-            Some(s) => {
-                let status = Status::from_str_name(s.as_str()).ok_or(CollectionError(format!(
-                    "Could not interpret {s} as status for {patient_id}."
-                )))? as i32;
-                Some(VitalStatus {
-                    status,
-                    ..Default::default()
-                })
-            }
-        };
 
         self.phenopacket_builder
             .upsert_individual(
                 phenopacket_id,
                 patient_id,
                 None,
+                date_of_birth.as_deref(),
                 None,
-                None,
-                vital_status,
                 subject_sex.as_deref(),
                 None,
                 None,
@@ -211,6 +204,55 @@ impl Collector {
                     "Error when upserting individual data for {phenopacket_id}"
                 ))
             })?;
+
+        let status = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::VitalStatus,
+            patient_id,
+        )?;
+
+        if let Some(status) = status {
+            let time_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::TimeOfDeath,
+                patient_id,
+            )?;
+
+            let cause_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::CauseOfDeath,
+                patient_id,
+            )?;
+
+            let survival_time_days = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::SurvivalTimeDays,
+                patient_id,
+            )?;
+            let survival_time_days = survival_time_days
+                .map(|str| str.parse::<f64>().map(|f| f as u32))
+                .transpose()
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Could not parse survival time in days as u32 for {phenopacket_id}."
+                    ))
+                })?;
+
+            self.phenopacket_builder
+                .upsert_vital_status(
+                    phenopacket_id,
+                    status.as_str(),
+                    time_of_death.as_deref(),
+                    cause_of_death.as_deref(),
+                    survival_time_days,
+                )
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when upserting vital status data for {phenopacket_id}"
+                    ))
+                })?;
+        }
+
         Ok(())
     }
 
@@ -260,7 +302,7 @@ mod tests {
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::time_element::Element::Age;
+    use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
         Age as age_struct, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
@@ -269,6 +311,7 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
+    use prost_types::Timestamp as TimestampProtobuf;
     use rstest::{fixture, rstest};
 
     fn init_collector() -> Collector {
@@ -305,6 +348,14 @@ mod tests {
             None,
             Some("Block_1".to_string()),
         );
+        let dob_sc = SeriesContext::new(
+            Identifier::Regex("dob".to_string()),
+            Context::None,
+            Context::DateOfBirth,
+            None,
+            None,
+            vec![],
+        );
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
             Context::None,
@@ -321,9 +372,34 @@ mod tests {
             None,
             None,
         );
+        let time_of_death_sc = SeriesContext::new(
+            Identifier::Regex("time_of_death".to_string()),
+            Context::None,
+            Context::TimeOfDeath,
+            None,
+            None,
+            vec![],
+        );
+        let survival_time_sc = SeriesContext::new(
+            Identifier::Regex("survival_time".to_string()),
+            Context::None,
+            Context::SurvivalTimeDays,
+            None,
+            None,
+            vec![],
+        );
         TableContext::new(
             "patient_data".to_string(),
-            vec![id_sc, pf_sc, onset_sc, sex_sc, vital_status_sc],
+            vec![
+                id_sc,
+                pf_sc,
+                onset_sc,
+                dob_sc,
+                sex_sc,
+                vital_status_sc,
+                time_of_death_sc,
+                survival_time_sc,
+            ],
         )
     }
 
@@ -450,6 +526,15 @@ mod tests {
     #[fixture]
     fn df_single_patient() -> DataFrame {
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
+        let dob_col = Column::new(
+            "dob".into(),
+            [
+                AnyValue::String("1960-02-05"),
+                AnyValue::String("1960-02-05"),
+                AnyValue::Null,
+                AnyValue::String("1960-02-05"),
+            ],
+        );
         let subject_sex_col = Column::new(
             "sex".into(),
             [
@@ -466,6 +551,24 @@ mod tests {
                 AnyValue::String("ALIVE"),
                 AnyValue::String("ALIVE"),
                 AnyValue::Null,
+            ],
+        );
+        let time_of_death_col = Column::new(
+            "time_of_death".into(),
+            [
+                AnyValue::String("2001-01-29"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let survival_time_col = Column::new(
+            "survival_time".into(),
+            [
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
             ],
         );
         let pf_col = Column::new(
@@ -488,8 +591,11 @@ mod tests {
         );
         DataFrame::new(vec![
             id_col,
+            dob_col,
             subject_sex_col,
             vital_status_col,
+            survival_time_col,
+            time_of_death_col,
             pf_col,
             onset_col,
         ])
@@ -585,10 +691,9 @@ mod tests {
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
         let phenopacket_id = "cohort2019-P006".to_string();
-
-        let collect_pfs_result =
-            collector.collect_phenotypic_features(&patient_cdf, &phenopacket_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_phenotypic_features(&patient_cdf, &phenopacket_id)
+            .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
         let mut expected_p006 = Phenopacket {
@@ -612,17 +717,29 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
         let patient_id = "P006".to_string();
 
-        let collect_pfs_result =
-            collector.collect_individual(&patient_cdf, &phenopacket_id, &patient_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_individual(&patient_cdf, &phenopacket_id, &patient_id)
+            .unwrap();
+
         let phenopackets = collector.phenopacket_builder.build();
 
         let indiv = Individual {
             id: "P006".to_string(),
+            date_of_birth: Some(TimestampProtobuf {
+                seconds: -312595200,
+                nanos: 0,
+            }),
             sex: Sex::Female as i32,
             vital_status: Some(VitalStatus {
                 status: Status::Alive as i32,
-                ..Default::default()
+                time_of_death: Some(TimeElement {
+                    element: Some(Timestamp(TimestampProtobuf {
+                        seconds: 980726400,
+                        nanos: 0,
+                    })),
+                }),
+                cause_of_death: None,
+                survival_time_in_days: 155,
             }),
             ..Default::default()
         };

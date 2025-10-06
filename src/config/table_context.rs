@@ -51,11 +51,19 @@ pub enum Context {
     #[allow(unused)]
     SubjectSex,
     #[allow(unused)]
+    DateOfBirth,
+    #[allow(unused)]
     VitalStatus,
     #[allow(unused)]
     SubjectAge,
     #[allow(unused)]
     WeightInKg,
+    #[allow(unused)]
+    TimeOfDeath,
+    #[allow(unused)]
+    CauseOfDeath,
+    #[allow(unused)]
+    SurvivalTimeDays,
     #[allow(unused)]
     SmokerBool,
     #[allow(unused)]
