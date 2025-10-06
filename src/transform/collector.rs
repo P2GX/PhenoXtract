@@ -7,6 +7,7 @@ use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -102,22 +103,25 @@ impl Collector {
                 );
             }
 
+            let null_onset_col = &Column::new_empty("Null_onset_col".into(), &DataType::String);
+
             for pf_col in pf_cols {
                 let onset_col = if valid_onset_linking {
                     linked_onset_cols.first().unwrap()
                 } else {
-                    &&Column::new_empty("Null_onset_col".into(), &DataType::String)
+                    null_onset_col
                 };
 
                 for (index, phenotype) in pf_col.str().unwrap().iter().enumerate() {
-                    let onset = onset_col.get(index).ok().and_then(|any_value| {
-                        match any_value {
-                            AnyValue::String(onset) => Some(onset.to_string()),
-                            //this seems to occur when onset_col is a scalar col
-                            AnyValue::StringOwned(onset) => Some(onset.to_string()),
-                            _ => None,
-                        }
-                    });
+                    let onset: Option<Cow<str>> =
+                        onset_col
+                            .get(index)
+                            .ok()
+                            .and_then(|any_value| match any_value {
+                                AnyValue::String(s) => Some(Cow::Borrowed(s)),
+                                AnyValue::StringOwned(s) => Some(Cow::Owned(s.into())),
+                                _ => None,
+                            });
 
                     if phenotype.is_none() {
                         if let Some(onset) = onset {
