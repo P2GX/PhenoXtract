@@ -269,7 +269,7 @@ impl PhenopacketBuilder {
                 } else {
                     (corresponding_label_or_id.to_string(), found.to_string())
                 };
-                Ok(HPOLabelIdPairs { label: label, id })
+                Ok(HPOLabelIdPairs { label, id })
             })
     }
 
