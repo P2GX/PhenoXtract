@@ -242,8 +242,12 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
-    /// Given a SeriesContext sc, this functions gets all columns which are linked to sc
-    /// and which have a certain data context
+    /// Finds all columns associated with a specific building block ID that also match the given contexts.
+    ///
+    /// This function first identifies all series that match both the `header_context` and
+    /// `data_context`. From that subset, it finds a series whose building block ID
+    /// matches the provided `block_id` (case-insensitively). Finally, it returns all
+    /// columns associated with that series.
     #[allow(unused)]
     pub fn get_building_block_with_contexts(
         &self,
