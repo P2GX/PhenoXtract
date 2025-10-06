@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
+use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::hpo_bidict::HPOBiDict;
 use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::CollectionError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
@@ -17,7 +17,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-struct HPOIdTermPair {
+struct HPOLabelIdPairs {
     pub name: String,
     pub id: String,
 }
@@ -80,12 +80,12 @@ impl PhenopacketBuilder {
         individual.id = individual_id.to_string();
 
         if let Some(date_of_birth) = date_of_birth {
-            individual.date_of_birth = Some(Self::parse_timestamp(date_of_birth)?);
+            individual.date_of_birth = Some(Self::try_parse_timestamp(date_of_birth)?);
         }
 
         if let Some(sex) = sex {
             individual.sex = Sex::from_str_name(sex)
-                .ok_or_else(|| CollectionError(format!("Could not parse {sex}")))?
+                .ok_or_else(|| TransformError::BuilderError(format!("Could not parse {sex}")))?
                 .into();
         }
         Ok(())
@@ -104,13 +104,13 @@ impl PhenopacketBuilder {
         }
 
         let status = Status::from_str_name(status).ok_or({
-            CollectionError(format!(
+            TransformError::BuilderError(format!(
                 "Could not interpret {status} as status for {phenopacket_id}"
             ))
         })? as i32;
 
         let time_of_death = match time_of_death {
-            Some(tod_string) => Some(Self::parse_time_element(tod_string)?),
+            Some(tod_string) => Some(Self::try_parse_time_element(tod_string)?),
             None => None,
         };
 
@@ -234,14 +234,13 @@ impl PhenopacketBuilder {
         }
 
         if let Some(onset) = onset {
-            let onset_te = Self::parse_time_element(onset)?;
+            let onset_te = Self::try_parse_time_element(onset)?;
             feature.onset = Some(onset_te);
         }
 
         Ok(())
     }
 
-    // TODO: Add test after MVP
     fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())
@@ -251,35 +250,39 @@ impl PhenopacketBuilder {
             })
     }
     // TODO: Add test after MVP
-    fn raw_to_full_term(&self, raw_term: &str) -> Result<HPOIdTermPair, anyhow::Error> {
+    fn raw_to_full_term(&self, hpo_query: &str) -> Result<HPOLabelIdPairs, TransformError> {
         self.hpo_dict
-            .get(raw_term)
-            .ok_or_else(|| anyhow!("Could not find ontology class for {raw_term}"))
+            .get(hpo_query)
+            .ok_or_else(|| {
+                TransformError::BuilderError(
+                    format!("Could not find ontology class for {hpo_query}").to_string(),
+                )
+            })
             .and_then(|found| {
                 let corresponding_term = self.hpo_dict.get(found).ok_or_else(|| {
-                    anyhow!("Inconsistent ontology: No corresponding term for {found}")
+                    TransformError::BuilderError(
+                        format!("Could not find ontology class for {hpo_query}").to_string(),
+                    )
                 })?;
-                let (term, id) = if self.hpo_dict.is_primary_term(found) {
+                let (label, id) = if self.hpo_dict.is_primary_term(found) {
                     (found.to_string(), corresponding_term.to_string())
                 } else {
                     (corresponding_term.to_string(), found.to_string())
                 };
-                Ok(HPOIdTermPair { name: term, id })
+                Ok(HPOLabelIdPairs { name: label, id })
             })
     }
 
-    fn parse_time_element(te_string: &str) -> Result<TimeElement, TransformError> {
+    fn try_parse_time_element(te_string: &str) -> Result<TimeElement, TransformError> {
         //try to parse the string as a datetime
-        if let Ok(ts) = Self::parse_timestamp(te_string) {
+        if let Ok(ts) = Self::try_parse_timestamp(te_string) {
             let datetime_te = TimeElement {
                 element: Some(Timestamp(ts)),
             };
             return Ok(datetime_te);
         }
 
-        //if that fails, try to parse the string as a duration
-        let iso8601_dur_pattern = r"^P(\d+Y)?(\d+M)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$";
-        let re = Regex::new(iso8601_dur_pattern).unwrap();
+        let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
         let is_iso8601_dur = re.is_match(te_string);
         if is_iso8601_dur {
             let age_te = TimeElement {
@@ -290,18 +293,17 @@ impl PhenopacketBuilder {
             return Ok(age_te);
         }
 
-        //if it could not be parsed return an error
-        Err(CollectionError(format!(
+        Err(TransformError::BuilderError(format!(
             "Could not parse {te_string} as a TimeElement."
         )))
     }
 
-    fn parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, TransformError> {
+    fn try_parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, TransformError> {
         let utc_dt = try_parse_string_datetime(ts_string)
             .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
             .map(|naive| Utc.from_utc_datetime(&naive))
             .ok_or_else(|| {
-                CollectionError(format!(
+                TransformError::BuilderError(format!(
                     "Could not parse {ts_string} as a Protobuf Timestamp."
                 ))
             })?;
@@ -662,7 +664,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_vital_status() {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let phenopacket_id = "pp_001";
 
@@ -690,7 +692,7 @@ mod tests {
 
     #[rstest]
     fn test_parse_time_element_duration() {
-        let te = PhenopacketBuilder::parse_time_element("P81Y5M13D").unwrap();
+        let te = PhenopacketBuilder::try_parse_time_element("P81Y5M13D").unwrap();
         assert_eq!(
             te,
             TimeElement {
@@ -703,7 +705,7 @@ mod tests {
 
     #[rstest]
     fn test_parse_time_element_datetime() {
-        let te_date = PhenopacketBuilder::parse_time_element("2001-01-29").unwrap();
+        let te_date = PhenopacketBuilder::try_parse_time_element("2001-01-29").unwrap();
         assert_eq!(
             te_date,
             TimeElement {
@@ -713,7 +715,8 @@ mod tests {
                 })),
             }
         );
-        let te_datetime = PhenopacketBuilder::parse_time_element("2015-06-05T09:17:39Z").unwrap();
+        let te_datetime =
+            PhenopacketBuilder::try_parse_time_element("2015-06-05T09:17:39Z").unwrap();
         assert_eq!(
             te_datetime,
             TimeElement {
@@ -731,13 +734,13 @@ mod tests {
     #[case("09:17:39Z")]
     #[case("2020-20-15T09:17:39Z")]
     fn test_parse_time_element_invalid(#[case] date_str: &str) {
-        let result = PhenopacketBuilder::parse_time_element(date_str);
+        let result = PhenopacketBuilder::try_parse_time_element(date_str);
         assert!(result.is_err());
     }
 
     #[rstest]
     fn test_parse_timestamp() {
-        let ts_date = PhenopacketBuilder::parse_timestamp("2001-01-29").unwrap();
+        let ts_date = PhenopacketBuilder::try_parse_timestamp("2001-01-29").unwrap();
         assert_eq!(
             ts_date,
             TimestampProtobuf {
@@ -745,7 +748,7 @@ mod tests {
                 nanos: 0,
             }
         );
-        let ts_datetime = PhenopacketBuilder::parse_timestamp("2015-06-05T09:17:39Z").unwrap();
+        let ts_datetime = PhenopacketBuilder::try_parse_timestamp("2015-06-05T09:17:39Z").unwrap();
         assert_eq!(
             ts_datetime,
             TimestampProtobuf {
@@ -753,9 +756,9 @@ mod tests {
                 nanos: 0,
             }
         );
-        let result = PhenopacketBuilder::parse_timestamp("09:17:39Z");
+        let result = PhenopacketBuilder::try_parse_timestamp("09:17:39Z");
         assert!(result.is_err());
-        let result = PhenopacketBuilder::parse_timestamp("2020-20-15T09:17:39Z");
+        let result = PhenopacketBuilder::try_parse_timestamp("2020-20-15T09:17:39Z");
         assert!(result.is_err());
     }
 

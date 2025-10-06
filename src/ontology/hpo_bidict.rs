@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct HPOBiDict {
-    term_to_id: HashMap<String, String>,
+    label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
-    id_to_term: HashMap<String, String>,
+    id_to_label: HashMap<String, String>,
 }
 
 impl HPOBiDict {
@@ -49,9 +49,9 @@ impl HPOBiDict {
         });
 
         HPOBiDict {
-            term_to_id,
+            label_to_id: term_to_id,
             synonym_to_id,
-            id_to_term,
+            id_to_label: id_to_term,
         }
     }
     /// Performs a case-insensitive search for an HPO term, synonym, or ID.
@@ -75,26 +75,26 @@ impl HPOBiDict {
     pub fn get(&self, key: &str) -> Option<&str> {
         let lowered = key.trim().to_lowercase();
 
-        if let Some(primary_term) = self.term_to_id.get(&lowered) {
+        if let Some(primary_term) = self.label_to_id.get(&lowered) {
             return Some(primary_term);
         }
         if let Some(synonym) = self.synonym_to_id.get(&lowered) {
             return Some(synonym);
         }
-        if let Some(id_to_term) = self.id_to_term.get(&lowered) {
+        if let Some(id_to_term) = self.id_to_label.get(&lowered) {
             return Some(id_to_term);
         }
         None
     }
 
     pub fn is_primary_term(&self, key: &str) -> bool {
-        self.term_to_id.contains_key(&key.trim().to_lowercase())
+        self.label_to_id.contains_key(&key.trim().to_lowercase())
     }
     pub fn is_synonym(&self, key: &str) -> bool {
         self.synonym_to_id.contains_key(&key.trim().to_lowercase())
     }
     pub fn is_id(&self, key: &str) -> bool {
-        self.id_to_term.contains_key(&key.trim().to_lowercase())
+        self.id_to_label.contains_key(&key.trim().to_lowercase())
     }
 }
 
