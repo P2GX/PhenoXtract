@@ -88,7 +88,7 @@ impl Collector {
 
         for pf_sc in pf_scs {
             let pf_cols = patient_cdf.get_columns(pf_sc.get_identifier());
-            let linked_onset_cols = patient_cdf.get_building_block_with_contexts(
+            let linked_onset_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
                 pf_sc.get_building_block_id(),
                 &Context::None,
                 &Context::OnsetAge,
