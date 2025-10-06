@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 struct HPOLabelIdPairs {
-    pub name: String,
+    pub label: String,
     pub id: String,
 }
 
@@ -205,7 +205,7 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let term = self.raw_to_full_term(phenotype)?;
+        let term = self.query_hpo_identifiers(phenotype)?;
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
         let feature = if let Some(pos) =
@@ -221,7 +221,7 @@ impl PhenopacketBuilder {
             let new_feature = PhenotypicFeature {
                 r#type: Some(OntologyClass {
                     id: term.id,
-                    label: term.name,
+                    label: term.label,
                 }),
                 ..Default::default()
             };
@@ -250,7 +250,7 @@ impl PhenopacketBuilder {
             })
     }
     // TODO: Add test after MVP
-    fn raw_to_full_term(&self, hpo_query: &str) -> Result<HPOLabelIdPairs, TransformError> {
+    fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<HPOLabelIdPairs, TransformError> {
         self.hpo_dict
             .get(hpo_query)
             .ok_or_else(|| {
@@ -259,17 +259,17 @@ impl PhenopacketBuilder {
                 )
             })
             .and_then(|found| {
-                let corresponding_term = self.hpo_dict.get(found).ok_or_else(|| {
+                let corresponding_label_or_id = self.hpo_dict.get(found).ok_or_else(|| {
                     TransformError::BuilderError(
                         format!("Could not find ontology class for {hpo_query}").to_string(),
                     )
                 })?;
-                let (label, id) = if self.hpo_dict.is_primary_term(found) {
-                    (found.to_string(), corresponding_term.to_string())
+                let (label, id) = if self.hpo_dict.is_primary_label(found) {
+                    (found.to_string(), corresponding_label_or_id.to_string())
                 } else {
-                    (corresponding_term.to_string(), found.to_string())
+                    (corresponding_label_or_id.to_string(), found.to_string())
                 };
-                Ok(HPOLabelIdPairs { name: label, id })
+                Ok(HPOLabelIdPairs { label: label, id })
             })
     }
 
