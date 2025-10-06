@@ -2,6 +2,7 @@
   "id": "my_cohort-P001",
   "subject": {
     "id": "P001",
+    "dateOfBirth": "1956-06-03T00:00:00Z",
     "vitalStatus": {
       "status": "ALIVE",
       "survivalTimeInDays": 0

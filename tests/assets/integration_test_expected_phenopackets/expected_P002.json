@@ -2,9 +2,15 @@
   "id": "my_cohort-P002",
   "subject": {
     "id": "P002",
+    "dateOfBirth": "1985-12-12T00:00:00Z",
     "vitalStatus": {
       "status": "DECEASED",
-      "survivalTimeInDays": 0
+      "timeOfDeath": {
+        "age": {
+          "iso8601duration": "P32Y"
+        }
+      },
+      "survivalTimeInDays": 123
     },
     "sex": "MALE",
     "karyotypicSex": "UNKNOWN_KARYOTYPE"

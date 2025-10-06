@@ -13,12 +13,11 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
-use crate::extract::utils::{
-    generate_default_column_names, try_parse_string_date, try_parse_string_datetime,
-};
+use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 
+use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
