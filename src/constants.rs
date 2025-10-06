@@ -14,3 +14,5 @@ pub const DATETIME_FORMATS: &[&str] = &[
     "%a, %d %b %Y %H:%M:%S GMT", // RFC 822 format
     "%+",                        // RFC 3339 / ISO 8601 format
 ];
+
+pub const ISO8601_DUR_PATTERN: &str = r"^P(\d+Y)?(\d+M)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$";

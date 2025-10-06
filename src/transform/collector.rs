@@ -298,7 +298,7 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_utils::HPO;
+    use crate::test_utils::HPO_DICT;
     use crate::transform::collector::Collector;
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -316,7 +316,7 @@ mod tests {
     use rstest::{fixture, rstest};
 
     fn init_collector() -> Collector {
-        let phenopacket_builder = PhenopacketBuilder::new(HPO.clone());
+        let phenopacket_builder = PhenopacketBuilder::new(HPO_DICT.clone());
         Collector {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),

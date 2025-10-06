@@ -1,15 +1,14 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::ontology::hpo_bidict::HPOBiDict;
 use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::traits::Strategy;
-use log::{debug, info};
-use ontolius::ontology::OntologyTerms;
-use ontolius::ontology::csr::FullCsrOntology;
-use ontolius::term::{MinimalTerm, Synonymous};
-use polars::prelude::{DataType, IntoSeries, PlSmallStr};
+use log::info;
+
+use polars::prelude::{DataType, PlSmallStr};
 use std::any::type_name;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Given a collection of contextualised dataframes, this strategy will find all columns with HpoLabel as their data context
@@ -18,12 +17,12 @@ use std::sync::Arc;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
-    hpo_ontology: Arc<FullCsrOntology>,
+    hpo_dict: Arc<HPOBiDict>,
 }
 
 impl HPOSynonymsToPrimaryTermsStrategy {
-    pub fn new(hpo_ontology: Arc<FullCsrOntology>) -> Self {
-        Self { hpo_ontology }
+    pub fn new(hpo_dict: Arc<HPOBiDict>) -> Self {
+        Self { hpo_dict }
     }
 }
 
@@ -42,11 +41,11 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        //first we create our hash map
-        let mut synonym_to_primary_term_map: HashMap<String, String> = HashMap::new();
         for table in tables.iter_mut() {
+            let table_name = table.context().name.to_string();
+
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
-                .get_cols_with_data_context(&Context::HpoLabel)
+                .get_cols_with_contexts(&Context::None, &Context::HpoLabel)
                 .iter()
                 .map(|col| col.name())
                 .cloned()
@@ -58,109 +57,28 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                         "Unexpectedly could not find column {col_name} in DataFrame."
                     ))
                 })?;
+                let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
+                    let hpo_id = self.hpo_dict.get(cell_value);
 
-                for cell_term in col
-                    .str()
-                    .map_err(|_| {
-                        StrategyError(format!(
-                            "Unexpectedly could not convert column {col_name} to string column."
-                        ))
-                    })?
-                    .into_iter()
-                    .flatten()
-                {
-                    // first we check if the cell term is already in the hash map
-                    if synonym_to_primary_term_map.contains_key(cell_term) {
-                        continue;
-                    } else {
-                        // if the term isn't already a key in the hash map
-                        // then we search the HPO for primary terms
-                        // that either match the cell term, or whose synonyms contain the cell term
-                        // and we insert the pair into the hash map
-                        let primary_term_search_opt =
-                            self.hpo_ontology.iter_terms().find(|primary_term| {
-                                let synonyms = primary_term
-                                    .synonyms()
-                                    .iter()
-                                    .map(|syn| syn.name.trim().to_lowercase())
-                                    .collect::<Vec<String>>();
-                                (cell_term.to_lowercase().trim()
-                                    == primary_term.name().trim().to_lowercase()
-                                    || synonyms.contains(&cell_term.trim().to_lowercase()))
-                                    && (primary_term.is_current())
-                            });
-                        //we insert the pair (cell_term,primary_term) if the Option is Some, and (cell_term,"") if the Option is None
-                        match primary_term_search_opt {
-                            Some(primary_term) => {
-                                synonym_to_primary_term_map
-                                    .insert(cell_term.to_string(), primary_term.name().to_string());
+                    hpo_id
+                        .and_then(|id| self.hpo_dict.get(id))
+                        .unwrap_or_else(|| {
+                            if !cell_value.is_empty() {
+                                error_info.insert(MappingErrorInfo {
+                                    column: col.name().to_string(),
+                                    table: table.context().clone().name,
+                                    old_value: cell_value.to_string(),
+                                    possible_mappings: vec![],
+                                });
                             }
-                            None => {
-                                // we do not consider cells with the string "null" as being errors
-                                if cell_term != "null" {
-                                    error_info.insert(MappingErrorInfo {
-                                        column: col.name().to_string(),
-                                        table: table.context().clone().name,
-                                        old_value: cell_term.to_string(),
-                                        possible_mappings: vec![],
-                                    });
-                                }
-                                synonym_to_primary_term_map
-                                    .insert(cell_term.to_string(), "".to_string());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        for table in tables.iter_mut() {
-            let table_name = &table.context().name.clone();
-            info!("Applying HPOSynonymsToPrimaryTerms strategy to table: {table_name}");
-
-            let names_of_hpo_label_cols: Vec<PlSmallStr> = table
-                .get_cols_with_data_context(&Context::HpoLabel)
-                .iter()
-                .map(|col| col.name())
-                .cloned()
-                .collect();
-
-            // we apply the primary term aliases when we can
-            // and we do not change the cell term in the cases where we could not find a HPO primary term
-            for col_name in names_of_hpo_label_cols {
-                let col = table.data.column(&col_name).unwrap();
-                let mapped_col = col
-                    .str()
-                    .map_err(|_| {
-                        StrategyError(format!(
-                            "Unexpectedly could not convert column {col_name} to string column."
-                        ))
-                    })?
-                    .apply_mut(|cell_term| {
-                        let primary_term = synonym_to_primary_term_map.get(cell_term);
-                        if cell_term.is_empty() {
-                            cell_term
-                        } else {
-                            match primary_term {
-                                Some(primary_term) => {
-                                    if primary_term.is_empty() {
-                                        cell_term
-                                    } else {
-                                        debug!("Converted {cell_term} to {primary_term}");
-                                        primary_term
-                                    }
-                                }
-                                None => cell_term,
-                            }
-                        }
-                    });
-                table
-                    .data
-                    .replace(&col_name, mapped_col.into_series())
-                    .map_err(|_| {
-                        StrategyError(format!(
-                            "Could not replace {col_name} column in {table_name}."
-                        ))
-                    })?;
+                            cell_value
+                        })
+                });
+                table.data.replace(&col_name, mapped_column).map_err(|_| {
+                    StrategyError(format!(
+                        "Could not replace {col_name} column in {table_name}."
+                    ))
+                })?;
             }
         }
 
@@ -180,7 +98,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_utils::HPO;
+    use crate::test_utils::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, TransformError};
     use crate::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
     use crate::transform::traits::Strategy;
@@ -226,7 +144,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
-            hpo_ontology: HPO.clone(),
+            hpo_dict: HPO_DICT.clone(),
         };
         assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
 
@@ -261,7 +179,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
-            hpo_ontology: HPO.clone(),
+            hpo_dict: HPO_DICT.clone(),
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -337,7 +255,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = HPOSynonymsToPrimaryTermsStrategy {
-            hpo_ontology: HPO.clone(),
+            hpo_dict: HPO_DICT.clone(),
         };
         assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
 
