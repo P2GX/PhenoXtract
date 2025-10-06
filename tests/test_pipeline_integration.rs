@@ -97,7 +97,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::DateOfBirth,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Time of death".to_string()),
@@ -105,7 +105,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::TimeOfDeath,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Survival time since diagnosis (days)".to_string()),
@@ -113,7 +113,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SurvivalTimeDays,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
             ],
         ),

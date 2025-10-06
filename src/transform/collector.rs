@@ -85,7 +85,8 @@ impl Collector {
             patient_cdf.get_series_contexts_with_contexts(&Context::None, &Context::HpoLabel);
 
         for pf_sc in pf_scs {
-            let pf_cols = patient_cdf.get_columns(pf_sc.get_identifier());
+            let col_id = pf_sc.get_identifier();
+            let pf_cols = patient_cdf.get_columns(col_id);
             let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
                 pf_sc.get_building_block_id(),
                 &Context::None,
@@ -104,7 +105,7 @@ impl Collector {
 
             if linked_onset_cols.len() > 1 {
                 warn!(
-                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
+                    "Multiple onset columns for Series Context with identifier {col_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
                 );
             }
 
@@ -354,7 +355,7 @@ mod tests {
             Context::DateOfBirth,
             None,
             None,
-            vec![],
+            None,
         );
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
@@ -378,7 +379,7 @@ mod tests {
             Context::TimeOfDeath,
             None,
             None,
-            vec![],
+            None,
         );
         let survival_time_sc = SeriesContext::new(
             Identifier::Regex("survival_time".to_string()),
@@ -386,7 +387,7 @@ mod tests {
             Context::SurvivalTimeDays,
             None,
             None,
-            vec![],
+            None,
         );
         TableContext::new(
             "patient_data".to_string(),
