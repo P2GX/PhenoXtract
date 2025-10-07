@@ -1,6 +1,5 @@
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
-use crate::validation::table_context_validation::validate_series_linking;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,7 +16,6 @@ use validator::Validate;
     function = "validate_at_least_one_subject_id",
     skip_on_field_errors = false
 ))]
-#[validate(schema(function = "validate_series_linking"))]
 pub struct TableContext {
     #[allow(unused)]
     pub name: String,
@@ -134,7 +132,7 @@ pub enum AliasMap {
 #[validate(schema(function = "validate_identifier"))]
 pub struct SeriesContext {
     /// The identifier for the (possibly multiple) series.
-    pub identifier: Identifier,
+    identifier: Identifier,
 
     /// The semantic context found in the header(s) of the series.
     header_context: Context,
@@ -152,8 +150,8 @@ pub struct SeriesContext {
     alias_map: Option<AliasMap>,
 
     #[serde(default)]
-    /// List of IDs that link to other tables, can be used to determine the relationship between these columns.
-    pub linked_to: Vec<Identifier>,
+    /// An ID that associates this series with a building block of a phenopacket. If the same ID is shared with other series, the pipeline will try to construct a building block from them.
+    building_block_id: Option<String>,
 }
 
 impl SeriesContext {
@@ -164,7 +162,7 @@ impl SeriesContext {
         data_context: Context,
         fill_missing: Option<CellValue>,
         alias_map: Option<AliasMap>,
-        linked_to: Vec<Identifier>,
+        building_block_id: Option<String>,
     ) -> Self {
         SeriesContext {
             identifier,
@@ -172,7 +170,7 @@ impl SeriesContext {
             data_context,
             fill_missing,
             alias_map,
-            linked_to,
+            building_block_id,
         }
     }
 
@@ -193,8 +191,8 @@ impl SeriesContext {
         &self.alias_map
     }
 
-    pub fn get_links(&self) -> Vec<Identifier> {
-        self.linked_to.clone()
+    pub fn get_building_block_id(&self) -> &Option<String> {
+        &self.building_block_id
     }
 
     #[allow(unused)]

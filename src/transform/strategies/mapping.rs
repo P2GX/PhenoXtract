@@ -102,11 +102,7 @@ impl MappingStrategy {
 impl Strategy for MappingStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().all(|table| {
-            table.check_correct_data_type(
-                &self.header_context,
-                &self.data_context,
-                &self.column_dtype,
-            )
+            table.contexts_have_dtype(&self.header_context, &self.data_context, &self.column_dtype)
         })
     }
 
@@ -225,7 +221,7 @@ mod tests {
                 Context::SubjectSex,
                 None,
                 None,
-                vec![],
+                None,
             )],
         );
 

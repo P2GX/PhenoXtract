@@ -8,6 +8,7 @@ use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::GithubOntologyRegistry;
+use phenoxtract::ontology::hpo_bidict::HPOBiDict;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
 use phenoxtract::transform::strategies::alias_map::AliasMapStrategy;
@@ -19,6 +20,7 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
@@ -39,7 +41,7 @@ fn csv_context() -> TableContext {
                 Context::SubjectId,
                 None,
                 None,
-                vec![],
+                None,
             ),
             SeriesContext::new(
                 Identifier::Regex("1".to_string()),
@@ -47,7 +49,7 @@ fn csv_context() -> TableContext {
                 Context::HpoLabel,
                 None,
                 None,
-                vec![],
+                None,
             ),
             SeriesContext::new(
                 Identifier::Regex("2".to_string()),
@@ -55,7 +57,7 @@ fn csv_context() -> TableContext {
                 Context::HpoLabel,
                 None,
                 None,
-                vec![],
+                None,
             ),
         ],
     )
@@ -73,7 +75,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Sex".to_string()),
@@ -81,7 +83,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectSex,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Living".to_string()),
@@ -89,7 +91,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::VitalStatus,
                     None,
                     Some(vital_status_aliases),
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("DOB".to_string()),
@@ -97,7 +99,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::DateOfBirth,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Time of death".to_string()),
@@ -105,7 +107,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::TimeOfDeath,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Survival time since diagnosis (days)".to_string()),
@@ -113,7 +115,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SurvivalTimeDays,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
             ],
         ),
@@ -126,7 +128,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Phenotypic Features".to_string()),
@@ -134,7 +136,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::HpoLabel,
                     None,
                     None,
-                    vec![Identifier::Regex("Age of onset".to_string())],
+                    Some("block_1".to_string()),
                 ),
                 SeriesContext::new(
                     Identifier::Regex("Age of onset".to_string()),
@@ -142,7 +144,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::OnsetAge,
                     None,
                     None,
-                    vec![],
+                    Some("block_1".to_string()),
                 ),
             ],
         ),
@@ -155,7 +157,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::SubjectId,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
                 SeriesContext::new(
                     Identifier::Regex(r"Phenotypic Features \d+".to_string()),
@@ -163,7 +165,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     Context::HpoLabel,
                     None,
                     None,
-                    vec![],
+                    None,
                 ),
             ],
         ),
@@ -176,7 +178,7 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     let cohort_name = "my_cohort";
     let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
     let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
-
+    let hpo_dict = Arc::new(HPOBiDict::new(hpo));
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -205,14 +207,14 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     //Configure strategies (a.k.a. transformations)
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
-        Box::new(HPOSynonymsToPrimaryTermsStrategy::new(hpo.clone())),
+        Box::new(HPOSynonymsToPrimaryTermsStrategy::new(hpo_dict.clone())),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
     ];
 
     //Create the pipeline
     let transformer_module = TransformerModule::new(
         strategies,
-        Collector::new(PhenopacketBuilder::new(hpo), cohort_name.to_owned()),
+        Collector::new(PhenopacketBuilder::new(hpo_dict), cohort_name.to_owned()),
     );
 
     let output_dir = assets_path.join("do_not_push");

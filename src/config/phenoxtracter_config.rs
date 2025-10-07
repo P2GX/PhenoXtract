@@ -221,9 +221,8 @@ data_sources:
               102: "High quantity"
               169.5: "Very high quantity"
               true: "smoker"
-          linked_to:
-          - "visit_table"
-          - "demographics_table"
+          building_block_id: "block_1"
+
     extraction_config:
       name: "Sheet1"
       has_headers: true
@@ -314,10 +313,7 @@ meta_data:
                                 ("169.5".to_string(), "Very high quantity".to_string()),
                                 ("true".to_string(), "smoker".to_string()),
                             ]))),
-                            vec![
-                                Identifier::Regex("visit_table".to_string()),
-                                Identifier::Regex("demographics_table".to_string()),
-                            ],
+                            Some("block_1".to_string()),
                         )],
                     },
                 }),
@@ -349,7 +345,7 @@ meta_data:
                                     ("neoplasma".to_string(), 4.0),
                                     ("height".to_string(), 1.85),
                                 ]))),
-                                vec![],
+                                None,
                             )],
                         },
                         // Context for "Sheet2"
@@ -368,7 +364,7 @@ meta_data:
                                     "smoker".to_string(),
                                     true,
                                 )]))),
-                                vec![],
+                                None,
                             )],
                         },
                     ],

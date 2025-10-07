@@ -1,5 +1,6 @@
 #![allow(unused)]
 use crate::ontology::GithubOntologyRegistry;
+use crate::ontology::hpo_bidict::HPOBiDict;
 use crate::ontology::traits::OntologyRegistry;
 use crate::ontology::utils::init_ontolius;
 use once_cell::sync::Lazy;
@@ -11,6 +12,9 @@ pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     let path = hpo_registry.register("v2025-09-01").unwrap();
     init_ontolius(path).unwrap()
 });
+
+pub(crate) static HPO_DICT: Lazy<Arc<HPOBiDict>> =
+    Lazy::new(|| Arc::new(HPOBiDict::new(HPO.clone())));
 
 #[macro_export]
 macro_rules! skip_in_ci {

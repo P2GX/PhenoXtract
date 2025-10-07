@@ -409,7 +409,7 @@ mod tests {
                 Context::None,
                 None,
                 None,
-                vec![Regex("disease_id".to_string())],
+                Some("Block_1".to_string()),
             )],
         )
     }
@@ -424,7 +424,7 @@ mod tests {
                 Context::None,
                 None,
                 None,
-                vec![Regex("weight".to_string())],
+                Some("Block_2".to_string()),
             )],
         )
     }

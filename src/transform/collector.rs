@@ -80,17 +80,23 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(&Context::HpoLabel);
+        let pf_scs =
+            patient_cdf.get_series_contexts_with_contexts(&Context::None, &Context::HpoLabel);
 
         for pf_sc in pf_scs {
-            let sc_id = pf_sc.get_identifier();
+            let col_id = pf_sc.get_identifier();
+            let pf_cols = patient_cdf.get_columns(col_id);
+            let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
+                pf_sc.get_building_block_id(),
+                &Context::None,
+                &Context::OnsetAge,
+            );
 
-            let pf_cols = patient_cdf.get_columns(sc_id);
-
-            let linked_onset_age_cols =
-                patient_cdf.get_linked_cols_with_data_context(pf_sc, &Context::OnsetAge);
-            let linked_onset_dt_cols =
-                patient_cdf.get_linked_cols_with_data_context(pf_sc, &Context::OnsetDateTime);
+            let linked_onset_dt_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
+                pf_sc.get_building_block_id(),
+                &Context::None,
+                &Context::OnsetDateTime,
+            );
             let linked_onset_cols = [linked_onset_age_cols, linked_onset_dt_cols].concat();
 
             // it is very unclear how linking would work otherwise
@@ -98,7 +104,7 @@ impl Collector {
 
             if linked_onset_cols.len() > 1 {
                 warn!(
-                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
+                    "Multiple onset columns for Series Context with identifier {col_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
                 );
             }
 
@@ -287,7 +293,7 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_utils::HPO;
+    use crate::test_utils::HPO_DICT;
     use crate::transform::collector::Collector;
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -305,7 +311,7 @@ mod tests {
     use rstest::{fixture, rstest};
 
     fn init_collector() -> Collector {
-        let phenopacket_builder = PhenopacketBuilder::new(HPO.clone());
+        let phenopacket_builder = PhenopacketBuilder::new(HPO_DICT.clone());
         Collector {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),
@@ -320,7 +326,7 @@ mod tests {
             Context::SubjectId,
             None,
             None,
-            vec![],
+            None,
         );
         let pf_sc = SeriesContext::new(
             Identifier::Regex("phenotypic_features".to_string()),
@@ -328,7 +334,7 @@ mod tests {
             Context::HpoLabel,
             None,
             None,
-            vec![Identifier::Regex("onset_age".to_string())],
+            Some("Block_1".to_string()),
         );
         let onset_sc = SeriesContext::new(
             Identifier::Regex("onset_age".to_string()),
@@ -336,7 +342,7 @@ mod tests {
             Context::OnsetAge,
             None,
             None,
-            vec![Identifier::Regex("phenotypic_features".to_string())],
+            Some("Block_1".to_string()),
         );
         let dob_sc = SeriesContext::new(
             Identifier::Regex("dob".to_string()),
@@ -344,7 +350,7 @@ mod tests {
             Context::DateOfBirth,
             None,
             None,
-            vec![],
+            None,
         );
         let sex_sc = SeriesContext::new(
             Identifier::Regex("sex".to_string()),
@@ -352,7 +358,7 @@ mod tests {
             Context::SubjectSex,
             None,
             None,
-            vec![],
+            None,
         );
         let vital_status_sc = SeriesContext::new(
             Identifier::Regex("vital_status".to_string()),
@@ -360,7 +366,7 @@ mod tests {
             Context::VitalStatus,
             None,
             None,
-            vec![],
+            None,
         );
         let time_of_death_sc = SeriesContext::new(
             Identifier::Regex("time_of_death".to_string()),
@@ -368,7 +374,7 @@ mod tests {
             Context::TimeOfDeath,
             None,
             None,
-            vec![],
+            None,
         );
         let survival_time_sc = SeriesContext::new(
             Identifier::Regex("survival_time".to_string()),
@@ -376,7 +382,7 @@ mod tests {
             Context::SurvivalTimeDays,
             None,
             None,
-            vec![],
+            None,
         );
         TableContext::new(
             "patient_data".to_string(),
