@@ -218,9 +218,9 @@ data_sources:
           alias_map:
               "null": "Primary peritoneal carcinoma"
               "M": "Male"
-              102: "High quantity"
-              169.5: "Very high quantity"
-              true: "smoker"
+              "102": "High quantity"
+              "169.5": "Very high quantity"
+              "true": "smoker"
           building_block_id: "block_1"
 
     extraction_config:
@@ -238,8 +238,8 @@ data_sources:
           data_context: hpo_label
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
-              "neoplasma": 4
-              "height": 1.85
+              "neoplasma": "4"
+              "height": "1.85"
       - name: "Sheet2"
         context:
         - identifier:
@@ -250,7 +250,7 @@ data_sources:
           data_context: hpo_label
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
-              "smoker": true
+              "smoker": "true"
     extraction_configs:
       - name: "Sheet1"
         has_headers: true
@@ -342,7 +342,7 @@ meta_data:
                                 PhenopacketContext::HpoLabel,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(HashMap::from([
-                                    ("neoplasma".to_string(), "4.0".to_string()),
+                                    ("neoplasma".to_string(), "4".to_string()),
                                     ("height".to_string(), "1.85".to_string()),
                                 ])),
                                 None,
