@@ -50,4 +50,5 @@ pub enum TransformError {
     CollectionError(String),
     #[allow(dead_code)]
     BuilderError(String),
+    CastingError(String),
 }
