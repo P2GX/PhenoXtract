@@ -1,15 +1,14 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
-use chrono::{NaiveDate, NaiveDateTime};
 use polars::io::SerReader;
-use polars::prelude::{CsvReadOptions, DataFrame, DataType, NamedFrom, Series};
+use polars::prelude::CsvReadOptions;
 use std::fs::File;
 use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
-use log::{debug, info, warn};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
@@ -17,7 +16,6 @@ use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 
-use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
@@ -75,84 +73,6 @@ impl DataSource {
 
         Ok(cdf)
     }
-    fn polars_column_string_cast(data: &mut DataFrame) -> Result<(), ExtractionError> {
-        let col_names: Vec<String> = data
-            .get_column_names()
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-
-        for col_name in col_names {
-            let column = data.column(col_name.as_str())?;
-
-            debug!("Try casting Column: {col_name}");
-            if column.dtype() != DataType::String.as_ref() {
-                debug!("Skipped column {col_name}. Not of string type.");
-                continue;
-            }
-
-            if let Some(bools) = column
-                .str()?
-                .iter()
-                .map(|opt| {
-                    opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
-                        "true" => Some(true),
-                        "false" => Some(false),
-                        _ => None,
-                    })
-                })
-                .collect::<Option<Vec<bool>>>()
-            {
-                debug!("Casted column: {col_name} to bool.");
-                let s: Series = Series::new(col_name.clone().into(), bools);
-                data.replace(col_name.as_str(), s.clone())?;
-                continue;
-            }
-
-            if let Ok(mut casted) = column.strict_cast(&DataType::Int64) {
-                debug!("Casted column: {col_name} to i64.");
-                data.replace(
-                    col_name.as_str(),
-                    casted.into_materialized_series().to_owned(),
-                )?;
-                continue;
-            }
-
-            if let Ok(mut casted) = column.strict_cast(&DataType::Float64) {
-                debug!("Casted column: {col_name} to f64.");
-                data.replace(
-                    col_name.as_str(),
-                    casted.into_materialized_series().to_owned(),
-                )?;
-                continue;
-            }
-
-            if let Some(dates) = column
-                .str()?
-                .iter()
-                .map(|s| s.and_then(try_parse_string_date))
-                .collect::<Option<Vec<NaiveDate>>>()
-            {
-                debug!("Casted column: {col_name} to date.");
-                let s: Series = Series::new(col_name.clone().into(), dates);
-                data.replace(col_name.as_str(), s.clone())?;
-                continue;
-            }
-
-            if let Some(dates) = column
-                .str()?
-                .iter()
-                .map(|s| s.and_then(try_parse_string_datetime))
-                .collect::<Option<Vec<NaiveDateTime>>>()
-            {
-                debug!("Casted column: {col_name} to datetime.");
-                let s: Series = Series::new(col_name.clone().into(), dates);
-                data.replace(col_name.as_str(), s.clone())?;
-                continue;
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Extractable for DataSource {
@@ -202,7 +122,6 @@ impl Extractable for DataSource {
                     }
                 }
 
-                DataSource::polars_column_string_cast(&mut cdf.data)?;
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
             }
@@ -250,8 +169,8 @@ impl Extractable for DataSource {
 
                     let sheet_data = excel_range_reader.extract_to_df()?;
 
-                    let mut cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
-                    DataSource::polars_column_string_cast(&mut cdf.data)?;
+                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
+
                     cdf_vec.push(cdf);
                     info!(
                         "Extracted data from Excel Worksheet {} in Excel Workbook {}",
@@ -274,7 +193,6 @@ mod tests {
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
-    use polars::prelude::TimeUnit;
     use rstest::{fixture, rstest};
     use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
     use std::f64;
@@ -557,9 +475,9 @@ M,F,M
 
         let expected_df = df![
             "0" => &["PID_1", "PID_2", "PID_3"],
-            "1" => &[54, 55, 56],
+            "1" => &["54", "55", "56"],
             "2" => &["M", "F", "M"],
-            "3" => &[18, 27, 89]
+            "3" => &["18", "27", "89"]
         ]
         .unwrap();
         assert_eq!(expected_df, context_df.data)
@@ -669,9 +587,9 @@ AGE,18,27,89"#;
 
         let expected_df: DataFrame = df![
             "Patient_IDs" => &["PID_1", "PID_2", "PID_3"],
-            "HPO_IDs" => &[54, 55,56],
+            "HPO_IDs" => &["54", "55","56"],
             "SEX" => &["M", "F", "M"],
-            "AGE" => &[18, 27, 89]
+            "AGE" => &["18", "27", "89"]
         ]
         .unwrap();
 
@@ -829,30 +747,6 @@ AGE,18,27,89"#;
                 assert_eq!(extracted_smoker_bools, smoker_bools);
             }
         }
-    }
-
-    #[test]
-    fn test_polars_column_string_cast() {
-        let mut df = df![
-            "int_col" => &["1", "2", "3"],
-            "float_col" => &["1.5", "2.5", "3.5"],
-            "bool_col" => &["True", "False", "True"],
-            "date_col" => &["2023-01-01", "2023-01-02", "2023-01-03"],
-            "datetime_col" => &["2023-01-01T12:00:00", "2023-01-02T13:30:00", "2023-01-03T15:45:00"],
-            "string_col" => &["hello", "world", "test"]
-        ].unwrap();
-
-        let result = DataSource::polars_column_string_cast(&mut df);
-        assert!(result.is_ok());
-        assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int64);
-        assert_eq!(df.column("float_col").unwrap().dtype(), &DataType::Float64);
-        assert_eq!(df.column("bool_col").unwrap().dtype(), &DataType::Boolean);
-        assert_eq!(df.column("date_col").unwrap().dtype(), &DataType::Date);
-        assert_eq!(
-            df.column("datetime_col").unwrap().dtype(),
-            &DataType::Datetime(TimeUnit::Milliseconds, None)
-        );
-        assert_eq!(df.column("string_col").unwrap().dtype(), &DataType::String);
     }
 
     fn create_test_cdf() -> ContextualizedDataFrame {
