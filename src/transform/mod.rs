@@ -7,4 +7,6 @@ mod phenopacket_linter;
 pub mod strategies;
 pub mod traits;
 pub mod transform_module;
+mod utils;
+
 pub use transform_module::TransformerModule;

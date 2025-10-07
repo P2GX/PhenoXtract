@@ -62,8 +62,8 @@ impl PhenoXtractorConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{AliasMap, Context as PhenopacketContext, Identifier};
     use crate::config::table_context::{CellValue, SeriesContext, TableContext};
+    use crate::config::table_context::{Context as PhenopacketContext, Identifier};
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
@@ -201,7 +201,7 @@ mod tests {
         assert!(err.is_err());
     }
 
-    /*    #[rstest]
+    #[rstest]
     fn test_load_complete_config(temp_dir: TempDir) {
         let data: &[u8] = br#"
 data_sources:
@@ -303,7 +303,7 @@ meta_data:
                             PhenopacketContext::SubjectId,
                             PhenopacketContext::HpoLabel,
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                            Some(AliasMap::ToString(HashMap::from([
+                            Some(HashMap::from([
                                 (
                                     "null".to_string(),
                                     "Primary peritoneal carcinoma".to_string(),
@@ -312,7 +312,7 @@ meta_data:
                                 ("102".to_string(), "High quantity".to_string()),
                                 ("169.5".to_string(), "Very high quantity".to_string()),
                                 ("true".to_string(), "smoker".to_string()),
-                            ]))),
+                            ])),
                             Some("block_1".to_string()),
                         )],
                     },
@@ -341,10 +341,10 @@ meta_data:
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::ToFloat(HashMap::from([
-                                    ("neoplasma".to_string(), 4.0),
-                                    ("height".to_string(), 1.85),
-                                ]))),
+                                Some(HashMap::from([
+                                    ("neoplasma".to_string(), "4.0".to_string()),
+                                    ("height".to_string(), "1.85".to_string()),
+                                ])),
                                 None,
                             )],
                         },
@@ -360,10 +360,7 @@ meta_data:
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::ToBool(HashMap::from([(
-                                    "smoker".to_string(),
-                                    true,
-                                )]))),
+                                Some(HashMap::from([("smoker".to_string(), "true".to_string())])),
                                 None,
                             )],
                         },
@@ -373,5 +370,5 @@ meta_data:
         };
 
         assert_eq!(config, expected_config);
-    }*/
+    }
 }

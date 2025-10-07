@@ -1,16 +1,13 @@
-use crate::config::table_context::AliasMap;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
+use crate::transform::utils::polars_column_cast;
 use log::info;
-use polars::chunked_array::cast::CastOptions;
 use polars::datatypes::{DataType, PlSmallStr};
-use polars::prelude::{AnyValue, ChunkCast, Column};
-use std::any::type_name;
+use polars::prelude::Column;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 /// Given a collection of contextualised dataframes, this strategy will apply all the aliases
 /// found in the SeriesContexts.
@@ -24,7 +21,9 @@ use std::str::FromStr;
 pub struct AliasMapStrategy;
 
 impl AliasMapStrategy {
-    fn get_col_name_alias_map_pairs(cdf: &ContextualizedDataFrame) -> Vec<(PlSmallStr, AliasMap)> {
+    fn get_col_name_alias_map_pairs(
+        cdf: &ContextualizedDataFrame,
+    ) -> Vec<(PlSmallStr, HashMap<String, String>)> {
         let mut col_name_alias_map_pairs = vec![];
         for series_context in cdf.get_series_contexts() {
             if let Some(am) = series_context.get_alias_map() {
@@ -69,10 +68,7 @@ impl Strategy for AliasMapStrategy {
                     Cow::Borrowed(original_column)
                 };
 
-                let hm = alias_map.get_hash_map();
-                let output_datatype = alias_map.get_output_datatype();
-
-                let aliased_col = stringified_col.str()
+                let aliased_string_chunked = stringified_col.str()
                     .map_err(|_| {
                         StrategyError(format!(
                             "Unexpectedly could not convert column {col_name} to string column when applying AliasMap strategy."
@@ -83,17 +79,14 @@ impl Strategy for AliasMapStrategy {
                             return s;
                         }
 
-                        match hm.get(s) {
+                        match alias_map.get(s) {
                             Some(alias) => alias,
                             None => s,
                         }
                     });
 
-                dbg!(&aliased_col);
-
-                let recast_series = aliased_col.
-
-                dbg!(&recast_series);
+                let aliased_col = Column::new(col_name.clone(), aliased_string_chunked);
+                let recast_series = polars_column_cast(&aliased_col)?.take_materialized_series();
 
                 table
                     .data
@@ -109,18 +102,15 @@ impl Strategy for AliasMapStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{
-        AliasMap, Context, Identifier, SeriesContext, TableContext,
-    };
+    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
     use crate::transform::traits::Strategy;
     use polars::frame::DataFrame;
-    use polars::prelude::DataType::{Boolean, Float64, Int32, String};
-    use polars::prelude::{AnyValue, ChunkCast, Column, DataType};
+    use polars::prelude::DataType::Int32;
+    use polars::prelude::{AnyValue, Column};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
-    use polars::chunked_array::cast::CastOptions;
 
     #[fixture]
     fn sc_string_aliases() -> SeriesContext {
@@ -129,15 +119,12 @@ mod tests {
             Context::None,
             Context::SubjectId,
             None,
-            Some(AliasMap::new(
-                HashMap::from([
-                    ("P001".to_string(), "patient_1".to_string()),
-                    ("P002".to_string(), "patient_2".to_string()),
-                    ("P003".to_string(), "patient_3".to_string()),
-                    ("P004".to_string(), "patient_4".to_string()),
-                ]),
-                String,
-            )),
+            Some(HashMap::from([
+                ("P001".to_string(), "patient_1".to_string()),
+                ("P002".to_string(), "patient_2".to_string()),
+                ("P003".to_string(), "patient_3".to_string()),
+                ("P004".to_string(), "patient_4".to_string()),
+            ])),
             None,
         )
     }
@@ -149,10 +136,7 @@ mod tests {
             Context::None,
             Context::SubjectAge,
             None,
-            Some(AliasMap::new(
-                HashMap::from([("11".to_string(), "22".to_string())]),
-                Int32,
-            )),
+            Some(HashMap::from([("11".to_string(), "22".to_string())])),
             None,
         )
     }
@@ -164,15 +148,12 @@ mod tests {
             Context::None,
             Context::WeightInKg,
             None,
-            Some(AliasMap::new(
-                HashMap::from([
-                    ("10.1".to_string(), "20.2".to_string()),
-                    ("20.2".to_string(), "40.4".to_string()),
-                    ("30.3".to_string(), "60.6".to_string()),
-                    ("40.4".to_string(), "80.8".to_string()),
-                ]),
-                Float64,
-            )),
+            Some(HashMap::from([
+                ("10.1".to_string(), "20.2".to_string()),
+                ("20.2".to_string(), "40.4".to_string()),
+                ("30.3".to_string(), "60.6".to_string()),
+                ("40.4".to_string(), "80.8".to_string()),
+            ])),
             None,
         )
     }
@@ -184,10 +165,7 @@ mod tests {
             Context::None,
             Context::SmokerBool,
             None,
-            Some(AliasMap::new(
-                HashMap::from([("false".to_string(), "true".to_string())]),
-                Boolean,
-            )),
+            Some(HashMap::from([("false".to_string(), "true".to_string())])),
             None,
         )
     }
@@ -199,10 +177,7 @@ mod tests {
             Context::None,
             Context::SubjectId,
             None,
-            Some(AliasMap::new(
-                HashMap::from([("P001".to_string(), "1001".to_string())]),
-                Int32,
-            )),
+            Some(HashMap::from([("P001".to_string(), "1001".to_string())])),
             None,
         )
     }
@@ -214,15 +189,12 @@ mod tests {
             Context::None,
             Context::SubjectId,
             None,
-            Some(AliasMap::new(
-                HashMap::from([
-                    ("P001".to_string(), "1001".to_string()),
-                    ("P002".to_string(), "1002".to_string()),
-                    ("P003".to_string(), "1003".to_string()),
-                    ("P004".to_string(), "1004".to_string()),
-                ]),
-                Int32,
-            )),
+            Some(HashMap::from([
+                ("P001".to_string(), "1001".to_string()),
+                ("P002".to_string(), "1002".to_string()),
+                ("P003".to_string(), "1003".to_string()),
+                ("P004".to_string(), "1004".to_string()),
+            ])),
             None,
         )
     }
@@ -352,7 +324,9 @@ mod tests {
     fn test_aliasing(mut cdf_aliasing: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
 
-        alias_map_transform.transform(&mut [&mut cdf_aliasing]).unwrap();
+        alias_map_transform
+            .transform(&mut [&mut cdf_aliasing])
+            .unwrap();
 
         assert_eq!(
             cdf_aliasing.clone().data.column("patient_id").unwrap(),
@@ -457,37 +431,6 @@ mod tests {
         assert_eq!(cdf_no_aliasing.data, df_no_aliasing)
     }
 
-    #[rstest]
-    fn test_cast_bool() {
-        let col1 = Column::new(
-            "patient_id".into(),
-            [
-                AnyValue::String("asd"),
-                AnyValue::String("TRUE"),
-                AnyValue::Null,
-                AnyValue::String("TRUE"),
-            ],
-        );
-        let ca = col1.str().unwrap();
-        col1.cast_with_options(&Boolean, CastOptions::Strict).unwrap();
-    }
-
-    //tests that we get an error when we unsuccessfully change a column into a different type
-    #[rstest]
-    fn test_to_int_conversion_error(
-        mut cdf_convert_to_int_fail: ContextualizedDataFrame,
-        df_aliasing: DataFrame,
-    ) {
-        let alias_map_transform = AliasMapStrategy {};
-        assert!(
-            alias_map_transform
-                .transform(&mut [&mut cdf_convert_to_int_fail])
-                .is_err()
-        );
-        //make sure that nothing has changed despite the error
-        assert_eq!(cdf_convert_to_int_fail.data, df_aliasing);
-    }
-
     //tests that we can change column types if we have sufficient aliases
     #[rstest]
     fn test_type_change(mut cdf_convert_to_int_success: ContextualizedDataFrame) {
@@ -510,7 +453,7 @@ mod tests {
                 .column("patient_id")
                 .unwrap()
                 .dtype(),
-            &DataType::Int32
+            &Int32
         )
     }
 

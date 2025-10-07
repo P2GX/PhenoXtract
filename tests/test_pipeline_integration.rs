@@ -1,8 +1,6 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
-use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, SeriesContext, TableContext,
-};
+use phenoxtract::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
@@ -16,7 +14,6 @@ use phenoxtract::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynony
 use phenoxtract::transform::strategies::mapping::MappingStrategy;
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
-use polars::prelude::DataType;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
@@ -24,11 +21,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 #[fixture]
-fn vital_status_aliases() -> AliasMap {
+fn vital_status_aliases() -> HashMap<String, String> {
     let mut vs_alias_map: HashMap<String, String> = HashMap::default();
     vs_alias_map.insert("Yes".to_string(), "ALIVE".to_string());
     vs_alias_map.insert("No".to_string(), "DECEASED".to_string());
-    AliasMap::new(vs_alias_map, DataType::String)
+    vs_alias_map
 }
 
 #[fixture]
@@ -65,7 +62,7 @@ fn csv_context() -> TableContext {
 }
 
 #[fixture]
-fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
+fn excel_context(vital_status_aliases: HashMap<String, String>) -> Vec<TableContext> {
     vec![
         TableContext::new(
             "basic info".to_string(),

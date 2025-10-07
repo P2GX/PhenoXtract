@@ -2,13 +2,9 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::collector::Collector;
 use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
-use crate::utils::{try_parse_string_date, try_parse_string_datetime};
-use chrono::{NaiveDate, NaiveDateTime};
-use log::debug;
+use crate::transform::utils::polars_column_cast;
 use phenopackets::schema::v2::Phenopacket;
-use polars::datatypes::DataType;
 use polars::frame::DataFrame;
-use polars::prelude::{NamedFrom, Series};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -28,7 +24,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
-            Self::polars_column_string_cast(&mut table.data)?;
+            Self::polars_dataframe_cast(&mut table.data)?;
         }
 
         for strategy in &self.strategies {
@@ -45,7 +41,7 @@ impl TransformerModule {
         }
     }
 
-    fn polars_column_string_cast(data: &mut DataFrame) -> Result<(), TransformError> {
+    fn polars_dataframe_cast(data: &mut DataFrame) -> Result<(), TransformError> {
         let col_names: Vec<String> = data
             .get_column_names()
             .iter()
@@ -57,79 +53,10 @@ impl TransformerModule {
                 .column(col_name.as_str())
                 .map_err(|err| TransformError::CastingError(err.to_string()))?;
 
-            debug!("Try casting Column: {col_name}");
-            if column.dtype() != &DataType::String {
-                debug!("Skipped column {col_name}. Not of string type.");
-                continue;
-            }
+            let casted_series = polars_column_cast(column)?.take_materialized_series();
 
-            if let Some(bools) = column
-                .str()
-                .map_err(|err| TransformError::CastingError(err.to_string()))?
-                .iter()
-                .map(|opt| {
-                    opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
-                        "true" => Some(true),
-                        "false" => Some(false),
-                        _ => None,
-                    })
-                })
-                .collect::<Option<Vec<bool>>>()
-            {
-                debug!("Casted column: {col_name} to bool.");
-                let s: Series = Series::new(col_name.clone().into(), bools);
-                data.replace(col_name.as_str(), s.clone())
-                    .map_err(|err| TransformError::CastingError(err.to_string()))?;
-                continue;
-            }
-
-            if let Ok(mut casted) = column.strict_cast(&DataType::Int64) {
-                debug!("Casted column: {col_name} to i64.");
-                data.replace(
-                    col_name.as_str(),
-                    casted.into_materialized_series().to_owned(),
-                )
+            data.replace(col_name.as_str(), casted_series.clone())
                 .map_err(|err| TransformError::CastingError(err.to_string()))?;
-                continue;
-            }
-
-            if let Ok(mut casted) = column.strict_cast(&DataType::Float64) {
-                debug!("Casted column: {col_name} to f64.");
-                data.replace(
-                    col_name.as_str(),
-                    casted.into_materialized_series().to_owned(),
-                )
-                .map_err(|err| TransformError::CastingError(err.to_string()))?;
-                continue;
-            }
-
-            if let Some(dates) = column
-                .str()
-                .map_err(|err| TransformError::CastingError(err.to_string()))?
-                .iter()
-                .map(|s| s.and_then(try_parse_string_date))
-                .collect::<Option<Vec<NaiveDate>>>()
-            {
-                debug!("Casted column: {col_name} to date.");
-                let s: Series = Series::new(col_name.clone().into(), dates);
-                data.replace(col_name.as_str(), s.clone())
-                    .map_err(|err| TransformError::CastingError(err.to_string()))?;
-                continue;
-            }
-
-            if let Some(dates) = column
-                .str()
-                .map_err(|err| TransformError::CastingError(err.to_string()))?
-                .iter()
-                .map(|s| s.and_then(try_parse_string_datetime))
-                .collect::<Option<Vec<NaiveDateTime>>>()
-            {
-                debug!("Casted column: {col_name} to datetime.");
-                let s: Series = Series::new(col_name.clone().into(), dates);
-                data.replace(col_name.as_str(), s.clone())
-                    .map_err(|err| TransformError::CastingError(err.to_string()))?;
-                continue;
-            }
         }
         Ok(())
     }
@@ -139,7 +66,7 @@ impl TransformerModule {
 mod tests {
     use super::*;
     use polars::df;
-    use polars::prelude::TimeUnit;
+    use polars::prelude::{DataType, TimeUnit};
     use rstest::rstest;
 
     #[rstest]
@@ -153,7 +80,7 @@ mod tests {
             "string_col" => &["hello", "world", "test"]
         ].unwrap();
 
-        let result = TransformerModule::polars_column_string_cast(&mut df);
+        let result = TransformerModule::polars_dataframe_cast(&mut df);
         assert!(result.is_ok());
         assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int64);
         assert_eq!(df.column("float_col").unwrap().dtype(), &DataType::Float64);
