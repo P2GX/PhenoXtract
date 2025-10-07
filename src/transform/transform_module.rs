@@ -70,7 +70,7 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_polars_column_string_cast() {
+    fn test_polars_dataframe_cast() {
         let mut df = df![
             "int_col" => &["1", "2", "3"],
             "float_col" => &["1.5", "2.5", "3.5"],
@@ -82,7 +82,7 @@ mod tests {
 
         let result = TransformerModule::polars_dataframe_cast(&mut df);
         assert!(result.is_ok());
-        assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int64);
+        assert_eq!(df.column("int_col").unwrap().dtype(), &DataType::Int32);
         assert_eq!(df.column("float_col").unwrap().dtype(), &DataType::Float64);
         assert_eq!(df.column("bool_col").unwrap().dtype(), &DataType::Boolean);
         assert_eq!(df.column("date_col").unwrap().dtype(), &DataType::Date);
