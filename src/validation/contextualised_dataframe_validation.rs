@@ -1,4 +1,5 @@
 use crate::extract::ContextualizedDataFrame;
+use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use validator::ValidationError;
@@ -19,22 +20,20 @@ pub(crate) fn validate_one_context_per_column(
         }
     });
 
-    if duplicates.is_empty() {
-        Ok(())
-    } else {
-        let mut error = ValidationError::new("more_than_one_context_per_column");
-        error.add_param(
+    let result = fail_validation_on_duplicates(duplicates.clone());
+    result.map_err(|mut err| {
+        err.add_param(
             Cow::from("contextualised_dataframe_name"),
             &cdf.context().name,
         );
-        error.add_param(
+        err.add_param(
             Cow::from("column_with_multiple_series_contexts"),
             &duplicates,
         );
-        Err(error.with_message(Cow::Owned(
+        err.with_message(Cow::Owned(
             "There were columns in the CDF which were identified by multiple Series Contexts. A column can be identified by at most one Series Context.".to_string(),
-        )))
-    }
+        ))
+    })
 }
 
 #[cfg(test)]
@@ -104,7 +103,7 @@ mod tests {
             .err()
             .unwrap()
             .params
-            .get("column_with_multiple_series_contexts")
+            .get("duplicates")
             .unwrap()
             .as_array()
             .unwrap()
