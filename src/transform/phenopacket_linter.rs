@@ -247,7 +247,6 @@ impl PhenopacketLinter {
 mod tests {
     use super::*;
 
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use crate::ontology::utils::init_ontolius;
     use crate::test_utils::HPO;

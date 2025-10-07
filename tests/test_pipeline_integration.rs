@@ -7,7 +7,7 @@ use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::GithubOntologyRegistry;
+use phenoxtract::ontology::ObolibraryOntologyRegistry;
 use phenoxtract::ontology::hpo_bidict::HPOBiDict;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
@@ -178,8 +178,8 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
 
     //Set-up
     let cohort_name = "my_cohort";
-    let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
-    let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
+    let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
+    let hpo = init_ontolius(hpo_registry.register("2025-09-01").unwrap()).unwrap();
     let hpo_dict = Arc::new(HPOBiDict::new(hpo));
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
