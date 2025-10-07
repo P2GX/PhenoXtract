@@ -16,6 +16,7 @@ use phenoxtract::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynony
 use phenoxtract::transform::strategies::mapping::MappingStrategy;
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
+use polars::prelude::DataType;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
@@ -27,7 +28,7 @@ fn vital_status_aliases() -> AliasMap {
     let mut vs_alias_map: HashMap<String, String> = HashMap::default();
     vs_alias_map.insert("Yes".to_string(), "ALIVE".to_string());
     vs_alias_map.insert("No".to_string(), "DECEASED".to_string());
-    AliasMap::ToString(vs_alias_map)
+    AliasMap::new(vs_alias_map, DataType::String)
 }
 
 #[fixture]

@@ -1,6 +1,7 @@
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_unique_identifiers;
+use polars::prelude::DataType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -109,17 +110,27 @@ pub enum Identifier {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(untagged)]
 #[allow(clippy::enum_variant_names)]
-pub enum AliasMap {
-    #[allow(unused)]
-    ToString(HashMap<String, String>),
-    #[allow(unused)]
-    ToInt(HashMap<String, i32>),
-    #[allow(unused)]
-    ToFloat(HashMap<String, f64>),
-    #[allow(unused)]
-    ToBool(HashMap<String, bool>),
+pub struct AliasMap {
+    hash_map: HashMap<String, String>,
+    output_datatype: DataType,
+}
+
+impl AliasMap {
+    pub fn get_hash_map(&self) -> &HashMap<String, String> {
+        &self.hash_map
+    }
+
+    pub fn get_output_datatype(&self) -> &DataType {
+        &self.output_datatype
+    }
+
+    pub fn new(hash_map: HashMap<String, String>, output_datatype: DataType) -> Self {
+        AliasMap {
+            hash_map,
+            output_datatype,
+        }
+    }
 }
 
 /// Represents the context for one or more series in a table.

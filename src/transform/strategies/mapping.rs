@@ -135,7 +135,7 @@ impl Strategy for MappingStrategy {
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column
                         .cast(&DataType::String)
-                        .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                        .map_err(|err| StrategyError(err.to_string()))?;
                     Cow::Owned(casted_col)
                 } else {
                     Cow::Borrowed(original_column)

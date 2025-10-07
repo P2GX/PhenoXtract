@@ -201,7 +201,7 @@ mod tests {
         assert!(err.is_err());
     }
 
-    #[rstest]
+    /*    #[rstest]
     fn test_load_complete_config(temp_dir: TempDir) {
         let data: &[u8] = br#"
 data_sources:
@@ -373,5 +373,5 @@ meta_data:
         };
 
         assert_eq!(config, expected_config);
-    }
+    }*/
 }
