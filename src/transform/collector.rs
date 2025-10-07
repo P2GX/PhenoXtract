@@ -753,7 +753,7 @@ mod tests {
             Context::OnsetDateTime,
             None,
             None,
-            vec![],
+            Some("Block_1".to_string()),
         );
 
         let onset_dt_col = Column::new(

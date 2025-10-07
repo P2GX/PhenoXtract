@@ -63,7 +63,7 @@ mod tests {
             Context::None,
             None,
             None,
-            vec![],
+            None,
         )
     }
 
@@ -74,7 +74,7 @@ mod tests {
             Context::None,
             None,
             None,
-            vec![],
+            None,
         )
     }
 
