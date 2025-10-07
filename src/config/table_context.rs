@@ -30,7 +30,12 @@ impl TableContext {
     pub fn new(name: String, context: Vec<SeriesContext>) -> Self {
         TableContext { name, context }
     }
+    pub fn add_series_context(&mut self, sc: SeriesContext) -> &mut Self {
+        self.context.push(sc);
+        self
+    }
 }
+
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
 /// This enum is used to tag data with a specific, machine-readable context,

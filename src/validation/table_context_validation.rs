@@ -4,8 +4,6 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use validator::ValidationError;
 
-//todo NOTE: this does not check whether each column has a unique context assigned to it. But we need a regex search function on a CDF to do that.
-// That validation function still needs to be written. When that is complete, it should replace this validation function.
 pub(crate) fn validate_unique_identifiers(
     series_contexts: &[SeriesContext],
 ) -> Result<(), ValidationError> {

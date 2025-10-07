@@ -1,6 +1,7 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
+use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use log::{debug, warn};
 use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -11,6 +12,7 @@ use validator::Validate;
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
 #[derive(Clone, Validate, Default, Debug)]
+#[validate(schema(function = "validate_one_context_per_column"))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,

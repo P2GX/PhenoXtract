@@ -83,8 +83,6 @@ mod tests {
         );
     }
 
-    // todo you could argue it is a bug with our code, that in a string column like below
-    // todo there is no distinction between the string null and a null cell
     #[rstest]
     fn test_convert_col_with_nulls_to_string_vec() {
         let vec_with_nulls = vec![

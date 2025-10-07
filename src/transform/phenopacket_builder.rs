@@ -249,7 +249,6 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-    // TODO: Add test after MVP
     fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<HPOLabelIdPairs, TransformError> {
         self.hpo_dict
             .get(hpo_query)
