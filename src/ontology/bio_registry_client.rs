@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BioBankResource {
+pub struct BioRegistryResource {
     prefix: String,
     name: String,
     description: String,
@@ -88,7 +88,7 @@ impl BioRegistryClient {
     ///
     /// This function will return an error if the HTTP request fails or if the
     /// JSON deserialization of the response body fails.
-    pub fn get_resource(&self, prefix: &str) -> Result<BioBankResource, reqwest::Error> {
+    pub fn get_resource(&self, prefix: &str) -> Result<BioRegistryResource, reqwest::Error> {
         let url = self.api_url.clone() + "registry/" + prefix;
 
         let client = Client::new();
