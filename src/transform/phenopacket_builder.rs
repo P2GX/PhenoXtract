@@ -241,7 +241,6 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    // TODO: Add test after MVP
     fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())
@@ -250,7 +249,6 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-    // TODO: Add test after MVP
     fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, TransformError> {
         let term = TermId::from_str(raw_term)
             .ok()

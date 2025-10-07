@@ -75,7 +75,6 @@ impl DataSource {
 
         Ok(cdf)
     }
-    //TODO: Probably move this to transform later.
     fn polars_column_string_cast(data: &mut DataFrame) -> Result<(), ExtractionError> {
         let col_names: Vec<String> = data
             .get_column_names()

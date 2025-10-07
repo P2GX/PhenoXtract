@@ -75,7 +75,6 @@ impl Collector {
         Ok(self.phenopacket_builder.build())
     }
 
-    //todo better tests after MVP, e.g. test the errors appear when they should
     fn collect_phenotypic_features(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
@@ -156,10 +155,6 @@ impl Collector {
                 }
             }
         }
-
-        // todo deal with other types of pf col
-        //ideally we will create a multi_pf col to several single_pf cols strategy
-        //and we also want to deal with pf columns with observation status as data context
 
         Ok(())
     }
@@ -415,6 +410,17 @@ mod tests {
     }
 
     #[fixture]
+    fn pf_pneumonia_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002090".to_string(),
+                label: "Pneumonia".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn pf_asthma() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -431,6 +437,17 @@ mod tests {
     }
 
     #[fixture]
+    fn pf_asthma_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002099".to_string(),
+                label: "Asthma".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn pf_nail_psoriasis() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -441,6 +458,17 @@ mod tests {
                 element: Some(Age(age_struct {
                     iso8601duration: "P48Y4M21D".to_string(),
                 })),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn pf_nail_psoriasis_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0033327".to_string(),
+                label: "Nail psoriasis".to_string(),
             }),
             ..Default::default()
         }
@@ -698,6 +726,62 @@ mod tests {
         expected_p006.phenotypic_features.push(pf_pneumonia);
         expected_p006.phenotypic_features.push(pf_asthma);
         expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_phenotypic_features_invalid_linking(
+        mut tc: TableContext,
+        mut df_single_patient: DataFrame,
+        pf_asthma_no_onset: PhenotypicFeature,
+        pf_pneumonia_no_onset: PhenotypicFeature,
+        pf_nail_psoriasis_no_onset: PhenotypicFeature,
+    ) {
+        let mut collector = init_collector();
+
+        let onset_dt_sc = SeriesContext::new(
+            Identifier::Regex("onset_date".to_string()),
+            Context::None,
+            Context::OnsetDateTime,
+            None,
+            None,
+            vec![],
+        );
+
+        let onset_dt_col = Column::new(
+            "onset_date".into(),
+            [
+                AnyValue::String("03.06.1956"),
+                AnyValue::Null,
+                AnyValue::String("26.04.2005"),
+                AnyValue::String("16.02.1952"),
+            ],
+        );
+
+        tc.add_series_context(onset_dt_sc);
+        df_single_patient.with_column(onset_dt_col).unwrap();
+
+        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_phenotypic_features(&patient_cdf, &phenopacket_id)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006
+            .phenotypic_features
+            .push(pf_pneumonia_no_onset);
+        expected_p006.phenotypic_features.push(pf_asthma_no_onset);
+        expected_p006
+            .phenotypic_features
+            .push(pf_nail_psoriasis_no_onset);
 
         assert_eq!(phenopackets.len(), 1);
         assert_eq!(phenopackets[0], expected_p006);

@@ -1,7 +1,7 @@
-use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
+use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use log::{debug, warn};
 use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
 use regex::{Regex, escape};

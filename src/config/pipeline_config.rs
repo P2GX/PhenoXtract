@@ -9,7 +9,7 @@ pub struct PipelineConfig {
     #[allow(unused)]
     /// A list of strategies to transform the data. Each string identifies
     /// a specific transformation to be applied in order.
-    /// TODO: String for now, later probably Hashmap<String, config::Value>
+    /// String for now, later probably Hashmap<String, config::Value>
     transform_strategies: Vec<String>,
 
     #[allow(unused)]
@@ -17,7 +17,6 @@ pub struct PipelineConfig {
     ///
     /// For now, this is a simple string, but it will likely evolve into
     /// a more complex configuration object.
-    /// TODO: String for now, later enum
     loader: String,
 }
 
