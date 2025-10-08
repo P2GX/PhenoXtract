@@ -19,7 +19,7 @@ fn cast_to_bool(column: &Column) -> Result<Column, TransformError> {
                 "true" => Ok(AnyValue::Boolean(true)),
                 "false" => Ok(AnyValue::Boolean(false)),
                 _ => Err(CastingError(format!(
-                    "Could not cast {raw_bool} as boolean."
+                    "Could not cast {raw_bool} in column {col_name} as boolean."
                 ))),
             },
             None => Ok(AnyValue::Null),
@@ -40,7 +40,9 @@ fn cast_to_date(column: &Column) -> Result<Column, TransformError> {
         .map(|opt| match opt {
             Some(raw_date) => try_parse_string_date(raw_date)
                 .map(|datetime| AnyValue::Date(datetime.to_epoch_days()))
-                .ok_or(CastingError(format!("Could not cast {raw_date} as date."))),
+                .ok_or(CastingError(format!(
+                    "Could not cast {raw_date} in column {col_name} as date."
+                ))),
             None => Ok(AnyValue::Null),
         })
         .collect::<Result<Vec<AnyValue>, TransformError>>()?;
@@ -66,7 +68,7 @@ fn cast_to_datetime(column: &Column) -> Result<Column, TransformError> {
                     )
                 })
                 .ok_or(CastingError(format!(
-                    "Could not cast {raw_datetime} as datetime."
+                    "Could not cast {raw_datetime} in column {col_name} as datetime."
                 ))),
             None => Ok(AnyValue::Null),
         })
@@ -132,11 +134,9 @@ pub fn polars_column_cast_specific(
 
     match desired_output_dtype {
         OutputDataType::String => Ok(column.clone()),
-        OutputDataType::Boolean => cast_to_bool(column)
-            .inspect(|_casted| {
-                debug!("Casted column: {col_name} to bool.");
-            })
-            .map_err(|_| failed_parse_err()),
+        OutputDataType::Boolean => cast_to_bool(column).inspect(|_casted| {
+            debug!("Casted column: {col_name} to bool.");
+        }),
         OutputDataType::Int32 => column
             .strict_cast(&DataType::Int32)
             .inspect(|_casted| {
@@ -149,16 +149,12 @@ pub fn polars_column_cast_specific(
                 debug!("Casted column: {col_name} to Float64.");
             })
             .map_err(|_| failed_parse_err()),
-        OutputDataType::Date => cast_to_date(column)
-            .inspect(|_casted| {
-                debug!("Casted column: {col_name} to Date.");
-            })
-            .map_err(|_| failed_parse_err()),
-        OutputDataType::Datetime => cast_to_datetime(column)
-            .inspect(|_casted| {
-                debug!("Casted column: {col_name} to Datetime.");
-            })
-            .map_err(|_| failed_parse_err()),
+        OutputDataType::Date => cast_to_date(column).inspect(|_casted| {
+            debug!("Casted column: {col_name} to Date.");
+        }),
+        OutputDataType::Datetime => cast_to_datetime(column).inspect(|_casted| {
+            debug!("Casted column: {col_name} to Datetime.");
+        }),
     }
 }
 
