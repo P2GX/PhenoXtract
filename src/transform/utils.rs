@@ -1,9 +1,8 @@
 use crate::transform::error::TransformError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
-use chrono::{NaiveDate, NaiveDateTime};
 use log::debug;
 use polars::datatypes::DataType;
-use polars::prelude::Column;
+use polars::prelude::{AnyValue, Column, TimeUnit};
 
 pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
     let col_name = column.name();
@@ -19,13 +18,16 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
         .map_err(|err| TransformError::CastingError(err.to_string()))?
         .iter()
         .map(|opt| {
-            opt.as_ref().and_then(|s| match s.to_lowercase().as_str() {
-                "true" => Some(true),
-                "false" => Some(false),
-                _ => None,
-            })
+            if let Some(s) = opt {
+                return match s.to_lowercase().as_str() {
+                    "true" => Some(AnyValue::Boolean(true)),
+                    "false" => Some(AnyValue::Boolean(false)),
+                    _ => None,
+                };
+            }
+            Some(AnyValue::Null)
         })
-        .collect::<Option<Vec<bool>>>()
+        .collect::<Option<Vec<AnyValue>>>()
     {
         debug!("Casted column: {col_name} to bool.");
         let casted = Column::new(col_name.clone(), bools);
@@ -46,8 +48,14 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
         .str()
         .map_err(|err| TransformError::CastingError(err.to_string()))?
         .iter()
-        .map(|s| s.and_then(try_parse_string_date))
-        .collect::<Option<Vec<NaiveDate>>>()
+        .map(|s| {
+            if let Some(raw_datetime) = s {
+                return try_parse_string_date(raw_datetime)
+                    .map(|datetime| AnyValue::Date(datetime.to_epoch_days()));
+            }
+            Some(AnyValue::Null)
+        })
+        .collect::<Option<Vec<AnyValue>>>()
     {
         debug!("Casted column: {col_name} to date.");
         let casted = Column::new(col_name.clone(), dates);
@@ -58,8 +66,15 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
         .str()
         .map_err(|err| TransformError::CastingError(err.to_string()))?
         .iter()
-        .map(|s| s.and_then(try_parse_string_datetime))
-        .collect::<Option<Vec<NaiveDateTime>>>()
+        .map(|s| {
+            if let Some(raw_datetime) = s {
+                return try_parse_string_datetime(raw_datetime).map(|datetime| {
+                    AnyValue::Datetime(datetime.and_utc().timestamp(), TimeUnit::Milliseconds, None)
+                });
+            }
+            Some(AnyValue::Null)
+        })
+        .collect::<Option<Vec<AnyValue>>>()
     {
         debug!("Casted column: {col_name} to datetime.");
         let casted = Column::new(col_name.clone(), datetimes);
@@ -73,7 +88,7 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
 mod tests {
     use crate::transform::utils::polars_column_cast;
     use polars::datatypes::TimeUnit;
-    use polars::prelude::{Column, DataType};
+    use polars::prelude::{AnyValue, Column, DataType};
     use rstest::rstest;
 
     #[rstest]
@@ -104,13 +119,55 @@ mod tests {
     }
 
     #[rstest]
+    fn test_cast_to_bool_nulls() {
+        let col = Column::new(
+            "bool_col".into(),
+            [
+                AnyValue::String("True"),
+                AnyValue::Null,
+                AnyValue::String("False"),
+            ],
+        );
+        let casted_col = polars_column_cast(&col).unwrap();
+        assert_eq!(casted_col.dtype(), &DataType::Boolean);
+        assert_eq!(
+            casted_col,
+            Column::new(
+                "bool_col".into(),
+                [
+                    AnyValue::Boolean(true),
+                    AnyValue::Null,
+                    AnyValue::Boolean(false)
+                ]
+            )
+        );
+    }
+
+    #[rstest]
     fn test_cast_to_date() {
         let col = Column::new(
             "date_col".into(),
             ["2023-01-01", "2023-01-02", "2023-01-03"],
         );
+
+        let casted_col = polars_column_cast(&col).unwrap();
+
+        assert_eq!(casted_col.dtype(), &DataType::Date);
+    }
+
+    #[rstest]
+    fn test_cast_to_date_null() {
+        let col = Column::new(
+            "date_col".into(),
+            [
+                AnyValue::String("2023-01-01"),
+                AnyValue::Null,
+                AnyValue::String("2023-01-03"),
+            ],
+        );
         let casted_col = polars_column_cast(&col).unwrap();
         assert_eq!(casted_col.dtype(), &DataType::Date);
+        assert_eq!(casted_col.null_count(), 1);
     }
 
     #[rstest]
@@ -128,6 +185,24 @@ mod tests {
             casted_col.dtype(),
             &DataType::Datetime(TimeUnit::Milliseconds, None)
         );
+    }
+
+    #[rstest]
+    fn test_cast_to_datetime_null() {
+        let col = Column::new(
+            "datetime_col".into(),
+            [
+                AnyValue::String("2023-01-01T12:00:00"),
+                AnyValue::Null,
+                AnyValue::String("2023-01-03T15:45:00"),
+            ],
+        );
+        let casted_col = polars_column_cast(&col).unwrap();
+        assert_eq!(
+            casted_col.dtype(),
+            &DataType::Datetime(TimeUnit::Milliseconds, None)
+        );
+        assert_eq!(casted_col.null_count(), 1);
     }
 
     #[rstest]
