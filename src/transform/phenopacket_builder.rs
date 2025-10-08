@@ -690,6 +690,44 @@ mod tests {
     }
 
     #[rstest]
+    fn test_query_hpo_identifiers_with_valid_label() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
+        let result = builder.query_hpo_identifiers("Seizure").unwrap();
+
+        assert_eq!(result.label, "Seizure");
+        assert_eq!(result.id, "HP:0001250");
+    }
+
+    #[rstest]
+    fn test_query_hpo_identifiers_with_valid_id() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        // Query using the ID instead of label
+        let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
+
+        assert_eq!(result.label, "Seizure");
+        assert_eq!(result.id, "HP:0001250");
+    }
+
+    #[rstest]
+    fn test_query_hpo_identifiers_invalid_query() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        // Nonexistent label or ID should yield an error
+        let result = builder.query_hpo_identifiers("NonexistentTerm");
+
+        assert!(result.is_err());
+
+        if let Err(TransformError::BuilderError(msg)) = result {
+            assert!(msg.contains("Could not find ontology class for NonexistentTerm"));
+        } else {
+            panic!("Expected BuilderError for invalid query");
+        }
+    }
+
+    #[rstest]
     fn test_parse_time_element_duration() {
         let te = PhenopacketBuilder::try_parse_time_element("P81Y5M13D").unwrap();
         assert_eq!(
