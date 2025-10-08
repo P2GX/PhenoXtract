@@ -69,7 +69,7 @@ impl ObolibraryOntologyRegistry {
             .map_err(|err| RegistryError::EnvironmentVarNotSet(err.to_string()))?;
 
         let pkg_name = env!("CARGO_PKG_NAME");
-        let path: PathBuf = [home_dir.as_str(), format!(".{pkg_name}").as_str()]
+        let path: PathBuf = [home_dir.as_str(), format!(".{pkg_name}").as_str(), "hpo"]
             .iter()
             .collect();
 
@@ -163,7 +163,6 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
 
         Ok(out_path)
     }
-    #[allow(dead_code)]
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
         let resolved_version = self.resolve_version(version);
@@ -213,11 +212,7 @@ mod tests {
 
     #[rstest]
     fn test_register(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp-base.json".to_string(),
-            "hpo".to_string(),
-        );
+        let registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
 
         let path = registry.register("latest").unwrap();
 
