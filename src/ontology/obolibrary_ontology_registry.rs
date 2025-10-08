@@ -57,7 +57,7 @@ impl ObolibraryOntologyRegistry {
     /// # Configuration
     /// - **Ontology Prefix:** `"hp"`
     /// - **File Name:** `"hp.json"`
-    /// - **Storage Path:** `$HOME/.<crate_name>/`
+    /// - **Storage Path:** `$HOME/.<crate_name>/hpo`
     ///
     /// # Errors
     ///
@@ -211,8 +211,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_register() {
-        let registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
+    fn test_register(temp_dir: TempDir) {
+        let registry = ObolibraryOntologyRegistry::new(
+            temp_dir.path().to_path_buf(),
+            "hp-base.json".to_string(),
+            "hpo".to_string(),
+        );
 
         let path = registry.register("latest").unwrap();
 
@@ -348,7 +352,6 @@ mod tests {
             "hp".to_string(),
         );
 
-        // Create a fake file
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
 
