@@ -52,7 +52,11 @@ fn cast_to_datetime(column: &Column) -> Option<Column> {
         .map(|s| {
             if let Some(raw_datetime) = s {
                 return try_parse_string_datetime(raw_datetime).map(|datetime| {
-                    AnyValue::Datetime(datetime.and_utc().timestamp(), TimeUnit::Milliseconds, None)
+                    AnyValue::Datetime(
+                        datetime.and_utc().timestamp_millis(),
+                        TimeUnit::Milliseconds,
+                        None,
+                    )
                 });
             }
             Some(AnyValue::Null)
@@ -222,6 +226,20 @@ mod tests {
     }
 
     #[fixture]
+    fn casted_date_col() -> Column {
+        use polars::prelude::*;
+
+        Column::new(
+            "date_col".into(),
+            [
+                AnyValue::Date(19358), // 2023-01-01
+                AnyValue::Date(19359), // 2023-01-02
+                AnyValue::Date(19360), // 2023-01-03
+            ],
+        )
+    }
+
+    #[fixture]
     fn date_col_with_null() -> Column {
         Column::new(
             "date_col".into(),
@@ -229,6 +247,18 @@ mod tests {
                 AnyValue::String("2023-01-01"),
                 AnyValue::Null,
                 AnyValue::String("2023-01-03"),
+            ],
+        )
+    }
+
+    #[fixture]
+    fn casted_date_col_with_null() -> Column {
+        Column::new(
+            "date_col".into(),
+            [
+                AnyValue::Date(19358), // 2023-01-01
+                AnyValue::Null,
+                AnyValue::Date(19360), // 2023-01-03
             ],
         )
     }
@@ -246,6 +276,18 @@ mod tests {
     }
 
     #[fixture]
+    fn casted_datetime_col() -> Column {
+        Column::new(
+            "datetime_col".into(),
+            [
+                AnyValue::Datetime(1672574400000, TimeUnit::Milliseconds, None),
+                AnyValue::Datetime(1672666200000, TimeUnit::Milliseconds, None),
+                AnyValue::Datetime(1672760700000, TimeUnit::Milliseconds, None),
+            ],
+        )
+    }
+
+    #[fixture]
     fn datetime_col_with_null() -> Column {
         Column::new(
             "datetime_col".into(),
@@ -253,6 +295,18 @@ mod tests {
                 AnyValue::String("2023-01-01T12:00:00"),
                 AnyValue::Null,
                 AnyValue::String("2023-01-03T15:45:00"),
+            ],
+        )
+    }
+
+    #[fixture]
+    fn casted_datetime_col_with_null() -> Column {
+        Column::new(
+            "datetime_col".into(),
+            [
+                AnyValue::Datetime(1672574400000, TimeUnit::Milliseconds, None),
+                AnyValue::Null,
+                AnyValue::Datetime(1672760700000, TimeUnit::Milliseconds, None),
             ],
         )
     }
@@ -268,148 +322,89 @@ mod tests {
     }
 
     #[rstest]
-    fn test_cast_to_int_ambivalent(int_col: Column, casted_int_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&int_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Int32);
-        assert_eq!(casted_col, casted_int_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_float_ambivalent(float_col: Column, casted_float_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&float_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Float64);
-        assert_eq!(casted_col, casted_float_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_bool_ambivalent(bool_col: Column, casted_bool_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&bool_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Boolean);
-        assert_eq!(casted_col, casted_bool_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_bool_nulls_ambivalent(
-        bool_col_with_nulls: Column,
-        casted_bool_col_with_nulls: Column,
+    #[case::int(int_col(), DataType::Int32, casted_int_col())]
+    #[case::float(float_col(), DataType::Float64, casted_float_col())]
+    #[case::bool(bool_col(), DataType::Boolean, casted_bool_col())]
+    #[case::bool_with_nulls(bool_col_with_nulls(), DataType::Boolean, casted_bool_col_with_nulls())]
+    #[case::date(date_col(), DataType::Date, casted_date_col())]
+    #[case::date_with_null(date_col_with_null(), DataType::Date, casted_date_col_with_null())]
+    #[case::datetime(
+        datetime_col(),
+        DataType::Datetime(TimeUnit::Milliseconds, None),
+        casted_datetime_col()
+    )]
+    #[case::datetime_with_null(
+        datetime_col_with_null(),
+        DataType::Datetime(TimeUnit::Milliseconds, None),
+        casted_datetime_col_with_null()
+    )]
+    fn test_cast_ambivalent(
+        #[case] input: Column,
+        #[case] expected_dtype: DataType,
+        #[case] expected: Column,
     ) {
-        let casted_col = polars_column_cast_ambivalent(&bool_col_with_nulls).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Boolean);
-        assert_eq!(casted_col, casted_bool_col_with_nulls);
+        let casted_col = polars_column_cast_ambivalent(&input).unwrap();
+        assert_eq!(casted_col.dtype(), &expected_dtype);
+        assert_eq!(casted_col, expected);
     }
 
     #[rstest]
-    fn test_cast_to_date_ambivalent(date_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&date_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Date);
+    #[case::string(string_col(), DataType::String)]
+    #[case::mixed_bag(mixed_bag_col(), DataType::String)]
+    fn test_no_change_ambivalent(#[case] input: Column, #[case] expected_dtype: DataType) {
+        let casted_col = polars_column_cast_ambivalent(&input).unwrap();
+        assert_eq!(casted_col.dtype(), &expected_dtype);
+        assert_eq!(casted_col, input);
     }
 
     #[rstest]
-    fn test_cast_to_date_null_ambivalent(date_col_with_null: Column) {
-        let casted_col = polars_column_cast_ambivalent(&date_col_with_null).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Date);
-        assert_eq!(casted_col.null_count(), 1);
-    }
-
-    #[rstest]
-    fn test_cast_to_datetime_ambivalent(datetime_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&datetime_col).unwrap();
-        assert_eq!(
-            casted_col.dtype(),
-            &DataType::Datetime(TimeUnit::Milliseconds, None)
-        );
-    }
-
-    #[rstest]
-    fn test_cast_to_datetime_null_ambivalent(datetime_col_with_null: Column) {
-        let casted_col = polars_column_cast_ambivalent(&datetime_col_with_null).unwrap();
-        assert_eq!(
-            casted_col.dtype(),
-            &DataType::Datetime(TimeUnit::Milliseconds, None)
-        );
-        assert_eq!(casted_col.null_count(), 1);
-    }
-
-    #[rstest]
-    fn test_string_col_no_change_ambivalent(string_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&string_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::String);
-        assert_eq!(casted_col, string_col);
-    }
-
-    #[rstest]
-    fn test_mixed_bag_no_change_ambivalent(mixed_bag_col: Column) {
-        let casted_col = polars_column_cast_ambivalent(&mixed_bag_col).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::String);
-        assert_eq!(casted_col, mixed_bag_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_int_specific(int_col: Column, casted_int_col: Column) {
-        let casted_col = polars_column_cast_specific(&int_col, &OutputDataType::Int32).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Int32);
-        assert_eq!(casted_col, casted_int_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_float_specific(float_col: Column, casted_float_col: Column) {
-        let casted_col = polars_column_cast_specific(&float_col, &OutputDataType::Float64).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Float64);
-        assert_eq!(casted_col, casted_float_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_bool_specific(bool_col: Column, casted_bool_col: Column) {
-        let casted_col = polars_column_cast_specific(&bool_col, &OutputDataType::Boolean).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Boolean);
-        assert_eq!(casted_col, casted_bool_col);
-    }
-
-    #[rstest]
-    fn test_cast_to_bool_nulls_specific(
-        bool_col_with_nulls: Column,
-        casted_bool_col_with_nulls: Column,
+    #[case::int(int_col(), OutputDataType::Int32, DataType::Int32, casted_int_col())]
+    #[case::float(
+        float_col(),
+        OutputDataType::Float64,
+        DataType::Float64,
+        casted_float_col()
+    )]
+    #[case::bool(
+        bool_col(),
+        OutputDataType::Boolean,
+        DataType::Boolean,
+        casted_bool_col()
+    )]
+    #[case::bool_with_nulls(
+        bool_col_with_nulls(),
+        OutputDataType::Boolean,
+        DataType::Boolean,
+        casted_bool_col_with_nulls()
+    )]
+    #[case::date(date_col(), OutputDataType::Date, DataType::Date, casted_date_col())]
+    #[case::date_with_null(
+        date_col_with_null(),
+        OutputDataType::Date,
+        DataType::Date,
+        casted_date_col_with_null()
+    )]
+    #[case::datetime(
+        datetime_col(),
+        OutputDataType::Datetime,
+        DataType::Datetime(TimeUnit::Milliseconds, None),
+        casted_datetime_col()
+    )]
+    #[case::datetime_with_null(
+        datetime_col_with_null(),
+        OutputDataType::Datetime,
+        DataType::Datetime(TimeUnit::Milliseconds, None),
+        casted_datetime_col_with_null()
+    )]
+    fn test_cast_specific(
+        #[case] input: Column,
+        #[case] output_dtype: OutputDataType,
+        #[case] expected_dtype: DataType,
+        #[case] expected: Column,
     ) {
-        let casted_col =
-            polars_column_cast_specific(&bool_col_with_nulls, &OutputDataType::Boolean).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Boolean);
-        assert_eq!(casted_col, casted_bool_col_with_nulls);
-    }
-
-    #[rstest]
-    fn test_cast_to_date_specific(date_col: Column) {
-        let casted_col = polars_column_cast_specific(&date_col, &OutputDataType::Date).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Date);
-    }
-
-    #[rstest]
-    fn test_cast_to_date_null_specific(date_col_with_null: Column) {
-        let casted_col =
-            polars_column_cast_specific(&date_col_with_null, &OutputDataType::Date).unwrap();
-        assert_eq!(casted_col.dtype(), &DataType::Date);
-        assert_eq!(casted_col.null_count(), 1);
-    }
-
-    #[rstest]
-    fn test_cast_to_datetime_specific(datetime_col: Column) {
-        let casted_col =
-            polars_column_cast_specific(&datetime_col, &OutputDataType::Datetime).unwrap();
-        assert_eq!(
-            casted_col.dtype(),
-            &DataType::Datetime(TimeUnit::Milliseconds, None)
-        );
-    }
-
-    #[rstest]
-    fn test_cast_to_datetime_null_specific(datetime_col_with_null: Column) {
-        let casted_col =
-            polars_column_cast_specific(&datetime_col_with_null, &OutputDataType::Datetime)
-                .unwrap();
-        assert_eq!(
-            casted_col.dtype(),
-            &DataType::Datetime(TimeUnit::Milliseconds, None)
-        );
-        assert_eq!(casted_col.null_count(), 1);
+        let casted_col = polars_column_cast_specific(&input, &output_dtype).unwrap();
+        assert_eq!(casted_col.dtype(), &expected_dtype);
+        assert_eq!(casted_col, expected);
     }
 
     #[rstest]
@@ -429,7 +424,6 @@ mod tests {
         let casted_col = cast_to_bool(&bool_col).unwrap();
         assert_eq!(casted_col.dtype(), &DataType::Boolean);
         assert_eq!(casted_col, casted_bool_col);
-
         assert_eq!(cast_to_bool(&string_col), None)
     }
 
