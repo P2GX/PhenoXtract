@@ -70,7 +70,6 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
-    use polars::prelude::{DataFrame, DataType};
     use rstest::*;
     use std::collections::HashMap;
     use std::fs::File as StdFile;

@@ -174,8 +174,6 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
 
 #[rstest]
 fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<TableContext>) {
-    // TODO: Load pipeline from config file. Can not be done yet, because strategies are not ready to be loaded from file
-
     //Set-up
     let cohort_name = "my_cohort";
     let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();

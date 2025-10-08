@@ -3,13 +3,11 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
-use crate::transform::utils::{polars_column_cast_ambivalent, polars_column_cast_specific};
+use crate::transform::utils::polars_column_cast_specific;
 use log::info;
 use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::Column;
 use std::borrow::Cow;
-use std::cmp::PartialEq;
-use std::collections::HashMap;
 
 /// Given a collection of contextualised dataframes, this strategy will apply all the aliases
 /// found in the SeriesContexts.
@@ -385,7 +383,9 @@ mod tests {
     #[rstest]
     fn test_aliasing_with_nulls(mut cdf_nulls: ContextualizedDataFrame) {
         let alias_map_transform = AliasMapStrategy {};
-        alias_map_transform.transform(&mut [&mut cdf_nulls]).unwrap();
+        alias_map_transform
+            .transform(&mut [&mut cdf_nulls])
+            .unwrap();
         assert_eq!(
             cdf_nulls.data.column("patient_id").unwrap(),
             &Column::new(

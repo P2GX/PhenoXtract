@@ -1,7 +1,6 @@
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_unique_identifiers;
-use polars::prelude::DataType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
