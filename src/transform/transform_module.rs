@@ -2,7 +2,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::collector::Collector;
 use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
-use crate::transform::utils::polars_column_cast;
+use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
 use polars::frame::DataFrame;
 
@@ -53,7 +53,7 @@ impl TransformerModule {
                 .column(col_name.as_str())
                 .map_err(|err| TransformError::CastingError(err.to_string()))?;
 
-            let casted_series = polars_column_cast(column)?.take_materialized_series();
+            let casted_series = polars_column_cast_ambivalent(column)?.take_materialized_series();
 
             data.replace(col_name.as_str(), casted_series.clone())
                 .map_err(|err| TransformError::CastingError(err.to_string()))?;

@@ -1,6 +1,7 @@
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_at_least_one_subject_id;
 use crate::validation::table_context_validation::validate_unique_identifiers;
+use polars::prelude::DataType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -108,6 +109,39 @@ pub enum Identifier {
     Multi(Vec<String>),
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum OutputDataType {
+    Boolean,
+    String,
+    Float64,
+    Int32,
+    Date,
+    Datetime,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AliasMap {
+    hash_map: HashMap<String, String>,
+    output_dtype: OutputDataType,
+}
+
+impl AliasMap {
+    pub fn new(hash_map: HashMap<String, String>, output_dtype: OutputDataType) -> Self {
+        AliasMap {
+            hash_map,
+            output_dtype,
+        }
+    }
+
+    pub fn get_output_dtype(&self) -> &OutputDataType {
+        &self.output_dtype
+    }
+
+    pub fn get_hash_map(&self) -> &HashMap<String, String> {
+        &self.hash_map
+    }
+}
+
 /// Represents the context for one or more series in a table.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 #[validate(schema(function = "validate_identifier"))]
@@ -129,7 +163,7 @@ pub struct SeriesContext {
     /// A map to replace specific cell values with other strings, ints, floats or bools.
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
     /// The output datatype of the column will be inferred
-    alias_map: Option<HashMap<String, String>>,
+    alias_map: Option<AliasMap>,
 
     #[serde(default)]
     /// An ID that associates this series with a building block of a phenopacket. If the same ID is shared with other series, the pipeline will try to construct a building block from them.
@@ -143,7 +177,7 @@ impl SeriesContext {
         header_context: Context,
         data_context: Context,
         fill_missing: Option<CellValue>,
-        alias_map: Option<HashMap<String, String>>,
+        alias_map: Option<AliasMap>,
         building_block_id: Option<String>,
     ) -> Self {
         SeriesContext {
@@ -168,8 +202,7 @@ impl SeriesContext {
         &self.data_context
     }
 
-    #[allow(dead_code)]
-    pub fn get_alias_map(&self) -> &Option<HashMap<String, String>> {
+    pub fn get_alias_map(&self) -> &Option<AliasMap> {
         &self.alias_map
     }
 
