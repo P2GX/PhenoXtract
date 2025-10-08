@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_register(temp_dir: TempDir) {
+    fn test_register() {
         let registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
 
         let path = registry.register("latest").unwrap();
