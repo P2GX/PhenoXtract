@@ -78,7 +78,7 @@ mod tests {
 
     #[rstest]
     fn test_cast_to_int() {
-        let col = Column::new("int_col".into(), [1, 2, 3]);
+        let col = Column::new("int_col".into(), ["1", "2", "3"]);
         let casted_col = polars_column_cast(&col).unwrap();
         assert_eq!(casted_col.dtype(), &DataType::Int32);
         assert_eq!(casted_col, Column::new("int_col".into(), [1, 2, 3]));
