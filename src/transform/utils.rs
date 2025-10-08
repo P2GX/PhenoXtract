@@ -18,8 +18,8 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
         .map_err(|err| TransformError::CastingError(err.to_string()))?
         .iter()
         .map(|opt| {
-            if let Some(s) = opt {
-                return match s.to_lowercase().as_str() {
+            if let Some(raw_bool) = opt {
+                return match raw_bool.to_lowercase().as_str() {
                     "true" => Some(AnyValue::Boolean(true)),
                     "false" => Some(AnyValue::Boolean(false)),
                     _ => None,
@@ -49,8 +49,8 @@ pub fn polars_column_cast(column: &Column) -> Result<Column, TransformError> {
         .map_err(|err| TransformError::CastingError(err.to_string()))?
         .iter()
         .map(|s| {
-            if let Some(raw_datetime) = s {
-                return try_parse_string_date(raw_datetime)
+            if let Some(raw_date) = s {
+                return try_parse_string_date(raw_date)
                     .map(|datetime| AnyValue::Date(datetime.to_epoch_days()));
             }
             Some(AnyValue::Null)
