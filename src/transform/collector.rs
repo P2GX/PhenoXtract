@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::borrow::Cow;
 use std::collections::HashSet;
 
@@ -42,30 +42,68 @@ impl Collector {
                 "Could not find SubjectID column in table {}",
                 cdf.context().name
             )))?;
-            let subject_id_col_name = subject_id_col.name().to_string();
-            let unique_patient_ids =
-                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_| {
-                    CollectionError(format!(
-                        "Failed to extract unique subject IDs from {subject_id_col_name}"
-                    ))
-                })?)?;
 
-            for patient_id in &unique_patient_ids {
+            //this creates a dataframe with two columns:
+            // - one containing unique patient IDs
+            // - the other containing lists of the row indexes for each patient in cdf.data
+            let patient_indexes_df = cdf
+                .data
+                .group_by([subject_id_col.name().as_str()])
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when grouping dataframe {} by SubjectID column.",
+                        cdf.context().name
+                    ))
+                })?
+                .groups()
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when creating patient_indexes dataframe from {}.",
+                        cdf.context().name
+                    ))
+                })?;
+
+            let unique_patient_ids = patient_indexes_df.column(subject_id_col.name()).unwrap();
+            let unique_patient_ids_cast =
+                unique_patient_ids.cast(&DataType::String).map_err(|_| {
+                    CollectionError(format!(
+                        "Error when casting SubjectID column of {} to String.",
+                        cdf.context().name
+                    ))
+                })?;
+            let unique_patient_ids_str = unique_patient_ids_cast.str().map_err(|_| {
+                CollectionError(format!(
+                    "Error when converting SubjectID column of {} to StringChunked.",
+                    cdf.context().name
+                ))
+            })?;
+
+            let patient_indexes = patient_indexes_df.column("groups").unwrap().list().map_err(|_|CollectionError(format!("Error when converting groups column of patient_indexes DataFrame (formed from {}) to ListChunked.", cdf.context().name)))?;
+
+            // we iterate through the unique patient IDs
+            // and extract the patient sub-dataframe from cdf.data based on the row indexes for each patient
+            for (patient_id, patient_row_indexes) in unique_patient_ids_str
+                .into_iter()
+                .zip(patient_indexes.into_iter())
+            {
+                let patient_id = patient_id.expect(
+                    "Unexpected empty patient_id when iterating through unique patient IDs",
+                );
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
-                let patient_df = cdf
-                    .data
-                    .clone()
-                    .lazy()
-                    .filter(col(&subject_id_col_name).eq(lit(patient_id.clone())))
-                    .collect()
-                    .map_err(|_| {
-                        CollectionError(format!(
-                            "Could not extract sub-Dataframe for patient {} in table {}.",
-                            patient_id,
-                            cdf.context().name
-                        ))
-                    })?;
+                let patient_indexes = patient_row_indexes.expect(
+                    "Unexpected empty patient_index list when iterating through unique patient IDs",
+                );
+                let patient_indexes_u32 = patient_indexes
+                    .u32()
+                    .expect("Unexpectedly could not convert patient_index lists to u32Chunked.");
+
+                let patient_df = cdf.data.take(patient_indexes_u32).map_err(|_| {
+                    CollectionError(format!(
+                        "Error when extracting {patient_id} sub-dataframe from {}.",
+                        cdf.context().name
+                    ))
+                })?;
                 let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
                 self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
