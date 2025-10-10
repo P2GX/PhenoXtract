@@ -273,9 +273,12 @@ impl Collector {
         let mut unique_values: HashSet<String> = HashSet::new();
 
         for col in cols_of_element_type {
-            let stringified_col_no_nulls = convert_col_to_string_vec(&col.drop_nulls())?;
-            stringified_col_no_nulls.iter().for_each(|val| {
-                unique_values.insert(val.clone());
+            let stringified_col = col.cast(&DataType::String).map_err(|_| CollectionError(format!("Could not cast column {} to String when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
+            let stringified_col_str = stringified_col.str().map_err(|_| CollectionError(format!("Could not convert column {} to StringChunked when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
+            stringified_col_str.into_iter().for_each(|opt_val| {
+                if let Some(val) = opt_val {
+                    unique_values.insert(val.to_string());
+                }
             });
         }
 
@@ -284,7 +287,10 @@ impl Collector {
                 "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
             )))
         } else {
-            Ok(unique_values.iter().next().cloned())
+            match unique_values.iter().next() {
+                Some(unique_val) => Ok(Some(unique_val.clone())),
+                None => Ok(None),
+            }
         }
     }
 }
