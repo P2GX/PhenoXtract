@@ -3,7 +3,6 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
-use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{AnyValue, Column, DataType};
