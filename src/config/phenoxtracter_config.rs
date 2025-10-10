@@ -62,8 +62,10 @@ impl PhenoXtractorConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{AliasMap, Context as PhenopacketContext, Identifier};
-    use crate::config::table_context::{CellValue, SeriesContext, TableContext};
+    use crate::config::table_context::{
+        AliasMap, CellValue, OutputDataType, SeriesContext, TableContext,
+    };
+    use crate::config::table_context::{Context as PhenopacketContext, Identifier};
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
@@ -216,13 +218,14 @@ data_sources:
           data_context: hpo_label
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
+            hash_map:
               "null": "Primary peritoneal carcinoma"
               "M": "Male"
-              102: "High quantity"
-              169.5: "Very high quantity"
-              true: "smoker"
+              "102": "High quantity"
+              "169.5": "Very high quantity"
+              "true": "smoker"
+            output_dtype: String
           building_block_id: "block_1"
-
     extraction_config:
       name: "Sheet1"
       has_headers: true
@@ -233,24 +236,28 @@ data_sources:
     contexts:
       - name: "Sheet1"
         context:
-        - identifier: "lab_result_.*"
-          header_context: subject_id
-          data_context: hpo_label
-          fill_missing: "Zollinger-Ellison syndrome"
-          alias_map:
-              "neoplasma": 4
-              "height": 1.85
+          - identifier: "lab_result_.*"
+            header_context: subject_id
+            data_context: hpo_label
+            fill_missing: "Zollinger-Ellison syndrome"
+            alias_map:
+              hash_map:
+                "neoplasma": "4"
+                "height": "1.85"
+              output_dtype: Float64
       - name: "Sheet2"
         context:
-        - identifier:
-          - "Col_1"
-          - "Col_2"
-          - "Col_3"
-          header_context: subject_id
-          data_context: hpo_label
-          fill_missing: "Zollinger-Ellison syndrome"
-          alias_map:
-              "smoker": true
+          - identifier:
+              - "Col_1"
+              - "Col_2"
+              - "Col_3"
+            header_context: subject_id
+            data_context: hpo_label
+            fill_missing: "Zollinger-Ellison syndrome"
+            alias_map:
+              hash_map:
+                "smoker": "true"
+              output_dtype: Boolean
     extraction_configs:
       - name: "Sheet1"
         has_headers: true
@@ -268,7 +275,7 @@ pipeline:
 meta_data:
   created_by: Rouven Reuter
   submitted_by: Magnus Knut Hansen
-  cohort_name:  Arkham Asylum 2025
+  cohort_name: "Arkham Asylum 2025"
     "#;
 
         let file_path = temp_dir.path().join("config.yaml");
@@ -303,16 +310,19 @@ meta_data:
                             PhenopacketContext::SubjectId,
                             PhenopacketContext::HpoLabel,
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                            Some(AliasMap::ToString(HashMap::from([
-                                (
-                                    "null".to_string(),
-                                    "Primary peritoneal carcinoma".to_string(),
-                                ),
-                                ("M".to_string(), "Male".to_string()),
-                                ("102".to_string(), "High quantity".to_string()),
-                                ("169.5".to_string(), "Very high quantity".to_string()),
-                                ("true".to_string(), "smoker".to_string()),
-                            ]))),
+                            Some(AliasMap::new(
+                                HashMap::from([
+                                    (
+                                        "null".to_string(),
+                                        "Primary peritoneal carcinoma".to_string(),
+                                    ),
+                                    ("M".to_string(), "Male".to_string()),
+                                    ("102".to_string(), "High quantity".to_string()),
+                                    ("169.5".to_string(), "Very high quantity".to_string()),
+                                    ("true".to_string(), "smoker".to_string()),
+                                ]),
+                                OutputDataType::String,
+                            )),
                             Some("block_1".to_string()),
                         )],
                     },
@@ -341,10 +351,13 @@ meta_data:
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::ToFloat(HashMap::from([
-                                    ("neoplasma".to_string(), 4.0),
-                                    ("height".to_string(), 1.85),
-                                ]))),
+                                Some(AliasMap::new(
+                                    HashMap::from([
+                                        ("neoplasma".to_string(), "4".to_string()),
+                                        ("height".to_string(), "1.85".to_string()),
+                                    ]),
+                                    OutputDataType::Float64,
+                                )),
                                 None,
                             )],
                         },
@@ -360,10 +373,10 @@ meta_data:
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabel,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::ToBool(HashMap::from([(
-                                    "smoker".to_string(),
-                                    true,
-                                )]))),
+                                Some(AliasMap::new(
+                                    HashMap::from([("smoker".to_string(), "true".to_string())]),
+                                    OutputDataType::Boolean,
+                                )),
                                 None,
                             )],
                         },
