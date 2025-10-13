@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::borrow::Cow;
 use std::collections::HashSet;
 
@@ -42,32 +42,29 @@ impl Collector {
                 "Could not find SubjectID column in table {}",
                 cdf.context().name
             )))?;
-            let subject_id_col_name = subject_id_col.name().to_string();
-            let unique_patient_ids =
-                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_| {
-                    CollectionError(format!(
-                        "Failed to extract unique subject IDs from {subject_id_col_name}"
-                    ))
-                })?)?;
 
-            for patient_id in &unique_patient_ids {
+            let patient_dfs = cdf
+                .data
+                .partition_by(vec![subject_id_col.name().as_str()], true)
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when partitioning dataframe {} by SubjectID column.",
+                        cdf.context().name
+                    ))
+                })?;
+
+            for patient_df in patient_dfs.iter() {
+                let patient_id_av = patient_df
+                    .column(subject_id_col.name())
+                    .unwrap()
+                    .get(0)
+                    .unwrap();
+                let patient_id = patient_id_av.str_value();
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
-                let patient_df = cdf
-                    .data
-                    .clone()
-                    .lazy()
-                    .filter(col(&subject_id_col_name).eq(lit(patient_id.clone())))
-                    .collect()
-                    .map_err(|_| {
-                        CollectionError(format!(
-                            "Could not extract sub-Dataframe for patient {} in table {}.",
-                            patient_id,
-                            cdf.context().name
-                        ))
-                    })?;
-                let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
-                self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
+                let patient_cdf =
+                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
+                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
