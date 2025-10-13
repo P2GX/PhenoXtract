@@ -1,7 +1,7 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
 use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, SeriesContext, TableContext,
+    AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
 };
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
@@ -24,10 +24,10 @@ use std::sync::Arc;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
-    let mut vs_alias_map: HashMap<String, String> = HashMap::default();
-    vs_alias_map.insert("Yes".to_string(), "ALIVE".to_string());
-    vs_alias_map.insert("No".to_string(), "DECEASED".to_string());
-    AliasMap::ToString(vs_alias_map)
+    let mut vs_hash_map: HashMap<String, String> = HashMap::default();
+    vs_hash_map.insert("Yes".to_string(), "ALIVE".to_string());
+    vs_hash_map.insert("No".to_string(), "DECEASED".to_string());
+    AliasMap::new(vs_hash_map, OutputDataType::String)
 }
 
 #[fixture]

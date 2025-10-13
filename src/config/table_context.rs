@@ -114,17 +114,36 @@ pub enum Identifier {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(untagged)]
-#[allow(clippy::enum_variant_names)]
-pub enum AliasMap {
-    #[allow(unused)]
-    ToString(HashMap<String, String>),
-    #[allow(unused)]
-    ToInt(HashMap<String, i32>),
-    #[allow(unused)]
-    ToFloat(HashMap<String, f64>),
-    #[allow(unused)]
-    ToBool(HashMap<String, bool>),
+pub enum OutputDataType {
+    Boolean,
+    String,
+    Float64,
+    Int32,
+    Date,
+    Datetime,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AliasMap {
+    hash_map: HashMap<String, String>,
+    output_dtype: OutputDataType,
+}
+
+impl AliasMap {
+    pub fn new(hash_map: HashMap<String, String>, output_dtype: OutputDataType) -> Self {
+        AliasMap {
+            hash_map,
+            output_dtype,
+        }
+    }
+
+    pub fn get_output_dtype(&self) -> &OutputDataType {
+        &self.output_dtype
+    }
+
+    pub fn get_hash_map(&self) -> &HashMap<String, String> {
+        &self.hash_map
+    }
 }
 
 /// Represents the context for one or more series in a table.
@@ -147,6 +166,7 @@ pub struct SeriesContext {
     #[serde(default)]
     /// A map to replace specific cell values with other strings, ints, floats or bools.
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
+    /// The output datatype of the column will be inferred
     alias_map: Option<AliasMap>,
 
     #[serde(default)]
@@ -186,7 +206,6 @@ impl SeriesContext {
         &self.data_context
     }
 
-    #[allow(dead_code)]
     pub fn get_alias_map(&self) -> &Option<AliasMap> {
         &self.alias_map
     }
