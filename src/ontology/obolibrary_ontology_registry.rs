@@ -11,7 +11,7 @@ use std::fs::{File, remove_file};
 use std::io::copy;
 use std::path::PathBuf;
 
-/// Manages the download and local caching of ontology files from a GitHub repository.
+/// Manages the download and local caching of ontology files from a obolibrary repository.
 ///
 /// This registry is responsible for fetching specific file assets from GitHub releases,
 /// storing them in a local directory, and retrieving the path to the cached file.
@@ -171,7 +171,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
             .clone()
             .join(self.construct_file_name(resolved_version.as_str()));
         if !file_path.exists() {
-            debug!("Unable do deregistered: {}", file_path.display());
+            debug!("Unable to deregistered: {}", file_path.display());
             return Err(RegistryError::NotRegistered(
                 format!("Version: {resolved_version} not registered in registry").to_string(),
             ));
