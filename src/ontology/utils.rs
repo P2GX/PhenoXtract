@@ -14,7 +14,7 @@ pub fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
+    use crate::ontology::obolibrary_ontology_registry::ObolibraryOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
     use ontolius::ontology::OntologyTerms;
     use ontolius::term::MinimalTerm;
@@ -25,7 +25,7 @@ mod tests {
     #[rstest]
     fn test_init_ontolius() {
         let tmp = TempDir::new().unwrap();
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
+        let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()
             .unwrap()
             .with_registry_path(tmp.path().into());
         let path = hpo_registry.register("latest").unwrap();
