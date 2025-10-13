@@ -43,69 +43,27 @@ impl Collector {
                 cdf.context().name
             )))?;
 
-            //this creates a dataframe with two columns:
-            // - one containing unique patient IDs
-            // - the other containing lists of the row indexes for each patient in cdf.data
-            let patient_indexes_df = cdf
+            let patient_dfs = cdf
                 .data
-                .group_by([subject_id_col.name().as_str()])
+                .partition_by(vec![subject_id_col.name().as_str()], true)
                 .map_err(|_| {
                     CollectionError(format!(
-                        "Error when grouping dataframe {} by SubjectID column.",
-                        cdf.context().name
-                    ))
-                })?
-                .groups()
-                .map_err(|_| {
-                    CollectionError(format!(
-                        "Error when creating patient_indexes dataframe from {}.",
+                        "Error when partitioning dataframe {} by SubjectID column.",
                         cdf.context().name
                     ))
                 })?;
 
-            let unique_patient_ids = patient_indexes_df.column(subject_id_col.name()).unwrap();
-            let unique_patient_ids_cast =
-                unique_patient_ids.cast(&DataType::String).map_err(|_| {
-                    CollectionError(format!(
-                        "Error when casting SubjectID column of {} to String.",
-                        cdf.context().name
-                    ))
-                })?;
-            let unique_patient_ids_str = unique_patient_ids_cast.str().map_err(|_| {
-                CollectionError(format!(
-                    "Error when converting SubjectID column of {} to StringChunked.",
-                    cdf.context().name
-                ))
-            })?;
-
-            let patient_indexes = patient_indexes_df.column("groups").unwrap().list().map_err(|_|CollectionError(format!("Error when converting groups column of patient_indexes DataFrame (formed from {}) to ListChunked.", cdf.context().name)))?;
-
-            // we iterate through the unique patient IDs
-            // and extract the patient sub-dataframe from cdf.data based on the row indexes for each patient
-            for (patient_id, patient_row_indexes) in unique_patient_ids_str
-                .into_iter()
-                .zip(patient_indexes.into_iter())
-            {
-                let patient_id = patient_id.expect(
-                    "Unexpected empty patient_id when iterating through unique patient IDs",
-                );
+            for patient_df in patient_dfs.iter() {
+                let patient_id = patient_df
+                    .column(subject_id_col.name())
+                    .unwrap()
+                    .get(0)
+                    .unwrap();
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
-                let patient_indexes = patient_row_indexes.expect(
-                    "Unexpected empty patient_index list when iterating through unique patient IDs",
-                );
-                let patient_indexes_u32 = patient_indexes
-                    .u32()
-                    .expect("Unexpectedly could not convert patient_index lists to u32Chunked.");
-
-                let patient_df = cdf.data.take(patient_indexes_u32).map_err(|_| {
-                    CollectionError(format!(
-                        "Error when extracting {patient_id} sub-dataframe from {}.",
-                        cdf.context().name
-                    ))
-                })?;
-                let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
-                self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
+                let patient_cdf =
+                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
+                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id.to_string())?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
