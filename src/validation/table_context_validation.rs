@@ -63,25 +63,15 @@ mod tests {
     use rstest::rstest;
 
     fn regex(regex: &str) -> SeriesContext {
-        SeriesContext::new(
-            Identifier::Regex(regex.to_string()),
-            Context::None,
-            Context::None,
-            None,
-            None,
-            None,
-        )
+        let context = SeriesContext::default();
+        context.with_identifier(Identifier::Regex(regex.to_string()))
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
-        SeriesContext::new(
-            Identifier::Multi(ids.iter().map(|id| id.to_string()).collect()),
-            Context::None,
-            Context::None,
-            None,
-            None,
-            None,
-        )
+        let context = SeriesContext::default();
+        context.with_identifier(Identifier::Multi(
+            ids.iter().map(|id| id.to_string()).collect(),
+        ))
     }
 
     #[rstest]

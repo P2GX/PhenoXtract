@@ -215,14 +215,11 @@ mod tests {
 
         let tc = TableContext::new(
             "TestTable".to_string(),
-            vec![SeriesContext::new(
-                Identifier::Regex("sex".to_string()),
-                Default::default(),
-                Context::SubjectSex,
-                None,
-                None,
-                None,
-            )],
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("sex".to_string()))
+                    .with_data_context(Context::SubjectSex),
+            ],
         );
 
         ContextualizedDataFrame::new(tc, df)

@@ -113,6 +113,12 @@ pub enum Identifier {
     Multi(Vec<String>),
 }
 
+impl Default for Identifier {
+    fn default() -> Self {
+        Identifier::Regex(String::new())
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum OutputDataType {
     Boolean,
@@ -147,7 +153,7 @@ impl AliasMap {
 }
 
 /// Represents the context for one or more series in a table.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate, Default)]
 #[validate(schema(function = "validate_identifier"))]
 pub struct SeriesContext {
     /// The identifier for the (possibly multiple) series.
@@ -215,6 +221,13 @@ impl SeriesContext {
     }
 
     #[allow(unused)]
+    pub fn with_identifier(mut self, identifier: Identifier) -> Self {
+        let identifier_ref = &mut self.identifier;
+        *identifier_ref = identifier;
+        self
+    }
+
+    #[allow(unused)]
     pub fn with_header_context(mut self, context: Context) -> Self {
         let header_context_ref = &mut self.header_context;
         *header_context_ref = context;
@@ -225,6 +238,20 @@ impl SeriesContext {
     pub fn with_data_context(mut self, context: Context) -> Self {
         let data_context_ref = &mut self.data_context;
         *data_context_ref = context;
+        self
+    }
+
+    #[allow(unused)]
+    pub fn with_alias_map(mut self, alias_map: Option<AliasMap>) -> Self {
+        let alias_ref = &mut self.alias_map;
+        *alias_ref = alias_map;
+        self
+    }
+
+    #[allow(unused)]
+    pub fn with_building_block_id(mut self, building_block_id: Option<String>) -> Self {
+        let building_block_id_ref = &mut self.building_block_id;
+        *building_block_id_ref = building_block_id;
         self
     }
 }

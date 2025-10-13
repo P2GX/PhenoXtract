@@ -189,7 +189,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::table_context::Identifier::Regex;
-    use crate::config::table_context::{Context, SeriesContext, TableContext};
+    use crate::config::table_context::{SeriesContext, TableContext};
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
@@ -321,14 +321,11 @@ mod tests {
     fn table_context_column_wise_header() -> TableContext {
         TableContext::new(
             "first_sheet".to_string(),
-            vec![SeriesContext::new(
-                Regex("patient_id".to_string()),
-                Context::None,
-                Context::None,
-                None,
-                None,
-                Some("Block_1".to_string()),
-            )],
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Regex("patient_id".to_string()))
+                    .with_building_block_id(Some("Block_1".to_string())),
+            ],
         )
     }
 
@@ -336,14 +333,11 @@ mod tests {
     fn table_context_row_wise_header() -> TableContext {
         TableContext::new(
             "second_sheet".to_string(),
-            vec![SeriesContext::new(
-                Regex("age".to_string()),
-                Context::None,
-                Context::None,
-                None,
-                None,
-                Some("Block_2".to_string()),
-            )],
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Regex("age".to_string()))
+                    .with_building_block_id(Some("Block_2".to_string())),
+            ],
         )
     }
 

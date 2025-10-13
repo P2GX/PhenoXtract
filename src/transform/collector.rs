@@ -317,70 +317,40 @@ mod tests {
 
     #[fixture]
     fn tc() -> TableContext {
-        let id_sc = SeriesContext::new(
-            Identifier::Regex("subject_id".to_string()),
-            Context::None,
-            Context::SubjectId,
-            None,
-            None,
-            None,
-        );
-        let pf_sc = SeriesContext::new(
-            Identifier::Regex("phenotypic_features".to_string()),
-            Context::None,
-            Context::HpoLabel,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
-        let onset_sc = SeriesContext::new(
-            Identifier::Regex("onset_age".to_string()),
-            Context::None,
-            Context::OnsetAge,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
-        let dob_sc = SeriesContext::new(
-            Identifier::Regex("dob".to_string()),
-            Context::None,
-            Context::DateOfBirth,
-            None,
-            None,
-            None,
-        );
-        let sex_sc = SeriesContext::new(
-            Identifier::Regex("sex".to_string()),
-            Context::None,
-            Context::SubjectSex,
-            None,
-            None,
-            None,
-        );
-        let vital_status_sc = SeriesContext::new(
-            Identifier::Regex("vital_status".to_string()),
-            Context::None,
-            Context::VitalStatus,
-            None,
-            None,
-            None,
-        );
-        let time_of_death_sc = SeriesContext::new(
-            Identifier::Regex("time_of_death".to_string()),
-            Context::None,
-            Context::TimeOfDeath,
-            None,
-            None,
-            None,
-        );
-        let survival_time_sc = SeriesContext::new(
-            Identifier::Regex("survival_time".to_string()),
-            Context::None,
-            Context::SurvivalTimeDays,
-            None,
-            None,
-            None,
-        );
+        let id_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("subject_id".to_string()))
+            .with_data_context(Context::SubjectId);
+
+        let pf_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_data_context(Context::HpoLabel)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_age".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let dob_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("dob".to_string()))
+            .with_data_context(Context::DateOfBirth);
+
+        let sex_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("sex".to_string()))
+            .with_data_context(Context::SubjectSex);
+
+        let vital_status_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("vital_status".to_string()))
+            .with_data_context(Context::VitalStatus);
+
+        let time_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_of_death".to_string()))
+            .with_data_context(Context::TimeOfDeath);
+
+        let survival_time_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("survival_time".to_string()))
+            .with_data_context(Context::SurvivalTimeDays);
+
         TableContext::new(
             "patient_data".to_string(),
             vec![
@@ -744,14 +714,10 @@ mod tests {
     ) {
         let mut collector = init_collector();
 
-        let onset_dt_sc = SeriesContext::new(
-            Identifier::Regex("onset_date".to_string()),
-            Context::None,
-            Context::OnsetDateTime,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
+        let onset_dt_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_date".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_1".to_string()));
 
         let onset_dt_col = Column::new(
             "onset_date".into(),
