@@ -54,16 +54,19 @@ impl Collector {
                 })?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_id = patient_df
+                let patient_id_av = patient_df
                     .column(subject_id_col.name())
                     .unwrap()
                     .get(0)
                     .unwrap();
+
+                let patient_id = patient_id_av.str_value();
+
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
                 let patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
-                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id.to_string())?;
+                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
