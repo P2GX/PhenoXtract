@@ -59,9 +59,7 @@ impl Collector {
                     .unwrap()
                     .get(0)
                     .unwrap();
-
                 let patient_id = patient_id_av.str_value();
-
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
                 let patient_cdf =
