@@ -7,7 +7,7 @@ use crate::ontology::traits::OntologyRegistry;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
-use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
+use crate::ontology::ObolibraryOntologyRegistry;
 use crate::ontology::hpo_bidict::HPOBiDict;
 use crate::ontology::utils::init_ontolius;
 use crate::transform::Collector;
@@ -86,7 +86,7 @@ impl Pipeline {
     #[allow(dead_code)]
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
         // In progress
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()?;
+        let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()?;
         // TOOD: Read hpo version from config later
         let registry_path = hpo_registry.register("latest")?;
         let hpo = init_ontolius(registry_path)?;
