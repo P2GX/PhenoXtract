@@ -35,13 +35,8 @@ impl TableContext {
         self
     }
 
-    pub fn remove_context_pair(
-        &mut self,
-        context_pair_to_remove: (&Context, &Context),
-    ) -> &mut Self {
-        self.context.retain(|sc| {
-            (sc.get_header_context(), sc.get_data_context()) != context_pair_to_remove
-        });
+    pub fn remove_series_context(&mut self, sc_to_remove: &SeriesContext) -> &mut Self {
+        self.context.retain(|sc| &sc != &sc_to_remove);
         self
     }
 }
