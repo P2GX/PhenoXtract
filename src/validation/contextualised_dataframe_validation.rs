@@ -38,7 +38,7 @@ pub(crate) fn validate_one_context_per_column(
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
     use polars::prelude::{Column, DataFrame};
@@ -56,25 +56,13 @@ mod tests {
     }
 
     fn regex(regex: &str) -> SeriesContext {
-        SeriesContext::new(
-            Identifier::Regex(regex.to_string()),
-            Context::None,
-            Context::None,
-            None,
-            None,
-            None,
-        )
+        SeriesContext::default().with_identifier(Identifier::Regex(regex.to_string()))
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
-        SeriesContext::new(
-            Identifier::Multi(ids.iter().map(|id| id.to_string()).collect()),
-            Context::None,
-            Context::None,
-            None,
-            None,
-            None,
-        )
+        SeriesContext::default().with_identifier(Identifier::Multi(
+            ids.iter().map(|id| id.to_string()).collect(),
+        ))
     }
 
     #[rstest]

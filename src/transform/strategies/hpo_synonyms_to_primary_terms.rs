@@ -109,14 +109,9 @@ mod tests {
 
     #[fixture]
     fn tc() -> TableContext {
-        let sc = SeriesContext::new(
-            Identifier::Regex("phenotypic_features".to_string()),
-            Context::None,
-            Context::HpoLabel,
-            None,
-            None,
-            None,
-        );
+        let sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_data_context(Context::HpoLabel);
         TableContext::new("patient_data".to_string(), vec![sc])
     }
 
