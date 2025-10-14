@@ -3,10 +3,9 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
-use crate::transform::strategies::utils::convert_col_to_string_vec;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{AnyValue, Column, DataType, IntoLazy, col, lit};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::borrow::Cow;
 use std::collections::HashSet;
 
@@ -42,32 +41,29 @@ impl Collector {
                 "Could not find SubjectID column in table {}",
                 cdf.context().name
             )))?;
-            let subject_id_col_name = subject_id_col.name().to_string();
-            let unique_patient_ids =
-                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_| {
-                    CollectionError(format!(
-                        "Failed to extract unique subject IDs from {subject_id_col_name}"
-                    ))
-                })?)?;
 
-            for patient_id in &unique_patient_ids {
+            let patient_dfs = cdf
+                .data
+                .partition_by(vec![subject_id_col.name().as_str()], true)
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when partitioning dataframe {} by SubjectID column.",
+                        cdf.context().name
+                    ))
+                })?;
+
+            for patient_df in patient_dfs.iter() {
+                let patient_id_av = patient_df
+                    .column(subject_id_col.name())
+                    .unwrap()
+                    .get(0)
+                    .unwrap();
+                let patient_id = patient_id_av.str_value();
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
-                let patient_df = cdf
-                    .data
-                    .clone()
-                    .lazy()
-                    .filter(col(&subject_id_col_name).eq(lit(patient_id.clone())))
-                    .collect()
-                    .map_err(|_| {
-                        CollectionError(format!(
-                            "Could not extract sub-Dataframe for patient {} in table {}.",
-                            patient_id,
-                            cdf.context().name
-                        ))
-                    })?;
-                let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
-                self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
+                let patient_cdf =
+                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
+                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
@@ -273,9 +269,12 @@ impl Collector {
         let mut unique_values: HashSet<String> = HashSet::new();
 
         for col in cols_of_element_type {
-            let stringified_col_no_nulls = convert_col_to_string_vec(&col.drop_nulls())?;
-            stringified_col_no_nulls.iter().for_each(|val| {
-                unique_values.insert(val.clone());
+            let stringified_col = col.cast(&DataType::String).map_err(|_| CollectionError(format!("Could not cast column {} to String when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
+            let stringified_col_str = stringified_col.str().map_err(|_| CollectionError(format!("Could not convert column {} to StringChunked when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
+            stringified_col_str.into_iter().for_each(|opt_val| {
+                if let Some(val) = opt_val {
+                    unique_values.insert(val.to_string());
+                }
             });
         }
 
@@ -284,7 +283,10 @@ impl Collector {
                 "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
             )))
         } else {
-            Ok(unique_values.iter().next().cloned())
+            match unique_values.iter().next() {
+                Some(unique_val) => Ok(Some(unique_val.clone())),
+                None => Ok(None),
+            }
         }
     }
 }
@@ -320,70 +322,40 @@ mod tests {
 
     #[fixture]
     fn tc() -> TableContext {
-        let id_sc = SeriesContext::new(
-            Identifier::Regex("subject_id".to_string()),
-            Context::None,
-            Context::SubjectId,
-            None,
-            None,
-            None,
-        );
-        let pf_sc = SeriesContext::new(
-            Identifier::Regex("phenotypic_features".to_string()),
-            Context::None,
-            Context::HpoLabel,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
-        let onset_sc = SeriesContext::new(
-            Identifier::Regex("onset_age".to_string()),
-            Context::None,
-            Context::OnsetAge,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
-        let dob_sc = SeriesContext::new(
-            Identifier::Regex("dob".to_string()),
-            Context::None,
-            Context::DateOfBirth,
-            None,
-            None,
-            None,
-        );
-        let sex_sc = SeriesContext::new(
-            Identifier::Regex("sex".to_string()),
-            Context::None,
-            Context::SubjectSex,
-            None,
-            None,
-            None,
-        );
-        let vital_status_sc = SeriesContext::new(
-            Identifier::Regex("vital_status".to_string()),
-            Context::None,
-            Context::VitalStatus,
-            None,
-            None,
-            None,
-        );
-        let time_of_death_sc = SeriesContext::new(
-            Identifier::Regex("time_of_death".to_string()),
-            Context::None,
-            Context::TimeOfDeath,
-            None,
-            None,
-            None,
-        );
-        let survival_time_sc = SeriesContext::new(
-            Identifier::Regex("survival_time".to_string()),
-            Context::None,
-            Context::SurvivalTimeDays,
-            None,
-            None,
-            None,
-        );
+        let id_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("subject_id".to_string()))
+            .with_data_context(Context::SubjectId);
+
+        let pf_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_data_context(Context::HpoLabel)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_age".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let dob_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("dob".to_string()))
+            .with_data_context(Context::DateOfBirth);
+
+        let sex_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("sex".to_string()))
+            .with_data_context(Context::SubjectSex);
+
+        let vital_status_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("vital_status".to_string()))
+            .with_data_context(Context::VitalStatus);
+
+        let time_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_of_death".to_string()))
+            .with_data_context(Context::TimeOfDeath);
+
+        let survival_time_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("survival_time".to_string()))
+            .with_data_context(Context::SurvivalTimeDays);
+
         TableContext::new(
             "patient_data".to_string(),
             vec![
@@ -747,14 +719,10 @@ mod tests {
     ) {
         let mut collector = init_collector();
 
-        let onset_dt_sc = SeriesContext::new(
-            Identifier::Regex("onset_date".to_string()),
-            Context::None,
-            Context::OnsetDateTime,
-            None,
-            None,
-            Some("Block_1".to_string()),
-        );
+        let onset_dt_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_date".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_1".to_string()));
 
         let onset_dt_col = Column::new(
             "onset_date".into(),

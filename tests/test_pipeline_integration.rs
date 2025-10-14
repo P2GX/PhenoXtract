@@ -35,30 +35,15 @@ fn csv_context() -> TableContext {
     TableContext::new(
         "CSV_Table".to_string(),
         vec![
-            SeriesContext::new(
-                Identifier::Regex("0".to_string()),
-                Default::default(),
-                Context::SubjectId,
-                None,
-                None,
-                None,
-            ),
-            SeriesContext::new(
-                Identifier::Regex("1".to_string()),
-                Default::default(),
-                Context::HpoLabel,
-                None,
-                None,
-                None,
-            ),
-            SeriesContext::new(
-                Identifier::Regex("2".to_string()),
-                Default::default(),
-                Context::HpoLabel,
-                None,
-                None,
-                None,
-            ),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("0".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("1".to_string()))
+                .with_data_context(Context::HpoLabel),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("2".to_string()))
+                .with_data_context(Context::HpoLabel),
         ],
     )
 }
@@ -69,104 +54,54 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
         TableContext::new(
             "basic info".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Sex".to_string()),
-                    Default::default(),
-                    Context::SubjectSex,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Living".to_string()),
-                    Default::default(),
-                    Context::VitalStatus,
-                    None,
-                    Some(vital_status_aliases),
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("DOB".to_string()),
-                    Default::default(),
-                    Context::DateOfBirth,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Time of death".to_string()),
-                    Default::default(),
-                    Context::TimeOfDeath,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Survival time since diagnosis (days)".to_string()),
-                    Default::default(),
-                    Context::SurvivalTimeDays,
-                    None,
-                    None,
-                    None,
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Sex".to_string()))
+                    .with_data_context(Context::SubjectSex),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Living".to_string()))
+                    .with_data_context(Context::VitalStatus)
+                    .with_alias_map(Some(vital_status_aliases)),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("DOB".to_string()))
+                    .with_data_context(Context::DateOfBirth),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Time of death".to_string()))
+                    .with_data_context(Context::TimeOfDeath),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex(
+                        "Survival time since diagnosis (days)".to_string(),
+                    ))
+                    .with_data_context(Context::SurvivalTimeDays),
             ],
         ),
         TableContext::new(
             "conditions".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Phenotypic Features".to_string()),
-                    Default::default(),
-                    Context::HpoLabel,
-                    None,
-                    None,
-                    Some("block_1".to_string()),
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Age of onset".to_string()),
-                    Default::default(),
-                    Context::OnsetAge,
-                    None,
-                    None,
-                    Some("block_1".to_string()),
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Phenotypic Features".to_string()))
+                    .with_data_context(Context::HpoLabel)
+                    .with_building_block_id(Some("block_1".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Age of onset".to_string()))
+                    .with_data_context(Context::OnsetAge)
+                    .with_building_block_id(Some("block_1".to_string())),
             ],
         ),
         TableContext::new(
             "more conditions".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex(r"Phenotypic Features \d+".to_string()),
-                    Default::default(),
-                    Context::HpoLabel,
-                    None,
-                    None,
-                    None,
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex(r"Phenotypic Features \d+".to_string()))
+                    .with_data_context(Context::HpoLabel),
             ],
         ),
     ]
