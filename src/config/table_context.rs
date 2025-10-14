@@ -34,6 +34,16 @@ impl TableContext {
         self.context.push(sc);
         self
     }
+
+    pub fn remove_context_pair(
+        &mut self,
+        context_pair_to_remove: (&Context, &Context),
+    ) -> &mut Self {
+        self.context.retain(|sc| {
+            (sc.get_header_context(), sc.get_data_context()) != context_pair_to_remove
+        });
+        self
+    }
 }
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
