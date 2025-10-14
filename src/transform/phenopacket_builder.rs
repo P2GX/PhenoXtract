@@ -17,11 +17,6 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-struct HPOLabelIdPairs {
-    pub label: String,
-    pub id: String,
-}
-
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
@@ -219,10 +214,7 @@ impl PhenopacketBuilder {
             &mut phenopacket.phenotypic_features[pos]
         } else {
             let new_feature = PhenotypicFeature {
-                r#type: Some(OntologyClass {
-                    id: term.id,
-                    label: term.label,
-                }),
+                r#type: Some(term),
                 ..Default::default()
             };
             phenopacket.phenotypic_features.push(new_feature);
@@ -249,7 +241,7 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-    fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<HPOLabelIdPairs, TransformError> {
+    fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<OntologyClass, TransformError> {
         self.hpo_dict
             .get(hpo_query)
             .ok_or_else(|| {
@@ -268,7 +260,7 @@ impl PhenopacketBuilder {
                 } else {
                     (corresponding_label_or_id.to_string(), found.to_string())
                 };
-                Ok(HPOLabelIdPairs { label, id })
+                Ok(OntologyClass { id, label })
             })
     }
 
