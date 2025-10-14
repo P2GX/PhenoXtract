@@ -101,6 +101,8 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     }
                 }
 
+                let block_id = multi_hpo_sc.get_building_block_id();
+
                 //then the columns are created
                 for hpo in hpos.iter() {
                     let mut observation_statuses = vec![];
@@ -113,12 +115,18 @@ impl Strategy for MultiHPOColExpansionStrategy {
                         observation_statuses.push(observation_status);
                     });
 
-                    let new_hpo_col = Column::new(hpo.into(), observation_statuses);
+                    let mut new_hpo_col_name = hpo.clone();
+                    if let Some(block_id) = block_id {
+                        new_hpo_col_name.push_str(" (block ");
+                        new_hpo_col_name.push_str(block_id);
+                        new_hpo_col_name.push_str(")")
+                    }
+
+                    let new_hpo_col = Column::new(new_hpo_col_name.into(), observation_statuses);
                     new_hpo_cols.push(new_hpo_col);
                 }
 
                 //then the new SC is created
-                let block_id = multi_hpo_sc.get_building_block_id();
                 let new_hpo_col_names = hpos.iter().cloned().collect::<Vec<String>>();
                 let new_sc = SeriesContext::default()
                     .with_identifier(Multi(new_hpo_col_names))
