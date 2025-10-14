@@ -73,6 +73,8 @@ pub enum Context {
     SmokerBool,
     #[allow(unused)]
     ObservationStatus,
+    #[allow(unused)]
+    MultiHpoId,
     #[default]
     None,
     //...
