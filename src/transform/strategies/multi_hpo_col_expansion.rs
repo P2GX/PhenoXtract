@@ -250,21 +250,6 @@ mod tests {
         let expected_df = df![
             "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P002"),AnyValue::String("P003")],
             "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
-            "HP:1111111 (block A)" => &[
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::Null,],
-            "HP:2222222 (block A)" => &[
-                AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::Null,],
-            "HP:3333333 (block A)" => &[
-                AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::Null,],
             "HP:1111111" => &[
                 AnyValue::String("OBSERVED"),
                 AnyValue::Null,
@@ -276,6 +261,21 @@ mod tests {
                 AnyValue::String("OBSERVED"),
                 AnyValue::String("OBSERVED")],
             "HP:5555555" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:1111111 (block A)" => &[
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:2222222 (block A)" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:3333333 (block A)" => &[
                 AnyValue::Null,
                 AnyValue::String("OBSERVED"),
                 AnyValue::String("OBSERVED"),
@@ -293,6 +293,14 @@ mod tests {
                     .with_data_context(Context::SubjectAge),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
+                        "HP:1111111".to_string(),
+                        "HP:4444444".to_string(),
+                        "HP:5555555".to_string(),
+                    ]))
+                    .with_header_context(Context::HpoId)
+                    .with_data_context(Context::ObservationStatus),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Multi(vec![
                         "HP:1111111 (block A)".to_string(),
                         "HP:2222222 (block A)".to_string(),
                         "HP:3333333 (block A)".to_string(),
@@ -300,14 +308,6 @@ mod tests {
                     .with_header_context(Context::HpoId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id(Some("A".to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111".to_string(),
-                        "HP:4444444".to_string(),
-                        "HP:5555555".to_string(),
-                    ]))
-                    .with_header_context(Context::HpoId)
-                    .with_data_context(Context::ObservationStatus),
             ],
         );
 
