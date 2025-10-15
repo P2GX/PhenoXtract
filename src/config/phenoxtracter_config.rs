@@ -276,6 +276,9 @@ meta_data:
   created_by: Rouven Reuter
   submitted_by: Magnus Knut Hansen
   cohort_name: "Arkham Asylum 2025"
+  hpo_version: "latest"
+  mondo_version: "latest"
+  geno_version: "latest"
     "#;
 
         let file_path = temp_dir.path().join("config.yaml");
@@ -288,6 +291,7 @@ meta_data:
                 created_by: Some("Rouven Reuter".to_string()),
                 submitted_by: "Magnus Knut Hansen".to_string(),
                 cohort_name: "Arkham Asylum 2025".to_string(),
+                ..Default::default()
             },
             pipeline: Some(PipelineConfig::new(
                 vec!["alias_mapping".to_string(), "fill_null".to_string()],
