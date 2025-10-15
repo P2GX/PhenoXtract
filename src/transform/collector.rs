@@ -53,12 +53,13 @@ impl Collector {
                 })?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_id_av = patient_df
+                let patient_id = patient_df
                     .column(subject_id_col.name())
                     .unwrap()
                     .get(0)
-                    .unwrap();
-                let patient_id = patient_id_av.str_value();
+                    .unwrap()
+                    .str_value();
+
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
                 let patient_cdf =
@@ -95,7 +96,6 @@ impl Collector {
             );
             let linked_onset_cols = [linked_onset_age_cols, linked_onset_dt_cols].concat();
 
-            // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
             if linked_onset_cols.len() > 1 {
