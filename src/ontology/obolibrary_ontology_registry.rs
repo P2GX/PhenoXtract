@@ -80,15 +80,20 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
-    fn resolve_version(&self, version: &str) -> String {
+    fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
         if version == "latest" {
             let meta_data = self
                 .bio_registry_client
                 .get_resource(&self.ontology_prefix)
                 .expect("get latest tag failed");
-            meta_data.version
+            meta_data
+                .version
+                .ok_or(RegistryError::UnableToResolveVersion(format!(
+                    "Could not resolve version for {} ",
+                    self.file_name
+                )))
         } else {
-            version.to_string()
+            Ok(version.to_string())
         }
     }
 
@@ -133,7 +138,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version)?;
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
@@ -165,7 +170,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version)?;
         let file_path = self
             .registry_path
             .clone()
@@ -183,7 +188,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
 
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version).ok()?;
         let file_path = self
             .registry_path
             .clone()
