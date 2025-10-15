@@ -131,10 +131,13 @@ impl ExcelRangeReader {
 
                 if self.extraction_config.has_headers {
                     let h = vec.first().ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
-                    header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
+                    header = match h.get_str() {
+                        Some(s) => s.to_string(),
+                        None => default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}.", default_column_names.len()).to_string()))?.to_string()
+                    };
                     data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
                 } else {
-                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}", default_column_names.len()).to_string()))?.to_string();
+                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}.", default_column_names.len()).to_string()))?.to_string();
                     data = vec;
                 }
 

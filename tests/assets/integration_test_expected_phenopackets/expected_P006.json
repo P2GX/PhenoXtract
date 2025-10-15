@@ -45,6 +45,12 @@
     },
     {
       "type": {
+        "id": "HP:0012373",
+        "label": "Abnormal eye physiology"
+      }
+    },
+    {
+      "type": {
         "id": "HP:0004322",
         "label": "Short stature"
       }

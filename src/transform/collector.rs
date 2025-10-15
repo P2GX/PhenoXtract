@@ -124,6 +124,7 @@ impl Collector {
                             .and_then(|any_value| match any_value {
                                 AnyValue::String(s) => Some(Cow::Borrowed(s)),
                                 AnyValue::StringOwned(s) => Some(Cow::Owned(s.into())),
+                                AnyValue::Datetime(_, _, _) => Some(any_value.to_string().into()),
                                 _ => None,
                             });
 

@@ -91,6 +91,20 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_identifier(Identifier::Regex("Age of onset".to_string()))
                     .with_data_context(Context::OnsetAge)
                     .with_building_block_id(Some("block_1".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("HP:0012373".to_string()))
+                    .with_header_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::ObservationStatus)
+                    .with_building_block_id(Some("block_2".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Rhinorrhea".to_string()))
+                    .with_header_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::ObservationStatus)
+                    .with_building_block_id(Some("block_2".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Date of onset".to_string()))
+                    .with_data_context(Context::OnsetDateTime)
+                    .with_building_block_id(Some("block_2".to_string())),
             ],
         ),
         TableContext::new(
