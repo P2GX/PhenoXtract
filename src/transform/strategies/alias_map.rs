@@ -470,12 +470,6 @@ mod tests {
         sc_float_aliases: SeriesContext,
         sc_bool_alias: SeriesContext,
     ) {
-        let am_string = sc_string_aliases.get_alias_map().clone().unwrap();
-        let am_int = sc_int_alias.get_alias_map().clone().unwrap();
-        let am_float = sc_float_aliases.get_alias_map().clone().unwrap();
-        let am_bool1 = sc_bool_alias.get_alias_map().clone().unwrap();
-        let am_bool2 = sc_bool_alias.get_alias_map().clone().unwrap();
-
         let df = cdf_aliasing.data.clone();
         let col_string = df.column("patient_id").unwrap().name().clone();
         let col_int = df.column("age").unwrap().name().clone();
@@ -484,18 +478,21 @@ mod tests {
         let col_bool2 = df.column("smokes2").unwrap().name().clone();
 
         let expected_col_name_alias_map_pairs = vec![
-            (col_string, am_string),
-            (col_int, am_int),
-            (col_float, am_float),
-            (col_bool1, am_bool1),
-            (col_bool2, am_bool2),
+            (
+                col_string,
+                sc_string_aliases.get_alias_map().unwrap().clone(),
+            ),
+            (col_int, sc_int_alias.get_alias_map().unwrap().clone()),
+            (col_float, sc_float_aliases.get_alias_map().unwrap().clone()),
+            (col_bool1, sc_bool_alias.get_alias_map().unwrap().clone()),
+            (col_bool2, sc_bool_alias.get_alias_map().unwrap().clone()),
         ];
 
         let extracted_col_name_alias_map_pairs =
             AliasMapStrategy::get_col_name_alias_map_pairs(&cdf_aliasing);
         assert_eq!(
-            extracted_col_name_alias_map_pairs,
-            expected_col_name_alias_map_pairs
+            expected_col_name_alias_map_pairs,
+            extracted_col_name_alias_map_pairs
         );
     }
 }
