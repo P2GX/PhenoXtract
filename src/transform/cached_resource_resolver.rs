@@ -143,8 +143,8 @@ mod tests {
     #[rstest]
     fn test_resolve() {
         let resource_id = "hp";
-        let mut f = CachedResourceResolver::default();
-        let hpo_metadata = f.resolve(resource_id).unwrap();
+        let mut resolver = CachedResourceResolver::default();
+        let hpo_metadata = resolver.resolve(resource_id).unwrap();
 
         assert_eq!(hpo_metadata.id, resource_id);
         assert_eq!(hpo_metadata.name, "Human Phenotype Ontology");
@@ -158,9 +158,9 @@ mod tests {
 
     #[rstest]
     fn test_resolve_versionless_resource() {
-        let mut f = CachedResourceResolver::default();
+        let mut resolver = CachedResourceResolver::default();
 
-        let hgnc_metadata = f.resolve("hgnc").unwrap();
+        let hgnc_metadata = resolver.resolve("hgnc").unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");
         assert_eq!(hgnc_metadata.version, "-");
@@ -169,9 +169,9 @@ mod tests {
     #[rstest]
     fn test_resolve_known_version() {
         let know_version = "1.2.3.4";
-        let mut f = CachedResourceResolver::default();
-        f.add_known_version("hgnc", know_version);
-        let hgnc_metadata = f.resolve("hgnc").unwrap();
+        let mut resolver = CachedResourceResolver::default();
+        resolver.add_known_version("hgnc", know_version);
+        let hgnc_metadata = resolver.resolve("hgnc").unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");
         assert_eq!(hgnc_metadata.version, know_version);
