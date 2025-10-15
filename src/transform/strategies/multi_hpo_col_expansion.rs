@@ -45,12 +45,6 @@ impl Strategy for MultiHPOColExpansionStrategy {
             let mut new_hpo_cols = vec![];
             let mut new_series_contexts = vec![];
 
-            let multi_hpo_scs = table
-                .get_series_contexts_with_contexts(&Context::None, &Context::MultiHpoId)
-                .into_iter()
-                .cloned()
-                .collect::<Vec<SeriesContext>>();
-
             let building_block_ids = table.get_building_block_ids();
 
             //we create the columns building block by building block
@@ -141,25 +135,26 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 new_series_contexts.push(new_sc);
             }
 
+            //old multi_hpo_columns are removed
             let old_multi_hpo_col_names = table
                 .get_cols_with_contexts(&Context::None, &Context::MultiHpoId)
                 .iter()
                 .map(|col| col.name().to_string())
                 .collect::<Vec<String>>();
 
-            //old multi_hpo_columns are removed
             for multi_hpo_col_name in old_multi_hpo_col_names.iter() {
                 table.data_mut().drop_in_place(multi_hpo_col_name).map_err(|_| StrategyError(format!("Unexpectedly could not remove MultiHPO column {multi_hpo_col_name} from table {table_name}.")))?;
             }
 
             //old series contexts are removed
-            for multi_hpo_sc in multi_hpo_scs.iter() {
-                table.context_mut().remove_series_context(multi_hpo_sc);
-            }
+            let old_multi_hpo_scs = table
+                .get_series_contexts_with_contexts(&Context::None, &Context::MultiHpoId)
+                .into_iter()
+                .cloned()
+                .collect::<Vec<SeriesContext>>();
 
-            //new series contexts are added
-            for new_sc in new_series_contexts {
-                table.context_mut().add_series_context(new_sc);
+            for multi_hpo_sc in old_multi_hpo_scs.iter() {
+                table.context_mut().remove_series_context(multi_hpo_sc);
             }
 
             //new columns are added
@@ -169,6 +164,11 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     .data_mut()
                     .with_column(new_hpo_col)
                     .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}. Possible duplicates?")))?;
+            }
+
+            //new series contexts are added
+            for new_sc in new_series_contexts {
+                table.context_mut().add_series_context(new_sc);
             }
         }
 
