@@ -133,7 +133,7 @@ impl PhenopacketBuilder {
     /// # Arguments
     ///
     /// * `phenopacket_id` - A `String` that uniquely identifies the target phenopacket.
-    /// * `phenotype` - A string slice (`&str`) representing the ontology term or id for the
+    /// * `phenotype` - A string slice (`&str`) representing the ontology label or id for the
     ///   phenotype (e.g., `"HP:0000118" or "Phenotypic abnormality"`).
     /// * `description` - An optional free-text description of the feature.
     /// * `excluded` - An optional boolean indicating if the feature is explicitly absent.

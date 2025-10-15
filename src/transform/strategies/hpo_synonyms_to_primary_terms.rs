@@ -29,7 +29,7 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().all(|table| {
-            table.contexts_have_dtype(&Context::None, &Context::HpoLabel, &DataType::String)
+            table.contexts_have_dtype(&Context::None, &Context::HpoLabelOrId, &DataType::String)
         })
     }
 
@@ -45,7 +45,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             let table_name = table.context().name.to_string();
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
-                .get_cols_with_contexts(&Context::None, &Context::HpoLabel)
+                .get_cols_with_contexts(&Context::None, &Context::HpoLabelOrId)
                 .iter()
                 .map(|col| col.name())
                 .cloned()
@@ -111,7 +111,7 @@ mod tests {
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
-            .with_data_context(Context::HpoLabel);
+            .with_data_context(Context::HpoLabelOrId);
         TableContext::new("patient_data".to_string(), vec![sc])
     }
 

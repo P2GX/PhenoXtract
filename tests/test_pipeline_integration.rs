@@ -40,10 +40,10 @@ fn csv_context() -> TableContext {
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("1".to_string()))
-                .with_data_context(Context::HpoLabel),
+                .with_data_context(Context::HpoLabelOrId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("2".to_string()))
-                .with_data_context(Context::HpoLabel),
+                .with_data_context(Context::HpoLabelOrId),
         ],
     )
 }
@@ -85,7 +85,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Phenotypic Features".to_string()))
-                    .with_data_context(Context::HpoLabel)
+                    .with_data_context(Context::HpoLabelOrId)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Age of onset".to_string()))
@@ -101,7 +101,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex(r"Phenotypic Features \d+".to_string()))
-                    .with_data_context(Context::HpoLabel),
+                    .with_data_context(Context::HpoLabelOrId),
             ],
         ),
     ]

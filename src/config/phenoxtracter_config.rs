@@ -312,7 +312,7 @@ meta_data:
                         context: vec![SeriesContext::new(
                             Identifier::Regex("patient_id".to_string()),
                             PhenopacketContext::SubjectId,
-                            PhenopacketContext::HpoLabel,
+                            PhenopacketContext::HpoLabelOrId,
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                             Some(AliasMap::new(
                                 HashMap::from([
@@ -353,7 +353,7 @@ meta_data:
                             context: vec![SeriesContext::new(
                                 Identifier::Regex("lab_result_.*".to_string()),
                                 PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabel,
+                                PhenopacketContext::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([
@@ -375,7 +375,7 @@ meta_data:
                                     "Col_3".to_string(),
                                 ]),
                                 PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabel,
+                                PhenopacketContext::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([("smoker".to_string(), "true".to_string())]),

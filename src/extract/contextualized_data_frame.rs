@@ -317,12 +317,12 @@ mod tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
-                    .with_header_context(Context::HpoLabel)
+                    .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("overweight".to_string()))
-                    .with_header_context(Context::HpoLabel)
+                    .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
             ],
         }
@@ -470,7 +470,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
         assert_eq!(
-            cdf.get_cols_with_header_context(&Context::HpoLabel),
+            cdf.get_cols_with_header_context(&Context::HpoLabelOrId),
             vec![
                 cdf.data.column("bronchitis").unwrap(),
                 cdf.data.column("overweight").unwrap()
@@ -490,7 +490,7 @@ mod tests {
 
         //check it can recognise true negatives
         assert!(!cdf.contexts_have_dtype(
-            &Context::HpoLabel,
+            &Context::HpoLabelOrId,
             &Context::ObservationStatus,
             &DataType::Float64
         ));
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(
             cdf.get_building_block_with_contexts(
                 &block_id,
-                &Context::HpoLabel,
+                &Context::HpoLabelOrId,
                 &Context::ObservationStatus
             ),
             vec![cdf.data.column("bronchitis").unwrap()]
