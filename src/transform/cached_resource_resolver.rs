@@ -3,9 +3,14 @@ use log::warn;
 use phenopackets::schema::v2::core::Resource;
 use std::collections::HashMap;
 
+/// A cached resolver for biological ontology resources.
+///
+/// This resolver fetches resource metadata from the BioRegistry API and caches
+/// the results to avoid repeated network requests. It maintains a cache of resolved
+/// resources and allows specifying known versions for resources before resolution.
 #[derive(Clone, Default, Debug)]
 #[allow(dead_code)]
-struct CachedResourceResolver {
+pub(crate) struct CachedResourceResolver {
     cache: HashMap<String, Resource>,
     known_versions: HashMap<String, String>,
     bio_reg_client: BioRegistryClient,
@@ -25,6 +30,24 @@ impl CachedResourceResolver {
         }
     }
 
+    /// Resolves a resource by its ID, returning cached data if available or fetching
+    /// from BioRegistry if not.
+    ///
+    /// The resolution process:
+    /// 1. Checks the cache for an existing resource
+    /// 2. If not cached, fetches from BioRegistry API
+    /// 3. Prioritizes known versions over BioRegistry versions
+    /// 4. Selects the first available download format (JSON, OWL, OBO, RDF) or homepage
+    /// 5. Caches successful resolutions for future use
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The resource identifier (case-insensitive)
+    ///
+    /// # Returns
+    ///
+    /// * `Some(Resource)` if the resource was successfully resolved with all required fields
+    /// * `None` if the resource couldn't be found or is missing required fields
     #[allow(dead_code)]
     pub fn resolve(&mut self, id: &str) -> Option<Resource> {
         let id = id.to_lowercase();
