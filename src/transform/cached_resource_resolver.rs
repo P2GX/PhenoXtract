@@ -1,5 +1,5 @@
 use crate::ontology::BioRegistryClient;
-use log::warn;
+use log::{debug, warn};
 use phenopackets::schema::v2::core::Resource;
 use std::collections::HashMap;
 
@@ -51,8 +51,9 @@ impl CachedResourceResolver {
     #[allow(dead_code)]
     pub fn resolve(&mut self, id: &str) -> Option<Resource> {
         let id = id.to_lowercase();
-
+        debug!("Resolve id: {}", id);
         self.cache.get(&id).cloned().or_else(|| {
+            debug!("Cache not hit");
             let response = self.bio_reg_client.get_resource(&id);
 
             response.ok().and_then(|bio_reg_resource| {
@@ -87,8 +88,9 @@ impl CachedResourceResolver {
                     namespace_prefix: bio_reg_resource.preferred_prefix?,
                     iri_prefix: bio_reg_resource.uri_format?,
                 };
-
+                debug!("Cached resource: {}", id);
                 self.cache.insert(id, resource.clone());
+
                 Some(resource)
             })
         })
