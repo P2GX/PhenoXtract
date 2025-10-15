@@ -216,8 +216,8 @@ impl SeriesContext {
         &self.alias_map
     }
 
-    pub fn get_building_block_id(&self) -> &Option<String> {
-        &self.building_block_id
+    pub fn get_building_block_id(&self) -> Option<&String> {
+        self.building_block_id.as_ref()
     }
 
     #[allow(unused)]

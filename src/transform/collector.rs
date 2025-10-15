@@ -82,18 +82,28 @@ impl Collector {
         for pf_sc in pf_scs {
             let col_id = pf_sc.get_identifier();
             let pf_cols = patient_cdf.get_columns(col_id);
-            let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
-                pf_sc.get_building_block_id(),
-                &Context::None,
-                &Context::OnsetAge,
-            );
 
-            let linked_onset_dt_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
-                pf_sc.get_building_block_id(),
-                &Context::None,
-                &Context::OnsetDateTime,
-            );
-            let linked_onset_cols = [linked_onset_age_cols, linked_onset_dt_cols].concat();
+            let linked_onset_cols = match pf_sc.get_building_block_id() {
+                None => {
+                    vec![]
+                }
+                Some(bb_id) => {
+                    let linked_onset_age_cols: Vec<&Column> = patient_cdf
+                        .get_building_block_with_contexts(
+                            bb_id,
+                            &Context::None,
+                            &Context::OnsetAge,
+                        );
+
+                    let linked_onset_dt_cols: Vec<&Column> = patient_cdf
+                        .get_building_block_with_contexts(
+                            bb_id,
+                            &Context::None,
+                            &Context::OnsetDateTime,
+                        );
+                    [linked_onset_age_cols, linked_onset_dt_cols].concat()
+                }
+            };
 
             // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
