@@ -11,7 +11,7 @@ use validator::Validate;
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Clone, Validate, Default, Debug)]
+#[derive(Clone, Validate, Default, Debug, PartialEq)]
 #[validate(schema(function = "validate_one_context_per_column"))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]

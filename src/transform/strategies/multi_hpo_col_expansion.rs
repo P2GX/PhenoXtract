@@ -1,5 +1,4 @@
-use crate::config::table_context::Identifier::Multi;
-use crate::config::table_context::{Context, SeriesContext};
+use crate::config::table_context::{Context, Identifier, SeriesContext};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
@@ -53,7 +52,6 @@ impl Strategy for MultiHPOColExpansionStrategy {
 
             //the columns are created SC by SC
             for multi_hpo_sc in multi_hpo_scs.iter() {
-
                 //NB. These are just the multi_HPO columns associated to multi_hpo_sc
                 let multi_hpo_col_names = table
                     .get_columns(multi_hpo_sc.get_identifier())
@@ -101,10 +99,15 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     }
                 }
 
-                let block_id = multi_hpo_sc.get_building_block_id();
+                //it's convenient to sort the HPOs so that we get a consistent output
+                let mut sorted_hpos = hpos.iter().collect::<Vec<&String>>();
+                sorted_hpos.sort();
 
                 //then the columns are created
-                for hpo in hpos.iter() {
+                let block_id = multi_hpo_sc.get_building_block_id();
+                let mut new_hpo_col_names = vec![];
+
+                for hpo in sorted_hpos {
                     let mut observation_statuses = vec![];
                     stringified_subject_id_col.iter().for_each(|patient_id| {
                         let observation_status = patient_id
@@ -122,14 +125,15 @@ impl Strategy for MultiHPOColExpansionStrategy {
                         new_hpo_col_name.push_str(")")
                     }
 
-                    let new_hpo_col = Column::new(new_hpo_col_name.into(), observation_statuses);
+                    let new_hpo_col =
+                        Column::new(new_hpo_col_name.clone().into(), observation_statuses);
                     new_hpo_cols.push(new_hpo_col);
+                    new_hpo_col_names.push(new_hpo_col_name);
                 }
 
                 //then the new SC is created
-                let new_hpo_col_names = hpos.iter().cloned().collect::<Vec<String>>();
                 let new_sc = SeriesContext::default()
-                    .with_identifier(Multi(new_hpo_col_names))
+                    .with_identifier(Identifier::Multi(new_hpo_col_names))
                     .with_header_context(Context::HpoId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id(block_id.clone());
@@ -163,7 +167,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 table
                     .data_mut()
                     .with_column(new_hpo_col)
-                    .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}.")))?;
+                    .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}. Possible duplicates?")))?;
             }
         }
 
@@ -182,71 +186,169 @@ fn hpo_id_search(string_to_search: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::Context::SubjectAge;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
 
-    fn make_test_dataframe() -> ContextualizedDataFrame {
+    #[fixture]
+    fn cdf() -> ContextualizedDataFrame {
         let df = df![
-            "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P003"),AnyValue::String("P003"),AnyValue::String("P003"), AnyValue::String("P004"), AnyValue::String("P005")],
-            "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(22), AnyValue::Int32(15), AnyValue::Int32(11), AnyValue::Int32(11),AnyValue::Int32(555)],
-            "HPO" => &[
-                AnyValue::String("HP:0001410"),
-                AnyValue::String("HP:0012622 Chronic kidney disease
-                                HP:0001410	Leukoencephalopathy"),
-                AnyValue::String("HP:0000212	Gingival overgrowth
-                                HP:0011800 Hypoplasia of midface"),
+            "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P002"),AnyValue::String("P003")],
+            "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
+            "Multi_HPOs_Block_A_1" => &[
+                AnyValue::String("patient 1 - HP:1111111 asd"),
+                AnyValue::String("patient 2 - asd HP:2222222 HP:3333333asd"),
+                AnyValue::String("patient 2 - asdHP:2222222 asfn "),
+                AnyValue::Null,],
+            "Multi_HPOs_Block_A_2" => &[
                 AnyValue::Null,
-                AnyValue::String("HP:0001410,HP:0012622"),
-                AnyValue::String("HP:0001410,HP:0012622"),
-                AnyValue::String("HP:0001410,HP:0012622")],
+                AnyValue::String("patient 2 - asd HP:1111111 HP:3333333asd"),
+                AnyValue::Null,
+                AnyValue::Null,],
+            "Multi_HPOs_No_Block" => &[
+                AnyValue::String("patient 1 - HP:1111111"),
+                AnyValue::String("patient 2 - HP:4444444 - HP:5555555"),
+                AnyValue::String("patient 2 - wljkehg"),
+                AnyValue::String("patient 3 - asd")],
         ].unwrap();
 
         let tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("subject_id".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("age".to_string()),
-                    Default::default(),
-                    SubjectAge,
-                    None,
-                    None,
-                    None,
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("HPO".to_string()),
-                    Default::default(),
-                    Context::MultiHpoId,
-                    None,
-                    None,
-                    None,
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("subject_id".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("age".to_string()))
+                    .with_data_context(Context::SubjectAge),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Multi_HPOs_Block_A".to_string()))
+                    .with_data_context(Context::MultiHpoId)
+                    .with_building_block_id(Some("A".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block".to_string()))
+                    .with_data_context(Context::MultiHpoId),
             ],
         );
 
         ContextualizedDataFrame::new(tc, df)
     }
 
+    #[fixture]
+    fn expected_transformed_cdf() -> ContextualizedDataFrame {
+        let expected_df = df![
+            "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P002"),AnyValue::String("P003")],
+            "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
+            "HP:1111111 (block A)" => &[
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:2222222 (block A)" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:3333333 (block A)" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:1111111" => &[
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,],
+            "HP:4444444" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+            "HP:5555555" => &[
+                AnyValue::Null,
+                AnyValue::String("OBSERVED"),
+                AnyValue::String("OBSERVED"),
+                AnyValue::Null,],
+        ].unwrap();
+
+        let expected_tc = TableContext::new(
+            "TestTable".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("subject_id".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("age".to_string()))
+                    .with_data_context(Context::SubjectAge),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Multi(vec![
+                        "HP:1111111 (block A)".to_string(),
+                        "HP:2222222 (block A)".to_string(),
+                        "HP:3333333 (block A)".to_string(),
+                    ]))
+                    .with_header_context(Context::HpoId)
+                    .with_data_context(Context::ObservationStatus)
+                    .with_building_block_id(Some("A".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Multi(vec![
+                        "HP:1111111".to_string(),
+                        "HP:4444444".to_string(),
+                        "HP:5555555".to_string(),
+                    ]))
+                    .with_header_context(Context::HpoId)
+                    .with_data_context(Context::ObservationStatus),
+            ],
+        );
+
+        ContextualizedDataFrame::new(expected_tc, expected_df)
+    }
+
     #[rstest]
-    fn test_multi_hpo_col_to_observed_hpo_cols_success() {
-        let mut table = make_test_dataframe();
-
-        dbg!(&table.data);
-
+    fn test_multi_hpo_col_to_observed_hpo_cols_success(
+        mut cdf: ContextualizedDataFrame,
+        expected_transformed_cdf: ContextualizedDataFrame,
+    ) {
         let strategy = MultiHPOColExpansionStrategy;
+        strategy.transform(&mut [&mut cdf]).unwrap();
+        assert_eq!(cdf, expected_transformed_cdf);
+    }
 
-        strategy.transform(&mut [&mut table]).unwrap();
+    #[rstest]
+    fn test_multi_hpo_col_expansion(
+        mut cdf: ContextualizedDataFrame,
+        expected_transformed_cdf: ContextualizedDataFrame,
+    ) {
+        let strategy = MultiHPOColExpansionStrategy;
+        strategy.transform(&mut [&mut cdf]).unwrap();
+        assert_eq!(cdf, expected_transformed_cdf);
+    }
 
-        dbg!(&table.data);
+    //the strategy will fail when the same HPO term appears in separate Multi_HPO columns which are
+    #[rstest]
+    fn test_multi_hpo_col_failure(
+        mut cdf: ContextualizedDataFrame,
+        expected_transformed_cdf: ContextualizedDataFrame,
+    ) {
+        let strategy = MultiHPOColExpansionStrategy;
+        strategy.transform(&mut [&mut cdf]).unwrap();
+        assert_eq!(cdf, expected_transformed_cdf);
+    }
+
+    #[rstest]
+    fn test_hpo_id_search() {
+        let string_to_search =
+            "asdasdHP:0012622 Chronic kidney disease aerh21HP:0001410	Leukoencephalopathy";
+        assert_eq!(
+            hpo_id_search(string_to_search),
+            vec!["HP:0012622".to_string(), "HP:0001410".to_string()]
+        );
+    }
+
+    #[rstest]
+    fn test_hpo_id_search_no_hits() {
+        let string_to_search = "asdasdH:0012622 aerh21 0001410	Leukoencephalopathy";
+        let empty_vec = Vec::<String>::new();
+        assert_eq!(hpo_id_search(string_to_search), empty_vec);
     }
 }
