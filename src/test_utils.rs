@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::hpo_bidict::HPOBiDict;
+use crate::ontology::onotlogy_bidict::OntologyBiDict;
 use crate::ontology::traits::OntologyRegistry;
 use crate::ontology::utils::init_ontolius;
 use once_cell::sync::Lazy;
@@ -13,8 +13,7 @@ pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     init_ontolius(path).unwrap()
 });
 
-pub(crate) static HPO_DICT: Lazy<Arc<HPOBiDict>> =
-    Lazy::new(|| Arc::new(HPOBiDict::new(HPO.clone())));
+pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| Arc::new(HPO.clone().into()));
 
 #[macro_export]
 macro_rules! skip_in_ci {

@@ -6,54 +6,25 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct HPOBiDict {
+pub struct OntologyBiDict {
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
 }
 
-impl HPOBiDict {
-    /// Creates a new `HPOBiDict` by processing an HPO ontology.
-    ///
-    /// This constructor iterates through all labels and synonyms in the provided
-    /// `FullCsrOntology`, populating the internal lookup maps. All keys (label names,
-    /// synonyms, and IDs) are stored in lowercase to enable case-insensitive searching.
-    ///
-    /// This operation can be computationally intensive, as it builds several hashmaps
-    /// from the entire ontology. It is intended to be called once during initialization.
-    ///
-    /// # Parameters
-    ///
-    /// * `hpo`: An `Arc<FullCsrOntology>` which serves as the data source for
-    ///   creating the bidirectional mappings.
-    ///
-    /// # Returns
-    ///
-    /// A new, fully populated `HPOBiDict` instance.
-    pub fn new(hpo: Arc<FullCsrOntology>) -> Self {
-        let mut label_to_id: HashMap<String, String> = HashMap::new();
-        let mut synonym_to_id: HashMap<String, String> = HashMap::new();
-        let mut id_to_label: HashMap<String, String> = HashMap::new();
-
-        hpo.iter_terms().for_each(|term| {
-            if term.is_current() {
-                label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
-                term.synonyms().iter().for_each(|syn| {
-                    synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
-                });
-                id_to_label.insert(
-                    term.identifier().to_string().to_lowercase(),
-                    term.name().to_string(),
-                );
-            }
-        });
-
-        HPOBiDict {
+impl OntologyBiDict {
+    pub fn new(
+        label_to_id: HashMap<String, String>,
+        synonym_to_id: HashMap<String, String>,
+        id_to_label: HashMap<String, String>,
+    ) -> OntologyBiDict {
+        OntologyBiDict {
             label_to_id,
             synonym_to_id,
             id_to_label,
         }
     }
+
     /// Performs a case-insensitive search for an HPO label, synonym, or ID.
     ///
     /// This method provides a unified interface to query the dictionary. It checks for
@@ -98,6 +69,41 @@ impl HPOBiDict {
     }
 }
 
+impl From<Arc<FullCsrOntology>> for OntologyBiDict {
+    fn from(hpo: Arc<FullCsrOntology>) -> Self {
+        Self::from(hpo.as_ref())
+    }
+}
+
+impl From<FullCsrOntology> for OntologyBiDict {
+    fn from(hpo: FullCsrOntology) -> Self {
+        Self::from(&hpo)
+    }
+}
+
+impl From<&FullCsrOntology> for OntologyBiDict {
+    fn from(hpo: &FullCsrOntology) -> Self {
+        let mut label_to_id: HashMap<String, String> = HashMap::new();
+        let mut synonym_to_id: HashMap<String, String> = HashMap::new();
+        let mut id_to_label: HashMap<String, String> = HashMap::new();
+
+        hpo.iter_terms().for_each(|term| {
+            if term.is_current() {
+                label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
+                term.synonyms().iter().for_each(|syn| {
+                    synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
+                });
+                id_to_label.insert(
+                    term.identifier().to_string().to_lowercase(),
+                    term.name().to_string(),
+                );
+            }
+        });
+
+        OntologyBiDict::new(label_to_id, synonym_to_id, id_to_label)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,26 +112,26 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = HPOBiDict::new(HPO.clone());
+        let hpo_dict = OntologyBiDict::from(HPO.clone());
 
         assert_eq!(hpo_dict.get("HP:0000256"), Some("Macrocephaly"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = HPOBiDict::new(HPO.clone());
+        let hpo_dict = OntologyBiDict::from(HPO.clone());
         assert_eq!(hpo_dict.get("Macrocephaly"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = HPOBiDict::new(HPO.clone());
+        let hpo_dict = OntologyBiDict::from(HPO.clone());
         assert_eq!(hpo_dict.get("Big head"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = HPOBiDict::new(HPO.clone());
+        let hpo_dict = OntologyBiDict::from(HPO.clone());
         let hpo_id = hpo_dict.get("Big head");
         assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Macrocephaly"));
     }

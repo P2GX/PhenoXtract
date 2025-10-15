@@ -8,7 +8,7 @@ use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::hpo_bidict::HPOBiDict;
+use crate::ontology::onotlogy_bidict::OntologyBiDict;
 use crate::ontology::utils::init_ontolius;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -90,7 +90,7 @@ impl Pipeline {
         // TOOD: Read hpo version from config later
         let registry_path = hpo_registry.register("latest")?;
         let hpo = init_ontolius(registry_path)?;
-        let hpo_dict = Arc::new(HPOBiDict::new(hpo));
+        let hpo_dict = Arc::new(OntologyBiDict::from(hpo));
         let builder = PhenopacketBuilder::new(hpo_dict);
         let tf_module =
             TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
