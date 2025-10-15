@@ -9,6 +9,7 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct MultiHPOColExpansionStrategy;
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
@@ -50,11 +51,12 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 .cloned()
                 .collect::<Vec<SeriesContext>>();
 
-            //the columns are created SC by SC
-            for multi_hpo_sc in multi_hpo_scs.iter() {
-                //NB. These are just the multi_HPO columns associated to multi_hpo_sc
+            let building_block_ids = table.get_building_block_ids();
+
+            //we create the columns building block by building block
+            for bb_id in building_block_ids.iter() {
                 let multi_hpo_col_names = table
-                    .get_columns(multi_hpo_sc.get_identifier())
+                    .get_building_block_with_contexts(bb_id, &Context::None, &Context::MultiHpoId)
                     .iter()
                     .map(|col| col.name().to_string())
                     .collect::<Vec<String>>();
@@ -65,7 +67,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 //a patient_to_hpo hash map is created (needed in order to create the new columns)
                 //the set of all HPO IDs encountered is also collected
                 for multi_hpo_col_name in multi_hpo_col_names.iter() {
-                    let multi_hpo_col = table.data.column(&multi_hpo_col_name).unwrap();
+                    let multi_hpo_col = table.data.column(multi_hpo_col_name).unwrap();
 
                     let stringified_multi_hpo_col = multi_hpo_col.str().map_err(|_| {
                         StrategyError(format!("Unexpectedly could not convert HPO column {multi_hpo_col_name} to string column when applying MultiHPOColExpansion strategy."))})?;
@@ -104,7 +106,6 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 sorted_hpos.sort();
 
                 //then the columns are created
-                let block_id = multi_hpo_sc.get_building_block_id();
                 let mut new_hpo_col_names = vec![];
 
                 for hpo in sorted_hpos {
@@ -119,10 +120,10 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     });
 
                     let mut new_hpo_col_name = hpo.clone();
-                    if let Some(block_id) = block_id {
+                    if let Some(block_id) = bb_id {
                         new_hpo_col_name.push_str(" (block ");
                         new_hpo_col_name.push_str(block_id);
-                        new_hpo_col_name.push_str(")")
+                        new_hpo_col_name.push(')')
                     }
 
                     let new_hpo_col =
@@ -136,7 +137,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     .with_identifier(Identifier::Multi(new_hpo_col_names))
                     .with_header_context(Context::HpoId)
                     .with_data_context(Context::ObservationStatus)
-                    .with_building_block_id(block_id.clone());
+                    .with_building_block_id(bb_id.clone());
                 new_series_contexts.push(new_sc);
             }
 
@@ -175,6 +176,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
     }
 }
 
+#[allow(unused)]
 fn hpo_id_search(string_to_search: &str) -> Vec<String> {
     let hpo_regex = Regex::new(r"HP:\d{7}").unwrap();
     hpo_regex
@@ -206,11 +208,16 @@ mod tests {
                 AnyValue::String("patient 2 - asd HP:1111111 HP:3333333asd"),
                 AnyValue::Null,
                 AnyValue::Null,],
-            "Multi_HPOs_No_Block" => &[
+            "Multi_HPOs_No_Block_1" => &[
                 AnyValue::String("patient 1 - HP:1111111"),
                 AnyValue::String("patient 2 - HP:4444444 - HP:5555555"),
                 AnyValue::String("patient 2 - wljkehg"),
                 AnyValue::String("patient 3 - asd")],
+            "Multi_HPOs_No_Block_2" => &[
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::String("patient 3 - HP:4444444123123")],
         ].unwrap();
 
         let tc = TableContext::new(
@@ -227,7 +234,10 @@ mod tests {
                     .with_data_context(Context::MultiHpoId)
                     .with_building_block_id(Some("A".to_string())),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block".to_string()))
+                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block_1".to_string()))
+                    .with_data_context(Context::MultiHpoId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block_2".to_string()))
                     .with_data_context(Context::MultiHpoId),
             ],
         );
@@ -264,7 +274,7 @@ mod tests {
                 AnyValue::Null,
                 AnyValue::String("OBSERVED"),
                 AnyValue::String("OBSERVED"),
-                AnyValue::Null,],
+                AnyValue::String("OBSERVED")],
             "HP:5555555" => &[
                 AnyValue::Null,
                 AnyValue::String("OBSERVED"),
@@ -305,28 +315,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_multi_hpo_col_to_observed_hpo_cols_success(
-        mut cdf: ContextualizedDataFrame,
-        expected_transformed_cdf: ContextualizedDataFrame,
-    ) {
-        let strategy = MultiHPOColExpansionStrategy;
-        strategy.transform(&mut [&mut cdf]).unwrap();
-        assert_eq!(cdf, expected_transformed_cdf);
-    }
-
-    #[rstest]
     fn test_multi_hpo_col_expansion(
-        mut cdf: ContextualizedDataFrame,
-        expected_transformed_cdf: ContextualizedDataFrame,
-    ) {
-        let strategy = MultiHPOColExpansionStrategy;
-        strategy.transform(&mut [&mut cdf]).unwrap();
-        assert_eq!(cdf, expected_transformed_cdf);
-    }
-
-    //the strategy will fail when the same HPO term appears in separate Multi_HPO columns which are
-    #[rstest]
-    fn test_multi_hpo_col_failure(
         mut cdf: ContextualizedDataFrame,
         expected_transformed_cdf: ContextualizedDataFrame,
     ) {

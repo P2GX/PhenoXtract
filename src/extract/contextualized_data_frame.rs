@@ -5,6 +5,7 @@ use crate::validation::contextualised_dataframe_validation::validate_one_context
 use log::{debug, warn};
 use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
 use regex::{Regex, escape};
+use std::collections::HashSet;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -253,7 +254,7 @@ impl ContextualizedDataFrame {
     ///
     /// This function first identifies all series that match both the `header_context` and
     /// `data_context`. From that subset, it finds a series whose building block ID
-    /// matches the provided `block_id` (case-insensitively). Finally, it returns all
+    /// matches the provided `block_id`. Finally, it returns all
     /// columns associated with that series.
     #[allow(unused)]
     pub fn get_building_block_with_contexts(
@@ -262,25 +263,30 @@ impl ContextualizedDataFrame {
         header_context: &Context,
         data_context: &Context,
     ) -> Vec<&Column> {
-        match block_id {
-            None => {
-                vec![]
-            }
-            Some(id) => {
-                let block_id = block_id.clone().unwrap();
-                self.get_series_contexts_with_contexts(header_context, data_context)
-                    .iter()
-                    .flat_map(|sc| {
-                        if let Some(other_id) = sc.get_building_block_id()
-                            && other_id.to_lowercase() == block_id.to_lowercase()
-                        {
-                            return self.get_columns(sc.get_identifier());
-                        }
-                        vec![]
-                    })
-                    .collect()
-            }
-        }
+        let all_scs_with_contexts =
+            self.get_series_contexts_with_contexts(header_context, data_context);
+        all_scs_with_contexts
+            .iter()
+            .flat_map(|sc| {
+                if sc.get_building_block_id() == block_id {
+                    self.get_columns(sc.get_identifier())
+                } else {
+                    vec![]
+                }
+            })
+            .collect::<Vec<&Column>>()
+    }
+
+    pub fn get_building_block_ids(&self) -> Vec<Option<String>> {
+        let mut building_block_ids = HashSet::new();
+        self.context().context.iter().for_each(|sc| {
+            building_block_ids.insert(sc.get_building_block_id().clone());
+        });
+        let mut building_block_ids = building_block_ids
+            .into_iter()
+            .collect::<Vec<Option<String>>>();
+        building_block_ids.sort();
+        building_block_ids
     }
 }
 
@@ -533,5 +539,24 @@ mod tests {
             ),
             no_column_vec
         );
+
+        assert_eq!(
+            cdf.get_building_block_with_contexts(
+                &None,
+                &Context::HpoId,
+                &Context::ObservationStatus
+            ),
+            no_column_vec
+        );
+    }
+
+    #[rstest]
+    fn test_get_building_block_ids() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_bb_ids = vec![None, Some("block_1".to_string())];
+
+        assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
     }
 }

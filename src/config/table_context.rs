@@ -36,7 +36,7 @@ impl TableContext {
     }
 
     pub fn remove_series_context(&mut self, sc_to_remove: &SeriesContext) -> &mut Self {
-        self.context.retain(|sc| &sc != &sc_to_remove);
+        self.context.retain(|sc| sc != sc_to_remove);
         self
     }
 }
