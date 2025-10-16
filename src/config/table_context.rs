@@ -219,12 +219,12 @@ impl SeriesContext {
         &self.data_context
     }
 
-    pub fn get_alias_map(&self) -> &Option<AliasMap> {
-        &self.alias_map
+    pub fn get_alias_map(&self) -> Option<&AliasMap> {
+        self.alias_map.as_ref()
     }
 
-    pub fn get_building_block_id(&self) -> &Option<String> {
-        &self.building_block_id
+    pub fn get_building_block_id(&self) -> Option<&str> {
+        self.building_block_id.as_deref()
     }
 
     #[allow(unused)]

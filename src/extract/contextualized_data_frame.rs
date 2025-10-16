@@ -260,29 +260,21 @@ impl ContextualizedDataFrame {
     #[allow(unused)]
     pub fn get_building_block_with_contexts(
         &self,
-        block_id: &Option<String>,
+        block_id: &str,
         header_context: &Context,
         data_context: &Context,
     ) -> Vec<&Column> {
-        match block_id {
-            None => {
+        self.get_series_contexts_with_contexts(header_context, data_context)
+            .iter()
+            .flat_map(|sc| {
+                if let Some(other_id) = sc.get_building_block_id()
+                    && other_id.to_lowercase() == block_id.to_lowercase()
+                {
+                    return self.get_columns(sc.get_identifier());
+                }
                 vec![]
-            }
-            Some(id) => {
-                let block_id = block_id.clone().unwrap();
-                self.get_series_contexts_with_contexts(header_context, data_context)
-                    .iter()
-                    .flat_map(|sc| {
-                        if let Some(other_id) = sc.get_building_block_id()
-                            && other_id.to_lowercase() == block_id.to_lowercase()
-                        {
-                            return self.get_columns(sc.get_identifier());
-                        }
-                        vec![]
-                    })
-                    .collect()
-            }
-        }
+            })
+            .collect()
     }
 
     pub fn get_building_block_ids(&self) -> HashSet<&str> {
@@ -520,7 +512,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
 
-        let block_id = Some("block_1".to_string());
+        let block_id = "block_1".to_string();
 
         assert_eq!(
             cdf.get_building_block_with_contexts(

@@ -1,58 +1,20 @@
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BioRegistryResource {
-    prefix: String,
-    name: String,
-    description: String,
-    pattern: String,
-    uri_format: String,
-    rdf_uri_format: String,
-    providers: Vec<String>,
-    homepage: String,
-    repository: String,
-    contact: Contact,
-    example: String,
-    example_extras: Vec<String>,
-    license: String,
-    pub version: String,
-    download_owl: String,
-    download_obo: String,
-    download_json: String,
-    banana: String,
-    deprecated: bool,
-    mappings: HashMap<String, String>,
-    synonyms: Vec<String>,
-    keywords: Vec<String>,
-    publications: Vec<Publication>,
-    appears_in: Vec<String>,
-    depends_on: Vec<String>,
-    namespace_in_lui: bool,
-    preferred_prefix: String,
-    twitter: String,
-    mastodon: String,
-    logo: String,
+    pub prefix: String,
+    pub name: Option<String>,
+    pub uri_format: Option<String>,
+    pub homepage: Option<String>,
+    pub version: Option<String>,
+    pub download_owl: Option<String>,
+    pub download_obo: Option<String>,
+    pub download_json: Option<String>,
+    pub download_rdf: Option<String>,
+    pub preferred_prefix: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Contact {
-    name: String,
-    orcid: String,
-    email: String,
-    github: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Publication {
-    pubmed: String,
-    doi: String,
-    pmc: Option<String>,
-    title: String,
-    year: i32,
-}
-
+#[derive(Clone, Debug)]
 pub struct BioRegistryClient {
     api_url: String,
 }

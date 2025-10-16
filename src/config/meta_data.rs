@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Holds all shared meta data for the phenopackets produced by the pipeline
+/// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct MetaData {
     #[allow(unused)]
@@ -9,14 +9,23 @@ pub struct MetaData {
     #[allow(unused)]
     pub submitted_by: String,
     pub cohort_name: String,
+    #[serde(default = "default_ontology_version")]
+    pub hpo_version: String,
+    #[serde(default = "default_ontology_version")]
+    pub mondo_version: String,
+    #[serde(default = "default_ontology_version")]
+    pub geno_version: String,
 }
 
 impl Default for MetaData {
     fn default() -> MetaData {
         MetaData {
             created_by: default_creator(),
-            submitted_by: "".to_string(),
-            cohort_name: "".to_string(),
+            submitted_by: env!("CARGO_PKG_NAME").to_string(),
+            cohort_name: "unnamed_cohort".to_string(),
+            hpo_version: default_ontology_version(),
+            mondo_version: default_ontology_version(),
+            geno_version: default_ontology_version(),
         }
     }
 }
@@ -28,6 +37,10 @@ fn default_creator() -> Option<String> {
     Some(format!("{package_name}-{version_number}"))
 }
 
+fn default_ontology_version() -> String {
+    "latest".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,6 +49,7 @@ mod tests {
     use std::fs::File as StdFile;
     use std::io::Write;
     use tempfile::TempDir;
+
     #[rstest]
     fn test_default_creator() {
         let default_creator = default_creator();
@@ -45,11 +59,31 @@ mod tests {
     }
 
     #[rstest]
-    fn test_meta_data_default() {
-        let default_meta_data = MetaData::default();
-        assert!(default_meta_data.created_by.is_some());
-        let creator = default_meta_data.created_by.unwrap();
-        assert!(creator.contains("phenoxtract"));
+    fn test_default_ontology_version() {
+        let default_creator = default_ontology_version();
+        assert_eq!(default_creator, "latest");
+    }
+
+    #[rstest]
+    fn test_metadata_default_values() {
+        let expected_cohort = "unnamed_cohort".to_string();
+        let expected_ontology_version = default_ontology_version();
+
+        let expected_package_name = env!("CARGO_PKG_NAME").to_string();
+        let expected_creator = Some(format!(
+            "{}-{}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        ));
+
+        let metadata = MetaData::default();
+
+        assert_eq!(metadata.created_by, expected_creator);
+        assert_eq!(metadata.submitted_by, expected_package_name);
+        assert_eq!(metadata.cohort_name, expected_cohort);
+        assert_eq!(metadata.hpo_version, expected_ontology_version);
+        assert_eq!(metadata.mondo_version, expected_ontology_version);
+        assert_eq!(metadata.geno_version, expected_ontology_version);
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -79,5 +113,8 @@ mod tests {
         assert!(creator.contains("phenoxtract"));
         assert_eq!(default_meta_data.submitted_by, "Magnus Knut Hansen");
         assert_eq!(default_meta_data.cohort_name, "arkham 2025");
+        assert_eq!(default_meta_data.hpo_version, default_ontology_version());
+        assert_eq!(default_meta_data.mondo_version, default_ontology_version());
+        assert_eq!(default_meta_data.geno_version, default_ontology_version());
     }
 }
