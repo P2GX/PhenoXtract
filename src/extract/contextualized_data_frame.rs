@@ -1,5 +1,5 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
-use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesContextFilter};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
@@ -144,35 +144,6 @@ impl ContextualizedDataFrame {
         }
     }
 
-    /// Finds all columns associated with a specific building block ID that also match the given contexts.
-    ///
-    /// This function first identifies all series that match both the `header_context` and
-    /// `data_context`. From that subset, it finds a series whose building block ID
-    /// matches the provided `block_id` (case-insensitively). Finally, it returns all
-    /// columns associated with that series.
-    #[allow(unused)]
-    pub fn get_building_block_with_contexts(
-        &self,
-        block_id: &str,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        self.filter_series_context()
-            .where_header_context(Filter::Is(header_context))
-            .where_data_context(Filter::Is(data_context))
-            .collect()
-            .iter()
-            .flat_map(|sc| {
-                if let Some(other_id) = sc.get_building_block_id()
-                    && other_id.to_lowercase() == block_id.to_lowercase()
-                {
-                    return self.get_columns(sc.get_identifier());
-                }
-                vec![]
-            })
-            .collect()
-    }
-
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
         SeriesContextFilter::new(&self.context.context)
     }
@@ -185,6 +156,7 @@ impl ContextualizedDataFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::Context;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::{fixture, rstest};
@@ -329,38 +301,5 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cdf.data, expected_df);
-    }
-
-    #[rstest]
-    fn test_get_building_block_with_contexts() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-
-        let block_id = "block_1".to_string();
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::HpoLabel,
-                &Context::ObservationStatus
-            ),
-            vec![cdf.data.column("bronchitis").unwrap()]
-        );
-
-        let no_column_vec: Vec<&Column> = Vec::new();
-        assert_eq!(
-            cdf.get_building_block_with_contexts(&block_id, &Context::None, &Context::VitalStatus),
-            no_column_vec
-        );
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::None,
-                &Context::ObservationStatus
-            ),
-            no_column_vec
-        );
     }
 }

@@ -6,7 +6,6 @@ use std::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum Filter<T> {
-    Any,
     Is(T),
     IsNot(T),
     IsSome,
@@ -15,46 +14,48 @@ pub enum Filter<T> {
 
 pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
-    identifier: Filter<&'a Identifier>,
-    building_block: Filter<&'a str>,
-    header_context: Filter<&'a Context>,
-    data_context: Filter<&'a Context>,
-    fill_missing: Filter<&'a CellValue>,
+    identifier: Vec<Filter<&'a Identifier>>,
+    building_block: Vec<Filter<&'a str>>,
+    header_context: Vec<Filter<&'a Context>>,
+    data_context: Vec<Filter<&'a Context>>,
+    fill_missing: Vec<Filter<&'a CellValue>>,
 }
 
 impl<'a> SeriesContextFilter<'a> {
     pub(crate) fn new(items: &'a [SeriesContext]) -> Self {
         Self {
             items: items.iter().collect(),
-            identifier: Filter::Any,
-            building_block: Filter::Any,
-            header_context: Filter::Any,
-            data_context: Filter::Any,
-            fill_missing: Filter::Any,
+            identifier: Vec::new(),
+            building_block: Vec::new(),
+            header_context: Vec::new(),
+            data_context: Vec::new(),
+            fill_missing: Vec::new(),
         }
     }
 
+    // Each 'where' method now pushes to its vector
     pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
-        self.identifier = identifier;
+        self.identifier.push(identifier);
         self
     }
 
     pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
-        self.building_block = building_block;
+        self.building_block.push(building_block);
         self
     }
 
     pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
-        self.header_context = header_context;
+        self.header_context.push(header_context);
         self
     }
 
     pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
-        self.data_context = data_context;
+        self.data_context.push(data_context);
         self
     }
+
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
-        self.fill_missing = fill_missing;
+        self.fill_missing.push(fill_missing);
         self
     }
 
@@ -62,45 +63,52 @@ impl<'a> SeriesContextFilter<'a> {
         self.items
             .into_iter()
             .filter(|sc| {
-                [
-                    match &self.identifier {
-                        Filter::Any => true,
+                let identifier_match = self.identifier.is_empty()
+                    || self.identifier.iter().any(|f| match f {
                         Filter::Is(val) => sc.get_identifier() == *val,
                         Filter::IsNot(val) => sc.get_identifier() != *val,
                         Filter::IsSome => true,
                         Filter::IsNone => false,
-                    },
-                    match &self.building_block {
-                        Filter::Any => true,
+                    });
+
+                let building_block_match = self.building_block.is_empty()
+                    || self.building_block.iter().any(|f| match f {
                         Filter::Is(bb_id) => sc.get_building_block_id() == Some(*bb_id),
                         Filter::IsNot(bb_id) => sc.get_building_block_id() != Some(*bb_id),
                         Filter::IsSome => sc.get_building_block_id().is_some(),
                         Filter::IsNone => sc.get_building_block_id().is_none(),
-                    },
-                    match &self.header_context {
-                        Filter::Any => true,
+                    });
+
+                let header_context_match = self.header_context.is_empty()
+                    || self.header_context.iter().any(|f| match f {
                         Filter::Is(c) => sc.get_header_context() == *c,
                         Filter::IsNot(c) => sc.get_header_context() != *c,
                         Filter::IsSome => sc.get_header_context() != &Context::None,
                         Filter::IsNone => sc.get_header_context() == &Context::None,
-                    },
-                    match &self.data_context {
-                        Filter::Any => true,
+                    });
+
+                let data_context_match = self.data_context.is_empty()
+                    || self.data_context.iter().any(|f| match f {
                         Filter::Is(c) => sc.get_data_context() == *c,
                         Filter::IsNot(c) => sc.get_data_context() != *c,
                         Filter::IsSome => sc.get_data_context() != &Context::None,
                         Filter::IsNone => sc.get_data_context() == &Context::None,
-                    },
-                    match &self.fill_missing {
-                        Filter::Any => true,
+                    });
+
+                let fill_missing_match = self.fill_missing.is_empty()
+                    || self.fill_missing.iter().any(|f| match f {
                         Filter::Is(fill) => sc.get_fill_missing() == Some(*fill),
                         Filter::IsNot(fill) => sc.get_fill_missing() != Some(*fill),
                         Filter::IsSome => sc.get_fill_missing().is_some(),
                         Filter::IsNone => sc.get_fill_missing().is_none(),
-                    },
-                ]
-                .into_iter()
-                .all(|b| b)
+                    });
+
+                // Combine all field checks with AND logic.
+                identifier_match
+                    && building_block_match
+                    && header_context_match
+                    && data_context_match
+                    && fill_missing_match
             })
             .collect()
     }
@@ -109,7 +117,7 @@ impl<'a> SeriesContextFilter<'a> {
 pub struct ColumnFilter<'a> {
     items: &'a ContextualizedDataFrame,
     series_filter: SeriesContextFilter<'a>,
-    dtype: Filter<&'a DataType>,
+    dtype: Vec<Filter<&'a DataType>>,
 }
 
 impl<'a> ColumnFilter<'a> {
@@ -117,35 +125,35 @@ impl<'a> ColumnFilter<'a> {
         Self {
             items,
             series_filter: SeriesContextFilter::new(items.context().context.deref()),
-            dtype: Filter::Any,
+            dtype: Vec::new(),
         }
     }
 
     pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
-        self.series_filter.identifier = identifier;
+        self.series_filter.identifier.push(identifier);
         self
     }
 
     pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
-        self.series_filter.building_block = building_block;
+        self.series_filter.building_block.push(building_block);
         self
     }
 
     pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
-        self.series_filter.header_context = header_context;
+        self.series_filter.header_context.push(header_context);
         self
     }
 
     pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
-        self.series_filter.data_context = data_context;
+        self.series_filter.data_context.push(data_context);
         self
     }
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
-        self.series_filter.fill_missing = fill_missing;
+        self.series_filter.fill_missing.push(fill_missing);
         self
     }
     pub fn where_dtype(mut self, data_type: Filter<&'a DataType>) -> Self {
-        self.dtype = data_type;
+        self.dtype.push(data_type);
         self
     }
 
@@ -156,14 +164,15 @@ impl<'a> ColumnFilter<'a> {
                 self.items
                     .get_columns(sc.get_identifier())
                     .into_iter()
-                    .filter(|col| match self.dtype {
-                        Filter::Any => true,
-                        Filter::Is(dtype) => dtype == col.dtype(),
-                        Filter::IsNot(dtype) => dtype != col.dtype(),
-                        Filter::IsSome => true,
-                        Filter::IsNone => false,
+                    .filter(|col| {
+                        self.dtype.is_empty()
+                            || self.dtype.iter().any(|f| match f {
+                                Filter::Is(dtype) => *dtype == col.dtype(),
+                                Filter::IsNot(dtype) => *dtype != col.dtype(),
+                                Filter::IsSome => true, // Assuming col.dtype() is not an Option
+                                Filter::IsNone => false, // Assuming col.dtype() is not an Option
+                            })
                     })
-                    .collect::<Vec<&Column>>()
             })
             .collect()
     }

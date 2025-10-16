@@ -92,21 +92,13 @@ impl Collector {
             let pf_cols = patient_cdf.get_columns(col_id);
 
             let linked_onset_cols = pf_sc.get_building_block_id().map_or(vec![], |bb_id| {
-                [
-                    patient_cdf.get_building_block_with_contexts(
-                        bb_id,
-                        &Context::None,
-                        &Context::OnsetAge,
-                    ),
-                    patient_cdf.get_building_block_with_contexts(
-                        bb_id,
-                        &Context::None,
-                        &Context::OnsetDateTime,
-                    ),
-                ]
-                .into_iter()
-                .flatten()
-                .collect()
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::OnsetAge))
+                    .where_data_context(Filter::Is(&Context::OnsetDateTime))
+                    .collect()
             });
 
             let valid_onset_linking = linked_onset_cols.len() == 1;
