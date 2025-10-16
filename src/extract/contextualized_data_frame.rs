@@ -129,6 +129,14 @@ impl ContextualizedDataFrame {
             .find(|sc| sc.get_identifier() == id)
     }
 
+    #[allow(unused)]
+    pub fn get_series_context_from_column(&self, col: &Column) -> Option<&SeriesContext> {
+        self.context
+            .context
+            .iter()
+            .find(|sc| self.get_columns(sc.get_identifier()).contains(&col))
+    }
+
     /// Searches a CDF for columns whose header_context and data_context are certain specific values
     /// and ensures that the columns' data_type is equal to desired_dtype
     /// Returns true if all columns with the given contexts also feature the same dtype. Also returns true if no columns have the contexts.
@@ -277,14 +285,42 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
+    #[allow(unused)]
+    pub fn get_no_building_block_with_contexts(
+        &self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> Vec<&Column> {
+        self.get_series_contexts_with_contexts(header_context, data_context)
+            .iter()
+            .flat_map(|sc| {
+                if sc.get_building_block_id() == None {
+                    self.get_columns(sc.get_identifier())
+                } else {
+                    vec![]
+                }
+            })
+            .collect()
+    }
+
     pub fn get_building_block_ids(&self) -> HashSet<&str> {
         let mut building_block_ids = HashSet::new();
         self.context().context.iter().for_each(|sc| {
             if let Some(bb_id) = sc.get_building_block_id() {
-                building_block_ids.insert(bb_id.as_str());
+                building_block_ids.insert(bb_id);
             }
         });
         building_block_ids
+    }
+
+    pub fn remove_scs_with_columns(&mut self, Vec<&SeriesContext>) -> HashSet<&str> {
+        for multi_hpo_col_name in multi_hpo_col_names.iter() {
+            table.data_mut().drop_in_place(multi_hpo_col_name).map_err(|_| StrategyError(format!("Unexpectedly could not remove MultiHPO column {multi_hpo_col_name} from table {table_name}.")))?;
+        }
+
+        for multi_hpo_sc in old_multi_hpo_scs.iter() {
+            table.context_mut().remove_series_context(multi_hpo_sc);
+        }
     }
 }
 

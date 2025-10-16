@@ -4,7 +4,7 @@ use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
 use log::{info, warn};
-use polars::prelude::{AnyValue, Column, DataType};
+use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
@@ -23,133 +23,70 @@ impl Strategy for MultiHPOColExpansionStrategy {
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), TransformError> {
         for table in tables.iter_mut() {
+            let multi_hpo_col_names = table
+                .get_cols_with_contexts(&Context::None, &Context::MultiHpoId)
+                .iter()
+                .map(|col| col.name().to_string())
+                .collect::<Vec<String>>();
+
+            if multi_hpo_col_names.is_empty() {
+                continue;
+            }
+
             let table_name = table.context().name.clone();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
-            let subject_id_cols = table.get_cols_with_data_context(&Context::SubjectId);
-
-            let stringified_subject_id_col = subject_id_cols.last().ok_or(StrategyError(format!(
-                "Could not find SubjectID column in table {table_name}"
-            )))?.str()
+            let stringified_subject_id_col = table
+                .get_cols_with_data_context(&Context::SubjectId)
+                .last()
+                .ok_or(StrategyError(format!(
+                    "Could not find SubjectID column in table {table_name}"
+                )))?.str()
                 .map_err(|_| {
                     StrategyError("Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string())})?;
 
             let mut new_hpo_cols = vec![];
             let mut new_series_contexts = vec![];
 
-            let building_block_ids = table.get_building_block_ids();
+            let multi_hpo_blocks = get_multi_hpo_blocks(table);
 
-            //we create the columns building block by building block
-            for bb_id in building_block_ids.iter() {
-                let multi_hpo_col_names = table
-                    .get_building_block_with_contexts(bb_id, &Context::None, &Context::MultiHpoId)
-                    .iter()
-                    .map(|col| col.name().to_string())
-                    .collect::<Vec<String>>();
+            for multi_hpo_block in multi_hpo_blocks {
+                let stringified_multi_hpo_block = multi_hpo_block.iter()
+                    .map(|col| {
+                        col.str().map_err(|_| StrategyError(
+                            "Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string()
+                        ))
+                    })
+                    .collect()?;
 
-                let mut patient_to_hpo: HashMap<String, HashSet<String>> = HashMap::new();
-                let mut hpos = HashSet::new();
+                let (patient_to_hpo, hpos) = get_patient_to_hpo_data(
+                    stringified_subject_id_col,
+                    stringified_multi_hpo_block,
+                );
 
-                //a patient_to_hpo hash map is created (needed in order to create the new columns)
-                //the set of all HPO IDs encountered is also collected
-                for multi_hpo_col_name in multi_hpo_col_names.iter() {
-                    let multi_hpo_col = table.data.column(multi_hpo_col_name).unwrap();
-
-                    let stringified_multi_hpo_col = multi_hpo_col.str().map_err(|_| {
-                        StrategyError(format!("Unexpectedly could not convert HPO column {multi_hpo_col_name} to string column when applying MultiHPOColExpansion strategy."))})?;
-
-                    let patient_id_multi_hpo_pairs = stringified_subject_id_col
-                        .into_iter()
-                        .zip(stringified_multi_hpo_col.into_iter());
-
-                    for (patient_id, multi_hpo) in patient_id_multi_hpo_pairs {
-                        match multi_hpo {
-                            None => continue,
-                            Some(multi_hpo) => match patient_id {
-                                None => {
-                                    warn!(
-                                        "The entry {multi_hpo} in the column {multi_hpo_col_name} was found with no corresponding SubjectID."
-                                    );
-                                    continue;
-                                }
-                                Some(patient_id) => {
-                                    let hpo_ids = hpo_id_search(multi_hpo);
-                                    let patient_to_hpo_entry =
-                                        patient_to_hpo.entry(patient_id.to_string()).or_default();
-
-                                    hpo_ids.into_iter().for_each(|hpo_id| {
-                                        hpos.insert(hpo_id.clone());
-                                        patient_to_hpo_entry.insert(hpo_id);
-                                    })
-                                }
-                            },
-                        }
-                    }
-                }
-
-                //it's convenient to sort the HPOs so that we get a consistent output
-                let mut sorted_hpos = hpos.iter().collect::<Vec<&String>>();
+                let mut sorted_hpos = hpos.into_iter().collect::<Vec<&str>>();
                 sorted_hpos.sort();
 
-                //then the columns are created
-                let mut new_hpo_col_names = vec![];
+                let bb_id = table
+                    .get_series_context_from_column(multi_hpo_block.last().unwrap())
+                    .unwrap()
+                    .get_building_block_id();
+                let (new_hpo_cols_from_this_block, new_sc) = create_new_cols_with_sc(
+                    stringified_subject_id_col,
+                    bb_id,
+                    sorted_hpos,
+                    patient_to_hpo,
+                );
 
-                for hpo in sorted_hpos {
-                    let mut observation_statuses = vec![];
-                    stringified_subject_id_col.iter().for_each(|patient_id| {
-                        let observation_status = patient_id
-                            .and_then(|id| patient_to_hpo.get(id))
-                            .filter(|hpos| hpos.contains(hpo))
-                            .map(|_| AnyValue::String("OBSERVED"))
-                            .unwrap_or(AnyValue::Null);
-                        observation_statuses.push(observation_status);
-                    });
-
-                    let mut new_hpo_col_name = hpo.clone();
-                    if let Some(block_id) = bb_id {
-                        new_hpo_col_name.push_str(" (block ");
-                        new_hpo_col_name.push_str(block_id);
-                        new_hpo_col_name.push(')')
-                    }
-
-                    let new_hpo_col =
-                        Column::new(new_hpo_col_name.clone().into(), observation_statuses);
-                    new_hpo_cols.push(new_hpo_col);
-                    new_hpo_col_names.push(new_hpo_col_name);
-                }
-
-                //then the new SC is created
-                let new_sc = SeriesContext::default()
-                    .with_identifier(Identifier::Multi(new_hpo_col_names))
-                    .with_header_context(Context::HpoId)
-                    .with_data_context(Context::ObservationStatus)
-                    .with_building_block_id(bb_id.clone());
+                new_hpo_cols.extend(new_hpo_cols_from_this_block);
                 new_series_contexts.push(new_sc);
             }
 
-            //old multi_hpo_columns are removed
-            let old_multi_hpo_col_names = table
-                .get_cols_with_contexts(&Context::None, &Context::MultiHpoId)
-                .iter()
-                .map(|col| col.name().to_string())
-                .collect::<Vec<String>>();
-
-            for multi_hpo_col_name in old_multi_hpo_col_names.iter() {
-                table.data_mut().drop_in_place(multi_hpo_col_name).map_err(|_| StrategyError(format!("Unexpectedly could not remove MultiHPO column {multi_hpo_col_name} from table {table_name}.")))?;
-            }
-
-            //old series contexts are removed
             let old_multi_hpo_scs = table
-                .get_series_contexts_with_contexts(&Context::None, &Context::MultiHpoId)
-                .into_iter()
-                .cloned()
-                .collect::<Vec<SeriesContext>>();
-
-            for multi_hpo_sc in old_multi_hpo_scs.iter() {
-                table.context_mut().remove_series_context(multi_hpo_sc);
-            }
-
-            //new columns are added
+                .get_series_contexts_with_contexts(&Context::None, &Context::MultiHpoId);
+            
+            table.remove_scs_with_columns(old_multi_hpo_scs);
+            
             for new_hpo_col in new_hpo_cols {
                 let new_hpo_col_name = new_hpo_col.name().clone();
                 table
@@ -157,8 +94,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     .with_column(new_hpo_col)
                     .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}. Possible duplicates?")))?;
             }
-
-            //new series contexts are added
+            
             for new_sc in new_series_contexts {
                 table.context_mut().add_series_context(new_sc);
             }
@@ -169,12 +105,114 @@ impl Strategy for MultiHPOColExpansionStrategy {
 }
 
 #[allow(unused)]
-fn hpo_id_search(string_to_search: &str) -> Vec<String> {
+fn hpo_id_search(string_to_search: &str) -> Vec<&str> {
     let hpo_regex = Regex::new(r"HP:\d{7}").unwrap();
     hpo_regex
         .find_iter(string_to_search)
-        .map(|mat| mat.as_str().to_string())
+        .map(|mat| mat.as_str())
         .collect()
+}
+
+#[allow(unused)]
+fn get_multi_hpo_blocks(table: &ContextualizedDataFrame) -> Vec<Vec<&Column>> {
+    let bb_ids = table.get_building_block_ids();
+    let mut bb_ids_vec = bb_ids.into_iter().collect::<Vec<&str>>();
+    bb_ids_vec.sort();
+    let mut multi_hpo_blocks = vec![];
+    for bb_id in bb_ids_vec {
+        let multi_hpo_block =
+            table.get_building_block_with_contexts(bb_id, &Context::None, &Context::MultiHpoId);
+        if !multi_hpo_block.is_empty() {
+            multi_hpo_blocks.push(multi_hpo_block);
+        }
+    }
+    let multi_hpo_block =
+        table.get_no_building_block_with_contexts(&Context::None, &Context::MultiHpoId);
+    if !multi_hpo_block.is_empty() {
+        multi_hpo_blocks.push(multi_hpo_block);
+    }
+    multi_hpo_blocks
+}
+
+#[allow(unused)]
+fn get_patient_to_hpo_data<'a, 'b>(
+    stringified_subject_id_col: &'a StringChunked,
+    stringified_multi_hpo_cols: Vec<&'b StringChunked>,
+) -> (HashMap<&'a str, HashSet<&'b str>>, HashSet<&'b str>) {
+    let mut patient_to_hpo: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut hpos: HashSet<&str> = HashSet::new();
+
+    for stringified_multi_hpo_col in stringified_multi_hpo_cols {
+        let patient_id_multi_hpo_pairs = stringified_subject_id_col
+            .into_iter()
+            .zip(stringified_multi_hpo_col.into_iter());
+
+        for (patient_id, multi_hpo) in patient_id_multi_hpo_pairs {
+            match multi_hpo {
+                None => continue,
+                Some(multi_hpo) => match patient_id {
+                    None => {
+                        warn!(
+                            "The entry {multi_hpo} in the column {} was found with no corresponding SubjectID.",
+                            stringified_multi_hpo_col.name()
+                        );
+                        continue;
+                    }
+                    Some(patient_id) => {
+                        let hpo_ids = hpo_id_search(multi_hpo);
+                        let patient_to_hpo_entry = patient_to_hpo.entry(patient_id).or_default();
+
+                        hpo_ids.iter().for_each(|hpo_id| {
+                            patient_to_hpo_entry.insert(hpo_id);
+                            hpos.insert(hpo_id);
+                        })
+                    }
+                },
+            }
+        }
+    }
+
+    (patient_to_hpo, hpos)
+}
+
+#[allow(unused)]
+fn create_new_cols_with_sc(
+    stringified_subject_id_col: &StringChunked,
+    building_block_id: Option<&str>,
+    hpos: Vec<&str>,
+    patient_to_hpo: HashMap<&str, HashSet<&str>>,
+) -> (Vec<Column>, SeriesContext) {
+    let mut new_hpo_cols = vec![];
+    let mut new_hpo_col_names = vec![];
+
+    for hpo in hpos {
+        let mut observation_statuses = vec![];
+        stringified_subject_id_col.iter().for_each(|patient_id| {
+            let observation_status = patient_id
+                .and_then(|id| patient_to_hpo.get(id))
+                .filter(|hpos| hpos.contains(hpo))
+                //bool?
+                .map(|_| AnyValue::String("OBSERVED"))
+                .unwrap_or(AnyValue::Null);
+            observation_statuses.push(observation_status);
+        });
+
+        let new_hpo_col_name = match building_block_id {
+            None => hpo.to_string(),
+            Some(block_id) => format!("{hpo} ({block_id})"),
+        };
+
+        let new_hpo_col = Column::new(new_hpo_col_name.clone().into(), observation_statuses);
+        new_hpo_cols.push(new_hpo_col);
+        new_hpo_col_names.push(new_hpo_col_name);
+    }
+    let new_sc = SeriesContext::default()
+        .with_identifier(Identifier::Multi(new_hpo_col_names.clone()))
+        .with_header_context(Context::HpoId)
+        .with_data_context(Context::ObservationStatus)
+        .with_building_block_id(building_block_id.map(|bb_id| bb_id.to_string()));
+
+    (new_hpo_cols, new_sc)
 }
 
 #[cfg(test)]

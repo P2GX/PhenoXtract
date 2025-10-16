@@ -34,11 +34,7 @@ impl TableContext {
         self.context.push(sc);
         self
     }
-
-    pub fn remove_series_context(&mut self, sc_to_remove: &SeriesContext) -> &mut Self {
-        self.context.retain(|sc| sc != sc_to_remove);
-        self
-    }
+    
 }
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
