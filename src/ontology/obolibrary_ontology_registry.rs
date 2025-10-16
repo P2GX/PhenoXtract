@@ -80,6 +80,42 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
+    /// Creates a default ObolibraryOntologyRegistry configured for the Mondo Disease Ontology.
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading Mondo in JSON format.
+    ///
+    /// # Configuration
+    /// - Ontology Prefix: "mondo"
+    /// - File Name: "mondo.json"
+    /// - Storage Path: $HOME/.<crate_name>/mondo
+    ///
+    /// # Errors
+    ///
+    /// This function will return an Err(RegistryError::EnvironmentVarNotSet) if the
+    /// HOME environment variable is not set on the system.
+    pub fn default_mondo_registry() -> Result<Self, RegistryError> {
+        let mondo_id = "mondo".to_string();
+        let env_var = "HOME";
+        let home_dir = env::var(env_var)
+            .map_err(|err| RegistryError::EnvironmentVarNotSet(err.to_string()))?;
+
+        let pkg_name = env!("CARGO_PKG_NAME");
+        let path: PathBuf = [
+            home_dir.as_str(),
+            format!(".{pkg_name}").as_str(),
+            mondo_id.as_str(),
+        ]
+        .iter()
+        .collect();
+
+        Ok(ObolibraryOntologyRegistry::new(
+            path,
+            "mondo.json".to_string(),
+            mondo_id,
+        ))
+    }
+
     fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
         if version == "latest" {
             let meta_data = self
@@ -287,6 +323,20 @@ mod tests {
             }
             Err(_) => panic!("Unexpected error type"),
         }
+    }
+
+    #[rstest]
+    fn test_default_mondo_registry() {
+        let registry = ObolibraryOntologyRegistry::default_mondo_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+        assert_eq!(registry.file_name, "mondo.json");
+        assert_eq!(registry.ontology_prefix, "mondo");
     }
 
     #[rstest]
