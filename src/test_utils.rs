@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::onotlogy_bidict::OntologyBiDict;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::OntologyRegistry;
 use crate::ontology::utils::init_ontolius;
 use once_cell::sync::Lazy;

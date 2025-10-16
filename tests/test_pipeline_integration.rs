@@ -8,7 +8,7 @@ use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::ObolibraryOntologyRegistry;
-use phenoxtract::ontology::onotlogy_bidict::OntologyBiDict;
+use phenoxtract::ontology::ontology_bidict::OntologyBiDict;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
 use phenoxtract::transform::strategies::alias_map::AliasMapStrategy;

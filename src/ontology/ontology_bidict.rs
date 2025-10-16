@@ -25,19 +25,19 @@ impl OntologyBiDict {
         }
     }
 
-    /// Performs a case-insensitive search for an HPO label, synonym, or ID.
+    /// Performs a case-insensitive search for an Ontology label, synonym, or ID.
     ///
     /// This method provides a unified interface to query the dictionary. It checks for
     /// a match in the following order:
-    /// 1.  Official label -> HPO ID
-    /// 2.  Synonym name -> HPO ID
-    /// 3.  HPO ID -> Official label
+    /// 1.  Official label -> Ontology ID
+    /// 2.  Synonym name -> Ontology ID
+    /// 3.  Ontology ID -> Official label
     ///
     /// The search is case-insensitive.
     ///
     /// # Parameters
     ///
-    /// * `key`: A string slice representing the label name, synonym, or HPO ID to look up.
+    /// * `key`: A string slice representing the label name, synonym, or Ontology ID to look up.
     ///
     /// # Returns
     ///
@@ -70,24 +70,24 @@ impl OntologyBiDict {
 }
 
 impl From<Arc<FullCsrOntology>> for OntologyBiDict {
-    fn from(hpo: Arc<FullCsrOntology>) -> Self {
-        Self::from(hpo.as_ref())
+    fn from(ontology: Arc<FullCsrOntology>) -> Self {
+        Self::from(ontology.as_ref())
     }
 }
 
 impl From<FullCsrOntology> for OntologyBiDict {
-    fn from(hpo: FullCsrOntology) -> Self {
-        Self::from(&hpo)
+    fn from(ontology: FullCsrOntology) -> Self {
+        Self::from(&ontology)
     }
 }
 
 impl From<&FullCsrOntology> for OntologyBiDict {
-    fn from(hpo: &FullCsrOntology) -> Self {
+    fn from(ontology: &FullCsrOntology) -> Self {
         let mut label_to_id: HashMap<String, String> = HashMap::new();
         let mut synonym_to_id: HashMap<String, String> = HashMap::new();
         let mut id_to_label: HashMap<String, String> = HashMap::new();
 
-        hpo.iter_terms().for_each(|term| {
+        ontology.iter_terms().for_each(|term| {
             if term.is_current() {
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {

@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::ISO8601_DUR_PATTERN;
-use crate::ontology::onotlogy_bidict::OntologyBiDict;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::TransformError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};

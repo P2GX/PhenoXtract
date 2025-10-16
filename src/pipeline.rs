@@ -8,7 +8,7 @@ use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::onotlogy_bidict::OntologyBiDict;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::utils::init_ontolius;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;

@@ -1,6 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::ontology::onotlogy_bidict::OntologyBiDict;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::traits::Strategy;
