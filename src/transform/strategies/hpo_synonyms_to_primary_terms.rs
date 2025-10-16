@@ -32,9 +32,9 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         tables.iter().any(|table| {
             !table
                 .filter_columns()
-                .eq_header_context(Filter::Is(&Context::None))
-                .eq_data_context(Filter::Is(&Context::HpoLabel))
-                .eq_dtype(Filter::Is(&DataType::String))
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::HpoLabel))
+                .where_dtype(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
         })
@@ -53,8 +53,8 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
                 .filter_columns()
-                .eq_header_context(Filter::Is(&Context::None))
-                .eq_data_context(Filter::Is(&Context::HpoLabel))
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::HpoLabel))
                 .collect()
                 .iter()
                 .map(|col| col.name())

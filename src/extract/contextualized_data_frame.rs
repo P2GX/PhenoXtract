@@ -158,8 +158,8 @@ impl ContextualizedDataFrame {
         data_context: &Context,
     ) -> Vec<&Column> {
         self.filter_series_context()
-            .eq_header_context(Filter::Is(header_context))
-            .eq_data_context(Filter::Is(data_context))
+            .where_header_context(Filter::Is(header_context))
+            .where_data_context(Filter::Is(data_context))
             .collect()
             .iter()
             .flat_map(|sc| {

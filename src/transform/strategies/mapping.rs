@@ -104,9 +104,9 @@ impl Strategy for MappingStrategy {
         tables.iter().any(|table| {
             !table
                 .filter_columns()
-                .eq_header_context(Filter::Is(&self.header_context))
-                .eq_data_context(Filter::Is(&self.data_context))
-                .eq_dtype(Filter::Is(&self.column_dtype))
+                .where_header_context(Filter::Is(&self.header_context))
+                .where_data_context(Filter::Is(&self.data_context))
+                .where_dtype(Filter::Is(&self.column_dtype))
                 .collect()
                 .is_empty()
         })
@@ -131,8 +131,8 @@ impl Strategy for MappingStrategy {
 
             let col_names: Vec<String> = table
                 .filter_columns()
-                .eq_header_context(Filter::Is(&self.header_context))
-                .eq_data_context(Filter::Is(&self.data_context))
+                .where_header_context(Filter::Is(&self.header_context))
+                .where_data_context(Filter::Is(&self.data_context))
                 .collect()
                 .iter()
                 .map(|col| col.name().to_string())

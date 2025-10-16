@@ -8,51 +8,52 @@ use std::ops::Deref;
 pub enum Filter<T> {
     Any,
     Is(T),
+    IsNot(T),
     IsSome,
 }
 
 pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
-    eq_identifiers: Filter<&'a Identifier>,
-    eq_building_block: Filter<Option<&'a str>>,
-    eq_header_context: Filter<&'a Context>,
-    eq_data_context: Filter<&'a Context>,
-    eq_fill_missing: Filter<Option<&'a CellValue>>,
+    identifier: Filter<&'a Identifier>,
+    building_block: Filter<Option<&'a str>>,
+    header_context: Filter<&'a Context>,
+    data_context: Filter<&'a Context>,
+    fill_missing: Filter<Option<&'a CellValue>>,
 }
 
 impl<'a> SeriesContextFilter<'a> {
     pub(crate) fn new(items: &'a [SeriesContext]) -> Self {
         Self {
             items: items.iter().collect(),
-            eq_identifiers: Filter::Any,
-            eq_building_block: Filter::Any,
-            eq_header_context: Filter::Any,
-            eq_data_context: Filter::Any,
-            eq_fill_missing: Filter::Any,
+            identifier: Filter::Any,
+            building_block: Filter::Any,
+            header_context: Filter::Any,
+            data_context: Filter::Any,
+            fill_missing: Filter::Any,
         }
     }
 
-    pub fn eq_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
-        self.eq_identifiers = identifier;
+    pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
+        self.identifier = identifier;
         self
     }
 
-    pub fn eq_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
-        self.eq_building_block = building_block;
+    pub fn where_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
+        self.building_block = building_block;
         self
     }
 
-    pub fn eq_header_context(mut self, eq_header_context: Filter<&'a Context>) -> Self {
-        self.eq_header_context = eq_header_context;
+    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
+        self.header_context = header_context;
         self
     }
 
-    pub fn eq_data_context(mut self, eq_data_context: Filter<&'a Context>) -> Self {
-        self.eq_data_context = eq_data_context;
+    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
+        self.data_context = data_context;
         self
     }
-    pub fn eq_fill_null(mut self, eq_fill_missing: Filter<Option<&'a CellValue>>) -> Self {
-        self.eq_fill_missing = eq_fill_missing;
+    pub fn where_fill_missing(mut self, fill_missing: Filter<Option<&'a CellValue>>) -> Self {
+        self.fill_missing = fill_missing;
         self
     }
 
@@ -61,29 +62,35 @@ impl<'a> SeriesContextFilter<'a> {
             .into_iter()
             .filter(|sc| {
                 [
-                    match &self.eq_identifiers {
+                    match &self.identifier {
                         Filter::Any => true,
                         Filter::Is(val) => sc.get_identifier() == *val,
+                        Filter::IsNot(val) => sc.get_identifier() != *val,
+
                         Filter::IsSome => true,
                     },
-                    match &self.eq_building_block {
+                    match &self.building_block {
                         Filter::Any => true,
-                        Filter::Is(val) => sc.get_building_block_id() == val.as_deref(),
+                        Filter::Is(bb_id) => sc.get_building_block_id() == bb_id.as_deref(),
+                        Filter::IsNot(bb_id) => sc.get_building_block_id() != *bb_id,
                         Filter::IsSome => sc.get_building_block_id().is_some(),
                     },
-                    match &self.eq_header_context {
+                    match &self.header_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_header_context() == *c,
+                        Filter::IsNot(c) => sc.get_header_context() != *c,
                         Filter::IsSome => true,
                     },
-                    match &self.eq_data_context {
+                    match &self.data_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_data_context() == *c,
+                        Filter::IsNot(c) => sc.get_data_context() != *c,
                         Filter::IsSome => true,
                     },
-                    match &self.eq_fill_missing {
+                    match &self.fill_missing {
                         Filter::Any => true,
                         Filter::Is(fill) => sc.get_fill_missing() == *fill,
+                        Filter::IsNot(fill) => sc.get_fill_missing() != *fill,
                         Filter::IsSome => sc.get_fill_missing().is_some(),
                     },
                 ]
@@ -97,7 +104,7 @@ impl<'a> SeriesContextFilter<'a> {
 pub struct ColumnFilter<'a> {
     items: &'a ContextualizedDataFrame,
     series_filter: SeriesContextFilter<'a>,
-    eq_dtype: Filter<&'a DataType>,
+    dtype: Filter<&'a DataType>,
 }
 
 impl<'a> ColumnFilter<'a> {
@@ -105,35 +112,35 @@ impl<'a> ColumnFilter<'a> {
         Self {
             items,
             series_filter: SeriesContextFilter::new(items.context().context.deref()),
-            eq_dtype: Filter::Any,
+            dtype: Filter::Any,
         }
     }
 
-    pub fn eq_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
-        self.series_filter.eq_identifiers = identifier;
+    pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
+        self.series_filter.identifier = identifier;
         self
     }
 
-    pub fn eq_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
-        self.series_filter.eq_building_block = building_block;
+    pub fn where_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
+        self.series_filter.building_block = building_block;
         self
     }
 
-    pub fn eq_header_context(mut self, eq_header_context: Filter<&'a Context>) -> Self {
-        self.series_filter.eq_header_context = eq_header_context;
+    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
+        self.series_filter.header_context = header_context;
         self
     }
 
-    pub fn eq_data_context(mut self, eq_data_context: Filter<&'a Context>) -> Self {
-        self.series_filter.eq_data_context = eq_data_context;
+    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
+        self.series_filter.data_context = data_context;
         self
     }
-    pub fn eq_fill_null(mut self, eq_fill_missing: Filter<Option<&'a CellValue>>) -> Self {
-        self.series_filter.eq_fill_missing = eq_fill_missing;
+    pub fn where_fill_missing(mut self, fill_missing: Filter<Option<&'a CellValue>>) -> Self {
+        self.series_filter.fill_missing = fill_missing;
         self
     }
-    pub fn eq_dtype(mut self, eq_data_type: Filter<&'a DataType>) -> Self {
-        self.eq_dtype = eq_data_type;
+    pub fn where_dtype(mut self, data_type: Filter<&'a DataType>) -> Self {
+        self.dtype = data_type;
         self
     }
 
@@ -144,9 +151,10 @@ impl<'a> ColumnFilter<'a> {
                 self.items
                     .get_columns(sc.get_identifier())
                     .into_iter()
-                    .filter(|col| match self.eq_dtype {
+                    .filter(|col| match self.dtype {
                         Filter::Any => true,
                         Filter::Is(dtype) => dtype == col.dtype(),
+                        Filter::IsNot(dtype) => dtype != col.dtype(),
                         Filter::IsSome => true,
                     })
                     .collect::<Vec<&Column>>()
@@ -173,7 +181,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_identifier(Filter::Is(&id1))
+            .where_identifier(Filter::Is(&id1))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -191,7 +199,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_building_block(Filter::IsSome)
+            .where_building_block(Filter::IsSome)
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -213,7 +221,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_building_block(Filter::Is(Some("bb1")))
+            .where_building_block(Filter::Is(Some("bb1")))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -235,7 +243,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_building_block(Filter::Is(None))
+            .where_building_block(Filter::Is(None))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -260,7 +268,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_header_context(Filter::Is(&ctx1))
+            .where_header_context(Filter::Is(&ctx1))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -285,7 +293,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_data_context(Filter::Is(&ctx1))
+            .where_data_context(Filter::Is(&ctx1))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -307,7 +315,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_fill_null(Filter::IsSome)
+            .where_fill_missing(Filter::IsSome)
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -332,7 +340,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_fill_null(Filter::Is(Some(&fill_val)))
+            .where_fill_missing(Filter::Is(Some(&fill_val)))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -366,9 +374,9 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_identifier(Filter::Is(&id1))
-            .eq_building_block(Filter::IsSome)
-            .eq_data_context(Filter::Is(&ctx1))
+            .where_identifier(Filter::Is(&id1))
+            .where_building_block(Filter::IsSome)
+            .where_data_context(Filter::Is(&ctx1))
             .collect();
 
         assert_eq!(result.len(), 1);
@@ -388,7 +396,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .eq_identifier(Filter::Is(&id_nonexistent))
+            .where_identifier(Filter::Is(&id_nonexistent))
             .collect();
 
         assert_eq!(result.len(), 0);
@@ -420,13 +428,13 @@ mod tests {
         ];
 
         let result1 = SeriesContextFilter::new(&series)
-            .eq_identifier(Filter::Is(&id1))
-            .eq_data_context(Filter::Is(&ctx1))
+            .where_identifier(Filter::Is(&id1))
+            .where_data_context(Filter::Is(&ctx1))
             .collect();
 
         let result2 = SeriesContextFilter::new(&series)
-            .eq_data_context(Filter::Is(&ctx1))
-            .eq_identifier(Filter::Is(&id1))
+            .where_data_context(Filter::Is(&ctx1))
+            .where_identifier(Filter::Is(&id1))
             .collect();
 
         assert_eq!(result1.len(), result2.len());

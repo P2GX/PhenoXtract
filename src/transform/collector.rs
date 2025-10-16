@@ -32,7 +32,7 @@ impl Collector {
         for cdf in cdfs {
             let subject_id_cols = cdf
                 .filter_columns()
-                .eq_data_context(Filter::Is(&Context::SubjectId))
+                .where_data_context(Filter::Is(&Context::SubjectId))
                 .collect();
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
@@ -83,8 +83,8 @@ impl Collector {
     ) -> Result<(), TransformError> {
         let pf_scs = patient_cdf
             .filter_series_context()
-            .eq_header_context(Filter::Is(&Context::None))
-            .eq_data_context(Filter::Is(&Context::HpoLabel))
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::HpoLabel))
             .collect();
 
         for pf_sc in pf_scs {
@@ -275,7 +275,7 @@ impl Collector {
     ) -> Result<Option<String>, TransformError> {
         let cols_of_element_type = patient_cdf
             .filter_columns()
-            .eq_data_context(Filter::Is(&context))
+            .where_data_context(Filter::Is(&context))
             .collect();
 
         if cols_of_element_type.is_empty() {
