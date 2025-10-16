@@ -304,7 +304,7 @@ mod tests {
 
     #[rstest]
     fn test_default_hpo_registry() {
-        let result = ObolibraryOntologyRegistry::default_geno_registry();
+        let result = ObolibraryOntologyRegistry::default_hpo_registry();
 
         match result {
             Ok(registry) => {
