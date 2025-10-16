@@ -27,18 +27,10 @@ impl Strategy for MultiHPOColExpansionStrategy {
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
             let subject_id_cols = table.get_cols_with_data_context(&Context::SubjectId);
-            if subject_id_cols.len() > 1 {
-                return Err(StrategyError(format!(
-                    "Multiple SubjectID columns were found in table {table_name}."
-                )));
-            }
 
-            let subject_id_col = subject_id_cols.last().ok_or(StrategyError(format!(
+            let stringified_subject_id_col = subject_id_cols.last().ok_or(StrategyError(format!(
                 "Could not find SubjectID column in table {table_name}"
-            )))?;
-
-            let stringified_subject_id_col = subject_id_col
-                .str()
+            )))?.str()
                 .map_err(|_| {
                     StrategyError("Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string())})?;
 
