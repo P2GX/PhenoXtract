@@ -80,6 +80,42 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Genotype Ontology (GENO).
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading GENO in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"geno"`
+    /// - **File Name:** `"geno.json"`
+    /// - **Storage Path:** `$HOME/.<crate_name>/geno`
+    ///
+    /// # Errors
+    ///
+    /// This function will return an `Err(RegistryError::EnvironmentVarNotSet)` if the
+    /// `HOME` environment variable is not set on the system.
+    pub fn default_geno_registry() -> Result<Self, RegistryError> {
+        let geno_id = "geno".to_string();
+        let env_var = "HOME";
+        let home_dir = env::var(env_var)
+            .map_err(|err| RegistryError::EnvironmentVarNotSet(err.to_string()))?;
+
+        let pkg_name = env!("CARGO_PKG_NAME");
+        let path: PathBuf = [
+            home_dir.as_str(),
+            format!(".{pkg_name}").as_str(),
+            geno_id.as_str(),
+        ]
+        .iter()
+        .collect();
+
+        Ok(ObolibraryOntologyRegistry::new(
+            path,
+            "geno.json".to_string(),
+            geno_id.to_string(),
+        ))
+    }
+
     fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
         if version == "latest" {
             let meta_data = self
@@ -268,7 +304,7 @@ mod tests {
 
     #[rstest]
     fn test_default_hpo_registry() {
-        let result = ObolibraryOntologyRegistry::default_hpo_registry();
+        let result = ObolibraryOntologyRegistry::default_geno_registry();
 
         match result {
             Ok(registry) => {
@@ -287,6 +323,21 @@ mod tests {
             }
             Err(_) => panic!("Unexpected error type"),
         }
+    }
+
+    #[rstest]
+    fn test_default_geno_registry() {
+        let registry = ObolibraryOntologyRegistry::default_geno_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+        assert_eq!(registry.file_name, "geno.json");
+        assert_eq!(registry.ontology_prefix, "geno");
+        registry.register("latest").unwrap();
     }
 
     #[rstest]
