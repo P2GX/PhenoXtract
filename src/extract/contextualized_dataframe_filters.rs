@@ -10,15 +10,16 @@ pub enum Filter<T> {
     Is(T),
     IsNot(T),
     IsSome,
+    IsNone,
 }
 
 pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
     identifier: Filter<&'a Identifier>,
-    building_block: Filter<Option<&'a str>>,
+    building_block: Filter<&'a str>,
     header_context: Filter<&'a Context>,
     data_context: Filter<&'a Context>,
-    fill_missing: Filter<Option<&'a CellValue>>,
+    fill_missing: Filter<&'a CellValue>,
 }
 
 impl<'a> SeriesContextFilter<'a> {
@@ -38,7 +39,7 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    pub fn where_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
+    pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
         self.building_block = building_block;
         self
     }
@@ -52,7 +53,7 @@ impl<'a> SeriesContextFilter<'a> {
         self.data_context = data_context;
         self
     }
-    pub fn where_fill_missing(mut self, fill_missing: Filter<Option<&'a CellValue>>) -> Self {
+    pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.fill_missing = fill_missing;
         self
     }
@@ -66,32 +67,36 @@ impl<'a> SeriesContextFilter<'a> {
                         Filter::Any => true,
                         Filter::Is(val) => sc.get_identifier() == *val,
                         Filter::IsNot(val) => sc.get_identifier() != *val,
-
                         Filter::IsSome => true,
+                        Filter::IsNone => false,
                     },
                     match &self.building_block {
                         Filter::Any => true,
-                        Filter::Is(bb_id) => sc.get_building_block_id() == bb_id.as_deref(),
-                        Filter::IsNot(bb_id) => sc.get_building_block_id() != *bb_id,
+                        Filter::Is(bb_id) => sc.get_building_block_id() == Some(*bb_id),
+                        Filter::IsNot(bb_id) => sc.get_building_block_id() != Some(*bb_id),
                         Filter::IsSome => sc.get_building_block_id().is_some(),
+                        Filter::IsNone => sc.get_building_block_id().is_none(),
                     },
                     match &self.header_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_header_context() == *c,
                         Filter::IsNot(c) => sc.get_header_context() != *c,
-                        Filter::IsSome => true,
+                        Filter::IsSome => sc.get_header_context() != &Context::None,
+                        Filter::IsNone => sc.get_header_context() == &Context::None,
                     },
                     match &self.data_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_data_context() == *c,
                         Filter::IsNot(c) => sc.get_data_context() != *c,
-                        Filter::IsSome => true,
+                        Filter::IsSome => sc.get_data_context() != &Context::None,
+                        Filter::IsNone => sc.get_data_context() == &Context::None,
                     },
                     match &self.fill_missing {
                         Filter::Any => true,
-                        Filter::Is(fill) => sc.get_fill_missing() == *fill,
-                        Filter::IsNot(fill) => sc.get_fill_missing() != *fill,
+                        Filter::Is(fill) => sc.get_fill_missing() == Some(*fill),
+                        Filter::IsNot(fill) => sc.get_fill_missing() != Some(*fill),
                         Filter::IsSome => sc.get_fill_missing().is_some(),
+                        Filter::IsNone => sc.get_fill_missing().is_none(),
                     },
                 ]
                 .into_iter()
@@ -121,7 +126,7 @@ impl<'a> ColumnFilter<'a> {
         self
     }
 
-    pub fn where_building_block(mut self, building_block: Filter<Option<&'a str>>) -> Self {
+    pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
         self.series_filter.building_block = building_block;
         self
     }
@@ -135,7 +140,7 @@ impl<'a> ColumnFilter<'a> {
         self.series_filter.data_context = data_context;
         self
     }
-    pub fn where_fill_missing(mut self, fill_missing: Filter<Option<&'a CellValue>>) -> Self {
+    pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.series_filter.fill_missing = fill_missing;
         self
     }
@@ -156,6 +161,7 @@ impl<'a> ColumnFilter<'a> {
                         Filter::Is(dtype) => dtype == col.dtype(),
                         Filter::IsNot(dtype) => dtype != col.dtype(),
                         Filter::IsSome => true,
+                        Filter::IsNone => false,
                     })
                     .collect::<Vec<&Column>>()
             })
@@ -221,7 +227,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .where_building_block(Filter::Is(Some("bb1")))
+            .where_building_block(Filter::Is("bb1"))
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -243,7 +249,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .where_building_block(Filter::Is(None))
+            .where_building_block(Filter::IsNone)
             .collect();
 
         assert_eq!(result.len(), 2);
@@ -340,7 +346,7 @@ mod tests {
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .where_fill_missing(Filter::Is(Some(&fill_val)))
+            .where_fill_missing(Filter::Is(&fill_val))
             .collect();
 
         assert_eq!(result.len(), 2);
