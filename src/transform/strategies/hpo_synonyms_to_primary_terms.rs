@@ -1,6 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::ontology::hpo_bidict::HPOBiDict;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::TransformError::{MappingError, StrategyError};
 use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::traits::Strategy;
@@ -18,11 +18,11 @@ use std::sync::Arc;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct HPOSynonymsToPrimaryTermsStrategy {
-    hpo_dict: Arc<HPOBiDict>,
+    hpo_dict: Arc<OntologyBiDict>,
 }
 
 impl HPOSynonymsToPrimaryTermsStrategy {
-    pub fn new(hpo_dict: Arc<HPOBiDict>) -> Self {
+    pub fn new(hpo_dict: Arc<OntologyBiDict>) -> Self {
         Self { hpo_dict }
     }
 }
