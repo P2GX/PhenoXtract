@@ -57,37 +57,31 @@ impl<'a> SeriesContextFilter<'a> {
     }
 
     pub fn collect(self) -> Vec<&'a SeriesContext> {
-        let eq_identifiers = &self.eq_identifiers;
-        let eq_building_block = &self.eq_building_block;
-        let eq_header_context = &self.eq_header_context;
-        let eq_data_context = &self.eq_data_context;
-        let eq_fill_missing = &self.eq_fill_missing;
-
         self.items
             .into_iter()
             .filter(|sc| {
                 [
-                    match eq_identifiers {
+                    match &self.eq_identifiers {
                         Filter::Any => true,
                         Filter::Is(val) => sc.get_identifier() == *val,
                         Filter::IsSome => true,
                     },
-                    match eq_building_block {
+                    match &self.eq_building_block {
                         Filter::Any => true,
                         Filter::Is(val) => sc.get_building_block_id() == val.as_deref(),
                         Filter::IsSome => sc.get_building_block_id().is_some(),
                     },
-                    match eq_header_context {
+                    match &self.eq_header_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_header_context() == *c,
                         Filter::IsSome => true,
                     },
-                    match eq_data_context {
+                    match &self.eq_data_context {
                         Filter::Any => true,
                         Filter::Is(c) => sc.get_data_context() == *c,
                         Filter::IsSome => true,
                     },
-                    match eq_fill_missing {
+                    match &self.eq_fill_missing {
                         Filter::Any => true,
                         Filter::Is(fill) => sc.get_fill_missing() == *fill,
                         Filter::IsSome => sc.get_fill_missing().is_some(),
@@ -103,7 +97,7 @@ impl<'a> SeriesContextFilter<'a> {
 pub struct ColumnFilter<'a> {
     items: &'a ContextualizedDataFrame,
     series_filter: SeriesContextFilter<'a>,
-    eq_data_type: Filter<&'a DataType>,
+    eq_dtype: Filter<&'a DataType>,
 }
 
 impl<'a> ColumnFilter<'a> {
@@ -111,7 +105,7 @@ impl<'a> ColumnFilter<'a> {
         Self {
             items,
             series_filter: SeriesContextFilter::new(items.context().context.deref()),
-            eq_data_type: Filter::Any,
+            eq_dtype: Filter::Any,
         }
     }
 
@@ -138,15 +132,25 @@ impl<'a> ColumnFilter<'a> {
         self.series_filter.eq_fill_missing = eq_fill_missing;
         self
     }
-    pub fn eq_data_type(mut self, eq_data_type: Filter<&'a DataType>) -> Self {
-        self.eq_data_type = eq_data_type;
+    pub fn eq_dtype(mut self, eq_data_type: Filter<&'a DataType>) -> Self {
+        self.eq_dtype = eq_data_type;
         self
     }
 
     pub fn collect(self) -> Vec<&'a Column> {
         let scs = self.series_filter.collect();
         scs.iter()
-            .flat_map(|sc| self.items.get_columns(sc.get_identifier()))
+            .flat_map(|sc| {
+                self.items
+                    .get_columns(sc.get_identifier())
+                    .into_iter()
+                    .filter(|col| match self.eq_dtype {
+                        Filter::Any => true,
+                        Filter::Is(dtype) => dtype == col.dtype(),
+                        Filter::IsSome => true,
+                    })
+                    .collect::<Vec<&Column>>()
+            })
             .collect()
     }
 }

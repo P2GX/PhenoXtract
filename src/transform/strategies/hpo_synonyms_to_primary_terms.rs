@@ -34,7 +34,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                 .filter_columns()
                 .eq_header_context(Filter::Is(&Context::None))
                 .eq_data_context(Filter::Is(&Context::HpoLabel))
-                .eq_data_type(Filter::Is(&DataType::String))
+                .eq_dtype(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
         })

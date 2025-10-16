@@ -106,7 +106,7 @@ impl Strategy for MappingStrategy {
                 .filter_columns()
                 .eq_header_context(Filter::Is(&self.header_context))
                 .eq_data_context(Filter::Is(&self.data_context))
-                .eq_data_type(Filter::Is(&self.column_dtype))
+                .eq_dtype(Filter::Is(&self.column_dtype))
                 .collect()
                 .is_empty()
         })
