@@ -3,6 +3,7 @@ use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesConte
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
+use crate::validation::contextualised_dataframe_validation::validate_single_patient_column;
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -14,6 +15,7 @@ use validator::Validate;
 /// rules and semantic information defined in the context.
 #[derive(Clone, Validate, Default, Debug)]
 #[validate(schema(function = "validate_one_context_per_column"))]
+#[validate(schema(function = "validate_single_patient_column"))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
