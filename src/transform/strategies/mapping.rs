@@ -2,7 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 
-use crate::transform::error::TransformError::{MappingError, StrategyError};
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
@@ -101,8 +101,14 @@ impl MappingStrategy {
 
 impl Strategy for MappingStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
-        tables.iter().all(|table| {
-            table.contexts_have_dtype(&self.header_context, &self.data_context, &self.column_dtype)
+        tables.iter().any(|table| {
+            !table
+                .filter_columns()
+                .eq_header_context(Filter::Is(&self.header_context))
+                .eq_data_context(Filter::Is(&self.data_context))
+                .eq_data_type(Filter::Is(&self.column_dtype))
+                .collect()
+                .is_empty()
         })
     }
 
@@ -124,7 +130,10 @@ impl Strategy for MappingStrategy {
             );
 
             let col_names: Vec<String> = table
-                .get_cols_with_contexts(&self.header_context, &self.data_context)
+                .filter_columns()
+                .eq_header_context(Filter::Is(&self.header_context))
+                .eq_data_context(Filter::Is(&self.data_context))
+                .collect()
                 .iter()
                 .map(|col| col.name().to_string())
                 .collect();
@@ -135,7 +144,7 @@ impl Strategy for MappingStrategy {
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column
                         .cast(&DataType::String)
-                        .map_err(|err| StrategyError(err.to_string()))?;
+                        .map_err(|err| TransformError::StrategyError(err.to_string()))?;
                     Cow::Owned(casted_col)
                 } else {
                     Cow::Borrowed(original_column)
@@ -144,7 +153,7 @@ impl Strategy for MappingStrategy {
                 let mapped_column = col
                     .str()
                     .map_err(|_| {
-                        StrategyError(format!(
+                        TransformError::StrategyError(format!(
                             "Unexpectedly could not convert column {col_name} to string column."
                         ))
                     })?
@@ -178,18 +187,18 @@ impl Strategy for MappingStrategy {
                     .replace(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
-                            StrategyError(format!(
+                            TransformError::StrategyError(format!(
                                 "Unable to cast column from {} to {}",
                                 self.column_dtype, self.out_dtype
                             ))
                         })?,
                     )
-                    .map_err(|err| StrategyError(err.to_string()))?;
+                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
             }
         }
 
         if !error_info.is_empty() {
-            Err(MappingError {
+            Err(TransformError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })

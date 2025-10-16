@@ -1,5 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -29,7 +30,10 @@ impl Collector {
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf.get_cols_with_data_context(&Context::SubjectId);
+            let subject_id_cols = cdf
+                .filter_columns()
+                .eq_data_context(Filter::Is(&Context::SubjectId))
+                .collect();
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
                     "Multiple SubjectID columns were found in table {}.",
@@ -77,8 +81,11 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let pf_scs =
-            patient_cdf.get_series_contexts_with_contexts(&Context::None, &Context::HpoLabel);
+        let pf_scs = patient_cdf
+            .filter_series_context()
+            .eq_header_context(Filter::Is(&Context::None))
+            .eq_data_context(Filter::Is(&Context::HpoLabel))
+            .collect();
 
         for pf_sc in pf_scs {
             let col_id = pf_sc.get_identifier();
@@ -266,7 +273,10 @@ impl Collector {
         context: Context,
         patient_id: &str,
     ) -> Result<Option<String>, TransformError> {
-        let cols_of_element_type = patient_cdf.get_cols_with_data_context(&context);
+        let cols_of_element_type = patient_cdf
+            .filter_columns()
+            .eq_data_context(Filter::Is(&context))
+            .collect();
 
         if cols_of_element_type.is_empty() {
             return Ok(None);
