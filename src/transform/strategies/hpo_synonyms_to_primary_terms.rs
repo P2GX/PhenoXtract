@@ -30,14 +30,13 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {
-            table
+            !table
                 .filter_columns()
                 .eq_header_context(Filter::Is(&Context::None))
                 .eq_data_context(Filter::Is(&Context::HpoLabel))
                 .eq_data_type(Filter::Is(&DataType::String))
                 .collect()
-                .len()
-                >= 1
+                .is_empty()
         })
     }
 
