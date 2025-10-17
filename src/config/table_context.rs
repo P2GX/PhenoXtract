@@ -34,7 +34,6 @@ impl TableContext {
         self.context.push(sc);
         self
     }
-    
 }
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).

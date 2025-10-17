@@ -1,5 +1,6 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
@@ -13,8 +14,14 @@ use std::collections::{HashMap, HashSet};
 pub struct MultiHPOColExpansionStrategy;
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
-        tables.iter().all(|table| {
-            table.contexts_have_dtype(&Context::None, &Context::MultiHpoId, &DataType::String)
+        tables.iter().any(|table| {
+            !table
+                .filter_columns()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::MultiHpoId))
+                .where_dtype(Filter::Is(&DataType::String))
+                .collect()
+                .is_empty()
         })
     }
 
@@ -23,21 +30,20 @@ impl Strategy for MultiHPOColExpansionStrategy {
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), TransformError> {
         for table in tables.iter_mut() {
-            let multi_hpo_col_names = table
-                .get_cols_with_contexts(&Context::None, &Context::MultiHpoId)
-                .iter()
-                .map(|col| col.name().to_string())
-                .collect::<Vec<String>>();
-
-            if multi_hpo_col_names.is_empty() {
+            if table
+                .filter_columns()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::MultiHpoId))
+                .collect()
+                .is_empty()
+            {
                 continue;
             }
 
             let table_name = table.context().name.clone();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
-            let stringified_subject_id_col = table
-                .get_cols_with_data_context(&Context::SubjectId)
+            let stringified_subject_id_col = table.filter_columns().where_data_context(Filter::Is(&Context::SubjectId)).collect()
                 .last()
                 .ok_or(StrategyError(format!(
                     "Could not find SubjectID column in table {table_name}"
@@ -48,16 +54,37 @@ impl Strategy for MultiHPOColExpansionStrategy {
             let mut new_hpo_cols = vec![];
             let mut new_series_contexts = vec![];
 
-            let multi_hpo_blocks = get_multi_hpo_blocks(table);
+            let mut bb_ids = table
+                .get_building_block_ids()
+                .iter()
+                .map(|&bb_id| Some(bb_id))
+                .collect::<Vec<Option<&str>>>();
+            bb_ids.push(None);
+            bb_ids.sort();
 
-            for multi_hpo_block in multi_hpo_blocks {
+            for bb_id in bb_ids {
+                let multi_hpo_block = match bb_id {
+                    None => table
+                        .filter_columns()
+                        .where_header_context(Filter::Is(&Context::None))
+                        .where_data_context(Filter::Is(&Context::MultiHpoId))
+                        .where_building_block(Filter::IsNone)
+                        .collect(),
+                    Some(bb_id) => table
+                        .filter_columns()
+                        .where_header_context(Filter::Is(&Context::None))
+                        .where_data_context(Filter::Is(&Context::MultiHpoId))
+                        .where_building_block(Filter::Is(bb_id))
+                        .collect(),
+                };
+
                 let stringified_multi_hpo_block = multi_hpo_block.iter()
                     .map(|col| {
                         col.str().map_err(|_| StrategyError(
                             "Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string()
                         ))
                     })
-                    .collect()?;
+                    .collect::<Result<Vec<&StringChunked>, TransformError>>()?;
 
                 let (patient_to_hpo, hpos) = get_patient_to_hpo_data(
                     stringified_subject_id_col,
@@ -67,10 +94,6 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 let mut sorted_hpos = hpos.into_iter().collect::<Vec<&str>>();
                 sorted_hpos.sort();
 
-                let bb_id = table
-                    .get_series_context_from_column(multi_hpo_block.last().unwrap())
-                    .unwrap()
-                    .get_building_block_id();
                 let (new_hpo_cols_from_this_block, new_sc) = create_new_cols_with_sc(
                     stringified_subject_id_col,
                     bb_id,
@@ -82,11 +105,8 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 new_series_contexts.push(new_sc);
             }
 
-            let old_multi_hpo_scs = table
-                .get_series_contexts_with_contexts(&Context::None, &Context::MultiHpoId);
-            
-            table.remove_scs_with_columns(old_multi_hpo_scs);
-            
+            table.remove_scs_and_cols_with_context(&Context::None, &Context::MultiHpoId);
+
             for new_hpo_col in new_hpo_cols {
                 let new_hpo_col_name = new_hpo_col.name().clone();
                 table
@@ -94,7 +114,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     .with_column(new_hpo_col)
                     .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}. Possible duplicates?")))?;
             }
-            
+
             for new_sc in new_series_contexts {
                 table.context_mut().add_series_context(new_sc);
             }
@@ -111,27 +131,6 @@ fn hpo_id_search(string_to_search: &str) -> Vec<&str> {
         .find_iter(string_to_search)
         .map(|mat| mat.as_str())
         .collect()
-}
-
-#[allow(unused)]
-fn get_multi_hpo_blocks(table: &ContextualizedDataFrame) -> Vec<Vec<&Column>> {
-    let bb_ids = table.get_building_block_ids();
-    let mut bb_ids_vec = bb_ids.into_iter().collect::<Vec<&str>>();
-    bb_ids_vec.sort();
-    let mut multi_hpo_blocks = vec![];
-    for bb_id in bb_ids_vec {
-        let multi_hpo_block =
-            table.get_building_block_with_contexts(bb_id, &Context::None, &Context::MultiHpoId);
-        if !multi_hpo_block.is_empty() {
-            multi_hpo_blocks.push(multi_hpo_block);
-        }
-    }
-    let multi_hpo_block =
-        table.get_no_building_block_with_contexts(&Context::None, &Context::MultiHpoId);
-    if !multi_hpo_block.is_empty() {
-        multi_hpo_blocks.push(multi_hpo_block);
-    }
-    multi_hpo_blocks
 }
 
 #[allow(unused)]
@@ -191,15 +190,14 @@ fn create_new_cols_with_sc(
             let observation_status = patient_id
                 .and_then(|id| patient_to_hpo.get(id))
                 .filter(|hpos| hpos.contains(hpo))
-                //bool?
-                .map(|_| AnyValue::String("OBSERVED"))
+                .map(|_| AnyValue::Boolean(true))
                 .unwrap_or(AnyValue::Null);
             observation_statuses.push(observation_status);
         });
 
         let new_hpo_col_name = match building_block_id {
             None => hpo.to_string(),
-            Some(block_id) => format!("{hpo} ({block_id})"),
+            Some(block_id) => format!("{hpo} (block {block_id})"),
         };
 
         let new_hpo_col = Column::new(new_hpo_col_name.clone().into(), observation_statuses);
@@ -281,34 +279,34 @@ mod tests {
             "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P002"),AnyValue::String("P003")],
             "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
             "HP:1111111" => &[
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,],
             "HP:4444444" => &[
                 AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED")],
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true)],
             "HP:5555555" => &[
                 AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
                 AnyValue::Null,],
             "HP:1111111 (block A)" => &[
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
                 AnyValue::Null,],
             "HP:2222222 (block A)" => &[
                 AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
                 AnyValue::Null,],
             "HP:3333333 (block A)" => &[
                 AnyValue::Null,
-                AnyValue::String("OBSERVED"),
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
                 AnyValue::Null,],
         ].unwrap();
 
@@ -352,6 +350,7 @@ mod tests {
         let strategy = MultiHPOColExpansionStrategy;
         strategy.transform(&mut [&mut cdf]).unwrap();
         assert_eq!(cdf, expected_transformed_cdf);
+        dbg!(&cdf);
     }
 
     #[rstest]

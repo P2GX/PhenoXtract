@@ -1,5 +1,5 @@
-use crate::config::table_context::{Identifier, SeriesContext, TableContext};
-use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesContextFilter};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
@@ -7,7 +7,6 @@ use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
 use std::collections::HashSet;
-use std::hash::Hash;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -131,38 +130,6 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_series_context_from_column(&self, col: &Column) -> Option<&SeriesContext> {
-        self.context
-            .context
-            .iter()
-            .find(|sc| self.get_columns(sc.get_identifier()).contains(&col))
-    }
-
-    /// Searches a CDF for columns whose header_context and data_context are certain specific values
-    /// and ensures that the columns' data_type is equal to desired_dtype
-    /// Returns true if all columns with the given contexts also feature the same dtype. Also returns true if no columns have the contexts.
-    /// Returns false if any of the found columns does not feature the give dtype.
-    pub fn contexts_have_dtype(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-        desired_dtype: &DataType,
-    ) -> bool {
-        let columns = self.get_cols_with_contexts(header_context, data_context);
-        let contexts_have_desired_dtype = columns.iter().all(|col| col.dtype() == desired_dtype);
-
-        if !contexts_have_desired_dtype {
-            warn!(
-                "Not all columns with {} data context have {} type in table {}.",
-                data_context,
-                desired_dtype,
-                self.context().name
-            );
-        }
-        contexts_have_desired_dtype
-    }
-
-    #[allow(unused)]
     /// The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(
         &mut self,
@@ -199,24 +166,6 @@ impl ContextualizedDataFrame {
         ColumnFilter::new(self)
     }
 
-    #[allow(unused)]
-    pub fn get_no_building_block_with_contexts(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        self.get_series_contexts_with_contexts(header_context, data_context)
-            .iter()
-            .flat_map(|sc| {
-                if sc.get_building_block_id() == None {
-                    self.get_columns(sc.get_identifier())
-                } else {
-                    vec![]
-                }
-            })
-            .collect()
-    }
-
     pub fn get_building_block_ids(&self) -> HashSet<&str> {
         let mut building_block_ids = HashSet::new();
         self.context().context.iter().for_each(|sc| {
@@ -227,14 +176,45 @@ impl ContextualizedDataFrame {
         building_block_ids
     }
 
-    pub fn remove_scs_with_columns(&mut self, Vec<&SeriesContext>) -> HashSet<&str> {
-        for multi_hpo_col_name in multi_hpo_col_names.iter() {
-            table.data_mut().drop_in_place(multi_hpo_col_name).map_err(|_| StrategyError(format!("Unexpectedly could not remove MultiHPO column {multi_hpo_col_name} from table {table_name}.")))?;
+    pub fn remove_scs_with_context(
+        &mut self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> &mut Self {
+        self.context_mut().context.retain(|sc| {
+            sc.get_header_context() != header_context || sc.get_data_context() != data_context
+        });
+
+        self
+    }
+
+    pub fn remove_scs_and_cols_with_context(
+        &mut self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> &mut Self {
+        let cols_to_remove_names = self
+            .filter_columns()
+            .where_header_context(Filter::Is(header_context))
+            .where_data_context(Filter::Is(data_context))
+            .collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect::<Vec<String>>();
+
+        for col_name in cols_to_remove_names.iter() {
+            self.data_mut().drop_in_place(col_name).expect(
+                format!(
+                    "Unexpectedly could not remove MultiHPO column {} from table {}.",
+                    col_name, self.context.name
+                )
+                .as_str(),
+            );
         }
 
-        for multi_hpo_sc in old_multi_hpo_scs.iter() {
-            table.context_mut().remove_series_context(multi_hpo_sc);
-        }
+        self.remove_scs_with_context(header_context, data_context);
+
+        self
     }
 }
 
@@ -386,108 +366,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cdf.data, expected_df);
-    }
-
-    #[rstest]
-    fn test_get_cols_with_data_context() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectId),
-            vec![
-                cdf.data.column("user.name").unwrap(),
-                cdf.data.column("different").unwrap()
-            ]
-        );
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectAge),
-            vec![cdf.data.column("age").unwrap()]
-        );
-    }
-
-    #[rstest]
-    fn test_get_cols_with_contexts() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_contexts(&Context::None, &Context::SubjectId),
-            vec![
-                cdf.data.column("user.name").unwrap(),
-                cdf.data.column("different").unwrap()
-            ]
-        );
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectAge),
-            vec![cdf.data.column("age").unwrap()]
-        );
-    }
-
-    #[rstest]
-    fn test_get_cols_with_header_context() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_header_context(&Context::HpoLabel),
-            vec![
-                cdf.data.column("bronchitis").unwrap(),
-                cdf.data.column("overweight").unwrap()
-            ]
-        );
-    }
-
-    #[rstest]
-    fn test_check_contexts_have_data_type() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-
-        //check it can recognise true positives
-        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::String));
-        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectAge, &DataType::Int32));
-
-        //check it can recognise true negatives
-        assert!(!cdf.contexts_have_dtype(
-            &Context::HpoLabel,
-            &Context::ObservationStatus,
-            &DataType::Float64
-        ));
-        assert!(!cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::Boolean));
-    }
-
-    #[rstest]
-    fn test_get_building_block_with_contexts() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-
-        let block_id = "block_1".to_string();
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::HpoLabel,
-                &Context::ObservationStatus
-            ),
-            vec![cdf.data.column("bronchitis").unwrap()]
-        );
-
-        let no_column_vec: Vec<&Column> = Vec::new();
-        assert_eq!(
-            cdf.get_building_block_with_contexts(&block_id, &Context::None, &Context::VitalStatus),
-            no_column_vec
-        );
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::None,
-                &Context::ObservationStatus
-            ),
-            no_column_vec
-        );
     }
 
     #[rstest]
