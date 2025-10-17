@@ -53,15 +53,15 @@ pub(crate) fn validate_subject_ids_context(
             .len()
             == 1);
 
-    if !is_valid {
+    if is_valid {
+        Ok(())
+    } else {
         let mut error = ValidationError::new("missing_subject_id");
         error.add_param(Cow::from("table_name"), &table_context.name());
-        return Err(error.with_message(Cow::Owned(
-            "Missing SubjectID on table. Every table needs to have at least one.".to_string(),
-        )));
-    };
-
-    Ok(())
+        Err(error.with_message(Cow::Owned(
+            "SubjectID columns has unexpected configuration. If SubjectID's are in the header at least one SeriesContext need to be provided. If SubjectID's are in the rows, exactly one SeriesContext has to pre provided".to_string(),
+        )))
+    }
 }
 
 #[cfg(test)]
