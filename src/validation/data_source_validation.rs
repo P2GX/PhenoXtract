@@ -12,8 +12,8 @@ pub(crate) fn validate_unique_sheet_names(sheets: &[TableContext]) -> Result<(),
     let duplicates: Vec<String> = sheets
         .iter()
         .filter_map(|s| {
-            if !seen_names.insert(&s.name) {
-                Some(s.name.clone())
+            if !seen_names.insert(s.name()) {
+                Some(s.name().to_string())
             } else {
                 None
             }
@@ -45,15 +45,15 @@ pub(crate) fn validate_extraction_config_unique_ids(
 pub(crate) fn validate_extraction_config_links(
     source: &ExcelDatasource,
 ) -> Result<(), ValidationError> {
-    let extraction_ids: HashSet<String> = source
+    let extraction_ids: HashSet<&str> = source
         .extraction_configs
         .iter()
-        .map(|s| s.name.clone())
+        .map(|s| s.name.as_str())
         .collect();
-    let table_ids: HashSet<String> = source.contexts.iter().map(|t| t.name.clone()).collect();
+    let table_ids: HashSet<&str> = source.contexts.iter().map(|t| t.name()).collect();
 
     if extraction_ids.len() < table_ids.len() {
-        let missing: Vec<String> = table_ids.difference(&extraction_ids).cloned().collect();
+        let missing: Vec<&str> = table_ids.difference(&extraction_ids).cloned().collect();
         let mut error = ValidationError::new("linking");
         error.add_param(Cow::from("missing"), &missing);
         return Err(error.with_message(Cow::Owned(
@@ -61,7 +61,7 @@ pub(crate) fn validate_extraction_config_links(
         )));
     }
     if extraction_ids.len() > table_ids.len() {
-        let missing: Vec<String> = extraction_ids.difference(&table_ids).cloned().collect();
+        let missing: Vec<&str> = extraction_ids.difference(&table_ids).cloned().collect();
         let mut error = ValidationError::new("linking");
         error.add_param(Cow::from("missing"), &missing);
         return Err(error.with_message(Cow::Owned(
@@ -88,14 +88,8 @@ mod tests {
     #[rstest]
     fn test_validate_unique_sheet_names() {
         let table_context = vec![
-            TableContext {
-                name: "phenotypes".to_string(),
-                context: vec![],
-            },
-            TableContext {
-                name: "genotypes".to_string(),
-                context: vec![],
-            },
+            TableContext::new("phenotypes".to_string(), vec![]),
+            TableContext::new("genotypes".to_string(), vec![]),
         ];
         let validation = validate_unique_sheet_names(&table_context);
         assert!(validation.is_ok());
@@ -104,14 +98,8 @@ mod tests {
     #[rstest]
     fn test_validate_unique_sheet_names_error() {
         let table_context = vec![
-            TableContext {
-                name: "phenotypes".to_string(),
-                context: vec![],
-            },
-            TableContext {
-                name: "phenotypes".to_string(),
-                context: vec![],
-            },
+            TableContext::new("phenotypes".to_string(), vec![]),
+            TableContext::new("phenotypes".to_string(), vec![]),
         ];
         let validation = validate_unique_sheet_names(&table_context);
         assert!(validation.is_err());
@@ -126,10 +114,7 @@ mod tests {
     }
 
     fn mock_table_config(name: &str) -> TableContext {
-        TableContext {
-            name: name.to_string(),
-            context: vec![],
-        }
+        TableContext::new(name.to_string(), vec![])
     }
 
     #[test]

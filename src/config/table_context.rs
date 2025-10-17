@@ -18,11 +18,11 @@ use validator::Validate;
 ))]
 pub struct TableContext {
     #[allow(unused)]
-    pub name: String,
+    name: String,
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_identifiers"))]
     #[serde(default)]
-    pub context: Vec<SeriesContext>,
+    context: Vec<SeriesContext>,
 }
 
 impl TableContext {
@@ -32,6 +32,25 @@ impl TableContext {
     }
     pub fn add_series_context(&mut self, sc: SeriesContext) -> &mut Self {
         self.context.push(sc);
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+
+    pub fn context(&self) -> &Vec<SeriesContext> {
+        &self.context
+    }
+    pub fn context_mut(&mut self) -> &mut Vec<SeriesContext> {
+        &mut self.context
+    }
+
+    pub fn with_name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
         self
     }
 }

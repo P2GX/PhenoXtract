@@ -124,6 +124,36 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Genotype Ontology (GENO).
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading GENO in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"geno"`
+    /// - **File Name:** `"geno.json"`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/geno` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/geno` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
+    pub fn default_geno_registry() -> Result<Self, RegistryError> {
+        let geno_id = "geno".to_string();
+        let registry_path = Self::default_registry_path(geno_id.as_str())?;
+
+        Ok(ObolibraryOntologyRegistry::new(
+            registry_path,
+            "geno.json".to_string(),
+            geno_id,
+        ))
+    }
+
     fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
         if version == "latest" {
             let meta_data = self
@@ -263,8 +293,8 @@ mod tests {
     fn test_register(temp_dir: TempDir) {
         let registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
-            "hp-base.json".to_string(),
-            "hpo".to_string(),
+            "geno.json".to_string(),
+            "geno".to_string(),
         );
 
         let path = registry.register("latest").unwrap();
@@ -342,6 +372,21 @@ mod tests {
     }
 
     #[rstest]
+    fn test_default_geno_registry() {
+        let registry = ObolibraryOntologyRegistry::default_geno_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+        assert_eq!(registry.file_name, "geno.json");
+        assert_eq!(registry.ontology_prefix, "geno");
+        registry.register("latest").unwrap();
+    }
+
+    #[rstest]
     fn test_construct_file_name(temp_dir: TempDir) {
         let registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
@@ -378,7 +423,6 @@ mod tests {
             "hp".to_string(),
         );
 
-        // Create a fake file
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
 
