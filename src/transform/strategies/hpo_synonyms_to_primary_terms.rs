@@ -49,7 +49,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name.to_string();
+            let table_name = table.context().name().to_string();
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
                 .filter_columns()
@@ -62,7 +62,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                 .collect();
 
             for col_name in names_of_hpo_label_cols {
-                let col = table.data.column(&col_name).map_err(|_| {
+                let col = table.data().column(&col_name).map_err(|_| {
                     StrategyError(format!(
                         "Unexpectedly could not find column {col_name} in DataFrame."
                     ))
@@ -76,7 +76,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                             if !cell_value.is_empty() {
                                 error_info.insert(MappingErrorInfo {
                                     column: col.name().to_string(),
-                                    table: table.context().clone().name,
+                                    table: table.context().name().to_string(),
                                     old_value: cell_value.to_string(),
                                     possible_mappings: vec![],
                                 });
@@ -84,11 +84,14 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                             cell_value
                         })
                 });
-                table.data.replace(&col_name, mapped_column).map_err(|_| {
-                    StrategyError(format!(
-                        "Could not replace {col_name} column in {table_name}."
-                    ))
-                })?;
+                table
+                    .data_mut()
+                    .replace(&col_name, mapped_column)
+                    .map_err(|_| {
+                        StrategyError(format!(
+                            "Could not replace {col_name} column in {table_name}."
+                        ))
+                    })?;
             }
         }
 
@@ -162,7 +165,7 @@ mod tests {
             ["Asthma", "Asthma", "Arthritis", "Nail psoriasis"],
         );
         let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
-        assert_eq!(cdf.data, expected_df);
+        assert_eq!(cdf.into_data(), expected_df);
     }
 
     #[rstest]
@@ -229,7 +232,7 @@ mod tests {
             ["Asthma", "Asthma", "jimmy", "Nail psoriasis"],
         );
         let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
-        assert_eq!(cdf.data, df_after_strat);
+        assert_eq!(cdf.into_data(), df_after_strat);
     }
 
     #[rstest]
@@ -287,6 +290,6 @@ mod tests {
             ],
         );
         let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
-        assert_eq!(cdf.data, expected_df);
+        assert_eq!(cdf.into_data(), expected_df);
     }
 }
