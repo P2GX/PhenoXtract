@@ -37,32 +37,12 @@ pub(crate) fn validate_one_context_per_column(
         ))
     })
 }
-pub(crate) fn validate_single_patient_column(
-    cdf: &ContextualizedDataFrame,
-) -> Result<(), ValidationError> {
-    if cdf
-        .filter_columns()
-        .where_data_context(Filter::Is(&Context::SubjectId))
-        .collect()
-        .len()
-        != 1
-    {
-        let mut error = ValidationError::new("subject_missing");
-        error.add_param(Cow::from("table_name"), &cdf.context().name);
-        return Err(error.with_message(Cow::Owned(
-            "Too many or to few subject id columns. Each table needs =1".to_string(),
-        )));
-    }
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
-    use crate::validation::contextualised_dataframe_validation::{
-        validate_one_context_per_column, validate_single_patient_column,
-    };
+    use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
     use polars::prelude::{Column, DataFrame};
     use rstest::{fixture, rstest};
 
@@ -125,37 +105,5 @@ mod tests {
             cols_with_multiple_scs == vec!["column_2".to_string(), "abcabcabc".to_string()]
                 || cols_with_multiple_scs == vec!["abcabcabc".to_string(), "column_2".to_string()]
         );
-    }
-
-    #[rstest]
-    fn test_validate_single_patient_column_ok(df: DataFrame) {
-        let sc1 = regex("column_1").with_data_context(Context::SubjectId);
-        let sc2 = multi_ids(vec!["column_2", "column_3"]);
-        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2]);
-        let cdf = ContextualizedDataFrame::new(tc, df);
-
-        assert!(validate_single_patient_column(&cdf).is_ok());
-    }
-
-    #[rstest]
-    fn test_validate_single_patient_column_too_many(df: DataFrame) {
-        let sc1 = regex("column_1").with_data_context(Context::SubjectId);
-        let sc2 = regex("column_2").with_data_context(Context::SubjectId);
-        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2]);
-        let cdf = ContextualizedDataFrame::new(tc, df);
-
-        let err = validate_single_patient_column(&cdf);
-        assert!(err.is_err());
-    }
-
-    #[rstest]
-    fn test_validate_single_patient_column_too_few(df: DataFrame) {
-        let sc1 = regex("column_1");
-        let sc2 = multi_ids(vec!["column_2", "column_3"]);
-        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2]);
-        let cdf = ContextualizedDataFrame::new(tc, df);
-
-        let err = validate_single_patient_column(&cdf);
-        assert!(err.is_err());
     }
 }

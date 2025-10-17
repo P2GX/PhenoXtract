@@ -1,5 +1,6 @@
+use crate::extract::contextualized_dataframe_filters::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
-use crate::validation::table_context_validation::validate_at_least_one_subject_id;
+use crate::validation::table_context_validation::validate_subject_ids_context;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -13,7 +14,7 @@ use validator::Validate;
 /// context for its series, which can be organized as columns or rows.
 #[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq, Default)]
 #[validate(schema(
-    function = "validate_at_least_one_subject_id",
+    function = "validate_subject_ids_context",
     skip_on_field_errors = false
 ))]
 pub struct TableContext {
@@ -33,6 +34,10 @@ impl TableContext {
     pub fn add_series_context(&mut self, sc: SeriesContext) -> &mut Self {
         self.context.push(sc);
         self
+    }
+
+    pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
+        SeriesContextFilter::new(self.context.as_ref())
     }
 }
 
