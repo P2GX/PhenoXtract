@@ -18,7 +18,7 @@ pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
     #[allow(unused)]
-    pub data: DataFrame,
+    data: DataFrame,
 }
 
 impl ContextualizedDataFrame {
@@ -31,14 +31,29 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
+    pub fn context_mut(&mut self) -> &TableContext {
+        &mut self.context
+    }
+
     #[allow(unused)]
     pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
         &self.context.context
     }
 
-    #[allow(unused)]
+    pub fn data(&self) -> &DataFrame {
+        &self.data
+    }
+
     pub fn data_mut(&mut self) -> &mut DataFrame {
         &mut self.data
+    }
+
+    pub fn into_data(self) -> DataFrame {
+        self.data
+    }
+
+    pub fn set_data(&mut self, data: DataFrame) {
+        self.data = data;
     }
 
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {

@@ -47,7 +47,7 @@ impl Collector {
             )))?;
 
             let patient_dfs = cdf
-                .data
+                .data()
                 .partition_by(vec![subject_id_col.name().as_str()], true)
                 .map_err(|_| {
                     CollectionError(format!(

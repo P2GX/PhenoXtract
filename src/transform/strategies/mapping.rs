@@ -139,7 +139,7 @@ impl Strategy for MappingStrategy {
                 .collect();
 
             for col_name in col_names {
-                let original_column = table.data.column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name).unwrap();
 
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column
@@ -183,7 +183,7 @@ impl Strategy for MappingStrategy {
                     });
 
                 table
-                    .data
+                    .data_mut()
                     .replace(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
@@ -238,18 +238,20 @@ mod tests {
     fn test_sex_mapping_strategy_success() {
         let mut table = make_test_dataframe();
         let filtered_table = table
-            .data
+            .clone()
+            .into_data()
             .lazy()
             .filter(col("sex").eq(lit("mole")).not())
             .collect()
             .unwrap();
-        table.data = filtered_table;
+        table.set_data(filtered_table);
+
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
         strategy.transform(&mut [&mut table]).unwrap();
 
         let sex_values: Vec<String> = table
-            .data
+            .data()
             .column("sex")
             .unwrap()
             .str()
@@ -277,7 +279,7 @@ mod tests {
         let mut table = make_test_dataframe();
 
         let series = Series::new("sex".into(), vec![5.6]);
-        table.data.replace("sex", series.clone()).unwrap();
+        table.data_mut().replace("sex", series.clone()).unwrap();
 
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
         strategy.synonym_map = HashMap::from([("5.6".to_string(), "male".to_string())]);
@@ -286,12 +288,12 @@ mod tests {
 
         strategy.transform(&mut [&mut table]).unwrap();
         assert_eq!(
-            table.data.column("sex").unwrap().dtype(),
+            table.data().column("sex").unwrap().dtype(),
             &strategy.out_dtype
         );
 
         table
-            .data
+            .data()
             .column(series.name())
             .unwrap()
             .str()
@@ -328,7 +330,7 @@ mod tests {
         }
 
         let sex_values: Vec<String> = table
-            .data
+            .data()
             .column("sex")
             .unwrap()
             .str()
