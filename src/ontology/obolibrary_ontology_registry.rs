@@ -6,7 +6,7 @@ use crate::ontology::error::RegistryError;
 use crate::ontology::BioRegistryClient;
 use crate::ontology::obolibrary_client::ObolibraryClient;
 use directories::ProjectDirs;
-use log::debug;
+use log::{debug, info};
 use std::env;
 use std::env::home_dir;
 use std::fs::{File, remove_file};
@@ -87,6 +87,7 @@ impl ObolibraryOntologyRegistry {
         let hp_id = "hp".to_string();
         let registry_path = Self::default_registry_path(hp_id.as_str())?;
 
+        info!("Using HP registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
             "hp.json".to_string(),
@@ -117,10 +118,42 @@ impl ObolibraryOntologyRegistry {
         let mondo_id = "mondo".to_string();
         let registry_path = Self::default_registry_path(mondo_id.as_str())?;
 
+        info!("Using Mondo registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
             "mondo.json".to_string(),
             mondo_id,
+        ))
+    }
+
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO) annotations.
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading the HPO in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"hp"`
+    /// - **File Name:** `"hpoa.json"`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/hp` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/hp` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
+    pub fn default_hpoa_registry() -> Result<Self, RegistryError> {
+        let hpo = "hp".to_string();
+        let registry_path = Self::default_registry_path(hpo.as_str())?;
+
+        info!("Using HPa registry at {}", registry_path.display());
+        Ok(ObolibraryOntologyRegistry::new(
+            registry_path,
+            "phenotype.hpoa".to_string(),
+            hpo,
         ))
     }
 
@@ -339,6 +372,23 @@ mod tests {
         assert!(registry.registry_path.to_str().unwrap().contains("mondo"));
         assert_eq!(registry.file_name, "mondo.json");
         assert_eq!(registry.ontology_prefix, "mondo");
+    }
+
+    #[rstest]
+    fn test_default_hpoa_registry() {
+        let registry = ObolibraryOntologyRegistry::default_hpoa_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+
+        assert!(registry.registry_path.to_str().unwrap().contains("hp"));
+        assert_eq!(registry.file_name, "phenotype.hpoa");
+        assert_eq!(registry.ontology_prefix, "hp");
+        dbg!(&registry.registry_path);
     }
 
     #[rstest]
