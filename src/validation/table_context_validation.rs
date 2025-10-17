@@ -59,7 +59,7 @@ pub(crate) fn validate_subject_ids_context(
         let mut error = ValidationError::new("missing_subject_id");
         error.add_param(Cow::from("table_name"), &table_context.name());
         Err(error.with_message(Cow::Owned(
-            "SubjectID columns has unexpected configuration. If SubjectID's are in the header at least one SeriesContext need to be provided. If SubjectID's are in the rows, exactly one SeriesContext has to pre provided".to_string(),
+            "SubjectID columns have unexpected configuration. If SubjectIDs are in the headers then at least one Series Context with header_context = SubjectID needs to be provided. If SubjectIDs are in the cells, then exactly one SeriesContext must be provided.".to_string(),
         )))
     }
 }
