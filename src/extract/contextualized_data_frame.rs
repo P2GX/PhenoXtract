@@ -1,9 +1,10 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesContextFilter};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
-use log::{debug, warn};
-use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
+use log::debug;
+use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
 use std::collections::HashSet;
 use std::hash::Hash;
@@ -190,99 +191,12 @@ impl ContextualizedDataFrame {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn get_cols_with_contexts(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_data_context() == data_context
-                    && sc.get_header_context() == header_context
-                {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
+    pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
+        SeriesContextFilter::new(&self.context.context)
     }
 
-    #[allow(dead_code)]
-    pub fn get_cols_with_data_context(&self, data_context: &Context) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_data_context() == data_context {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
-    }
-
-    #[allow(unused)]
-    pub fn get_cols_with_header_context(&self, header_context: &Context) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_header_context() == header_context {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
-    }
-
-    #[allow(unused)]
-    pub fn get_series_contexts_with_contexts(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&SeriesContext> {
-        self.context
-            .context
-            .iter()
-            .filter(|sc| {
-                sc.get_header_context() == header_context && sc.get_data_context() == data_context
-            })
-            .collect()
-    }
-
-    /// Finds all columns associated with a specific building block ID that also match the given contexts.
-    ///
-    /// This function first identifies all series that match both the `header_context` and
-    /// `data_context`. From that subset, it finds a series whose building block ID
-    /// matches the provided `block_id` (case-insensitively). Finally, it returns all
-    /// columns associated with that series.
-    #[allow(unused)]
-    pub fn get_building_block_with_contexts(
-        &self,
-        block_id: &str,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        self.get_series_contexts_with_contexts(header_context, data_context)
-            .iter()
-            .flat_map(|sc| {
-                if let Some(other_id) = sc.get_building_block_id()
-                    && other_id.to_lowercase() == block_id.to_lowercase()
-                {
-                    return self.get_columns(sc.get_identifier());
-                }
-                vec![]
-            })
-            .collect()
+    pub fn filter_columns(&'_ self) -> ColumnFilter<'_> {
+        ColumnFilter::new(self)
     }
 
     #[allow(unused)]
@@ -327,6 +241,7 @@ impl ContextualizedDataFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::Context;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::{fixture, rstest};
