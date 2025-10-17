@@ -433,7 +433,6 @@ mod tests {
         assert!(registry.registry_path.to_str().unwrap().contains("hp"));
         assert_eq!(registry.file_name, "phenotype.hpoa");
         assert_eq!(registry.ontology_prefix, "hp");
-        dbg!(&registry.registry_path);
     }
 
     #[rstest]
