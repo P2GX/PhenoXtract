@@ -36,8 +36,8 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
-        &self.context.context
+    pub fn series_contexts(&self) -> &Vec<SeriesContext> {
+        self.context.context()
     }
 
     pub fn data(&self) -> &DataFrame {
@@ -140,7 +140,7 @@ impl ContextualizedDataFrame {
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
-        let table_name = self.context.name.clone();
+        let table_name = self.context.name().to_string();
         let transformed_series = Series::new(col_name.into(), transformed_vec);
         let transform_result = self
             .data_mut()
@@ -160,7 +160,7 @@ impl ContextualizedDataFrame {
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
-        SeriesContextFilter::new(&self.context.context)
+        SeriesContextFilter::new(self.context.context())
     }
 
     pub fn filter_columns(&'_ self) -> ColumnFilter<'_> {
@@ -191,9 +191,9 @@ mod tests {
 
     #[fixture]
     fn sample_ctx() -> TableContext {
-        TableContext {
-            name: "table".to_string(),
-            context: vec![
+        TableContext::new(
+            "table".to_string(),
+            vec![
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "user.name".to_string(),
@@ -215,7 +215,7 @@ mod tests {
                     .with_header_context(Context::HpoLabel)
                     .with_data_context(Context::ObservationStatus),
             ],
-        }
+        )
     }
 
     #[rstest]

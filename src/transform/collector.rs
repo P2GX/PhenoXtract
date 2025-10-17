@@ -37,13 +37,13 @@ impl Collector {
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
                     "Multiple SubjectID columns were found in table {}.",
-                    cdf.context().name
+                    cdf.context().name()
                 )));
             }
 
             let subject_id_col = subject_id_cols.last().ok_or(CollectionError(format!(
                 "Could not find SubjectID column in table {}",
-                cdf.context().name
+                cdf.context().name()
             )))?;
 
             let patient_dfs = cdf
@@ -52,7 +52,7 @@ impl Collector {
                 .map_err(|_| {
                     CollectionError(format!(
                         "Error when partitioning dataframe {} by SubjectID column.",
-                        cdf.context().name
+                        cdf.context().name()
                     ))
                 })?;
 
@@ -134,7 +134,7 @@ impl Collector {
                             warn!(
                                 "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
                                 onset,
-                                patient_cdf.context().name,
+                                patient_cdf.context().name(),
                                 phenopacket_id
                             );
                         }

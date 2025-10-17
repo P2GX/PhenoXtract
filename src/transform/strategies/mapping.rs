@@ -126,7 +126,7 @@ impl Strategy for MappingStrategy {
         for table in tables.iter_mut() {
             info!(
                 "Applying Mapping strategy to table: {}",
-                table.context().name
+                table.context().name()
             );
 
             let col_names: Vec<String> = table
@@ -171,7 +171,7 @@ impl Strategy for MappingStrategy {
                                 warn!("Unable to convert map '{cell_value}'");
                                 error_info.insert(MappingErrorInfo {
                                     column: col.name().to_string(),
-                                    table: table.context().clone().name,
+                                    table: table.context().name().to_string(),
                                     old_value: cell_value.to_string(),
                                     possible_mappings: MappingSuggestion::from_hashmap(
                                         &self.synonym_map,

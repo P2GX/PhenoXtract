@@ -49,7 +49,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name.to_string();
+            let table_name = table.context().name().to_string();
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
                 .filter_columns()
@@ -76,7 +76,7 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
                             if !cell_value.is_empty() {
                                 error_info.insert(MappingErrorInfo {
                                     column: col.name().to_string(),
-                                    table: table.context().clone().name,
+                                    table: table.context().name().to_string(),
                                     old_value: cell_value.to_string(),
                                     possible_mappings: vec![],
                                 });

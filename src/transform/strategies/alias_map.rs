@@ -23,7 +23,7 @@ pub struct AliasMapStrategy;
 impl AliasMapStrategy {
     fn get_col_name_alias_map_pairs(cdf: &ContextualizedDataFrame) -> Vec<(PlSmallStr, AliasMap)> {
         let mut col_name_alias_map_pairs = vec![];
-        for series_context in cdf.get_series_contexts() {
+        for series_context in cdf.series_contexts() {
             if let Some(am) = series_context.get_alias_map() {
                 let cols = cdf.get_columns(series_context.get_identifier());
                 for col in cols {
@@ -47,7 +47,7 @@ impl Strategy for AliasMapStrategy {
         info!("Applying AliasMap strategy to data.");
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name.clone();
+            let table_name = table.context().name().to_string();
             info!("Applying AliasMap strategy to table: {table_name}");
 
             let col_name_alias_pairs = AliasMapStrategy::get_col_name_alias_map_pairs(table);

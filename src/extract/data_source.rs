@@ -153,7 +153,7 @@ impl Extractable for DataSource {
                     let sheet_context = excel_source
                         .contexts
                         .iter()
-                        .find(|context| &context.name == sheet_name)
+                        .find(|context| context.name() == sheet_name)
                         .ok_or(ExtractionError::UnableToFindTableContext(format!(
                             "Can't find table context with name {sheet_name}"
                         )))?;
@@ -349,18 +349,16 @@ mod tests {
     fn table_context_column_wise_no_header(
         table_context_column_wise_header: TableContext,
     ) -> TableContext {
-        let mut test_tc3 = table_context_column_wise_header.clone();
-        test_tc3.name = "third_sheet".to_string();
-        test_tc3
+        let test_tc3 = table_context_column_wise_header.clone();
+        test_tc3.with_name("third_sheet")
     }
 
     #[fixture]
     fn table_context_row_wise_no_header(
         table_context_row_wise_header: TableContext,
     ) -> TableContext {
-        let mut test_tc4 = table_context_row_wise_header.clone();
-        test_tc4.name = "fourth_sheet".to_string();
-        test_tc4
+        let test_tc4 = table_context_row_wise_header.clone();
+        test_tc4.with_name("fourth_sheet")
     }
 
     #[fixture]
@@ -682,9 +680,9 @@ AGE,18,27,89"#;
         for data_frame in data_frames {
             let extracted_data = data_frame.data().clone();
 
-            if data_frame.context().name == "first_sheet" {
+            if data_frame.context().name() == "first_sheet" {
                 assert_eq!(extracted_data.get_column_names(), column_names);
-            } else if data_frame.context().name == "second_sheet" {
+            } else if data_frame.context().name() == "second_sheet" {
                 assert_eq!(extracted_data.get_column_names(), row_names);
             } else {
                 assert_eq!(extracted_data.get_column_names(), ["0", "1", "2", "3"]);
@@ -695,8 +693,8 @@ AGE,18,27,89"#;
             let extracted_col2 = extracted_data.select_at_idx(2).unwrap();
             let extracted_col3 = extracted_data.select_at_idx(3).unwrap();
 
-            if data_frame.context().name == "first_sheet"
-                || data_frame.context().name == "third_sheet"
+            if data_frame.context().name() == "first_sheet"
+                || data_frame.context().name() == "third_sheet"
             {
                 let extracted_patient_ids: Vec<_> =
                     extracted_col0.str().unwrap().into_no_null_iter().collect();
@@ -712,8 +710,8 @@ AGE,18,27,89"#;
                 assert_eq!(extracted_subject_sexes, subject_sexes);
             }
 
-            if data_frame.context().name == "second_sheet"
-                || data_frame.context().name == "fourth_sheet"
+            if data_frame.context().name() == "second_sheet"
+                || data_frame.context().name() == "fourth_sheet"
             {
                 let extracted_times_of_birth = extracted_col0
                     .datetime()
