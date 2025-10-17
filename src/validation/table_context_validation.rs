@@ -151,13 +151,13 @@ mod tests {
 
     #[rstest]
     fn test_validate_subject_ids_context_err() {
-        let table_context = TableContext {
-            name: "test".to_string(),
-            context: vec![
+        let table_context = TableContext::new(
+            "test".to_string(),
+            vec![
                 regex("test").with_data_context(Context::SubjectId),
                 regex("test_2").with_data_context(Context::SubjectId),
             ],
-        };
+        );
         let result = validate_subject_ids_context(&table_context);
         assert!(result.is_err());
     }
