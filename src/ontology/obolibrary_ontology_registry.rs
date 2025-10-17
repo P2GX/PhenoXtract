@@ -132,31 +132,25 @@ impl ObolibraryOntologyRegistry {
     /// # Configuration
     /// - **Ontology Prefix:** `"geno"`
     /// - **File Name:** `"geno.json"`
-    /// - **Storage Path:** `$HOME/.<crate_name>/geno`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/geno` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/geno` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err(RegistryError::EnvironmentVarNotSet)` if the
-    /// `HOME` environment variable is not set on the system.
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_geno_registry() -> Result<Self, RegistryError> {
         let geno_id = "geno".to_string();
-        let env_var = "HOME";
-        let home_dir = env::var(env_var)
-            .map_err(|err| RegistryError::EnvironmentVarNotSet(err.to_string()))?;
-
-        let pkg_name = env!("CARGO_PKG_NAME");
-        let path: PathBuf = [
-            home_dir.as_str(),
-            format!(".{pkg_name}").as_str(),
-            geno_id.as_str(),
-        ]
-        .iter()
-        .collect();
+        let registry_path = Self::default_registry_path(geno_id.as_str())?;
 
         Ok(ObolibraryOntologyRegistry::new(
-            path,
+            registry_path,
             "geno.json".to_string(),
-            geno_id.to_string(),
+            geno_id,
         ))
     }
 
@@ -429,7 +423,6 @@ mod tests {
             "hp".to_string(),
         );
 
-        // Create a fake file
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
 
