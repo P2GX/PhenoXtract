@@ -219,6 +219,9 @@ impl SeriesContext {
     pub fn get_building_block_id(&self) -> Option<&str> {
         self.building_block_id.as_deref()
     }
+    pub fn get_fill_missing(&self) -> Option<&CellValue> {
+        self.fill_missing.as_ref()
+    }
 
     #[allow(unused)]
     pub fn with_identifier(mut self, identifier: Identifier) -> Self {
@@ -252,6 +255,11 @@ impl SeriesContext {
     pub fn with_building_block_id(mut self, building_block_id: Option<String>) -> Self {
         let building_block_id_ref = &mut self.building_block_id;
         *building_block_id_ref = building_block_id;
+        self
+    }
+
+    pub fn with_fill_missing(mut self, fill_missing: Option<CellValue>) -> Self {
+        self.fill_missing = fill_missing;
         self
     }
 }

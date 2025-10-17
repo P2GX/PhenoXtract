@@ -6,6 +6,7 @@ use crate::transform::error::{MappingErrorInfo, TransformError};
 use crate::transform::traits::Strategy;
 use log::info;
 
+use crate::extract::contextualized_dataframe_filters::Filter;
 use polars::prelude::{DataType, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
@@ -28,8 +29,14 @@ impl HPOSynonymsToPrimaryTermsStrategy {
 
 impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
-        tables.iter().all(|table| {
-            table.contexts_have_dtype(&Context::None, &Context::HpoLabel, &DataType::String)
+        tables.iter().any(|table| {
+            !table
+                .filter_columns()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::HpoLabel))
+                .where_dtype(Filter::Is(&DataType::String))
+                .collect()
+                .is_empty()
         })
     }
 
@@ -45,7 +52,10 @@ impl Strategy for HPOSynonymsToPrimaryTermsStrategy {
             let table_name = table.context().name.to_string();
 
             let names_of_hpo_label_cols: Vec<PlSmallStr> = table
-                .get_cols_with_contexts(&Context::None, &Context::HpoLabel)
+                .filter_columns()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::HpoLabel))
+                .collect()
                 .iter()
                 .map(|col| col.name())
                 .cloned()
