@@ -24,7 +24,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
-            Self::polars_dataframe_cast_ambivalent(&mut table.data_mut())?;
+            Self::polars_dataframe_cast_ambivalent(table.data_mut())?;
         }
 
         for strategy in &self.strategies {
