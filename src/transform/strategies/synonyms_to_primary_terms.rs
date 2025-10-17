@@ -222,7 +222,7 @@ mod tests {
             info,
         }) = strat_result
         {
-            assert_eq!(strategy_name, "HPOSynonymsToPrimaryTermsStrategy");
+            assert_eq!(strategy_name, "SynonymsToPrimaryTermsStrategy");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "phenotypic_features".to_string(),
