@@ -23,7 +23,7 @@ pub struct AliasMapStrategy;
 impl AliasMapStrategy {
     fn get_col_name_alias_map_pairs(cdf: &ContextualizedDataFrame) -> Vec<(PlSmallStr, AliasMap)> {
         let mut col_name_alias_map_pairs = vec![];
-        for series_context in cdf.get_series_contexts() {
+        for series_context in cdf.series_contexts() {
             if let Some(am) = series_context.get_alias_map() {
                 let cols = cdf.get_columns(series_context.get_identifier());
                 for col in cols {
@@ -47,7 +47,7 @@ impl Strategy for AliasMapStrategy {
         info!("Applying AliasMap strategy to data.");
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name.clone();
+            let table_name = table.context().name().to_string();
             info!("Applying AliasMap strategy to table: {table_name}");
 
             let col_name_alias_pairs = AliasMapStrategy::get_col_name_alias_map_pairs(table);
@@ -55,7 +55,7 @@ impl Strategy for AliasMapStrategy {
             for (col_name, alias_map) in col_name_alias_pairs {
                 info!("Applying AliasMap strategy to column: {col_name}.");
 
-                let original_column = table.data.column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name).unwrap();
 
                 let stringified_col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column
@@ -96,7 +96,7 @@ impl Strategy for AliasMapStrategy {
                 };
 
                 table
-                    .data
+                    .data_mut()
                     .replace(&col_name, recast_series)
                     .map_err(|err| StrategyError(err.to_string()))?;
             }
@@ -332,26 +332,26 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            cdf_aliasing.clone().data.column("patient_id").unwrap(),
+            cdf_aliasing.clone().data().column("patient_id").unwrap(),
             &Column::new(
                 "patient_id".into(),
                 ["patient_1", "patient_2", "patient_3", "patient_4"]
             )
         );
         assert_eq!(
-            cdf_aliasing.clone().data.column("age").unwrap(),
+            cdf_aliasing.clone().data().column("age").unwrap(),
             &Column::new("age".into(), [22, 22, 33, 44])
         );
         assert_eq!(
-            cdf_aliasing.clone().data.column("weight").unwrap(),
+            cdf_aliasing.clone().data().column("weight").unwrap(),
             &Column::new("weight".into(), [20.2, 40.4, 60.6, 80.8])
         );
         assert_eq!(
-            cdf_aliasing.clone().data.column("smokes1").unwrap(),
+            cdf_aliasing.clone().data().column("smokes1").unwrap(),
             &Column::new("smokes1".into(), [true, true, true, true])
         );
         assert_eq!(
-            cdf_aliasing.clone().data.column("smokes2").unwrap(),
+            cdf_aliasing.clone().data().column("smokes2").unwrap(),
             &Column::new("smokes2".into(), [true, true, true, true])
         );
     }
@@ -363,7 +363,7 @@ mod tests {
             .transform(&mut [&mut cdf_nulls])
             .unwrap();
         assert_eq!(
-            cdf_nulls.data.column("patient_id").unwrap(),
+            cdf_nulls.data().column("patient_id").unwrap(),
             &Column::new(
                 "patient_id".into(),
                 [
@@ -375,7 +375,7 @@ mod tests {
             )
         );
         assert_eq!(
-            cdf_nulls.data.column("age").unwrap(),
+            cdf_nulls.data().column("age").unwrap(),
             &Column::new(
                 "age".into(),
                 [
@@ -387,7 +387,7 @@ mod tests {
             )
         );
         assert_eq!(
-            cdf_nulls.data.column("weight").unwrap(),
+            cdf_nulls.data().column("weight").unwrap(),
             &Column::new(
                 "weight".into(),
                 [
@@ -399,7 +399,7 @@ mod tests {
             )
         );
         assert_eq!(
-            cdf_nulls.data.column("smokes1").unwrap(),
+            cdf_nulls.data().column("smokes1").unwrap(),
             &Column::new(
                 "smokes1".into(),
                 [
@@ -411,7 +411,7 @@ mod tests {
             )
         );
         assert_eq!(
-            cdf_nulls.data.column("smokes2").unwrap(),
+            cdf_nulls.data().column("smokes2").unwrap(),
             &Column::new(
                 "smokes2".into(),
                 [
@@ -433,7 +433,7 @@ mod tests {
                 .transform(&mut [&mut cdf_no_aliasing])
                 .is_ok()
         );
-        assert_eq!(cdf_no_aliasing.data, df_no_aliasing)
+        assert_eq!(cdf_no_aliasing.into_data(), df_no_aliasing)
     }
 
     //tests that we can change column types if we have sufficient aliases
@@ -447,14 +447,14 @@ mod tests {
         );
         assert_eq!(
             cdf_convert_to_int_success
-                .data
+                .data()
                 .column("patient_id")
                 .unwrap(),
             &Column::new("patient_id".into(), [1001, 1002, 1003, 1004])
         );
         assert_eq!(
             cdf_convert_to_int_success
-                .data
+                .data()
                 .column("patient_id")
                 .unwrap()
                 .dtype(),
@@ -470,7 +470,7 @@ mod tests {
         sc_float_aliases: SeriesContext,
         sc_bool_alias: SeriesContext,
     ) {
-        let df = cdf_aliasing.data.clone();
+        let df = cdf_aliasing.data().clone();
         let col_string = df.column("patient_id").unwrap().name().clone();
         let col_int = df.column("age").unwrap().name().clone();
         let col_float = df.column("weight").unwrap().name().clone();

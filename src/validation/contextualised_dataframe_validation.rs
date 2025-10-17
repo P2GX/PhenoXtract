@@ -12,7 +12,7 @@ pub(crate) fn validate_one_context_per_column(
     let mut seen_cols = HashSet::new();
     let mut duplicates = vec![];
 
-    let scs = cdf.get_series_contexts();
+    let scs = cdf.series_contexts();
     scs.iter().for_each(|sc| {
         let cols = cdf.get_columns(sc.get_identifier());
         for col in cols {
@@ -26,7 +26,7 @@ pub(crate) fn validate_one_context_per_column(
     result.map_err(|mut err| {
         err.add_param(
             Cow::from("contextualised_dataframe_name"),
-            &cdf.context().name,
+            &cdf.context().name(),
         );
         err.add_param(
             Cow::from("column_with_multiple_series_contexts"),

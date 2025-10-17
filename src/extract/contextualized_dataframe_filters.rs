@@ -2,7 +2,6 @@ use crate::config::table_context::{CellValue, Context, Identifier, SeriesContext
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
 use serde::Deserialize;
-use std::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum Filter<T> {
@@ -124,7 +123,7 @@ impl<'a> ColumnFilter<'a> {
     pub(crate) fn new(items: &'a ContextualizedDataFrame) -> Self {
         Self {
             items,
-            series_filter: SeriesContextFilter::new(items.context().context.deref()),
+            series_filter: SeriesContextFilter::new(items.series_contexts()),
             dtype: Vec::new(),
         }
     }

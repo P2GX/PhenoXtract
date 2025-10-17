@@ -293,8 +293,8 @@ mod tests {
     fn test_register(temp_dir: TempDir) {
         let registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
-            "hp-base.json".to_string(),
-            "hpo".to_string(),
+            "geno.json".to_string(),
+            "geno".to_string(),
         );
 
         let path = registry.register("latest").unwrap();

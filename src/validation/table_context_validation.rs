@@ -55,7 +55,7 @@ pub(crate) fn validate_subject_ids_context(
 
     if !is_valid {
         let mut error = ValidationError::new("missing_subject_id");
-        error.add_param(Cow::from("table_name"), &table_context.name);
+        error.add_param(Cow::from("table_name"), &table_context.name());
         return Err(error.with_message(Cow::Owned(
             "Missing SubjectID on table. Every table needs to have at least one.".to_string(),
         )));
@@ -133,16 +133,16 @@ mod tests {
 
     #[rstest]
     #[case::subject_id_in_column_context(
-        TableContext{
-            name: "test".to_string(),
-            context: vec![regex("test").with_header_context(Context::SubjectId)],
-            },
+        TableContext::new(
+      "test".to_string(),
+      vec![regex("test").with_header_context(Context::SubjectId)],
+    ),
     )]
     #[case::subject_id_in_column_cell_context(
-        TableContext{
-            name: "test".to_string(),
-            context: vec![regex("test").with_data_context(Context::SubjectId)],
-            },
+        TableContext::new(
+          "test".to_string(),
+          vec![regex("test").with_data_context(Context::SubjectId)],
+        ),
     )]
     fn test_validate_subject_ids_context(#[case] table_context: TableContext) {
         let result = validate_subject_ids_context(&table_context);
