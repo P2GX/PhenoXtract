@@ -18,7 +18,7 @@ pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
     #[allow(unused)]
-    pub data: DataFrame,
+    data: DataFrame,
 }
 
 impl ContextualizedDataFrame {
@@ -31,14 +31,29 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
-    #[allow(unused)]
-    pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
-        &self.context.context
+    pub fn context_mut(&mut self) -> &TableContext {
+        &mut self.context
     }
 
     #[allow(unused)]
+    pub fn series_contexts(&self) -> &Vec<SeriesContext> {
+        self.context.context()
+    }
+
+    pub fn data(&self) -> &DataFrame {
+        &self.data
+    }
+
     pub fn data_mut(&mut self) -> &mut DataFrame {
         &mut self.data
+    }
+
+    pub fn into_data(self) -> DataFrame {
+        self.data
+    }
+
+    pub fn set_data(&mut self, data: DataFrame) {
+        self.data = data;
     }
 
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
@@ -125,7 +140,7 @@ impl ContextualizedDataFrame {
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
-        let table_name = self.context.name.clone();
+        let table_name = self.context.name().to_string();
         let transformed_series = Series::new(col_name.into(), transformed_vec);
         let transform_result = self
             .data_mut()
@@ -145,7 +160,7 @@ impl ContextualizedDataFrame {
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
-        SeriesContextFilter::new(&self.context.context)
+        SeriesContextFilter::new(self.context.context())
     }
 
     pub fn filter_columns(&'_ self) -> ColumnFilter<'_> {
@@ -176,9 +191,9 @@ mod tests {
 
     #[fixture]
     fn sample_ctx() -> TableContext {
-        TableContext {
-            name: "table".to_string(),
-            context: vec![
+        TableContext::new(
+            "table".to_string(),
+            vec![
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "user.name".to_string(),
@@ -200,7 +215,7 @@ mod tests {
                     .with_header_context(Context::HpoLabel)
                     .with_data_context(Context::ObservationStatus),
             ],
-        }
+        )
     }
 
     #[rstest]
