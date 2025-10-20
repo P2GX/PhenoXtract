@@ -5,9 +5,9 @@ use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
 use log::{info, warn};
+use ordermap::{OrderMap, OrderSet};
 use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
 
 /// A strategy for converting columns whose cells contain HPO IDs
 /// into several columns whose headers are exactly those HPO IDs
@@ -144,8 +144,8 @@ impl MultiHPOColExpansionStrategy {
     fn get_patient_to_hpo_data<'a, 'b>(
         stringified_subject_id_col: &'a StringChunked,
         stringified_multi_hpo_cols: Vec<&'b StringChunked>,
-    ) -> HashMap<&'a str, HashSet<&'b str>> {
-        let mut patient_to_hpo: HashMap<&'a str, HashSet<&'b str>> = HashMap::new();
+    ) -> OrderMap<&'a str, OrderSet<&'b str>> {
+        let mut patient_to_hpo: OrderMap<&'a str, OrderSet<&'b str>> = OrderMap::new();
 
         for stringified_multi_hpo_col in stringified_multi_hpo_cols {
             let patient_id_multi_hpo_pairs = stringified_subject_id_col
@@ -184,20 +184,18 @@ impl MultiHPOColExpansionStrategy {
     fn create_new_cols_with_sc(
         stringified_subject_id_col: &StringChunked,
         building_block_id: Option<&str>,
-        patient_to_hpo: HashMap<&str, HashSet<&str>>,
+        patient_to_hpo: OrderMap<&str, OrderSet<&str>>,
     ) -> (Vec<Column>, SeriesContext) {
         let hpos = patient_to_hpo
             .clone()
             .into_values()
             .flatten()
-            .collect::<HashSet<&str>>();
-        let mut sorted_hpos = hpos.into_iter().collect::<Vec<&str>>();
-        sorted_hpos.sort();
+            .collect::<OrderSet<&str>>();
 
         let mut new_hpo_cols = vec![];
         let mut new_hpo_col_names = vec![];
 
-        for hpo in sorted_hpos {
+        for hpo in hpos {
             let observation_statuses: Vec<AnyValue> = stringified_subject_id_col
                 .iter()
                 .map(|patient_id| {
@@ -399,22 +397,22 @@ mod tests {
             stringified_multi_hpo_cols,
         );
 
-        let mut expected_patient_1_hpos = HashSet::new();
+        let mut expected_patient_1_hpos = OrderSet::new();
         expected_patient_1_hpos.insert("HP:1111111");
 
-        let mut expected_patient_2_hpos = HashSet::new();
+        let mut expected_patient_2_hpos = OrderSet::new();
         expected_patient_2_hpos.extend(vec![
-            "HP:1111111",
             "HP:2222222",
             "HP:3333333",
+            "HP:1111111",
             "HP:4444444",
             "HP:5555555",
         ]);
 
-        let mut expected_patient_3_hpos = HashSet::new();
+        let mut expected_patient_3_hpos = OrderSet::new();
         expected_patient_3_hpos.insert("HP:4444444");
 
-        let mut expected_patient_to_hpo = HashMap::new();
+        let mut expected_patient_to_hpo = OrderMap::new();
         expected_patient_to_hpo.insert("P001", expected_patient_1_hpos);
         expected_patient_to_hpo.insert("P002", expected_patient_2_hpos);
         expected_patient_to_hpo.insert("P003", expected_patient_3_hpos);
@@ -425,13 +423,13 @@ mod tests {
     fn test_create_new_cols_with_sc(cdf: ContextualizedDataFrame) {
         let stringified_subject_id_col = cdf.data().column("subject_id").unwrap().str().unwrap();
 
-        let mut patient_1_hpos = HashSet::new();
+        let mut patient_1_hpos = OrderSet::new();
         patient_1_hpos.extend(vec!["HP:1111111", "HP:2222222"]);
-        let mut patient_2_hpos = HashSet::new();
+        let mut patient_2_hpos = OrderSet::new();
         patient_2_hpos.insert("HP:2222222");
-        let patient_3_hpos = HashSet::new();
+        let patient_3_hpos = OrderSet::new();
 
-        let mut patient_to_hpo = HashMap::new();
+        let mut patient_to_hpo = OrderMap::new();
         patient_to_hpo.insert("P001", patient_1_hpos);
         patient_to_hpo.insert("P002", patient_2_hpos);
         patient_to_hpo.insert("P003", patient_3_hpos);
