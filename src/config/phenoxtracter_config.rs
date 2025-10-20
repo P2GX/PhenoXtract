@@ -215,7 +215,7 @@ data_sources:
       context:
         - identifier: "patient_id"
           header_context: subject_id
-          data_context: hpo_label
+          data_context: hpo_label_or_id
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
             hash_map:
@@ -238,7 +238,7 @@ data_sources:
         context:
           - identifier: "lab_result_.*"
             header_context: subject_id
-            data_context: hpo_label
+            data_context: hpo_label_or_id
             fill_missing: "Zollinger-Ellison syndrome"
             alias_map:
               hash_map:
@@ -252,7 +252,7 @@ data_sources:
               - "Col_2"
               - "Col_3"
             header_context: subject_id
-            data_context: hpo_label
+            data_context: hpo_label_or_id
             fill_missing: "Zollinger-Ellison syndrome"
             alias_map:
               hash_map:
