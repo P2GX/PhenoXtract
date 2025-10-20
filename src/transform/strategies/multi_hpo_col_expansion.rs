@@ -9,6 +9,16 @@ use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
+/// A strategy for converting columns whose cells contain HPO IDs
+/// into several columns whose headers are exactly those HPO IDs
+/// and whose cells contain the ObservationStatus for each patient.
+///
+/// The columns are created on a "block by block" basis
+/// so that building blocks are preserved after the transformation.
+///
+/// A new SeriesContext will be added for each block of new columns.
+///
+/// The old columns and contexts will be removed.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct MultiHPOColExpansionStrategy;
@@ -40,7 +50,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 continue;
             }
 
-            let table_name = table.context().name.clone();
+            let table_name = table.context().name().to_string();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
             let stringified_subject_id_col = table.filter_columns().where_data_context(Filter::Is(&Context::SubjectId)).collect()
@@ -116,7 +126,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
             }
 
             for new_sc in new_series_contexts {
-                table.context_mut().add_series_context(new_sc);
+                table.add_series_context(new_sc);
             }
         }
 
@@ -133,6 +143,10 @@ fn hpo_id_search(string_to_search: &str) -> Vec<&str> {
         .collect()
 }
 
+/// This function takes a SubjectID column and several MultiHPO columns
+/// and extracts the set of all HPOs in the data (=hpos)
+/// and also creates a patient-to-HPO HashMap (=patient_to_hpo)
+/// where the keys are the SubjectIDs and the values are the set of HPOs observed for that patient.
 #[allow(unused)]
 fn get_patient_to_hpo_data<'a, 'b>(
     stringified_subject_id_col: &'a StringChunked,
@@ -174,6 +188,9 @@ fn get_patient_to_hpo_data<'a, 'b>(
     (patient_to_hpo, hpos)
 }
 
+/// Given a set of HPO terms (=hpos)
+/// and some patient_to_hpo data (=patient_to_hpo)
+/// this function will appropriately construct new columns and a new series context.
 #[allow(unused)]
 fn create_new_cols_with_sc(
     stringified_subject_id_col: &StringChunked,
@@ -350,7 +367,6 @@ mod tests {
         let strategy = MultiHPOColExpansionStrategy;
         strategy.transform(&mut [&mut cdf]).unwrap();
         assert_eq!(cdf, expected_transformed_cdf);
-        dbg!(&cdf);
     }
 
     #[rstest]
@@ -368,5 +384,104 @@ mod tests {
         let string_to_search = "asdasdH:0012622 aerh21 0001410	Leukoencephalopathy";
         let empty_vec = Vec::<String>::new();
         assert_eq!(hpo_id_search(string_to_search), empty_vec);
+    }
+
+    #[rstest]
+    fn test_get_patient_to_hpo_data(cdf: ContextualizedDataFrame) {
+        let stringified_subject_id_col = cdf.data().column("subject_id").unwrap().str().unwrap();
+        let hpo_col_indexes = vec![2, 3, 4, 5];
+        let stringified_multi_hpo_cols = hpo_col_indexes
+            .into_iter()
+            .map(|idx| cdf.data().get_columns()[idx].str().unwrap())
+            .collect::<Vec<&StringChunked>>();
+        let (patient_to_hpo, hpos) =
+            get_patient_to_hpo_data(stringified_subject_id_col, stringified_multi_hpo_cols);
+
+        let mut expected_hpos = HashSet::new();
+        expected_hpos.extend(vec![
+            "HP:1111111",
+            "HP:2222222",
+            "HP:3333333",
+            "HP:4444444",
+            "HP:5555555",
+        ]);
+        assert_eq!(hpos, expected_hpos);
+
+        let mut expected_patient_1_hpos = HashSet::new();
+        expected_patient_1_hpos.insert("HP:1111111");
+
+        let expected_patient_2_hpos = hpos.clone();
+
+        let mut expected_patient_3_hpos = HashSet::new();
+        expected_patient_3_hpos.insert("HP:4444444");
+
+        let mut expected_patient_to_hpo = HashMap::new();
+        expected_patient_to_hpo.insert("P001", expected_patient_1_hpos);
+        expected_patient_to_hpo.insert("P002", expected_patient_2_hpos);
+        expected_patient_to_hpo.insert("P003", expected_patient_3_hpos);
+        assert_eq!(patient_to_hpo, expected_patient_to_hpo)
+    }
+
+    #[rstest]
+    fn test_create_new_cols_with_sc(cdf: ContextualizedDataFrame) {
+        let stringified_subject_id_col = cdf.data().column("subject_id").unwrap().str().unwrap();
+
+        let hpos = vec!["HP:1111111", "HP:2222222", "HP:3333333"];
+
+        let mut patient_1_hpos = HashSet::new();
+        patient_1_hpos.extend(vec!["HP:1111111", "HP:2222222"]);
+        let mut patient_2_hpos = HashSet::new();
+        patient_2_hpos.insert("HP:2222222");
+        let patient_3_hpos = HashSet::new();
+
+        let mut patient_to_hpo = HashMap::new();
+        patient_to_hpo.insert("P001", patient_1_hpos);
+        patient_to_hpo.insert("P002", patient_2_hpos);
+        patient_to_hpo.insert("P003", patient_3_hpos);
+
+        let (new_cols, new_sc) =
+            create_new_cols_with_sc(stringified_subject_id_col, Some("A"), hpos, patient_to_hpo);
+
+        let expected_col1 = Column::new(
+            "HP:1111111 (block A)".into(),
+            vec![
+                AnyValue::Boolean(true),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let expected_col2 = Column::new(
+            "HP:2222222 (block A)".into(),
+            vec![
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Null,
+            ],
+        );
+        let expected_col3 = Column::new(
+            "HP:3333333 (block A)".into(),
+            vec![
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+
+        assert_eq!(new_cols, vec![expected_col1, expected_col2, expected_col3]);
+
+        let expected_sc = SeriesContext::default()
+            .with_header_context(Context::HpoId)
+            .with_data_context(Context::ObservationStatus)
+            .with_building_block_id(Some("A".to_string()))
+            .with_identifier(Identifier::Multi(vec![
+                "HP:1111111 (block A)".to_string(),
+                "HP:2222222 (block A)".to_string(),
+                "HP:3333333 (block A)".to_string(),
+            ]));
+
+        assert_eq!(new_sc, expected_sc);
     }
 }

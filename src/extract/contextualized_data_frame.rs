@@ -41,6 +41,15 @@ impl ContextualizedDataFrame {
         self.context.context()
     }
 
+    #[allow(unused)]
+    pub fn series_contexts_mut(&self) -> &Vec<SeriesContext> {
+        self.context.context()
+    }
+
+    pub fn add_series_context(&mut self, sc: SeriesContext) {
+        self.context.context_mut().push(sc);
+    }
+
     pub fn data(&self) -> &DataFrame {
         &self.data
     }
@@ -134,7 +143,7 @@ impl ContextualizedDataFrame {
     #[allow(unused)]
     pub fn get_series_context_by_id(&self, id: &Identifier) -> Option<&SeriesContext> {
         self.context
-            .context
+            .context()
             .iter()
             .find(|sc| sc.get_identifier() == id)
     }
@@ -178,7 +187,7 @@ impl ContextualizedDataFrame {
 
     pub fn get_building_block_ids(&self) -> HashSet<&str> {
         let mut building_block_ids = HashSet::new();
-        self.context().context.iter().for_each(|sc| {
+        self.context().context().iter().for_each(|sc| {
             if let Some(bb_id) = sc.get_building_block_id() {
                 building_block_ids.insert(bb_id);
             }
@@ -186,16 +195,10 @@ impl ContextualizedDataFrame {
         building_block_ids
     }
 
-    pub fn remove_scs_with_context(
-        &mut self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> &mut Self {
-        self.context_mut().context.retain(|sc| {
+    pub fn remove_scs_with_context(&mut self, header_context: &Context, data_context: &Context) {
+        self.context.context_mut().retain(|sc| {
             sc.get_header_context() != header_context || sc.get_data_context() != data_context
         });
-
-        self
     }
 
     pub fn remove_scs_and_cols_with_context(
@@ -213,13 +216,13 @@ impl ContextualizedDataFrame {
             .collect::<Vec<String>>();
 
         for col_name in cols_to_remove_names.iter() {
-            self.data_mut().drop_in_place(col_name).expect(
-                format!(
-                    "Unexpectedly could not remove MultiHPO column {} from table {}.",
-                    col_name, self.context.name
+            self.data_mut().drop_in_place(col_name).unwrap_or_else(|_| {
+                panic!(
+                    "Unexpectedly could not remove column {} from table {}.",
+                    col_name,
+                    self.context.name()
                 )
-                .as_str(),
-            );
+            });
         }
 
         self.remove_scs_with_context(header_context, data_context);
@@ -387,5 +390,50 @@ mod tests {
         expected_bb_ids.insert("block_1");
 
         assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
+    }
+
+    #[rstest]
+    fn test_remove_scs_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_with_context(&Context::HpoLabel, &Context::ObservationStatus);
+
+        assert_eq!(cdf.context.context().len(), 2);
+    }
+
+    #[rstest]
+    fn test_remove_scs_with_context_no_change() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_with_context(&Context::VitalStatus, &Context::None);
+
+        assert_eq!(cdf.context.context().len(), 4);
+        assert_eq!(cdf.data.width(), 6);
+        assert_eq!(cdf.data.height(), 3);
+    }
+
+    #[rstest]
+    fn test_remove_scs_and_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_and_cols_with_context(&Context::None, &Context::SubjectId);
+
+        assert_eq!(cdf.context.context().len(), 3);
+        assert_eq!(cdf.data.width(), 4);
+    }
+
+    #[rstest]
+    fn test_remove_scs_and_cols_with_context_no_change() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_and_cols_with_context(&Context::VitalStatus, &Context::None);
+
+        assert_eq!(cdf.context.context().len(), 4);
+        assert_eq!(cdf.data.width(), 6);
+        assert_eq!(cdf.data.height(), 3);
     }
 }
