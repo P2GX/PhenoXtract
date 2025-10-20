@@ -22,8 +22,10 @@ either = "1.15.0"
 chrono = "0.4.41"
 ontolius = "0.5.5"
 serde_json = "1.0.145"
-prost-types = "0.13.5"
+prost-types = "0.13.5" # Do not update. Version depends on Phenopackets crate.
 directories = "6.0.0"
+ratelimit = "0.10.0"
+redb = "3.1.0"
 
 [dev-dependencies]
 rstest = "0.26.1"
@@ -31,3 +33,4 @@ tempfile = "3.23.0"
 rust_xlsxwriter = "0.90.2"
 mockito = "1.7.0"
 once_cell = "1.21.3"
+serial_test = "3.2.0"
