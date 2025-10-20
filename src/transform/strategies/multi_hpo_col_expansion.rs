@@ -147,7 +147,7 @@ fn get_patient_to_hpo_data<'a, 'b>(
     stringified_subject_id_col: &'a StringChunked,
     stringified_multi_hpo_cols: Vec<&'b StringChunked>,
 ) -> (HashMap<&'a str, HashSet<&'b str>>, HashSet<&'b str>) {
-    let mut patient_to_hpo: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut patient_to_hpo: HashMap<&'a str, HashSet<&'b str>> = HashMap::new();
     let mut hpos: HashSet<&str> = HashSet::new();
 
     for stringified_multi_hpo_col in stringified_multi_hpo_cols {
