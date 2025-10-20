@@ -1,5 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -28,36 +29,40 @@ impl Collector {
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, TransformError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf.get_cols_with_data_context(&Context::SubjectId);
+            let subject_id_cols = cdf
+                .filter_columns()
+                .where_data_context(Filter::Is(&Context::SubjectId))
+                .collect();
             if subject_id_cols.len() > 1 {
                 return Err(CollectionError(format!(
                     "Multiple SubjectID columns were found in table {}.",
-                    cdf.context().name
+                    cdf.context().name()
                 )));
             }
 
             let subject_id_col = subject_id_cols.last().ok_or(CollectionError(format!(
                 "Could not find SubjectID column in table {}",
-                cdf.context().name
+                cdf.context().name()
             )))?;
 
             let patient_dfs = cdf
-                .data
+                .data()
                 .partition_by(vec![subject_id_col.name().as_str()], true)
                 .map_err(|_| {
                     CollectionError(format!(
                         "Error when partitioning dataframe {} by SubjectID column.",
-                        cdf.context().name
+                        cdf.context().name()
                     ))
                 })?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_id_av = patient_df
+                let patient_id = patient_df
                     .column(subject_id_col.name())
                     .unwrap()
                     .get(0)
-                    .unwrap();
-                let patient_id = patient_id_av.str_value();
+                    .unwrap()
+                    .str_value();
+
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
                 let patient_cdf =
@@ -75,29 +80,29 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
-        let hpo_terms_in_cells_scs =
-            patient_cdf.get_series_contexts_with_contexts(&Context::None, &Context::HpoLabelOrId);
+        let hpo_terms_in_cells_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::HpoLabelOrId);
         let hpo_term_in_header_scs = patient_cdf
             .get_series_contexts_with_contexts(&Context::HpoLabelOrId, &Context::ObservationStatus);
-        let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat();
+        let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat())
+            .collect();
 
-        for hpo_sc in hpo_scs {
-            let sc_id = hpo_sc.get_identifier();
-            let hpo_cols = patient_cdf.get_columns(sc_id);
-            let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
-                hpo_sc.get_building_block_id(),
-                &Context::None,
-                &Context::OnsetAge,
-            );
+        for pf_sc in pf_scs {
+            let col_id = pf_sc.get_identifier();
+            let pf_cols = patient_cdf.get_columns(col_id);
 
-            let linked_onset_dt_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
-                hpo_sc.get_building_block_id(),
-                &Context::None,
-                &Context::OnsetDateTime,
-            );
-            let linked_onset_cols = [linked_onset_age_cols, linked_onset_dt_cols].concat();
+            let linked_onset_cols = pf_sc.get_building_block_id().map_or(vec![], |bb_id| {
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::OnsetAge))
+                    .where_data_context(Filter::Is(&Context::OnsetDateTime))
+                    .collect()
+            });
 
-            // it is very unclear how linking would work otherwise
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
             if linked_onset_cols.len() > 1 {
@@ -358,7 +363,10 @@ impl Collector {
         context: Context,
         patient_id: &str,
     ) -> Result<Option<String>, TransformError> {
-        let cols_of_element_type = patient_cdf.get_cols_with_data_context(&context);
+        let cols_of_element_type = patient_cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&context))
+            .collect();
 
         if cols_of_element_type.is_empty() {
             return Ok(None);

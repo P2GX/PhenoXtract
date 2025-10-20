@@ -5,8 +5,10 @@ use crate::ontology::error::RegistryError;
 
 use crate::ontology::BioRegistryClient;
 use crate::ontology::obolibrary_client::ObolibraryClient;
-use log::debug;
+use directories::ProjectDirs;
+use log::{debug, info};
 use std::env;
+use std::env::home_dir;
 use std::fs::{File, remove_file};
 use std::io::copy;
 use std::path::PathBuf;
@@ -49,6 +51,19 @@ impl ObolibraryOntologyRegistry {
         self
     }
 
+    fn default_registry_path(id: &str) -> Result<PathBuf, RegistryError> {
+        let pkg_name = env!("CARGO_PKG_NAME");
+        ProjectDirs::from("", "", pkg_name)
+            .map(|proj| proj.cache_dir().join(id))
+            .or_else(|| home_dir().map(|dir| dir.join(format!(".{pkg_name}")).join(id)))
+            .ok_or_else(|| {
+                RegistryError::EnvironmentVarNotSet(
+                    "Could not setup registry directory. No Home or Project directory found."
+                        .to_string(),
+                )
+            })
+    }
+
     /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO).
     ///
     /// This is a convenience constructor that sets up a registry with standard settings
@@ -57,38 +72,135 @@ impl ObolibraryOntologyRegistry {
     /// # Configuration
     /// - **Ontology Prefix:** `"hp"`
     /// - **File Name:** `"hp.json"`
-    /// - **Storage Path:** `$HOME/.<crate_name>/hpo`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/hp` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/hp` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err(RegistryError::EnvironmentVarNotSet)` if the
-    /// `HOME` environment variable is not set on the system.
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_hpo_registry() -> Result<Self, RegistryError> {
-        let env_var = "HOME";
-        let home_dir = env::var(env_var)
-            .map_err(|err| RegistryError::EnvironmentVarNotSet(err.to_string()))?;
+        let hp_id = "hp".to_string();
+        let registry_path = Self::default_registry_path(hp_id.as_str())?;
 
-        let pkg_name = env!("CARGO_PKG_NAME");
-        let path: PathBuf = [home_dir.as_str(), format!(".{pkg_name}").as_str(), "hpo"]
-            .iter()
-            .collect();
-
+        info!("Using HP registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
-            path,
+            registry_path,
             "hp.json".to_string(),
-            "hp".to_string(),
+            hp_id,
         ))
     }
 
-    fn resolve_version(&self, version: &str) -> String {
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Mondo Disease Ontology.
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading Mondo in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"mondo"`
+    /// - **File Name:** `"mondo.json"`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/mondo` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/mondo` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
+    pub fn default_mondo_registry() -> Result<Self, RegistryError> {
+        let mondo_id = "mondo".to_string();
+        let registry_path = Self::default_registry_path(mondo_id.as_str())?;
+
+        info!("Using Mondo registry at {}", registry_path.display());
+        Ok(ObolibraryOntologyRegistry::new(
+            registry_path,
+            "mondo.json".to_string(),
+            mondo_id,
+        ))
+    }
+
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Genotype Ontology (GENO).
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading GENO in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"geno"`
+    /// - **File Name:** `"geno.json"`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/geno` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/geno` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
+    pub fn default_geno_registry() -> Result<Self, RegistryError> {
+        let geno_id = "geno".to_string();
+        let registry_path = Self::default_registry_path(geno_id.as_str())?;
+
+        Ok(ObolibraryOntologyRegistry::new(
+            registry_path,
+            "geno.json".to_string(),
+            geno_id,
+        ))
+    }
+
+    /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO) annotations.
+    ///
+    /// This is a convenience constructor that sets up a registry with standard settings
+    /// for downloading the HPO in JSON format.
+    ///
+    /// # Configuration
+    /// - **Ontology Prefix:** `"hp"`
+    /// - **File Name:** `"hpoa.json"`
+    /// - **Storage Path:**
+    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/hp` on Linux)
+    ///   - Fallback: `$HOME/.<crate_name>/hp` if platform directories are unavailable
+    ///
+    /// The storage location is determined using the `directories` crate's project
+    /// directories, with a fallback to the home directory if that fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
+    /// project directories nor the `HOME` environment variable can be determined.
+    pub fn default_hpoa_registry() -> Result<Self, RegistryError> {
+        let hpo = "hp".to_string();
+        let registry_path = Self::default_registry_path(hpo.as_str())?;
+
+        info!("Using HPa registry at {}", registry_path.display());
+        Ok(ObolibraryOntologyRegistry::new(
+            registry_path,
+            "phenotype.hpoa".to_string(),
+            hpo,
+        ))
+    }
+
+    fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
         if version == "latest" {
             let meta_data = self
                 .bio_registry_client
                 .get_resource(&self.ontology_prefix)
                 .expect("get latest tag failed");
-            meta_data.version
+            meta_data
+                .version
+                .ok_or(RegistryError::UnableToResolveVersion(format!(
+                    "Could not resolve version for {} ",
+                    self.file_name
+                )))
         } else {
-            version.to_string()
+            Ok(version.to_string())
         }
     }
 
@@ -133,7 +245,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
             std::fs::create_dir_all(&self.registry_path)?;
         }
 
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version)?;
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
@@ -165,7 +277,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
     #[allow(unused)]
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version)?;
         let file_path = self
             .registry_path
             .clone()
@@ -183,7 +295,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
 
     #[allow(unused)]
     fn get_location(&self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_version(version);
+        let resolved_version = self.resolve_version(version).ok()?;
         let file_path = self
             .registry_path
             .clone()
@@ -214,8 +326,8 @@ mod tests {
     fn test_register(temp_dir: TempDir) {
         let registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
-            "hp-base.json".to_string(),
-            "hpo".to_string(),
+            "geno.json".to_string(),
+            "geno".to_string(),
         );
 
         let path = registry.register("latest").unwrap();
@@ -263,25 +375,64 @@ mod tests {
 
     #[rstest]
     fn test_default_hpo_registry() {
-        let result = ObolibraryOntologyRegistry::default_hpo_registry();
+        let registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+        assert!(registry.registry_path.to_str().unwrap().contains("hp"));
+        assert_eq!(registry.file_name, "hp.json");
+        assert_eq!(registry.ontology_prefix, "hp");
+    }
 
-        match result {
-            Ok(registry) => {
-                assert!(
-                    registry
-                        .registry_path
-                        .to_str()
-                        .unwrap()
-                        .contains(env!("CARGO_PKG_NAME"))
-                );
-                assert_eq!(registry.file_name, "hp.json");
-                assert_eq!(registry.ontology_prefix, "hp");
-            }
-            Err(RegistryError::EnvironmentVarNotSet(var)) => {
-                assert_eq!(var, "HOME");
-            }
-            Err(_) => panic!("Unexpected error type"),
-        }
+    #[rstest]
+    fn test_default_mondo_registry() {
+        let registry = ObolibraryOntologyRegistry::default_mondo_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+
+        assert!(registry.registry_path.to_str().unwrap().contains("mondo"));
+        assert_eq!(registry.file_name, "mondo.json");
+        assert_eq!(registry.ontology_prefix, "mondo");
+    }
+
+    #[rstest]
+    fn test_default_geno_registry() {
+        let registry = ObolibraryOntologyRegistry::default_geno_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+        assert_eq!(registry.file_name, "geno.json");
+        assert_eq!(registry.ontology_prefix, "geno");
+        registry.register("latest").unwrap();
+    }
+
+    #[rstest]
+    fn test_default_hpoa_registry() {
+        let registry = ObolibraryOntologyRegistry::default_hpoa_registry().unwrap();
+        assert!(
+            registry
+                .registry_path
+                .to_str()
+                .unwrap()
+                .contains(env!("CARGO_PKG_NAME"))
+        );
+
+        assert!(registry.registry_path.to_str().unwrap().contains("hp"));
+        assert_eq!(registry.file_name, "phenotype.hpoa");
+        assert_eq!(registry.ontology_prefix, "hp");
     }
 
     #[rstest]
@@ -321,7 +472,6 @@ mod tests {
             "hp".to_string(),
         );
 
-        // Create a fake file
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
 

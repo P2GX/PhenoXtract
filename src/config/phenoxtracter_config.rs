@@ -186,7 +186,7 @@ mod tests {
         match source {
             DataSource::Csv(data) => {
                 assert_eq!(data.separator, Some(','));
-                assert_eq!(data.context.name, "test_table");
+                assert_eq!(data.context.name(), "test_table");
                 assert_eq!(data.source.to_str().unwrap(), "test/path");
             }
             _ => panic!("Wrong data source type. Expected Csv."),
@@ -307,9 +307,9 @@ meta_data:
                         has_headers: true,
                         patients_are_rows: true,
                     },
-                    context: TableContext {
-                        name: "TestTable".to_string(),
-                        context: vec![SeriesContext::new(
+                    context: TableContext::new(
+                        "TestTable".to_string(),
+                        vec![SeriesContext::new(
                             Identifier::Regex("patient_id".to_string()),
                             PhenopacketContext::SubjectId,
                             PhenopacketContext::HpoLabelOrId,
@@ -329,7 +329,7 @@ meta_data:
                             )),
                             Some("block_1".to_string()),
                         )],
-                    },
+                    ),
                 }),
                 // Second data source: Excel
                 DataSource::Excel(ExcelDatasource {
@@ -348,9 +348,9 @@ meta_data:
                     ],
                     contexts: vec![
                         // Context for "Sheet1"
-                        TableContext {
-                            name: "Sheet1".to_string(),
-                            context: vec![SeriesContext::new(
+                        TableContext::new(
+                            "Sheet1".to_string(),
+                            vec![SeriesContext::new(
                                 Identifier::Regex("lab_result_.*".to_string()),
                                 PhenopacketContext::SubjectId,
                                 PhenopacketContext::HpoLabelOrId,
@@ -364,11 +364,11 @@ meta_data:
                                 )),
                                 None,
                             )],
-                        },
+                        ),
                         // Context for "Sheet2"
-                        TableContext {
-                            name: "Sheet2".to_string(),
-                            context: vec![SeriesContext::new(
+                        TableContext::new(
+                            "Sheet2".to_string(),
+                            vec![SeriesContext::new(
                                 Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
@@ -383,7 +383,7 @@ meta_data:
                                 )),
                                 None,
                             )],
-                        },
+                        ),
                     ],
                 }),
             ],

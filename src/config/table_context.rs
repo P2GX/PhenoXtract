@@ -18,11 +18,11 @@ use validator::Validate;
 ))]
 pub struct TableContext {
     #[allow(unused)]
-    pub name: String,
+    name: String,
     #[allow(unused)]
     #[validate(custom(function = "validate_unique_identifiers"))]
     #[serde(default)]
-    pub context: Vec<SeriesContext>,
+    context: Vec<SeriesContext>,
 }
 
 impl TableContext {
@@ -32,6 +32,25 @@ impl TableContext {
     }
     pub fn add_series_context(&mut self, sc: SeriesContext) -> &mut Self {
         self.context.push(sc);
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+
+    pub fn context(&self) -> &Vec<SeriesContext> {
+        &self.context
+    }
+    pub fn context_mut(&mut self) -> &mut Vec<SeriesContext> {
+        &mut self.context
+    }
+
+    pub fn with_name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
         self
     }
 }
@@ -210,12 +229,15 @@ impl SeriesContext {
         &self.data_context
     }
 
-    pub fn get_alias_map(&self) -> &Option<AliasMap> {
-        &self.alias_map
+    pub fn get_alias_map(&self) -> Option<&AliasMap> {
+        self.alias_map.as_ref()
     }
 
-    pub fn get_building_block_id(&self) -> &Option<String> {
-        &self.building_block_id
+    pub fn get_building_block_id(&self) -> Option<&str> {
+        self.building_block_id.as_deref()
+    }
+    pub fn get_fill_missing(&self) -> Option<&CellValue> {
+        self.fill_missing.as_ref()
     }
 
     #[allow(unused)]
@@ -250,6 +272,11 @@ impl SeriesContext {
     pub fn with_building_block_id(mut self, building_block_id: Option<String>) -> Self {
         let building_block_id_ref = &mut self.building_block_id;
         *building_block_id_ref = building_block_id;
+        self
+    }
+
+    pub fn with_fill_missing(mut self, fill_missing: Option<CellValue>) -> Self {
+        self.fill_missing = fill_missing;
         self
     }
 }

@@ -2,7 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
 
-use crate::transform::error::TransformError::{MappingError, StrategyError};
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
@@ -101,8 +101,14 @@ impl MappingStrategy {
 
 impl Strategy for MappingStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
-        tables.iter().all(|table| {
-            table.contexts_have_dtype(&self.header_context, &self.data_context, &self.column_dtype)
+        tables.iter().any(|table| {
+            !table
+                .filter_columns()
+                .where_header_context(Filter::Is(&self.header_context))
+                .where_data_context(Filter::Is(&self.data_context))
+                .where_dtype(Filter::Is(&self.column_dtype))
+                .collect()
+                .is_empty()
         })
     }
 
@@ -120,22 +126,25 @@ impl Strategy for MappingStrategy {
         for table in tables.iter_mut() {
             info!(
                 "Applying Mapping strategy to table: {}",
-                table.context().name
+                table.context().name()
             );
 
             let col_names: Vec<String> = table
-                .get_cols_with_contexts(&self.header_context, &self.data_context)
+                .filter_columns()
+                .where_header_context(Filter::Is(&self.header_context))
+                .where_data_context(Filter::Is(&self.data_context))
+                .collect()
                 .iter()
                 .map(|col| col.name().to_string())
                 .collect();
 
             for col_name in col_names {
-                let original_column = table.data.column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name).unwrap();
 
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column
                         .cast(&DataType::String)
-                        .map_err(|err| StrategyError(err.to_string()))?;
+                        .map_err(|err| TransformError::StrategyError(err.to_string()))?;
                     Cow::Owned(casted_col)
                 } else {
                     Cow::Borrowed(original_column)
@@ -144,7 +153,7 @@ impl Strategy for MappingStrategy {
                 let mapped_column = col
                     .str()
                     .map_err(|_| {
-                        StrategyError(format!(
+                        TransformError::StrategyError(format!(
                             "Unexpectedly could not convert column {col_name} to string column."
                         ))
                     })?
@@ -162,7 +171,7 @@ impl Strategy for MappingStrategy {
                                 warn!("Unable to convert map '{cell_value}'");
                                 error_info.insert(MappingErrorInfo {
                                     column: col.name().to_string(),
-                                    table: table.context().clone().name,
+                                    table: table.context().name().to_string(),
                                     old_value: cell_value.to_string(),
                                     possible_mappings: MappingSuggestion::from_hashmap(
                                         &self.synonym_map,
@@ -174,22 +183,22 @@ impl Strategy for MappingStrategy {
                     });
 
                 table
-                    .data
+                    .data_mut()
                     .replace(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
-                            StrategyError(format!(
+                            TransformError::StrategyError(format!(
                                 "Unable to cast column from {} to {}",
                                 self.column_dtype, self.out_dtype
                             ))
                         })?,
                     )
-                    .map_err(|err| StrategyError(err.to_string()))?;
+                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
             }
         }
 
         if !error_info.is_empty() {
-            Err(MappingError {
+            Err(TransformError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })
@@ -229,18 +238,20 @@ mod tests {
     fn test_sex_mapping_strategy_success() {
         let mut table = make_test_dataframe();
         let filtered_table = table
-            .data
+            .clone()
+            .into_data()
             .lazy()
             .filter(col("sex").eq(lit("mole")).not())
             .collect()
             .unwrap();
-        table.data = filtered_table;
+        table.set_data(filtered_table);
+
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
         strategy.transform(&mut [&mut table]).unwrap();
 
         let sex_values: Vec<String> = table
-            .data
+            .data()
             .column("sex")
             .unwrap()
             .str()
@@ -268,7 +279,7 @@ mod tests {
         let mut table = make_test_dataframe();
 
         let series = Series::new("sex".into(), vec![5.6]);
-        table.data.replace("sex", series.clone()).unwrap();
+        table.data_mut().replace("sex", series.clone()).unwrap();
 
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
         strategy.synonym_map = HashMap::from([("5.6".to_string(), "male".to_string())]);
@@ -277,12 +288,12 @@ mod tests {
 
         strategy.transform(&mut [&mut table]).unwrap();
         assert_eq!(
-            table.data.column("sex").unwrap().dtype(),
+            table.data().column("sex").unwrap().dtype(),
             &strategy.out_dtype
         );
 
         table
-            .data
+            .data()
             .column(series.name())
             .unwrap()
             .str()
@@ -319,7 +330,7 @@ mod tests {
         }
 
         let sex_values: Vec<String> = table
-            .data
+            .data()
             .column("sex")
             .unwrap()
             .str()

@@ -8,6 +8,8 @@ pub enum RegistryError {
     EnvironmentVarNotSet(String),
     #[allow(dead_code)]
     NotRegistered(String),
+    #[allow(dead_code)]
+    UnableToResolveVersion(String),
 }
 
 impl From<std::io::Error> for RegistryError {

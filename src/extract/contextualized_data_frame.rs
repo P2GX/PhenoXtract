@@ -1,9 +1,10 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesContextFilter};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
-use log::{debug, warn};
-use polars::prelude::{Column, DataFrame, DataType, NamedFrom, Series};
+use log::debug;
+use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
 use validator::Validate;
 
@@ -17,7 +18,7 @@ pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
     #[allow(unused)]
-    pub data: DataFrame,
+    data: DataFrame,
 }
 
 impl ContextualizedDataFrame {
@@ -30,14 +31,29 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
-    #[allow(unused)]
-    pub fn get_series_contexts(&self) -> &Vec<SeriesContext> {
-        &self.context.context
+    pub fn context_mut(&mut self) -> &TableContext {
+        &mut self.context
     }
 
     #[allow(unused)]
+    pub fn series_contexts(&self) -> &Vec<SeriesContext> {
+        self.context.context()
+    }
+
+    pub fn data(&self) -> &DataFrame {
+        &self.data
+    }
+
     pub fn data_mut(&mut self) -> &mut DataFrame {
         &mut self.data
+    }
+
+    pub fn into_data(self) -> DataFrame {
+        self.data
+    }
+
+    pub fn set_data(&mut self, data: DataFrame) {
+        self.data = data;
     }
 
     fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
@@ -115,38 +131,6 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_series_context_by_id(&self, id: &Identifier) -> Option<&SeriesContext> {
-        self.context
-            .context
-            .iter()
-            .find(|sc| sc.get_identifier() == id)
-    }
-
-    /// Searches a CDF for columns whose header_context and data_context are certain specific values
-    /// and ensures that the columns' data_type is equal to desired_dtype
-    /// Returns true if all columns with the given contexts also feature the same dtype. Also returns true if no columns have the contexts.
-    /// Returns false if any of the found columns does not feature the give dtype.
-    pub fn contexts_have_dtype(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-        desired_dtype: &DataType,
-    ) -> bool {
-        let columns = self.get_cols_with_contexts(header_context, data_context);
-        let contexts_have_desired_dtype = columns.iter().all(|col| col.dtype() == desired_dtype);
-
-        if !contexts_have_desired_dtype {
-            warn!(
-                "Not all columns with {} data context have {} type in table {}.",
-                data_context,
-                desired_dtype,
-                self.context().name
-            );
-        }
-        contexts_have_desired_dtype
-    }
-
-    #[allow(unused)]
     /// The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(
         &mut self,
@@ -156,7 +140,7 @@ impl ContextualizedDataFrame {
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
-        let table_name = self.context.name.clone();
+        let table_name = self.context.name().to_string();
         let transformed_series = Series::new(col_name.into(), transformed_vec);
         let transform_result = self
             .data_mut()
@@ -175,113 +159,19 @@ impl ContextualizedDataFrame {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn get_cols_with_contexts(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_data_context() == data_context
-                    && sc.get_header_context() == header_context
-                {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
+    pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
+        SeriesContextFilter::new(self.context.context())
     }
 
-    #[allow(dead_code)]
-    pub fn get_cols_with_data_context(&self, data_context: &Context) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_data_context() == data_context {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
-    }
-
-    #[allow(unused)]
-    pub fn get_cols_with_header_context(&self, header_context: &Context) -> Vec<&Column> {
-        self.context()
-            .context
-            .iter()
-            .filter_map(|sc| {
-                if sc.get_header_context() == header_context {
-                    Some(self.get_columns(sc.get_identifier()))
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .collect::<Vec<&Column>>()
-    }
-
-    #[allow(unused)]
-    pub fn get_series_contexts_with_contexts(
-        &self,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&SeriesContext> {
-        self.context
-            .context
-            .iter()
-            .filter(|sc| {
-                sc.get_header_context() == header_context && sc.get_data_context() == data_context
-            })
-            .collect()
-    }
-
-    /// Finds all columns associated with a specific building block ID that also match the given contexts.
-    ///
-    /// This function first identifies all series that match both the `header_context` and
-    /// `data_context`. From that subset, it finds a series whose building block ID
-    /// matches the provided `block_id` (case-insensitively). Finally, it returns all
-    /// columns associated with that series.
-    #[allow(unused)]
-    pub fn get_building_block_with_contexts(
-        &self,
-        block_id: &Option<String>,
-        header_context: &Context,
-        data_context: &Context,
-    ) -> Vec<&Column> {
-        match block_id {
-            None => {
-                vec![]
-            }
-            Some(id) => {
-                let block_id = block_id.clone().unwrap();
-                self.get_series_contexts_with_contexts(header_context, data_context)
-                    .iter()
-                    .flat_map(|sc| {
-                        if let Some(other_id) = sc.get_building_block_id()
-                            && other_id.to_lowercase() == block_id.to_lowercase()
-                        {
-                            return self.get_columns(sc.get_identifier());
-                        }
-                        vec![]
-                    })
-                    .collect()
-            }
-        }
+    pub fn filter_columns(&'_ self) -> ColumnFilter<'_> {
+        ColumnFilter::new(self)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::Context;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::{fixture, rstest};
@@ -301,9 +191,9 @@ mod tests {
 
     #[fixture]
     fn sample_ctx() -> TableContext {
-        TableContext {
-            name: "table".to_string(),
-            context: vec![
+        TableContext::new(
+            "table".to_string(),
+            vec![
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "user.name".to_string(),
@@ -325,7 +215,7 @@ mod tests {
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
             ],
-        }
+        )
     }
 
     #[rstest]
@@ -426,107 +316,5 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cdf.data, expected_df);
-    }
-
-    #[rstest]
-    fn test_get_cols_with_data_context() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectId),
-            vec![
-                cdf.data.column("user.name").unwrap(),
-                cdf.data.column("different").unwrap()
-            ]
-        );
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectAge),
-            vec![cdf.data.column("age").unwrap()]
-        );
-    }
-
-    #[rstest]
-    fn test_get_cols_with_contexts() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_contexts(&Context::None, &Context::SubjectId),
-            vec![
-                cdf.data.column("user.name").unwrap(),
-                cdf.data.column("different").unwrap()
-            ]
-        );
-        assert_eq!(
-            cdf.get_cols_with_data_context(&Context::SubjectAge),
-            vec![cdf.data.column("age").unwrap()]
-        );
-    }
-
-    #[rstest]
-    fn test_get_cols_with_header_context() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(
-            cdf.get_cols_with_header_context(&Context::HpoLabelOrId),
-            vec![
-                cdf.data.column("bronchitis").unwrap(),
-                cdf.data.column("overweight").unwrap()
-            ]
-        );
-    }
-
-    #[rstest]
-    fn test_check_contexts_have_data_type() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-
-        //check it can recognise true positives
-        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::String));
-        assert!(cdf.contexts_have_dtype(&Context::None, &Context::SubjectAge, &DataType::Int32));
-
-        //check it can recognise true negatives
-        assert!(!cdf.contexts_have_dtype(
-            &Context::HpoLabelOrId,
-            &Context::ObservationStatus,
-            &DataType::Float64
-        ));
-        assert!(!cdf.contexts_have_dtype(&Context::None, &Context::SubjectId, &DataType::Boolean));
-    }
-
-    #[rstest]
-    fn test_get_building_block_with_contexts() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
-
-        let block_id = Some("block_1".to_string());
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::HpoLabelOrId,
-                &Context::ObservationStatus
-            ),
-            vec![cdf.data.column("bronchitis").unwrap()]
-        );
-
-        let no_column_vec: Vec<&Column> = Vec::new();
-        assert_eq!(
-            cdf.get_building_block_with_contexts(&block_id, &Context::None, &Context::VitalStatus),
-            no_column_vec
-        );
-
-        assert_eq!(
-            cdf.get_building_block_with_contexts(
-                &block_id,
-                &Context::None,
-                &Context::ObservationStatus
-            ),
-            no_column_vec
-        );
     }
 }
