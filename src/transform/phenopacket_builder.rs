@@ -181,9 +181,6 @@ impl PhenopacketBuilder {
         resolution: Option<&str>,
         evidence: Option<&str>,
     ) -> Result<(), TransformError> {
-        if excluded.is_some() {
-            warn!("is_observed phenotypic feature not implemented yet");
-        }
         if severity.is_some() {
             warn!("severity phenotypic feature not implemented yet");
         }
@@ -223,6 +220,10 @@ impl PhenopacketBuilder {
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
+        }
+
+        if let Some(excluded) = excluded {
+            feature.excluded = excluded;
         }
 
         if let Some(onset) = onset {

@@ -5,8 +5,7 @@ use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{AnyValue, Column, DataType};
-use std::borrow::Cow;
+use polars::prelude::{Column, DataType, Series};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -84,7 +83,7 @@ impl Collector {
 
         for hpo_sc in hpo_scs {
             let sc_id = hpo_sc.get_identifier();
-            let hpo_cols = patient_cdf.get_columns(hpo_sc.get_identifier());
+            let hpo_cols = patient_cdf.get_columns(sc_id);
             let linked_onset_age_cols: Vec<&Column> = patient_cdf.get_building_block_with_contexts(
                 hpo_sc.get_building_block_id(),
                 &Context::None,
@@ -107,73 +106,156 @@ impl Collector {
                 );
             }
 
-            let null_onset_col = &Column::new_empty("Null_onset_col".into(), &DataType::String);
+            let onset_col = if valid_onset_linking {
+                linked_onset_cols.first().unwrap()
+            } else {
+                &&Column::from(Series::full_null(
+                    "null_onset_col".into(),
+                    patient_cdf.data.height(),
+                    &DataType::String,
+                ))
+            };
 
             for hpo_col in hpo_cols {
-                let onset_col = if valid_onset_linking {
-                    linked_onset_cols.first().unwrap()
+                if hpo_sc.get_header_context() == &Context::None
+                    && hpo_sc.get_data_context() == &Context::HpoLabelOrId
+                {
+                    self.collect_hpo_in_cells_col(phenopacket_id, hpo_col, onset_col)?;
                 } else {
-                    null_onset_col
-                };
-
-                for (index, cell_value) in hpo_col.str().unwrap().iter().enumerate() {
-                    let onset: Option<Cow<str>> =
-                        onset_col
-                            .get(index)
-                            .ok()
-                            .and_then(|any_value| match any_value {
-                                AnyValue::String(s) => Some(Cow::Borrowed(s)),
-                                AnyValue::StringOwned(s) => Some(Cow::Owned(s.into())),
-                                AnyValue::Datetime(_, _, _) => Some(any_value.to_string().into()),
-                                _ => None,
-                            });
-
-                    if let Some(cell_value) = cell_value {
-                        let hpo_col_name = hpo_col.name();
-
-                        let phenotype = if hpo_sc.get_header_context() == &Context::None
-                            && hpo_sc.get_data_context() == &Context::HpoLabelOrId
-                        {
-                            cell_value
-                        } else if cell_value == "OBSERVED" {
-                            hpo_col_name
-                        } else {
-                            warn!(
-                                "Could not interpret {cell_value} in column {hpo_col_name}. It has been ignored."
-                            );
-                            continue;
-                        };
-
-                        self.phenopacket_builder
-                            .upsert_phenotypic_feature(
-                                phenopacket_id,
-                                phenotype,
-                                None,
-                                None,
-                                None,
-                                None,
-                                onset.as_deref(),
-                                None,
-                                None,
-                            )
-                            .map_err(|_| {
-                                CollectionError(format!(
-                                    "Error when upserting HPO term {} in column {}",
-                                    phenotype, hpo_col_name
-                                ))
-                            })?;
-                    } else if let Some(onset) = onset {
-                        warn!(
-                            "Non-null Onset {} found for null HPO value in table {} for phenopacket {}",
-                            onset,
-                            patient_cdf.context().name,
-                            phenopacket_id
-                        );
-                    }
+                    self.collect_hpo_in_header_col(phenopacket_id, hpo_col, onset_col)?;
                 }
             }
         }
 
+        Ok(())
+    }
+
+    fn collect_hpo_in_cells_col(
+        &mut self,
+        phenopacket_id: &str,
+        patient_hpo_col: &Column,
+        patient_onset_col: &Column,
+    ) -> Result<(), TransformError> {
+        let stringified_hpo_col = patient_hpo_col.str().map_err(|_| {
+            CollectionError(format!(
+                "Error when converting HPO col {} to StringChunked.",
+                patient_hpo_col.name()
+            ))
+        })?;
+        let onset_col_cast_to_string = patient_onset_col.cast(&DataType::String).map_err(|_| {
+            CollectionError(format!(
+                "Could not cast column {} to String for phenopacket {}.",
+                patient_onset_col.name(),
+                phenopacket_id
+            ))
+        })?;
+        let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
+            CollectionError(format!(
+                "Error when converting onset col {} to StringChunked.",
+                patient_onset_col.name()
+            ))
+        })?;
+
+        let hpo_onset_pairs = stringified_hpo_col.iter().zip(stringified_onset_col.iter());
+
+        for (hpo, onset) in hpo_onset_pairs {
+            if let Some(hpo) = hpo {
+                self.phenopacket_builder
+                    .upsert_phenotypic_feature(
+                        phenopacket_id,
+                        hpo,
+                        None,
+                        None,
+                        None,
+                        None,
+                        onset,
+                        None,
+                        None,
+                    )
+                    .map_err(|_| {
+                        CollectionError(format!(
+                            "Error when upserting HPO term {} in column {}",
+                            hpo,
+                            patient_hpo_col.name()
+                        ))
+                    })?;
+            } else if let Some(onset) = onset {
+                warn!(
+                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
+                    onset,
+                    patient_hpo_col.name(),
+                    phenopacket_id
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_hpo_in_header_col(
+        &mut self,
+        phenopacket_id: &str,
+        patient_hpo_col: &Column,
+        patient_onset_col: &Column,
+    ) -> Result<(), TransformError> {
+        let hpo = patient_hpo_col.name();
+
+        let boolified_hpo_col = patient_hpo_col.bool().map_err(|_| {
+            CollectionError(format!(
+                "Error when converting HPO col {} to BooleanChunked.",
+                patient_hpo_col.name()
+            ))
+        })?;
+        let onset_col_cast_to_string = patient_onset_col.cast(&DataType::String).map_err(|_| {
+            CollectionError(format!(
+                "Could not cast column {} to String for phenopacket {}.",
+                patient_onset_col.name(),
+                phenopacket_id
+            ))
+        })?;
+        let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
+            CollectionError(format!(
+                "Error when converting onset col {} to StringChunked.",
+                patient_onset_col.name()
+            ))
+        })?;
+
+        let bool_onset_pairs = boolified_hpo_col.iter().zip(stringified_onset_col.iter());
+
+        //if the cell bool is null, no phenotype is upserted
+        //if the cell bool is true, the phenotype is upserted with excluded = None
+        //if the cell bool is false, the phenotype is upserted with excluded = true
+        for (bool, onset) in bool_onset_pairs {
+            if let Some(bool) = bool {
+                let excluded = if bool { None } else { Some(true) };
+
+                self.phenopacket_builder
+                    .upsert_phenotypic_feature(
+                        phenopacket_id,
+                        hpo,
+                        None,
+                        excluded,
+                        None,
+                        None,
+                        onset,
+                        None,
+                        None,
+                    )
+                    .map_err(|_| {
+                        CollectionError(format!(
+                            "Error when upserting HPO term {} in column {}",
+                            hpo,
+                            patient_hpo_col.name()
+                        ))
+                    })?;
+            } else if let Some(onset) = onset {
+                warn!(
+                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
+                    onset,
+                    patient_hpo_col.name(),
+                    phenopacket_id
+                );
+            }
+        }
         Ok(())
     }
 
@@ -322,7 +404,7 @@ mod tests {
         Age as age_struct, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
         VitalStatus,
     };
-    use polars::datatypes::AnyValue;
+    use polars::datatypes::{AnyValue, DataType};
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
     use prost_types::Timestamp as TimestampProtobuf;
@@ -510,6 +592,18 @@ mod tests {
     }
 
     #[fixture]
+    fn pf_runny_nose_excluded() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0031417".to_string(),
+                label: "Rhinorrhea".to_string(),
+            }),
+            excluded: true,
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn df_multi_patient() -> DataFrame {
         let id_col = Column::new(
             "subject_id".into(),
@@ -639,7 +733,7 @@ mod tests {
         let runny_nose_col = Column::new(
             "HP:0031417".into(),
             [
-                AnyValue::String("OBSERVED"),
+                AnyValue::Boolean(true),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -826,6 +920,83 @@ mod tests {
             .phenotypic_features
             .push(pf_nail_psoriasis_no_onset);
         expected_p006.phenotypic_features.push(pf_runny_nose);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_hpo_in_cells_col(
+        pf_pneumonia: PhenotypicFeature,
+        pf_asthma_no_onset: PhenotypicFeature,
+        pf_nail_psoriasis: PhenotypicFeature,
+    ) {
+        let mut collector = init_collector();
+
+        let patient_hpo_col = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("Pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+            ],
+        );
+        let patient_onset_col = Column::new(
+            "onset_age".into(),
+            [
+                AnyValue::String("P40Y10M05D"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::String("P48Y4M21D"),
+            ],
+        );
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, &patient_onset_col)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006.phenotypic_features.push(pf_pneumonia);
+        expected_p006.phenotypic_features.push(pf_asthma_no_onset);
+        expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_hpo_in_header_col(pf_runny_nose_excluded: PhenotypicFeature) {
+        let mut collector = init_collector();
+
+        let patient_hpo_col = Column::new(
+            "HP:0031417".into(),
+            [AnyValue::Boolean(false), AnyValue::Null],
+        );
+        let patient_onset_col = Column::from(Series::full_null(
+            "null_onset_col".into(),
+            2,
+            &DataType::String,
+        ));
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, &patient_onset_col)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006
+            .phenotypic_features
+            .push(pf_runny_nose_excluded);
 
         assert_eq!(phenopackets.len(), 1);
         assert_eq!(phenopackets[0], expected_p006);
