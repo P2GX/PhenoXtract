@@ -171,31 +171,31 @@ impl Value for GeneResponse {
 
 pub struct HGNCClient {
     rate_limiter: Ratelimiter,
-    cache_dir: PathBuf,
+    cache_file_path: PathBuf,
     api_url: String,
 }
 
 impl HGNCClient {
     fn new(
         rate_limiter: Ratelimiter,
-        cache_dir: PathBuf,
+        cache_file_path: PathBuf,
         api_url: String,
     ) -> Result<Self, ClientError> {
-        Self::init_cache(&cache_dir)?;
+        Self::init_cache(&cache_file_path)?;
         Ok(HGNCClient {
             rate_limiter,
-            cache_dir,
+            cache_file_path,
             api_url,
         })
     }
 
     pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Result<Self, ClientError> {
         Self::init_cache(&cache_dir)?;
-        self.cache_dir = cache_dir.clone();
+        self.cache_file_path = cache_dir.clone();
         Ok(self)
     }
     fn cache(&self) -> Result<RedbDatabase, DatabaseError> {
-        RedbDatabase::create(&self.cache_dir)
+        RedbDatabase::create(&self.cache_file_path)
     }
 
     fn init_cache(cache_dir: &Path) -> Result<(), ClientError> {
@@ -261,7 +261,7 @@ impl Default for HGNCClient {
         info!("HGNC client cache dir: {:?}", cache_dir);
         HGNCClient {
             rate_limiter,
-            cache_dir,
+            cache_file_path: cache_dir,
             api_url: "https://rest.genenames.org/".to_string(),
         }
     }
@@ -273,15 +273,20 @@ mod tests {
     use crate::skip_in_ci;
     use rstest::rstest;
     use serial_test::serial;
+    use std::env::temp_dir;
+    use tempfile::TempDir;
 
-    struct CacheGuard {
-        cache_dir: PathBuf,
-    }
-
-    impl Drop for CacheGuard {
-        fn drop(&mut self) {
-            clear_cache(&self.cache_dir);
-        }
+    fn build_client(cache_file_path: PathBuf) -> HGNCClient {
+        let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
+            .max_tokens(10)
+            .build()
+            .expect("Building rate limiter failed");
+        HGNCClient::new(
+            rate_limiter,
+            cache_file_path,
+            "https://rest.genenames.org/".to_string(),
+        )
+        .unwrap()
     }
 
     fn clear_cache(cache_dir: &PathBuf) {
@@ -297,10 +302,8 @@ mod tests {
     #[rstest]
     #[serial]
     fn test_fetch_symbol() {
-        let client = HGNCClient::default();
-        let _guard = CacheGuard {
-            cache_dir: HGNCClient::default_cache_dir(),
-        };
+        let temp_dir = TempDir::new().unwrap();
+        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
 
         let symbol = "ZNF3";
         let gene_response = client.fetch_symbol(symbol).unwrap();
@@ -315,14 +318,12 @@ mod tests {
     #[serial]
     fn test_fetch_symbol_rate_limit() {
         skip_in_ci!();
-        let client = HGNCClient::default();
-        let _guard = CacheGuard {
-            cache_dir: HGNCClient::default_cache_dir(),
-        };
+        let temp_dir = TempDir::new().unwrap();
+        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
 
         for _ in 0..50 {
             let _ = client.fetch_symbol("ZNF3").unwrap();
-            clear_cache(&client.cache_dir);
+            clear_cache(&client.cache_file_path);
         }
     }
 
@@ -330,13 +331,12 @@ mod tests {
     #[serial]
     fn test_cache() {
         let symbol = "CLOCK";
-        let client = HGNCClient::default();
-        let _guard = CacheGuard {
-            cache_dir: HGNCClient::default_cache_dir(),
-        };
+        let temp_dir = TempDir::new().unwrap();
+        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
+
         let _ = client.fetch_symbol(symbol).unwrap();
 
-        let cache = RedbDatabase::create(&client.cache_dir).unwrap();
+        let cache = RedbDatabase::create(&client.cache_file_path).unwrap();
         let cache_reader = cache.begin_read().unwrap();
         let table = cache_reader.open_table(TABLE).unwrap();
 
