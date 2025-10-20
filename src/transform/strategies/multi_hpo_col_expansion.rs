@@ -73,19 +73,14 @@ impl Strategy for MultiHPOColExpansionStrategy {
             bb_ids.sort();
 
             for bb_id in bb_ids {
+                let multi_hpo_filter = table
+                    .filter_columns()
+                    .where_header_context(Filter::Is(&Context::None))
+                    .where_data_context(Filter::Is(&Context::MultiHpoId));
+
                 let multi_hpo_block = match bb_id {
-                    None => table
-                        .filter_columns()
-                        .where_header_context(Filter::Is(&Context::None))
-                        .where_data_context(Filter::Is(&Context::MultiHpoId))
-                        .where_building_block(Filter::IsNone)
-                        .collect(),
-                    Some(bb_id) => table
-                        .filter_columns()
-                        .where_header_context(Filter::Is(&Context::None))
-                        .where_data_context(Filter::Is(&Context::MultiHpoId))
-                        .where_building_block(Filter::Is(bb_id))
-                        .collect(),
+                    None => multi_hpo_filter.where_building_block(Filter::IsNone).collect(),
+                    Some(bb_id) => multi_hpo_filter.where_building_block(Filter::Is(bb_id)).collect(),
                 };
 
                 let stringified_multi_hpo_block = multi_hpo_block.iter()

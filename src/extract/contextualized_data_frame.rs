@@ -141,14 +141,6 @@ impl ContextualizedDataFrame {
     }
 
     #[allow(unused)]
-    pub fn get_series_context_by_id(&self, id: &Identifier) -> Option<&SeriesContext> {
-        self.context
-            .context()
-            .iter()
-            .find(|sc| sc.get_identifier() == id)
-    }
-
-    #[allow(unused)]
     /// The column col_name will be replaced with the data inside the vector transformed_vec
     pub fn replace_column<T, Phantom: ?Sized>(
         &mut self,
@@ -186,13 +178,11 @@ impl ContextualizedDataFrame {
     }
 
     pub fn get_building_block_ids(&self) -> HashSet<&str> {
-        let mut building_block_ids = HashSet::new();
-        self.context().context().iter().for_each(|sc| {
-            if let Some(bb_id) = sc.get_building_block_id() {
-                building_block_ids.insert(bb_id);
-            }
-        });
-        building_block_ids
+        self.context()
+            .context()
+            .iter()
+            .filter_map(|sc| sc.get_building_block_id())
+            .collect()
     }
 
     pub fn remove_scs_with_context(&mut self, header_context: &Context, data_context: &Context) {
