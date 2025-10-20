@@ -187,10 +187,9 @@ impl MultiHPOColExpansionStrategy {
         patient_to_hpo: OrderMap<&str, OrderSet<&str>>,
     ) -> (Vec<Column>, SeriesContext) {
         let hpos = patient_to_hpo
-            .clone()
-            .into_values()
+            .values()
             .flatten()
-            .collect::<OrderSet<&str>>();
+            .collect::<OrderSet<&&str>>();
 
         let mut new_hpo_cols = vec![];
         let mut new_hpo_col_names = vec![];
