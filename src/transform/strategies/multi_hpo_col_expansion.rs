@@ -79,8 +79,12 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     .where_data_context(Filter::Is(&Context::MultiHpoId));
 
                 let multi_hpo_block = match bb_id {
-                    None => multi_hpo_filter.where_building_block(Filter::IsNone).collect(),
-                    Some(bb_id) => multi_hpo_filter.where_building_block(Filter::Is(bb_id)).collect(),
+                    None => multi_hpo_filter
+                        .where_building_block(Filter::IsNone)
+                        .collect(),
+                    Some(bb_id) => multi_hpo_filter
+                        .where_building_block(Filter::Is(bb_id))
+                        .collect(),
                 };
 
                 let stringified_multi_hpo_block = multi_hpo_block.iter()
@@ -91,26 +95,20 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     })
                     .collect::<Result<Vec<&StringChunked>, TransformError>>()?;
 
-                let (patient_to_hpo, hpos) = get_patient_to_hpo_data(
+                let patient_to_hpo = Self::get_patient_to_hpo_data(
                     stringified_subject_id_col,
                     stringified_multi_hpo_block,
                 );
 
-                let mut sorted_hpos = hpos.into_iter().collect::<Vec<&str>>();
-                sorted_hpos.sort();
-
-                let (new_hpo_cols_from_this_block, new_sc) = create_new_cols_with_sc(
+                let (new_hpo_cols_from_this_block, new_sc) = Self::create_new_cols_with_sc(
                     stringified_subject_id_col,
                     bb_id,
-                    sorted_hpos,
                     patient_to_hpo,
                 );
 
                 new_hpo_cols.extend(new_hpo_cols_from_this_block);
                 new_series_contexts.push(new_sc);
             }
-
-            table.remove_scs_and_cols_with_context(&Context::None, &Context::MultiHpoId);
 
             for new_hpo_col in new_hpo_cols {
                 let new_hpo_col_name = new_hpo_col.name().clone();
@@ -123,108 +121,112 @@ impl Strategy for MultiHPOColExpansionStrategy {
             for new_sc in new_series_contexts {
                 table.add_series_context(new_sc);
             }
+
+            table.remove_scs_and_cols_with_context(&Context::None, &Context::MultiHpoId);
         }
 
         Ok(())
     }
 }
 
-#[allow(unused)]
-fn hpo_id_search(string_to_search: &str) -> Vec<&str> {
-    let hpo_regex = Regex::new(r"HP:\d{7}").unwrap();
-    hpo_regex
-        .find_iter(string_to_search)
-        .map(|mat| mat.as_str())
-        .collect()
-}
+impl MultiHPOColExpansionStrategy {
+    fn hpo_id_search(string_to_search: &str) -> Vec<&str> {
+        let hpo_regex = Regex::new(r"HP:\d{7}").unwrap();
+        hpo_regex
+            .find_iter(string_to_search)
+            .map(|mat| mat.as_str())
+            .collect()
+    }
 
-/// This function takes a SubjectID column and several MultiHPO columns
-/// and extracts the set of all HPOs in the data (=hpos)
-/// and also creates a patient-to-HPO HashMap (=patient_to_hpo)
-/// where the keys are the SubjectIDs and the values are the set of HPOs observed for that patient.
-#[allow(unused)]
-fn get_patient_to_hpo_data<'a, 'b>(
-    stringified_subject_id_col: &'a StringChunked,
-    stringified_multi_hpo_cols: Vec<&'b StringChunked>,
-) -> (HashMap<&'a str, HashSet<&'b str>>, HashSet<&'b str>) {
-    let mut patient_to_hpo: HashMap<&'a str, HashSet<&'b str>> = HashMap::new();
-    let mut hpos: HashSet<&str> = HashSet::new();
+    /// This function takes a SubjectID column and several MultiHPO columns
+    /// and creates a patient-to-HPO HashMap (=patient_to_hpo)
+    /// where the keys are the SubjectIDs and the values are the set of HPOs observed for that patient.
+    fn get_patient_to_hpo_data<'a, 'b>(
+        stringified_subject_id_col: &'a StringChunked,
+        stringified_multi_hpo_cols: Vec<&'b StringChunked>,
+    ) -> HashMap<&'a str, HashSet<&'b str>> {
+        let mut patient_to_hpo: HashMap<&'a str, HashSet<&'b str>> = HashMap::new();
 
-    for stringified_multi_hpo_col in stringified_multi_hpo_cols {
-        let patient_id_multi_hpo_pairs = stringified_subject_id_col
-            .into_iter()
-            .zip(stringified_multi_hpo_col.into_iter());
+        for stringified_multi_hpo_col in stringified_multi_hpo_cols {
+            let patient_id_multi_hpo_pairs = stringified_subject_id_col
+                .iter()
+                .zip(stringified_multi_hpo_col.iter());
 
-        for (patient_id, multi_hpo) in patient_id_multi_hpo_pairs {
-            match multi_hpo {
-                None => continue,
-                Some(multi_hpo) => match patient_id {
-                    None => {
-                        warn!(
-                            "The entry {multi_hpo} in the column {} was found with no corresponding SubjectID.",
-                            stringified_multi_hpo_col.name()
-                        );
-                        continue;
+            for (patient_id, multi_hpo) in patient_id_multi_hpo_pairs {
+                if let Some(multi_hpo) = multi_hpo {
+                    match patient_id {
+                        None => {
+                            warn!(
+                                "The entry {multi_hpo} in the column {} was found with no corresponding SubjectID.",
+                                stringified_multi_hpo_col.name()
+                            );
+                            continue;
+                        }
+                        Some(patient_id) => {
+                            let hpo_ids = Self::hpo_id_search(multi_hpo);
+                            let patient_to_hpo_entry =
+                                patient_to_hpo.entry(patient_id).or_default();
+
+                            hpo_ids.iter().for_each(|hpo_id| {
+                                patient_to_hpo_entry.insert(hpo_id);
+                            })
+                        }
                     }
-                    Some(patient_id) => {
-                        let hpo_ids = hpo_id_search(multi_hpo);
-                        let patient_to_hpo_entry = patient_to_hpo.entry(patient_id).or_default();
-
-                        hpo_ids.iter().for_each(|hpo_id| {
-                            patient_to_hpo_entry.insert(hpo_id);
-                            hpos.insert(hpo_id);
-                        })
-                    }
-                },
+                }
             }
         }
+
+        patient_to_hpo
     }
 
-    (patient_to_hpo, hpos)
-}
+    /// Given some patient_to_hpo data (=patient_to_hpo)
+    /// this function will appropriately construct new HPO columns and a new series context.
+    fn create_new_cols_with_sc(
+        stringified_subject_id_col: &StringChunked,
+        building_block_id: Option<&str>,
+        patient_to_hpo: HashMap<&str, HashSet<&str>>,
+    ) -> (Vec<Column>, SeriesContext) {
+        let hpos = patient_to_hpo
+            .clone()
+            .into_values()
+            .flatten()
+            .collect::<HashSet<&str>>();
+        let mut sorted_hpos = hpos.into_iter().collect::<Vec<&str>>();
+        sorted_hpos.sort();
 
-/// Given a set of HPO terms (=hpos)
-/// and some patient_to_hpo data (=patient_to_hpo)
-/// this function will appropriately construct new columns and a new series context.
-#[allow(unused)]
-fn create_new_cols_with_sc(
-    stringified_subject_id_col: &StringChunked,
-    building_block_id: Option<&str>,
-    hpos: Vec<&str>,
-    patient_to_hpo: HashMap<&str, HashSet<&str>>,
-) -> (Vec<Column>, SeriesContext) {
-    let mut new_hpo_cols = vec![];
-    let mut new_hpo_col_names = vec![];
+        let mut new_hpo_cols = vec![];
+        let mut new_hpo_col_names = vec![];
 
-    for hpo in hpos {
-        let mut observation_statuses = vec![];
-        stringified_subject_id_col.iter().for_each(|patient_id| {
-            let observation_status = patient_id
-                .and_then(|id| patient_to_hpo.get(id))
-                .filter(|hpos| hpos.contains(hpo))
-                .map(|_| AnyValue::Boolean(true))
-                .unwrap_or(AnyValue::Null);
-            observation_statuses.push(observation_status);
-        });
+        for hpo in sorted_hpos {
+            let observation_statuses: Vec<AnyValue> = stringified_subject_id_col
+                .iter()
+                .map(|patient_id| {
+                    patient_id
+                        .and_then(|id| patient_to_hpo.get(id))
+                        .filter(|hpos| hpos.contains(hpo))
+                        .map(|_| AnyValue::Boolean(true))
+                        .unwrap_or(AnyValue::Null)
+                })
+                .collect();
 
-        let new_hpo_col_name = match building_block_id {
-            None => hpo.to_string(),
-            Some(block_id) => format!("{hpo} (block {block_id})"),
-        };
+            let new_hpo_col_name = match building_block_id {
+                None => hpo.to_string(),
+                Some(block_id) => format!("{hpo}#(block {block_id})"),
+            };
 
-        let new_hpo_col = Column::new(new_hpo_col_name.clone().into(), observation_statuses);
-        new_hpo_cols.push(new_hpo_col);
-        new_hpo_col_names.push(new_hpo_col_name);
+            let new_hpo_col = Column::new(new_hpo_col_name.clone().into(), observation_statuses);
+            new_hpo_cols.push(new_hpo_col);
+            new_hpo_col_names.push(new_hpo_col_name);
+        }
+        let new_sc = SeriesContext::default()
+            .with_identifier(Identifier::Multi(new_hpo_col_names.clone()))
+            .with_header_context(Context::HpoId)
+            .with_data_context(Context::ObservationStatus)
+            .with_building_block_id(building_block_id.map(|bb_id| bb_id.to_string()));
+
+        (new_hpo_cols, new_sc)
     }
-    let new_sc = SeriesContext::default()
-        .with_identifier(Identifier::Multi(new_hpo_col_names.clone()))
-        .with_header_context(Context::HpoId)
-        .with_data_context(Context::ObservationStatus)
-        .with_building_block_id(building_block_id.map(|bb_id| bb_id.to_string()));
-
-    (new_hpo_cols, new_sc)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,7 +242,7 @@ mod tests {
             "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
             "Multi_HPOs_Block_A_1" => &[
                 AnyValue::String("patient 1 - HP:1111111 asd"),
-                AnyValue::String("patient 2 - asd HP:2222222 HP:3333333asd"),
+                AnyValue::String("patient 2 - asd HP:2222222HP:3333333asd"),
                 AnyValue::String("patient 2 - asdHP:2222222 asfn "),
                 AnyValue::Null,],
             "Multi_HPOs_Block_A_2" => &[
@@ -341,9 +343,9 @@ mod tests {
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111 (block A)".to_string(),
-                        "HP:2222222 (block A)".to_string(),
-                        "HP:3333333 (block A)".to_string(),
+                        "HP:1111111#(block A)".to_string(),
+                        "HP:2222222#(block A)".to_string(),
+                        "HP:3333333#(block A)".to_string(),
                     ]))
                     .with_header_context(Context::HpoId)
                     .with_data_context(Context::ObservationStatus)
@@ -369,7 +371,7 @@ mod tests {
         let string_to_search =
             "asdasdHP:0012622 Chronic kidney disease aerh21HP:0001410	Leukoencephalopathy";
         assert_eq!(
-            hpo_id_search(string_to_search),
+            MultiHPOColExpansionStrategy::hpo_id_search(string_to_search),
             vec!["HP:0012622".to_string(), "HP:0001410".to_string()]
         );
     }
@@ -378,7 +380,10 @@ mod tests {
     fn test_hpo_id_search_no_hits() {
         let string_to_search = "asdasdH:0012622 aerh21 0001410	Leukoencephalopathy";
         let empty_vec = Vec::<String>::new();
-        assert_eq!(hpo_id_search(string_to_search), empty_vec);
+        assert_eq!(
+            MultiHPOColExpansionStrategy::hpo_id_search(string_to_search),
+            empty_vec
+        );
     }
 
     #[rstest]
@@ -389,23 +394,22 @@ mod tests {
             .into_iter()
             .map(|idx| cdf.data().get_columns()[idx].str().unwrap())
             .collect::<Vec<&StringChunked>>();
-        let (patient_to_hpo, hpos) =
-            get_patient_to_hpo_data(stringified_subject_id_col, stringified_multi_hpo_cols);
+        let patient_to_hpo = MultiHPOColExpansionStrategy::get_patient_to_hpo_data(
+            stringified_subject_id_col,
+            stringified_multi_hpo_cols,
+        );
 
-        let mut expected_hpos = HashSet::new();
-        expected_hpos.extend(vec![
+        let mut expected_patient_1_hpos = HashSet::new();
+        expected_patient_1_hpos.insert("HP:1111111");
+
+        let mut expected_patient_2_hpos = HashSet::new();
+        expected_patient_2_hpos.extend(vec![
             "HP:1111111",
             "HP:2222222",
             "HP:3333333",
             "HP:4444444",
             "HP:5555555",
         ]);
-        assert_eq!(hpos, expected_hpos);
-
-        let mut expected_patient_1_hpos = HashSet::new();
-        expected_patient_1_hpos.insert("HP:1111111");
-
-        let expected_patient_2_hpos = hpos.clone();
 
         let mut expected_patient_3_hpos = HashSet::new();
         expected_patient_3_hpos.insert("HP:4444444");
@@ -421,8 +425,6 @@ mod tests {
     fn test_create_new_cols_with_sc(cdf: ContextualizedDataFrame) {
         let stringified_subject_id_col = cdf.data().column("subject_id").unwrap().str().unwrap();
 
-        let hpos = vec!["HP:1111111", "HP:2222222", "HP:3333333"];
-
         let mut patient_1_hpos = HashSet::new();
         patient_1_hpos.extend(vec!["HP:1111111", "HP:2222222"]);
         let mut patient_2_hpos = HashSet::new();
@@ -434,11 +436,14 @@ mod tests {
         patient_to_hpo.insert("P002", patient_2_hpos);
         patient_to_hpo.insert("P003", patient_3_hpos);
 
-        let (new_cols, new_sc) =
-            create_new_cols_with_sc(stringified_subject_id_col, Some("A"), hpos, patient_to_hpo);
+        let (new_cols, new_sc) = MultiHPOColExpansionStrategy::create_new_cols_with_sc(
+            stringified_subject_id_col,
+            Some("A"),
+            patient_to_hpo,
+        );
 
         let expected_col1 = Column::new(
-            "HP:1111111 (block A)".into(),
+            "HP:1111111#(block A)".into(),
             vec![
                 AnyValue::Boolean(true),
                 AnyValue::Null,
@@ -447,34 +452,24 @@ mod tests {
             ],
         );
         let expected_col2 = Column::new(
-            "HP:2222222 (block A)".into(),
+            "HP:2222222#(block A)".into(),
             vec![
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
-                AnyValue::Null,
-            ],
-        );
-        let expected_col3 = Column::new(
-            "HP:3333333 (block A)".into(),
-            vec![
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
                 AnyValue::Null,
             ],
         );
 
-        assert_eq!(new_cols, vec![expected_col1, expected_col2, expected_col3]);
+        assert_eq!(new_cols, vec![expected_col1, expected_col2]);
 
         let expected_sc = SeriesContext::default()
             .with_header_context(Context::HpoId)
             .with_data_context(Context::ObservationStatus)
             .with_building_block_id(Some("A".to_string()))
             .with_identifier(Identifier::Multi(vec![
-                "HP:1111111 (block A)".to_string(),
-                "HP:2222222 (block A)".to_string(),
-                "HP:3333333 (block A)".to_string(),
+                "HP:1111111#(block A)".to_string(),
+                "HP:2222222#(block A)".to_string(),
             ]));
 
         assert_eq!(new_sc, expected_sc);
