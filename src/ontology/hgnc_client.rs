@@ -273,7 +273,6 @@ mod tests {
     use crate::skip_in_ci;
     use rstest::rstest;
     use serial_test::serial;
-    use std::env::temp_dir;
     use tempfile::TempDir;
 
     fn build_client(cache_file_path: PathBuf) -> HGNCClient {
