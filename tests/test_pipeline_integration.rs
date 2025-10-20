@@ -11,9 +11,9 @@ use phenoxtract::ontology::ObolibraryOntologyRegistry;
 use phenoxtract::ontology::ontology_bidict::OntologyBiDict;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
-use phenoxtract::transform::strategies::alias_map::AliasMapStrategy;
-use phenoxtract::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
-use phenoxtract::transform::strategies::mapping::MappingStrategy;
+use phenoxtract::transform::strategies::AliasMapStrategy;
+use phenoxtract::transform::strategies::MappingStrategy;
+use phenoxtract::transform::strategies::SynonymsToPrimaryTermsStrategy;
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use rstest::{fixture, rstest};
@@ -142,7 +142,10 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     //Configure strategies (a.k.a. transformations)
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
-        Box::new(HPOSynonymsToPrimaryTermsStrategy::new(hpo_dict.clone())),
+        Box::new(SynonymsToPrimaryTermsStrategy::new(
+            hpo_dict.clone(),
+            Context::HpoLabel,
+        )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
     ];
 
