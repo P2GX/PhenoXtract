@@ -148,7 +148,7 @@ mod tests {
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
-            .with_data_context(Context::HpoLabel);
+            .with_data_context(Context::HpoLabelOrId);
         TableContext::new("patient_data".to_string(), vec![sc])
     }
 
@@ -177,7 +177,7 @@ mod tests {
 
         let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabel,
+            data_context: Context::HpoLabelOrId,
         };
         assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
 
@@ -213,7 +213,7 @@ mod tests {
 
         let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabel,
+            data_context: Context::HpoLabelOrId,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -290,7 +290,7 @@ mod tests {
 
         let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabel,
+            data_context: Context::HpoLabelOrId,
         };
         assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
 

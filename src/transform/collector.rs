@@ -83,17 +83,22 @@ impl Collector {
         let hpo_terms_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context(Filter::Is(&Context::HpoLabelOrId);
-        let hpo_term_in_header_scs = patient_cdf
-            .get_series_contexts_with_contexts(&Context::HpoLabelOrId, &Context::ObservationStatus);
-        let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat())
+            .where_data_context(Filter::Is(&Context::HpoLabelOrId))
             .collect();
 
-        for pf_sc in pf_scs {
-            let col_id = pf_sc.get_identifier();
-            let pf_cols = patient_cdf.get_columns(col_id);
+        let hpo_term_in_header_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_data_context(Filter::Is(&Context::ObservationStatus))
+            .collect();
 
-            let linked_onset_cols = pf_sc.get_building_block_id().map_or(vec![], |bb_id| {
+        let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat();
+
+        for hpo_sc in hpo_scs {
+            let sc_id = hpo_sc.get_identifier();
+            let hpo_cols = patient_cdf.get_columns(sc_id);
+
+            let linked_onset_cols = hpo_sc.get_building_block_id().map_or(vec![], |bb_id| {
                 patient_cdf
                     .filter_columns()
                     .where_building_block(Filter::Is(bb_id))
@@ -116,7 +121,7 @@ impl Collector {
             } else {
                 &&Column::from(Series::full_null(
                     "null_onset_col".into(),
-                    patient_cdf.data.height(),
+                    patient_cdf.data().height(),
                     &DataType::String,
                 ))
             };

@@ -158,7 +158,7 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
         Box::new(AliasMapStrategy),
         Box::new(SynonymsToPrimaryTermsStrategy::new(
             hpo_dict.clone(),
-            Context::HpoLabel,
+            Context::HpoLabelOrId,
         )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
     ];
