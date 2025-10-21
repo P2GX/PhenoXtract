@@ -1,18 +1,19 @@
-use crate::config::table_context::{Identifier, SeriesContext, TableContext};
-use crate::extract::contextualized_dataframe_filters::{ColumnFilter, SeriesContextFilter};
+use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
+use std::collections::HashSet;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
 ///
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
-#[derive(Clone, Validate, Default, Debug)]
+#[derive(Clone, Validate, Default, Debug, PartialEq)]
 #[validate(schema(function = "validate_one_context_per_column"))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
@@ -38,6 +39,15 @@ impl ContextualizedDataFrame {
     #[allow(unused)]
     pub fn series_contexts(&self) -> &Vec<SeriesContext> {
         self.context.context()
+    }
+
+    #[allow(unused)]
+    pub fn series_contexts_mut(&self) -> &Vec<SeriesContext> {
+        self.context.context()
+    }
+
+    pub fn add_series_context(&mut self, sc: SeriesContext) {
+        self.context.context_mut().push(sc);
     }
 
     pub fn data(&self) -> &DataFrame {
@@ -165,6 +175,49 @@ impl ContextualizedDataFrame {
 
     pub fn filter_columns(&'_ self) -> ColumnFilter<'_> {
         ColumnFilter::new(self)
+    }
+
+    pub fn get_building_block_ids(&self) -> HashSet<&str> {
+        self.context()
+            .context()
+            .iter()
+            .filter_map(|sc| sc.get_building_block_id())
+            .collect()
+    }
+
+    pub fn remove_scs_with_context(&mut self, header_context: &Context, data_context: &Context) {
+        self.context.context_mut().retain(|sc| {
+            sc.get_header_context() != header_context || sc.get_data_context() != data_context
+        });
+    }
+
+    pub fn remove_scs_and_cols_with_context(
+        &mut self,
+        header_context: &Context,
+        data_context: &Context,
+    ) -> &mut Self {
+        let cols_to_remove_names = self
+            .filter_columns()
+            .where_header_context(Filter::Is(header_context))
+            .where_data_context(Filter::Is(data_context))
+            .collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect::<Vec<String>>();
+
+        for col_name in cols_to_remove_names.iter() {
+            self.data_mut().drop_in_place(col_name).unwrap_or_else(|_| {
+                panic!(
+                    "Unexpectedly could not remove column {} from table {}.",
+                    col_name,
+                    self.context.name()
+                )
+            });
+        }
+
+        self.remove_scs_with_context(header_context, data_context);
+
+        self
     }
 }
 
@@ -316,5 +369,61 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cdf.data, expected_df);
+    }
+
+    #[rstest]
+    fn test_get_building_block_ids() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut expected_bb_ids = HashSet::new();
+        expected_bb_ids.insert("block_1");
+
+        assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
+    }
+
+    #[rstest]
+    fn test_remove_scs_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_with_context(&Context::HpoLabel, &Context::ObservationStatus);
+
+        assert_eq!(cdf.context.context().len(), 2);
+    }
+
+    #[rstest]
+    fn test_remove_scs_with_context_no_change() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_with_context(&Context::VitalStatus, &Context::None);
+
+        assert_eq!(cdf.context.context().len(), 4);
+        assert_eq!(cdf.data.width(), 6);
+        assert_eq!(cdf.data.height(), 3);
+    }
+
+    #[rstest]
+    fn test_remove_scs_and_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_and_cols_with_context(&Context::None, &Context::SubjectId);
+
+        assert_eq!(cdf.context.context().len(), 3);
+        assert_eq!(cdf.data.width(), 4);
+    }
+
+    #[rstest]
+    fn test_remove_scs_and_cols_with_context_no_change() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.remove_scs_and_cols_with_context(&Context::VitalStatus, &Context::None);
+
+        assert_eq!(cdf.context.context().len(), 4);
+        assert_eq!(cdf.data.width(), 6);
+        assert_eq!(cdf.data.height(), 3);
     }
 }

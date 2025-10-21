@@ -24,6 +24,7 @@ ontolius = "0.5.5"
 serde_json = "1.0.145"
 prost-types = "0.13.5" # Do not update. Version depends on Phenopackets crate.
 directories = "6.0.0"
+ordermap = "1.0.0"
 ratelimit = "0.10.0"
 redb = "3.1.0"
 
