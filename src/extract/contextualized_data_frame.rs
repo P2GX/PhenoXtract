@@ -387,7 +387,7 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.remove_scs_with_context(&Context::HpoLabel, &Context::ObservationStatus);
+        cdf.remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus);
 
         assert_eq!(cdf.context.context().len(), 2);
     }
