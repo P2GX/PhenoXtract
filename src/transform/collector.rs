@@ -6,7 +6,7 @@ use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{Column, DataType, Series};
+use polars::prelude::{Column, DataType, Series, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -94,6 +94,12 @@ impl Collector {
 
         let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat();
 
+        let null_col = &&Column::from(Series::full_null(
+            "null_col".into(),
+            patient_cdf.data().height(),
+            &DataType::String,
+        ));
+
         for hpo_sc in hpo_scs {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
@@ -119,20 +125,30 @@ impl Collector {
             let onset_col = if valid_onset_linking {
                 linked_onset_cols.first().unwrap()
             } else {
-                &&Column::from(Series::full_null(
-                    "null_onset_col".into(),
-                    patient_cdf.data().height(),
-                    &DataType::String,
-                ))
+                null_col
             };
+
+            let onset_col_cast_to_string = onset_col.cast(&DataType::String).map_err(|_| {
+                CollectionError(format!(
+                    "Could not cast column {} to String for phenopacket {}.",
+                    onset_col.name(),
+                    phenopacket_id
+                ))
+            })?;
+            let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
+                CollectionError(format!(
+                    "Error when converting onset col {} to StringChunked.",
+                    onset_col.name()
+                ))
+            })?;
 
             for hpo_col in hpo_cols {
                 if hpo_sc.get_header_context() == &Context::None
                     && hpo_sc.get_data_context() == &Context::HpoLabelOrId
                 {
-                    self.collect_hpo_in_cells_col(phenopacket_id, hpo_col, onset_col)?;
+                    self.collect_hpo_in_cells_col(phenopacket_id, hpo_col, stringified_onset_col)?;
                 } else {
-                    self.collect_hpo_in_header_col(phenopacket_id, hpo_col, onset_col)?;
+                    self.collect_hpo_in_header_col(phenopacket_id, hpo_col, stringified_onset_col)?;
                 }
             }
         }
@@ -144,25 +160,12 @@ impl Collector {
         &mut self,
         phenopacket_id: &str,
         patient_hpo_col: &Column,
-        patient_onset_col: &Column,
+        stringified_onset_col: &StringChunked,
     ) -> Result<(), TransformError> {
         let stringified_hpo_col = patient_hpo_col.str().map_err(|_| {
             CollectionError(format!(
                 "Error when converting HPO col {} to StringChunked.",
                 patient_hpo_col.name()
-            ))
-        })?;
-        let onset_col_cast_to_string = patient_onset_col.cast(&DataType::String).map_err(|_| {
-            CollectionError(format!(
-                "Could not cast column {} to String for phenopacket {}.",
-                patient_onset_col.name(),
-                phenopacket_id
-            ))
-        })?;
-        let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
-            CollectionError(format!(
-                "Error when converting onset col {} to StringChunked.",
-                patient_onset_col.name()
             ))
         })?;
 
@@ -205,27 +208,14 @@ impl Collector {
         &mut self,
         phenopacket_id: &str,
         patient_hpo_col: &Column,
-        patient_onset_col: &Column,
+        stringified_onset_col: &StringChunked,
     ) -> Result<(), TransformError> {
-        let hpo = patient_hpo_col.name();
+        let hpo = Self::get_hpo_from_col_header(patient_hpo_col);
 
         let boolified_hpo_col = patient_hpo_col.bool().map_err(|_| {
             CollectionError(format!(
                 "Error when converting HPO col {} to BooleanChunked.",
                 patient_hpo_col.name()
-            ))
-        })?;
-        let onset_col_cast_to_string = patient_onset_col.cast(&DataType::String).map_err(|_| {
-            CollectionError(format!(
-                "Could not cast column {} to String for phenopacket {}.",
-                patient_onset_col.name(),
-                phenopacket_id
-            ))
-        })?;
-        let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
-            CollectionError(format!(
-                "Error when converting onset col {} to StringChunked.",
-                patient_onset_col.name()
             ))
         })?;
 
@@ -399,6 +389,14 @@ impl Collector {
                 None => Ok(None),
             }
         }
+    }
+
+    /// after applying the MultiHPOColumnExpansion strategy
+    /// the headers of HPO columns will have the format HP:1234567#(block A) or just HP:1234567
+    /// this function takes such a header and returns just the HPO ID, i.e. HP:1234567
+    fn get_hpo_from_col_header(col: &Column) -> &str {
+        let split_col_name: Vec<&str> = col.name().split("#").collect();
+        split_col_name[0]
     }
 }
 
@@ -966,9 +964,11 @@ mod tests {
             ],
         );
 
+        let stringified_onset_col = patient_onset_col.str().unwrap();
+
         let phenopacket_id = "cohort2019-P006".to_string();
         collector
-            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, &patient_onset_col)
+            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, &stringified_onset_col)
             .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
@@ -989,7 +989,7 @@ mod tests {
         let mut collector = init_collector();
 
         let patient_hpo_col = Column::new(
-            "HP:0031417".into(),
+            "HP:0031417#(block foo)".into(),
             [AnyValue::Boolean(false), AnyValue::Null],
         );
         let patient_onset_col = Column::from(Series::full_null(
@@ -998,9 +998,11 @@ mod tests {
             &DataType::String,
         ));
 
+        let stringified_onset_col = patient_onset_col.str().unwrap();
+
         let phenopacket_id = "cohort2019-P006".to_string();
         collector
-            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, &patient_onset_col)
+            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, &stringified_onset_col)
             .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
@@ -1169,5 +1171,13 @@ mod tests {
                     .to_string(),
             )
         )
+    }
+
+    #[rstest]
+    fn test_get_hpo_from_col_header() {
+        let hpo_col = Column::new("HP:1234567#(block A)".into(), vec![true, true, false]);
+        assert_eq!("HP:1234567", Collector::get_hpo_from_col_header(&hpo_col));
+        let hpo_col2 = Column::new("HP:1234567".into(), vec![true, true, false]);
+        assert_eq!("HP:1234567", Collector::get_hpo_from_col_header(&hpo_col2));
     }
 }
