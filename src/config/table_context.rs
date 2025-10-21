@@ -31,10 +31,6 @@ impl TableContext {
     pub fn new(name: String, context: Vec<SeriesContext>) -> Self {
         TableContext { name, context }
     }
-    pub fn add_series_context(&mut self, sc: SeriesContext) -> &mut Self {
-        self.context.push(sc);
-        self
-    }
 
     pub fn name(&self) -> &str {
         &self.name
@@ -97,6 +93,8 @@ pub enum Context {
     SmokerBool,
     #[allow(unused)]
     ObservationStatus,
+    #[allow(unused)]
+    MultiHpoId,
     #[default]
     None,
     //...
