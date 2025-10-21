@@ -200,23 +200,24 @@ impl HGNCClient {
 
     fn init_cache(cache_dir: &Path) -> Result<(), ClientError> {
         let cache = RedbDatabase::create(cache_dir)?;
-        let write_txn = cache.begin_write().unwrap();
+        let write_txn = cache.begin_write()?;
         {
-            write_txn.open_table(TABLE).unwrap();
+            write_txn.open_table(TABLE)?;
         }
         write_txn.commit()?;
         Ok(())
     }
-    pub fn default_cache_dir() -> PathBuf {
+    pub fn default_cache_dir() -> Option<PathBuf> {
         let pkg_name = env!("CARGO_PKG_NAME");
-        let project_dirs = ProjectDirs::from("", "", pkg_name).unwrap();
-        project_dirs.cache_dir().join("hgnc_cache")
+
+        ProjectDirs::from("", "", pkg_name)
+            .map(|project_dirs| project_dirs.cache_dir().join("hgnc_cache"))
     }
 
-    pub fn fetch_symbol(&self, symbol: &str) -> Result<GeneResponse, ClientError> {
+    pub fn fetch_gene_data(&self, symbol: &str) -> Result<GeneResponse, ClientError> {
         let cache = self.cache()?;
-        let cache_reader = cache.begin_read().unwrap();
-        let table = cache_reader.open_table(TABLE).unwrap();
+        let cache_reader = cache.begin_read()?;
+        let table = cache_reader.open_table(TABLE)?;
 
         if let Ok(Some(cache_entry)) = table.get(symbol) {
             debug!("Hit HGNC cache for {}", symbol);
@@ -238,10 +239,10 @@ impl HGNCClient {
 
         let gene_response = response.json::<GeneResponse>()?;
 
-        let cache_writer = cache.begin_write().unwrap();
+        let cache_writer = cache.begin_write()?;
         {
             debug!("Caching response in HGNC cache for {}", symbol);
-            let mut table = cache_writer.open_table(TABLE).unwrap();
+            let mut table = cache_writer.open_table(TABLE)?;
             table.insert(symbol, gene_response.clone())?;
         }
         cache_writer.commit()?;
@@ -257,7 +258,7 @@ impl Default for HGNCClient {
             .build()
             .expect("Building rate limiter failed");
 
-        let cache_dir = Self::default_cache_dir();
+        let cache_dir = Self::default_cache_dir().unwrap();
         info!("HGNC client cache dir: {:?}", cache_dir);
         HGNCClient {
             rate_limiter,
@@ -300,12 +301,12 @@ mod tests {
 
     #[rstest]
     #[serial]
-    fn test_fetch_symbol() {
+    fn test_fetch_gene_data() {
         let temp_dir = TempDir::new().unwrap();
         let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
 
         let symbol = "ZNF3";
-        let gene_response = client.fetch_symbol(symbol).unwrap();
+        let gene_response = client.fetch_gene_data(symbol).unwrap();
 
         assert_eq!(
             gene_response.symbol_id_pair().first().unwrap(),
@@ -315,13 +316,13 @@ mod tests {
 
     #[rstest]
     #[serial]
-    fn test_fetch_symbol_rate_limit() {
+    fn test_fetch_gene_data_rate_limit() {
         skip_in_ci!();
         let temp_dir = TempDir::new().unwrap();
         let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
 
         for _ in 0..50 {
-            let _ = client.fetch_symbol("ZNF3").unwrap();
+            let _ = client.fetch_gene_data("ZNF3").unwrap();
             clear_cache(&client.cache_file_path);
         }
     }
@@ -333,7 +334,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
 
-        let _ = client.fetch_symbol(symbol).unwrap();
+        let _ = client.fetch_gene_data(symbol).unwrap();
 
         let cache = RedbDatabase::create(&client.cache_file_path).unwrap();
         let cache_reader = cache.begin_read().unwrap();

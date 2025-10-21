@@ -1,4 +1,4 @@
-use redb::{CommitError, DatabaseError, StorageError};
+use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
 
 #[derive(Debug)]
 pub enum RegistryError {
@@ -40,7 +40,11 @@ pub enum ClientError {
     #[allow(dead_code)]
     CacheStorage(StorageError),
     #[allow(dead_code)]
-    Cache(DatabaseError),
+    CacheTransaction(TransactionError),
+    #[allow(dead_code)]
+    CacheDatabase(DatabaseError),
+    #[allow(dead_code)]
+    CacheTable(TableError),
     #[allow(dead_code)]
     Request(reqwest::Error),
 }
@@ -56,12 +60,22 @@ impl From<StorageError> for ClientError {
         ClientError::CacheStorage(err)
     }
 }
+impl From<TransactionError> for ClientError {
+    fn from(err: TransactionError) -> Self {
+        ClientError::CacheTransaction(err)
+    }
+}
 impl From<DatabaseError> for ClientError {
     fn from(err: DatabaseError) -> Self {
-        ClientError::Cache(err)
+        ClientError::CacheDatabase(err)
     }
 }
 
+impl From<TableError> for ClientError {
+    fn from(err: TableError) -> Self {
+        ClientError::CacheTable(err)
+    }
+}
 impl From<reqwest::Error> for ClientError {
     fn from(err: reqwest::Error) -> Self {
         ClientError::Request(err)
