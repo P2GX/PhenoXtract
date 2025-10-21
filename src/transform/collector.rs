@@ -968,7 +968,7 @@ mod tests {
 
         let phenopacket_id = "cohort2019-P006".to_string();
         collector
-            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, &stringified_onset_col)
+            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, stringified_onset_col)
             .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
@@ -1002,7 +1002,7 @@ mod tests {
 
         let phenopacket_id = "cohort2019-P006".to_string();
         collector
-            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, &stringified_onset_col)
+            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, stringified_onset_col)
             .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
