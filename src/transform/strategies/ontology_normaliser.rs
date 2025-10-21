@@ -155,12 +155,7 @@ mod tests {
     fn test_hpo_syns_strategy(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
-            [
-                "pneumonia",
-                "Big calvaria",
-                "Joint inflammation",
-                "Nail psoriasis",
-            ],
+            ["pneumonia", "HP:0000256", "HP:0001369", "Nail psoriasis"],
         );
         let col2 = Column::new(
             "more_phenotypic_features".into(),
@@ -276,7 +271,7 @@ mod tests {
         let col2 = Column::new(
             "more_phenotypic_features".into(),
             [
-                AnyValue::String("Reactive airway disease"),
+                AnyValue::String("HP:0002099"),
                 AnyValue::Null,
                 AnyValue::String("asthma"),
                 AnyValue::String("nail psoriasis"),
