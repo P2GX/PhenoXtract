@@ -24,6 +24,7 @@ ontolius = "0.5.5"
 serde_json = "1.0.145"
 prost-types = "0.13.5"
 directories = "6.0.0"
+ordermap = "1.0.0"
 
 [dev-dependencies]
 rstest = "0.26.1"

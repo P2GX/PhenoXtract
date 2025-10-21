@@ -719,18 +719,13 @@ mod tests {
 
     #[rstest]
     fn test_collect_phenotypic_features_invalid_linking(
-        mut tc: TableContext,
+        tc: TableContext,
         mut df_single_patient: DataFrame,
         pf_asthma_no_onset: PhenotypicFeature,
         pf_pneumonia_no_onset: PhenotypicFeature,
         pf_nail_psoriasis_no_onset: PhenotypicFeature,
     ) {
         let mut collector = init_collector();
-
-        let onset_dt_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("onset_date".to_string()))
-            .with_data_context(Context::OnsetDateTime)
-            .with_building_block_id(Some("Block_1".to_string()));
 
         let onset_dt_col = Column::new(
             "onset_date".into(),
@@ -742,10 +737,16 @@ mod tests {
             ],
         );
 
-        tc.add_series_context(onset_dt_sc);
         df_single_patient.with_column(onset_dt_col).unwrap();
 
-        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+        let mut patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+
+        let onset_dt_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_date".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        patient_cdf.add_series_context(onset_dt_sc);
 
         let phenopacket_id = "cohort2019-P006".to_string();
         collector
