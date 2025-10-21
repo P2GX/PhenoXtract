@@ -35,7 +35,11 @@ pub(crate) fn validate_unique_identifiers(
         })
         .collect::<Vec<String>>();
 
-    fail_validation_on_duplicates(duplicates)
+    fail_validation_on_duplicates(
+        &duplicates,
+        "duplicates",
+        "Found duplicate identifiers in SeriesContexts",
+    )
 }
 
 pub(crate) fn validate_subject_ids_context(

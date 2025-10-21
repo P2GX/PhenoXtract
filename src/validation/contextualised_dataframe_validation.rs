@@ -1,4 +1,6 @@
+use crate::config::table_context::{Context, TableContext};
 use crate::extract::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -20,20 +22,36 @@ pub(crate) fn validate_one_context_per_column(
         }
     });
 
-    let result = fail_validation_on_duplicates(duplicates.clone());
-    result.map_err(|mut err| {
-        err.add_param(
-            Cow::from("contextualised_dataframe_name"),
-            &cdf.context().name(),
+    fail_validation_on_duplicates(
+        &duplicates,
+        "contextualised_dataframe_name",
+        "There were columns in the CDF which were identified by multiple Series Contexts. A column can be identified by at most one Series Context.",
+    )
+}
+
+pub(crate) fn validate_single_subject_id_column(
+    table_context: &ContextualizedDataFrame,
+) -> Result<(), ValidationError> {
+    let is_valid = table_context
+        .filter_columns()
+        .where_data_context(Filter::Is(&Context::SubjectId))
+        .collect()
+        .len()
+        == 1;
+
+    if is_valid {
+        Ok(())
+    } else {
+        let mut error = ValidationError::new("subject_id_column");
+        error.add_param(Cow::from("table_name"), &table_context.context().name());
+
+        let error_message = format!(
+            "Found more than one or no column with data context {} in table {}",
+            Context::SubjectId,
+            table_context.context().name()
         );
-        err.add_param(
-            Cow::from("column_with_multiple_series_contexts"),
-            &duplicates,
-        );
-        err.with_message(Cow::Owned(
-            "There were columns in the CDF which were identified by multiple Series Contexts. A column can be identified by at most one Series Context.".to_string(),
-        ))
-    })
+        Err(error.with_message(Cow::Owned(error_message)))
+    }
 }
 
 #[cfg(test)]
