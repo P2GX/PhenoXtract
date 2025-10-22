@@ -154,7 +154,7 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
 
-        assert_eq!(error.code.to_string(), "unique");
+        assert_eq!(error.code.to_string(), "duplicates");
     }
 
     #[test]
