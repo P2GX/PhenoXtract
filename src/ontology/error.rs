@@ -1,5 +1,6 @@
+use crate::ontology::enums::OntologyRef;
 use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
-
+use std::fmt::{Debug, Display, Formatter};
 #[derive(Debug)]
 pub enum RegistryError {
     #[allow(dead_code)]
@@ -14,6 +15,36 @@ pub enum RegistryError {
     UnableToResolveVersion(String),
     #[allow(dead_code)]
     Client(ClientError),
+}
+
+impl Display for RegistryError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RegistryError::Io(e) => write!(f, "IO error: {}", e),
+            RegistryError::Http(e) => write!(f, "HTTP error: {}", e),
+            RegistryError::EnvironmentVarNotSet(var) => {
+                write!(f, "Environment variable not set: {}", var)
+            }
+            RegistryError::NotRegistered(name) => {
+                write!(f, "Not registered: {}", name)
+            }
+            RegistryError::UnableToResolveVersion(ver) => {
+                write!(f, "Unable to resolve version: {}", ver)
+            }
+            RegistryError::Client(e) => write!(f, "Client error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for RegistryError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            RegistryError::Io(e) => Some(e),
+            RegistryError::Http(e) => Some(e),
+            RegistryError::Client(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl From<std::io::Error> for RegistryError {
@@ -49,6 +80,32 @@ pub enum ClientError {
     Request(reqwest::Error),
 }
 
+impl Display for ClientError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ClientError::CacheCommit(e) => write!(f, "Cache commit error: {}", e),
+            ClientError::CacheStorage(e) => write!(f, "Cache storage error: {}", e),
+            ClientError::CacheTransaction(e) => write!(f, "Cache transaction error: {}", e),
+            ClientError::CacheDatabase(e) => write!(f, "Cache database error: {}", e),
+            ClientError::CacheTable(e) => write!(f, "Cache table error: {}", e),
+            ClientError::Request(e) => write!(f, "Request error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ClientError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ClientError::CacheCommit(e) => Some(e),
+            ClientError::CacheStorage(e) => Some(e),
+            ClientError::CacheTransaction(e) => Some(e),
+            ClientError::CacheDatabase(e) => Some(e),
+            ClientError::CacheTable(e) => Some(e),
+            ClientError::Request(e) => Some(e),
+        }
+    }
+}
+
 impl From<CommitError> for ClientError {
     fn from(err: CommitError) -> Self {
         ClientError::CacheCommit(err)
@@ -79,5 +136,28 @@ impl From<TableError> for ClientError {
 impl From<reqwest::Error> for ClientError {
     fn from(err: reqwest::Error) -> Self {
         ClientError::Request(err)
+    }
+}
+
+pub enum OntologyFactoryError {
+    CantBuild(anyhow::Error, OntologyRef),
+}
+
+impl Display for OntologyFactoryError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OntologyFactoryError::CantBuild(err, ontology) => {
+                write!(
+                    f,
+                    "Failed to build ontology '{}':\n  Caused by: {} \n",
+                    ontology, err
+                )
+            }
+        }
+    }
+}
+impl Debug for OntologyFactoryError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
     }
 }
