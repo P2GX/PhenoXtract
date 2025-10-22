@@ -12,7 +12,7 @@ use phenoxtract::ontology::ontology_bidict::OntologyBiDict;
 use phenoxtract::ontology::traits::OntologyRegistry;
 use phenoxtract::ontology::utils::init_ontolius;
 use phenoxtract::transform::strategies::MappingStrategy;
-use phenoxtract::transform::strategies::SynonymsToPrimaryTermsStrategy;
+use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
@@ -207,7 +207,7 @@ fn test_pipeline_integration(
     //Configure strategies (a.k.a. transformations)
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
-        Box::new(SynonymsToPrimaryTermsStrategy::new(
+        Box::new(OntologyNormaliserStrategy::new(
             hpo_dict.clone(),
             Context::HpoLabelOrId,
         )),
