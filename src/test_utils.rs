@@ -1,16 +1,16 @@
 #![allow(unused)]
-use crate::ontology::ObolibraryOntologyRegistry;
+use crate::ontology::CachedOntologyFactory;
+use crate::ontology::enums::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::traits::OntologyRegistry;
-use crate::ontology::utils::init_ontolius;
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::sync::Arc;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
-    let mut hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
-    let path = hpo_registry.register("2025-09-01").unwrap();
-    init_ontolius(path).unwrap()
+    let mut factory = CachedOntologyFactory::default();
+    factory
+        .build_ontology(&OntologyRef::Hpo(Some("2025-09-01".to_string())), None)
+        .unwrap()
 });
 
 pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| Arc::new(HPO.clone().into()));

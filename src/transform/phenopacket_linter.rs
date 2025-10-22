@@ -247,7 +247,6 @@ mod tests {
     use super::*;
 
     use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
     use crate::test_utils::HPO;
     use rstest::*;
     use tempfile::TempDir;

@@ -3,9 +3,10 @@ use crate::ontology::enums::OntologyRef;
 use crate::ontology::error::OntologyFactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::OntologyRegistry;
-use crate::ontology::utils::init_ontolius;
+use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -59,7 +60,7 @@ impl CachedOntologyFactory {
             .map_err(|err| Self::wrap_error(err, ontology))?;
 
         let ontology_build =
-            init_ontolius(ontology_path).map_err(|err| Self::wrap_error(err, ontology))?;
+            Self::init_ontolius(ontology_path).map_err(|err| Self::wrap_error(err, ontology))?;
 
         self.cache
             .insert(cache_key, CacheEntry::Ontology(ontology_build.clone()));
@@ -86,6 +87,13 @@ impl CachedOntologyFactory {
         Ok(bi_dict)
     }
 
+    fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
+        let loader = OntologyLoaderBuilder::new().obographs_parser().build();
+
+        let ontolius = loader.load_from_path(hpo_path.clone())?;
+        Ok(Arc::new(ontolius))
+    }
+
     fn wrap_error<E: Into<anyhow::Error>>(err: E, ontology: &OntologyRef) -> OntologyFactoryError {
         OntologyFactoryError::CantBuild(err.into(), ontology.clone())
     }
@@ -95,6 +103,7 @@ impl CachedOntologyFactory {
 mod tests {
     use super::*;
     use rstest::rstest;
+
     #[rstest]
     fn test_build_ontology_success() -> Result<(), OntologyFactoryError> {
         let ontology = OntologyRef::Geno(Option::from("2025-07-25".to_string()));

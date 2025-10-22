@@ -11,4 +11,3 @@ pub mod enums;
 pub mod ontology_factory;
 pub use ontology_factory::CachedOntologyFactory;
 pub mod traits;
-pub(crate) mod utils;
