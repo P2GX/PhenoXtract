@@ -1,32 +1,121 @@
-#![allow(clippy::too_many_arguments)]
-use crate::constants::ISO8601_DUR_PATTERN;
-use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::TransformError;
-use crate::utils::{try_parse_string_date, try_parse_string_datetime};
-use chrono::{TimeZone, Utc};
-use log::warn;
-use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
-use phenopackets::schema::v2::core::vital_status::Status;
-use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
-    VitalStatus,
-};
-use prost_types::Timestamp as TimestampProtobuf;
-use regex::Regex;
-use std::collections::HashMap;
-use std::sync::Arc;
+use hgvs;
+use hgvs::parser::HgvsVariant;
+use std::str::FromStr;
 
-#[allow(dead_code)]
+#[allow(unused)]
 #[derive(Debug)]
-pub struct VariantSyntaxParser {
+pub struct VariantParser;
+
+impl VariantParser {
+    /// this function will try to parse var_string as a variant in different formats (currently only HGVS accepted)
+    /// and then return the appropriate variant syntax
+    /// if all attempts to parse var_string fail, then an error will be thrown
+    #[allow(unused)]
+    pub fn get_syntax_from_str(var_string: &str) -> Result<&str, TransformError> {
+        let hgvs_result = HgvsVariant::from_str(var_string);
+        match hgvs_result {
+            Ok(hgvs) => match hgvs {
+                HgvsVariant::CdsVariant { .. } => Ok("hgvs.c"),
+                HgvsVariant::GenomeVariant { .. } => Ok("hgvs.g"),
+                HgvsVariant::MtVariant { .. } => Ok("hgvs.m"),
+                HgvsVariant::TxVariant { .. } => Ok("hgvs.n"),
+                HgvsVariant::ProtVariant { .. } => Ok("hgvs.p"),
+                HgvsVariant::RnaVariant { .. } => Ok("hgvs.r"),
+            },
+            Err(err) => Err(TransformError::VariantError(format!(
+                "Could not parse {var_string} as a HGVS variant. Currently only variants in HGVS format can be parsed. Error: {err}"
+            ))),
+        }
+    }
 }
 
-impl VariantSyntaxParser {
-    pub fn new() -> VariantSyntaxParser {VariantSyntaxParser {}}
+#[cfg(test)]
+mod tests {
+    use crate::transform::variant_syntax_parser::VariantParser;
+    use rstest::rstest;
 
-    pub fn parse_syntax(variant_description: &str) -> String {
-        // what this REALLY should do is send off the variant to VariantValidator
+    #[rstest]
+    fn test_get_syntax_from_str() {
+        //coding SNP
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_004006.2:c.4375C>T").unwrap(),
+            "hgvs.c"
+        );
+        //coding dup
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_000138.4:c.7642_7644dup").unwrap(),
+            "hgvs.c"
+        );
+        //coding del
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_000501.3:c.1949del").unwrap(),
+            "hgvs.c"
+        );
+        //coding del explicit
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_001110792.2:c.844delC").unwrap(),
+            "hgvs.c"
+        );
+        //coding del multi
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_015120.4:c.6960_6963delACAG").unwrap(),
+            "hgvs.c"
+        );
+        //genomic SNP
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NC_000023.11:g.32389644G>A").unwrap(),
+            "hgvs.g"
+        );
+        //mitochondrial SNP
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_00333.2:m.789C>T").unwrap(),
+            "hgvs.m"
+        );
+        //non-coding SNP
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_00444.2:n.1011C>T").unwrap(),
+            "hgvs.n"
+        );
+        //amino acid substitution
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NP_003997.1:p.Trp24Cys").unwrap(),
+            "hgvs.p"
+        );
+        //amino acid deletion
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NP_00555.2:p.Leu1213del").unwrap(),
+            "hgvs.p"
+        );
+        //RNA SNP
+        assert_eq!(
+            VariantParser::get_syntax_from_str("NM_00666.2:r.1416C>T").unwrap(),
+            "hgvs.r"
+        );
 
+        //invalid accession is allowed
+        VariantParser::get_syntax_from_str("abdef:g.32389644G>A").unwrap();
+        //no checks are made against the stated reference sequence
+        VariantParser::get_syntax_from_str("NM_004006.2:c.4375A>T").unwrap();
+        VariantParser::get_syntax_from_str("NM_004006.2:c.4375C>T").unwrap();
+        VariantParser::get_syntax_from_str("NM_004006.2:c.4375G>T").unwrap();
+        //meaningless mutations are allowed
+        VariantParser::get_syntax_from_str("NM_004006.2:c.4375T>T").unwrap();
+    }
+
+    #[rstest]
+    fn test_get_syntax_from_str_fail() {
+        //null
+        assert!(VariantParser::get_syntax_from_str("").is_err());
+        //invalid formatting
+        assert!(VariantParser::get_syntax_from_str("NM_004006.2#c.4375C>T").is_err());
+        //invalid type
+        assert!(VariantParser::get_syntax_from_str("NM_004006.2:q.4375C>T").is_err());
+        //invalid variant notation
+        assert!(VariantParser::get_syntax_from_str("NM_004006.2:c.4375C-T").is_err());
+        //invalid negative genomic location
+        assert!(VariantParser::get_syntax_from_str("NM_004006.2:g.-4375C>T").is_err());
+        //no location
+        assert!(VariantParser::get_syntax_from_str("NM_004006.2:c.C>T").is_err());
     }
 }
