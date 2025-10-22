@@ -8,11 +8,11 @@ pub enum RegistryError {
     #[allow(dead_code)]
     Http(reqwest::Error),
     #[allow(dead_code)]
-    EnvironmentVarNotSet(String),
+    CantEstablishRegistryDir,
     #[allow(dead_code)]
     NotRegistered(String),
     #[allow(dead_code)]
-    UnableToResolveVersion(String),
+    UnableToResolveVersion(String, Option<String>),
     #[allow(dead_code)]
     Client(ClientError),
 }
@@ -22,14 +22,14 @@ impl Display for RegistryError {
         match self {
             RegistryError::Io(e) => write!(f, "IO error: {}", e),
             RegistryError::Http(e) => write!(f, "HTTP error: {}", e),
-            RegistryError::EnvironmentVarNotSet(var) => {
-                write!(f, "Environment variable not set: {}", var)
+            RegistryError::CantEstablishRegistryDir => {
+                write!(f, "Cannot establish registry directory")
             }
             RegistryError::NotRegistered(name) => {
                 write!(f, "Not registered: {}", name)
             }
-            RegistryError::UnableToResolveVersion(ver) => {
-                write!(f, "Unable to resolve version: {}", ver)
+            RegistryError::UnableToResolveVersion(ver, file) => {
+                write!(f, "Unable to resolve version: {} for file {:?}", ver, file)
             }
             RegistryError::Client(e) => write!(f, "Client error: {}", e),
         }

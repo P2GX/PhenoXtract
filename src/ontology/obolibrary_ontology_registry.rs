@@ -60,12 +60,7 @@ impl ObolibraryOntologyRegistry {
         ProjectDirs::from("", "", pkg_name)
             .map(|proj| proj.cache_dir().join(id))
             .or_else(|| home_dir().map(|dir| dir.join(format!(".{pkg_name}")).join(id)))
-            .ok_or_else(|| {
-                RegistryError::EnvironmentVarNotSet(
-                    "Could not setup registry directory. No Home or Project directory found."
-                        .to_string(),
-                )
-            })
+            .ok_or_else(|| RegistryError::CantEstablishRegistryDir)
     }
 
     /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO).
@@ -204,10 +199,7 @@ impl ObolibraryOntologyRegistry {
 
         let resolved_version = if version == "latest" {
             metadata.version.ok_or_else(|| {
-                RegistryError::UnableToResolveVersion(format!(
-                    "Could not resolve version {} for {:?}",
-                    version, self.file_name
-                ))
+                RegistryError::UnableToResolveVersion(version.to_string(), self.file_name.clone())
             })?
         } else {
             version.to_string()
@@ -315,7 +307,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
         if !file_path.exists() {
             debug!("Unable to deregistered: {}", file_path.display());
             return Err(RegistryError::NotRegistered(
-                format!("Version: {resolved_version} not registered in registry").to_string(),
+                file_path.display().to_string(),
             ));
         }
         remove_file(file_path.clone())?;
