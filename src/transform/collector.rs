@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::CollectionError;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
+use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{Column, DataType, Series, StringChunked};
@@ -210,7 +211,7 @@ impl Collector {
         patient_hpo_col: &Column,
         stringified_onset_col: &StringChunked,
     ) -> Result<(), TransformError> {
-        let hpo = Self::get_hpo_from_col_header(patient_hpo_col);
+        let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
 
         let boolified_hpo_col = patient_hpo_col.bool().map_err(|_| {
             CollectionError(format!(
@@ -224,14 +225,14 @@ impl Collector {
         //if the cell bool is null, no phenotype is upserted
         //if the cell bool is true, the phenotype is upserted with excluded = None
         //if the cell bool is false, the phenotype is upserted with excluded = true
-        for (bool, onset) in bool_onset_pairs {
-            if let Some(bool) = bool {
-                let excluded = if bool { None } else { Some(true) };
+        for (observation_status, onset) in bool_onset_pairs {
+            if let Some(observation_status) = observation_status {
+                let excluded = if observation_status { None } else { Some(true) };
 
                 self.phenopacket_builder
                     .upsert_phenotypic_feature(
                         phenopacket_id,
-                        hpo,
+                        hpo_id,
                         None,
                         excluded,
                         None,
@@ -243,7 +244,7 @@ impl Collector {
                     .map_err(|_| {
                         CollectionError(format!(
                             "Error when upserting HPO term {} in column {}",
-                            hpo,
+                            hpo_id,
                             patient_hpo_col.name()
                         ))
                     })?;
@@ -389,14 +390,6 @@ impl Collector {
                 None => Ok(None),
             }
         }
-    }
-
-    /// after applying the MultiHPOColumnExpansion strategy
-    /// the headers of HPO columns will have the format HP:1234567#(block A) or just HP:1234567
-    /// this function takes such a header and returns just the HPO ID, i.e. HP:1234567
-    fn get_hpo_from_col_header(col: &Column) -> &str {
-        let split_col_name: Vec<&str> = col.name().split("#").collect();
-        split_col_name[0]
     }
 }
 
@@ -1171,13 +1164,5 @@ mod tests {
                     .to_string(),
             )
         )
-    }
-
-    #[rstest]
-    fn test_get_hpo_from_col_header() {
-        let hpo_col = Column::new("HP:1234567#(block A)".into(), vec![true, true, false]);
-        assert_eq!("HP:1234567", Collector::get_hpo_from_col_header(&hpo_col));
-        let hpo_col2 = Column::new("HP:1234567".into(), vec![true, true, false]);
-        assert_eq!("HP:1234567", Collector::get_hpo_from_col_header(&hpo_col2));
     }
 }

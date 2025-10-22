@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::TransformError;
 use crate::transform::error::TransformError::StrategyError;
 use crate::transform::traits::Strategy;
+use crate::transform::utils::HpoColMaker;
 use log::{info, warn};
 use ordermap::{OrderMap, OrderSet};
 use polars::prelude::{AnyValue, Column, DataType, StringChunked};
@@ -206,14 +207,10 @@ impl MultiHPOColExpansionStrategy {
                 })
                 .collect();
 
-            let new_hpo_col_name = match building_block_id {
-                None => hpo.to_string(),
-                Some(block_id) => format!("{hpo}#(block {block_id})"),
-            };
-
-            let new_hpo_col = Column::new(new_hpo_col_name.clone().into(), observation_statuses);
+            let new_hpo_col =
+                HpoColMaker::new().create_hpo_col(hpo, building_block_id, observation_statuses);
+            new_hpo_col_names.push(new_hpo_col.name().to_string());
             new_hpo_cols.push(new_hpo_col);
-            new_hpo_col_names.push(new_hpo_col_name);
         }
         let new_sc = SeriesContext::default()
             .with_identifier(Identifier::Multi(new_hpo_col_names.clone()))
@@ -304,17 +301,17 @@ mod tests {
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Null,],
-            "HP:1111111 (block A)" => &[
+            "HP:1111111#A" => &[
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Null,],
-            "HP:2222222 (block A)" => &[
+            "HP:2222222#A" => &[
                 AnyValue::Null,
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Null,],
-            "HP:3333333 (block A)" => &[
+            "HP:3333333#A" => &[
                 AnyValue::Null,
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
@@ -340,9 +337,9 @@ mod tests {
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111#(block A)".to_string(),
-                        "HP:2222222#(block A)".to_string(),
-                        "HP:3333333#(block A)".to_string(),
+                        "HP:1111111#A".to_string(),
+                        "HP:2222222#A".to_string(),
+                        "HP:3333333#A".to_string(),
                     ]))
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
@@ -440,7 +437,7 @@ mod tests {
         );
 
         let expected_col1 = Column::new(
-            "HP:1111111#(block A)".into(),
+            "HP:1111111#A".into(),
             vec![
                 AnyValue::Boolean(true),
                 AnyValue::Null,
@@ -449,7 +446,7 @@ mod tests {
             ],
         );
         let expected_col2 = Column::new(
-            "HP:2222222#(block A)".into(),
+            "HP:2222222#A".into(),
             vec![
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
@@ -465,8 +462,8 @@ mod tests {
             .with_data_context(Context::ObservationStatus)
             .with_building_block_id(Some("A".to_string()))
             .with_identifier(Identifier::Multi(vec![
-                "HP:1111111#(block A)".to_string(),
-                "HP:2222222#(block A)".to_string(),
+                "HP:1111111#A".to_string(),
+                "HP:2222222#A".to_string(),
             ]));
 
         assert_eq!(new_sc, expected_sc);
