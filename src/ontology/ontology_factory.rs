@@ -14,10 +14,10 @@ enum CacheEntry {
     Ontology(Arc<FullCsrOntology>),
     BiDict(Arc<OntologyBiDict>),
 }
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone)]
 enum CacheKey {
-    Ontology(OntologyRef),
-    BiDict(OntologyRef),
+    Ontology(OntologyRef, Option<String>),
+    BiDict(OntologyRef, Option<String>),
 }
 
 #[derive(Default, Debug)]
@@ -31,7 +31,7 @@ impl CachedOntologyFactory {
         ontology: &OntologyRef,
         file_name: Option<&str>,
     ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
-        let cache_key = CacheKey::Ontology(ontology.clone());
+        let cache_key = CacheKey::Ontology(ontology.clone(), file_name.map(|s| s.to_string()));
         if let Some(CacheEntry::Ontology(cached_dict)) = self.cache.get(&cache_key) {
             return Ok(cached_dict.clone());
         }
@@ -73,7 +73,7 @@ impl CachedOntologyFactory {
         ontology: &OntologyRef,
         file_name: Option<&str>,
     ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
-        let cache_key = CacheKey::BiDict(ontology.clone());
+        let cache_key = CacheKey::BiDict(ontology.clone(), file_name.map(|s| s.to_string()));
         if let Some(CacheEntry::BiDict(cached_dict)) = self.cache.get(&cache_key) {
             return Ok(cached_dict.clone());
         }
@@ -113,7 +113,11 @@ mod tests {
 
         assert!(Arc::strong_count(&result) >= 1);
 
-        assert!(factory.cache.contains_key(&CacheKey::Ontology(ontology)));
+        assert!(
+            factory
+                .cache
+                .contains_key(&CacheKey::Ontology(ontology, None))
+        );
 
         Ok(())
     }
@@ -130,9 +134,13 @@ mod tests {
         assert!(
             factory
                 .cache
-                .contains_key(&CacheKey::Ontology(ontology.clone()))
+                .contains_key(&CacheKey::Ontology(ontology.clone(), None))
         );
-        assert!(factory.cache.contains_key(&CacheKey::BiDict(ontology)));
+        assert!(
+            factory
+                .cache
+                .contains_key(&CacheKey::BiDict(ontology, None))
+        );
 
         Ok(())
     }
@@ -149,12 +157,12 @@ mod tests {
         assert!(
             factory
                 .cache
-                .contains_key(&CacheKey::Ontology(ontology.clone()))
+                .contains_key(&CacheKey::Ontology(ontology.clone(), None))
         );
         assert!(
             factory
                 .cache
-                .contains_key(&CacheKey::BiDict(ontology.clone()))
+                .contains_key(&CacheKey::BiDict(ontology.clone(), None))
         );
 
         Ok(())
