@@ -27,6 +27,7 @@ directories = "6.0.0"
 ordermap = "1.0.0"
 ratelimit = "0.10.0"
 redb = "3.1.0"
+hgvs = "0.19.1"
 
 [dev-dependencies]
 rstest = "0.26.1"

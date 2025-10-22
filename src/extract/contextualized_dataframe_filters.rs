@@ -266,8 +266,8 @@ mod tests {
 
     #[test]
     fn test_filter_by_header_context() {
-        let ctx1 = Context::HpoLabel;
-        let ctx2 = Context::HpoId;
+        let ctx1 = Context::SubjectId;
+        let ctx2 = Context::HpoLabelOrId;
 
         let series = vec![
             SeriesContext::default()
@@ -291,8 +291,8 @@ mod tests {
 
     #[rstest]
     fn test_filter_by_data_context() {
-        let ctx1 = Context::HpoLabel;
-        let ctx2 = Context::HpoId;
+        let ctx1 = Context::SubjectId;
+        let ctx2 = Context::HpoLabelOrId;
 
         let series = vec![
             SeriesContext::default()
@@ -368,7 +368,7 @@ mod tests {
     #[rstest]
     fn test_filter_multiple_conditions() {
         let id1 = Identifier::Regex("id1".to_string());
-        let ctx1 = Context::HpoLabel;
+        let ctx1 = Context::HpoLabelOrId;
 
         let series = vec![
             SeriesContext::default()
@@ -428,7 +428,7 @@ mod tests {
     #[rstest]
     fn test_filter_chain_order_independence() {
         let id1 = Identifier::Regex("id1".to_string());
-        let ctx1 = Context::HpoLabel;
+        let ctx1 = Context::HpoLabelOrId;
 
         let series = vec![
             SeriesContext::default()

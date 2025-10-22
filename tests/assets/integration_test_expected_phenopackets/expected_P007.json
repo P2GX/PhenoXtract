@@ -1,0 +1,37 @@
+{
+  "id": "my_cohort-P007",
+  "subject": {
+    "id": "P007",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0410333",
+        "label": "Seafood allergy"
+      },
+      "onset": {
+        "timestamp": "2025-10-21T00:00:00Z"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0410327",
+        "label": "Dairy allergy"
+      },
+      "onset": {
+        "timestamp": "2025-10-21T00:00:00Z"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0410329",
+        "label": "Gluten allergy"
+      },
+      "onset": {
+        "timestamp": "2025-10-21T00:00:00Z"
+      }
+    }
+  ]
+}

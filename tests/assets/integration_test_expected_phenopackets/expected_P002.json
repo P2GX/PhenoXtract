@@ -18,6 +18,15 @@
   "phenotypicFeatures": [
     {
       "type": {
+        "id": "HP:0031417",
+        "label": "Rhinorrhea"
+      },
+      "onset": {
+        "timestamp": "2021-02-23T00:00:00Z"
+      }
+    },
+    {
+      "type": {
         "id": "HP:0000256",
         "label": "Macrocephaly"
       },
