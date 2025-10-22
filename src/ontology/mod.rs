@@ -7,5 +7,9 @@ pub mod ontology_bidict;
 pub use obolibrary_ontology_registry::ObolibraryOntologyRegistry;
 mod hgnc_client;
 pub use hgnc_client::HGNCClient;
+pub(crate) mod enums;
+mod ontology_factory;
 pub mod traits;
 pub mod utils;
+
+pub use ontology_factory::CachedOntologyFactory;

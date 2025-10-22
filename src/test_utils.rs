@@ -8,7 +8,7 @@ use ontolius::ontology::csr::FullCsrOntology;
 use std::sync::Arc;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
-    let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
+    let mut hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
     let path = hpo_registry.register("2025-09-01").unwrap();
     init_ontolius(path).unwrap()
 });

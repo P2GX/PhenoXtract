@@ -111,7 +111,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
 fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<TableContext>) {
     //Set-up
     let cohort_name = "my_cohort";
-    let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
+    let mut hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
     let hpo = init_ontolius(hpo_registry.register("2025-09-01").unwrap()).unwrap();
     let hpo_dict = Arc::new(OntologyBiDict::from(hpo));
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

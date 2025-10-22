@@ -25,9 +25,9 @@ mod tests {
     #[rstest]
     fn test_init_ontolius() {
         let tmp = TempDir::new().unwrap();
-        let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()
+        let mut hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()
             .unwrap()
-            .with_registry_path(tmp.path().into());
+            .with_registry_path(tmp.path());
         let path = hpo_registry.register("latest").unwrap();
         let ontolius = init_ontolius(path).unwrap();
 

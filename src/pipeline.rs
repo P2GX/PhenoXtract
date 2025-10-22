@@ -86,7 +86,7 @@ impl Pipeline {
     #[allow(dead_code)]
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
         // In progress
-        let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()?;
+        let mut hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()?;
         // TOOD: Read hpo version from config later
         let registry_path = hpo_registry.register("latest")?;
         let hpo = init_ontolius(registry_path)?;
