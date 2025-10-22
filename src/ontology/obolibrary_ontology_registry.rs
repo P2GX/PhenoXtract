@@ -21,7 +21,7 @@ pub struct ObolibraryOntologyRegistry {
     /// The local file system path where ontology files will be stored.
     registry_path: PathBuf,
     /// The specific file name to download from the release assets (e.g., "hp-base.json").
-    file_name: String,
+    file_name: Option<String>,
     /// The prefix of the ontology. For example HP for the Human Phenotype ontology.
     ontology_prefix: String,
     /// BioRegistryClient used to fetch metadata about ontologies
@@ -31,27 +31,31 @@ pub struct ObolibraryOntologyRegistry {
 }
 
 impl ObolibraryOntologyRegistry {
-    pub fn new(registry_path: PathBuf, file_name: String, ontology_prefix: String) -> Self {
+    pub fn new(registry_path: PathBuf, file_name: Option<&str>, ontology_prefix: &str) -> Self {
         ObolibraryOntologyRegistry {
             registry_path,
-            file_name,
-            ontology_prefix,
+            file_name: file_name.map(str::to_string),
+            ontology_prefix: ontology_prefix.to_string(),
             bio_registry_client: BioRegistryClient::default(),
             obolib_client: ObolibraryClient::default(),
         }
     }
 
-    pub fn with_registry_path(mut self, registry_path: PathBuf) -> Self {
-        self.registry_path = registry_path;
+    pub fn with_ontology_prefix<T: Into<String>>(mut self, ontology_prefix: T) -> Self {
+        self.ontology_prefix = ontology_prefix.into();
+        self
+    }
+    pub fn with_registry_path<T: Into<PathBuf>>(mut self, registry_path: T) -> Self {
+        self.registry_path = registry_path.into();
         self
     }
 
-    pub fn with_file_name(mut self, file_name: String) -> Self {
-        self.file_name = file_name;
+    pub fn with_file_name<T: Into<String>>(mut self, file_name: T) -> Self {
+        self.file_name = Some(file_name.into());
         self
     }
 
-    fn default_registry_path(id: &str) -> Result<PathBuf, RegistryError> {
+    pub fn default_registry_path(id: &str) -> Result<PathBuf, RegistryError> {
         let pkg_name = env!("CARGO_PKG_NAME");
         ProjectDirs::from("", "", pkg_name)
             .map(|proj| proj.cache_dir().join(id))
@@ -84,13 +88,13 @@ impl ObolibraryOntologyRegistry {
     /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
     /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_hpo_registry() -> Result<Self, RegistryError> {
-        let hp_id = "hp".to_string();
-        let registry_path = Self::default_registry_path(hp_id.as_str())?;
+        let hp_id = "hp";
+        let registry_path = Self::default_registry_path(hp_id)?;
 
         info!("Using HP registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
-            "hp.json".to_string(),
+            Some("hp.json"),
             hp_id,
         ))
     }
@@ -115,13 +119,13 @@ impl ObolibraryOntologyRegistry {
     /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
     /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_mondo_registry() -> Result<Self, RegistryError> {
-        let mondo_id = "mondo".to_string();
-        let registry_path = Self::default_registry_path(mondo_id.as_str())?;
+        let mondo_id = "mondo";
+        let registry_path = Self::default_registry_path(mondo_id)?;
 
         info!("Using Mondo registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
-            "mondo.json".to_string(),
+            Some("mondo.json"),
             mondo_id,
         ))
     }
@@ -146,12 +150,12 @@ impl ObolibraryOntologyRegistry {
     /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
     /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_geno_registry() -> Result<Self, RegistryError> {
-        let geno_id = "geno".to_string();
-        let registry_path = Self::default_registry_path(geno_id.as_str())?;
+        let geno_id = "geno";
+        let registry_path = Self::default_registry_path(geno_id)?;
 
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
-            "geno.json".to_string(),
+            Some("geno.json"),
             geno_id,
         ))
     }
@@ -176,36 +180,58 @@ impl ObolibraryOntologyRegistry {
     /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
     /// project directories nor the `HOME` environment variable can be determined.
     pub fn default_hpoa_registry() -> Result<Self, RegistryError> {
-        let hpo = "hp".to_string();
-        let registry_path = Self::default_registry_path(hpo.as_str())?;
+        let hpo = "hp";
+        let registry_path = Self::default_registry_path(hpo)?;
 
         info!("Using HPa registry at {}", registry_path.display());
         Ok(ObolibraryOntologyRegistry::new(
             registry_path,
-            "phenotype.hpoa".to_string(),
+            Some("phenotype.hpoa"),
             hpo,
         ))
     }
 
-    fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
-        if version == "latest" {
-            let meta_data = self
-                .bio_registry_client
-                .get_resource(&self.ontology_prefix)
-                .expect("get latest tag failed");
-            meta_data
-                .version
-                .ok_or(RegistryError::UnableToResolveVersion(format!(
-                    "Could not resolve version for {} ",
-                    self.file_name
-                )))
-        } else {
-            Ok(version.to_string())
+    fn resolve_filename_and_version(&mut self, version: &str) -> Result<String, RegistryError> {
+        let needs_metadata = version == "latest" || self.file_name.is_none();
+
+        if !needs_metadata {
+            return Ok(version.to_string());
         }
+
+        let metadata = self
+            .bio_registry_client
+            .get_resource(self.ontology_prefix.as_str())?;
+
+        let resolved_version = if version == "latest" {
+            metadata.version.ok_or_else(|| {
+                RegistryError::UnableToResolveVersion(format!(
+                    "Could not resolve version {} for {:?}",
+                    version, self.file_name
+                ))
+            })?
+        } else {
+            version.to_string()
+        };
+
+        if self.file_name.is_none() {
+            self.file_name = metadata
+                .download_json
+                .or(metadata.download_owl)
+                .or(metadata.download_obo)
+                .map(|url| url.split("/").last().unwrap().to_string());
+        }
+
+        Ok(resolved_version)
     }
 
     fn construct_file_name(&self, version: &str) -> String {
-        format!("{}_{}", version, self.file_name)
+        format!(
+            "{}_{}",
+            version,
+            self.file_name
+                .clone()
+                .expect("Tried constructing file name, but file name was not set.")
+        )
     }
 }
 impl OntologyRegistry for ObolibraryOntologyRegistry {
@@ -240,12 +266,11 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     /// * The registry directory cannot be created (e.g., due to permissions).
     /// * The ontology download fails (e.g., network error, file not found on server).
     /// * The local file cannot be created or written to.
-    fn register(&self, version: &str) -> Result<PathBuf, RegistryError> {
+    fn register(&mut self, version: &str) -> Result<PathBuf, RegistryError> {
         if !self.registry_path.exists() {
             std::fs::create_dir_all(&self.registry_path)?;
         }
-
-        let resolved_version = self.resolve_version(version)?;
+        let resolved_version = self.resolve_filename_and_version(version)?;
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
@@ -260,7 +285,12 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
 
         let mut resp = self.obolib_client.get_ontology(
             &self.ontology_prefix,
-            &self.file_name,
+            &self.file_name.clone().unwrap_or_else(|| {
+                panic!(
+                    "Expected file name. file_name was None for {} in registry.",
+                    self.ontology_prefix
+                )
+            }),
             &resolved_version,
         )?;
 
@@ -276,8 +306,8 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
         Ok(out_path)
     }
     #[allow(unused)]
-    fn deregister(&self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_version(version)?;
+    fn deregister(&mut self, version: &str) -> Result<(), RegistryError> {
+        let resolved_version = self.resolve_filename_and_version(version)?;
         let file_path = self
             .registry_path
             .clone()
@@ -294,8 +324,8 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
 
     #[allow(unused)]
-    fn get_location(&self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_version(version).ok()?;
+    fn get_location(&mut self, version: &str) -> Option<PathBuf> {
+        let resolved_version = self.resolve_filename_and_version(version).ok()?;
         let file_path = self
             .registry_path
             .clone()
@@ -324,10 +354,10 @@ mod tests {
 
     #[rstest]
     fn test_register(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
+        let mut registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
-            "geno.json".to_string(),
-            "geno".to_string(),
+            Some("geno.json"),
+            "geno",
         );
 
         let path = registry.register("latest").unwrap();
@@ -339,38 +369,33 @@ mod tests {
     fn test_new_registry_creation(temp_dir: TempDir) {
         let registry = ObolibraryOntologyRegistry::new(
             temp_dir.path().to_path_buf(),
-            "hp-base.json".to_string(),
-            "hpo".to_string(),
+            Some("hp-base.json"),
+            "hpo",
         );
 
         assert_eq!(registry.registry_path, temp_dir.path());
-        assert_eq!(registry.file_name, "hp-base.json");
+        assert_eq!(registry.file_name, Some("hp-base.json".to_string()));
         assert_eq!(registry.ontology_prefix, "hpo");
     }
 
     #[rstest]
     fn test_with_registry_path(temp_dir: TempDir) {
         let new_path = temp_dir.path().join("custom");
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "test.json".to_string(),
-            "hp".to_string(),
-        )
-        .with_registry_path(new_path.clone());
+        let registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("test.json"), "hp")
+                .with_registry_path(new_path.clone());
 
         assert_eq!(registry.registry_path, new_path);
     }
 
     #[rstest]
     fn test_with_file_name(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "test.json".to_string(),
-            "hp".to_string(),
-        )
-        .with_file_name("custom.json".to_string());
+        let file_name = "custom.json";
+        let registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("test.json"), "hp")
+                .with_file_name(file_name);
 
-        assert_eq!(registry.file_name, "custom.json");
+        assert_eq!(registry.file_name, Some(file_name.to_string()));
     }
 
     #[rstest]
@@ -384,7 +409,7 @@ mod tests {
                 .contains(env!("CARGO_PKG_NAME"))
         );
         assert!(registry.registry_path.to_str().unwrap().contains("hp"));
-        assert_eq!(registry.file_name, "hp.json");
+        assert_eq!(registry.file_name, Some("hp.json".to_string()));
         assert_eq!(registry.ontology_prefix, "hp");
     }
 
@@ -400,7 +425,7 @@ mod tests {
         );
 
         assert!(registry.registry_path.to_str().unwrap().contains("mondo"));
-        assert_eq!(registry.file_name, "mondo.json");
+        assert_eq!(registry.file_name, Some("mondo.json".to_string()));
         assert_eq!(registry.ontology_prefix, "mondo");
     }
 
@@ -414,9 +439,8 @@ mod tests {
                 .unwrap()
                 .contains(env!("CARGO_PKG_NAME"))
         );
-        assert_eq!(registry.file_name, "geno.json");
+        assert_eq!(registry.file_name, Some("geno.json".to_string()));
         assert_eq!(registry.ontology_prefix, "geno");
-        registry.register("latest").unwrap();
     }
 
     #[rstest]
@@ -431,17 +455,14 @@ mod tests {
         );
 
         assert!(registry.registry_path.to_str().unwrap().contains("hp"));
-        assert_eq!(registry.file_name, "phenotype.hpoa");
+        assert_eq!(registry.file_name, Some("phenotype.hpoa".to_string()));
         assert_eq!(registry.ontology_prefix, "hp");
     }
 
     #[rstest]
     fn test_construct_file_name(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp.json".to_string(),
-            "hp".to_string(),
-        );
+        let registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("hp.json"), "hp");
 
         let file_name = registry.construct_file_name("2024-07-01");
         assert_eq!(file_name, "2024-07-01_hp.json");
@@ -449,11 +470,8 @@ mod tests {
 
     #[rstest]
     fn test_register_returns_existing_file(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp.json".to_string(),
-            "hp".to_string(),
-        );
+        let mut registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("hp.json"), "hp");
 
         let cached_file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&cached_file_path, b"fake ontology data").expect("Failed to write test file");
@@ -466,11 +484,8 @@ mod tests {
 
     #[rstest]
     fn test_get_location_existing_file(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp.json".to_string(),
-            "hp".to_string(),
-        );
+        let mut registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("hp.json"), "hp");
 
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
@@ -483,11 +498,8 @@ mod tests {
 
     #[rstest]
     fn test_get_location_non_existing_file(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp.json".to_string(),
-            "hp".to_string(),
-        );
+        let mut registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("hp.json"), "hp");
 
         let location = registry.get_location("2024-07-01");
 
@@ -496,11 +508,8 @@ mod tests {
 
     #[rstest]
     fn test_deregister_removes_file(temp_dir: TempDir) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            "hp.json".to_string(),
-            "hp".to_string(),
-        );
+        let mut registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some("hp.json"), "hp");
 
         let file_path = temp_dir.path().join("2024-07-01_hp.json");
         fs::write(&file_path, b"test data").expect("Failed to write test file");
@@ -522,13 +531,10 @@ mod tests {
         #[case] prefix: &str,
         #[case] file_name: &str,
     ) {
-        let registry = ObolibraryOntologyRegistry::new(
-            temp_dir.path().to_path_buf(),
-            file_name.to_string(),
-            prefix.to_string(),
-        );
+        let registry =
+            ObolibraryOntologyRegistry::new(temp_dir.path().to_path_buf(), Some(file_name), prefix);
 
         assert_eq!(registry.ontology_prefix, prefix);
-        assert_eq!(registry.file_name, file_name);
+        assert_eq!(registry.file_name, Some(file_name.to_string()));
     }
 }
