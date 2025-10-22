@@ -1,5 +1,10 @@
+use crate::ontology::error::DatasourceError;
+use crate::ontology::ontology_bidict::OntologyBiDict;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
+use polars::prelude::{BooleanChunked, ChunkFilter, CsvReadOptions, SerReader};
+use regex::Regex;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -9,6 +14,52 @@ pub fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::
 
     let ontolius = loader.load_from_path(hpo_path.clone())?;
     Ok(Arc::new(ontolius))
+}
+
+#[allow(dead_code)]
+pub fn init_omim_dict(hpoa_path: PathBuf) -> Result<OntologyBiDict, DatasourceError> {
+    let sep = '\t';
+    let mut csv_read_options = CsvReadOptions::default()
+        .with_has_header(true)
+        .with_skip_rows(4);
+    let new_parse_options = (*csv_read_options.parse_options)
+        .clone()
+        .with_separator(sep as u8)
+        .with_truncate_ragged_lines(true);
+    csv_read_options.parse_options = Arc::from(new_parse_options);
+
+    let hpoa_path =
+        PathBuf::from("/Users/patrick/RustroverProjects/PhenoXtrackt/tests/phenotype.hpoa");
+
+    let hpoa_data = csv_read_options
+        .try_into_reader_with_file_path(Some(hpoa_path))
+        .unwrap()
+        .finish()
+        .unwrap();
+
+    let stringified_database_id_col = hpoa_data.column("database_id").map_err(|_|DatasourceError::HpoaError("Unexpectedly could not find column database_id in HPOA data. Dataframe loaded incorrectly?".to_string()))?.str().unwrap();
+    let stringified_disease_id_col = hpoa_data.column("disease_name").map_err(|_|DatasourceError::HpoaError("Unexpectedly could not find column disease_name in HPOA data. Dataframe loaded incorrectly?".to_string()))?.str().unwrap();
+
+    let mut label_to_id = HashMap::new();
+    let mut id_to_label = HashMap::new();
+
+    let id_disease_name_pairs = stringified_database_id_col.iter().zip(stringified_disease_id_col.iter());
+
+    for (id, disease_name) in id_disease_name_pairs {
+        if let (Some(id), Some(disease_name)) = (id, disease_name) {
+            let id_split = id.split(':').collect::<Vec<&str>>();
+            if !id_to_label.contains_key(id) && id_split.get(0) == Some(&"OMIM") {
+                label_to_id.insert(disease_name.to_string(), id.to_string());
+                id_to_label.insert(id.to_string(), disease_name.to_string());
+            }
+        }
+    }
+
+    Ok(OntologyBiDict::new(
+        label_to_id,
+        HashMap::new(),
+        id_to_label,
+    ))
 }
 
 #[cfg(test)]
@@ -42,5 +93,12 @@ mod tests {
             .find(|term| term.name() == "Large face")
             .unwrap();
         assert_eq!(term.identifier(), &term_id);
+    }
+
+    #[rstest]
+    fn test_init_omim_dict() {
+        // assert that the database_id is exclusively OMIM and Orpha?
+        let bidict = init_omim_dict(PathBuf::from("fake_path")).unwrap();
+        dbg!(&bidict);
     }
 }

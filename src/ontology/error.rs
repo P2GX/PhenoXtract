@@ -81,3 +81,9 @@ impl From<reqwest::Error> for ClientError {
         ClientError::Request(err)
     }
 }
+
+#[derive(Debug)]
+pub enum DatasourceError {
+    #[allow(dead_code)]
+    HpoaError(String),
+}
