@@ -14,35 +14,34 @@ use std::sync::Arc;
 
 #[allow(dead_code)]
 #[derive(Debug)]
-/// A strategy that maps synonym terms to their primary ontology terms.
+/// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
+/// It is case-insensitive.
 ///
 /// This strategy processes string columns in data tables by looking up values in an ontology
-/// bidirectional dictionary and replacing synonyms with their corresponding primary terms.
+/// bidirectional dictionary and replacing labels with their corresponding IDs.
 /// It only operates on columns that have no header context and match the specified data context.
 ///
 /// # Fields
 ///
 /// * `ontology_dict` - A thread-safe reference to a bidirectional ontology dictionary that
-///   maps between synonym terms and their primary identifiers
+///   maps between HPO labels and their primary identifiers. E.g. the HPO bidirectional dictionary
 /// * `data_context` - The specific data context that columns must match to be processed
-///   by this strategy
+///   by this strategy. E.g. HpoLabelOrId
 ///
 /// # Behavior
 ///
 /// When applied to tables, the strategy:
 /// 1. Identifies string columns with no header context that match the data context
-/// 2. For each cell value, attempts to map it through the ontology dictionary:
-///    - First lookup: synonym → primary ID
-///    - Second lookup: primary ID → primary term
-/// 3. Replaces the original value with the mapped primary term
+/// 2. For each cell value, attempts to maps it via the ontology dictionary to its ID.
+/// 3. Replaces the original value with the ID
 /// 4. Collects mapping errors for any values that couldn't be resolved
-/// 5. Returns an error if any terms failed to map (except empty strings)
-pub struct SynonymsToPrimaryTermsStrategy {
+/// 5. Returns an error if any labels failed to map (except for null values)
+pub struct OntologyNormaliserStrategy {
     ontology_dict: Arc<OntologyBiDict>,
     data_context: Context,
 }
 
-impl SynonymsToPrimaryTermsStrategy {
+impl OntologyNormaliserStrategy {
     pub fn new(ontology_dict: Arc<OntologyBiDict>, data_context: Context) -> Self {
         Self {
             ontology_dict,
@@ -51,7 +50,7 @@ impl SynonymsToPrimaryTermsStrategy {
     }
 }
 
-impl Strategy for SynonymsToPrimaryTermsStrategy {
+impl Strategy for OntologyNormaliserStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {
             !table
@@ -92,21 +91,21 @@ impl Strategy for SynonymsToPrimaryTermsStrategy {
                     ))
                 })?;
                 let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
-                    let curie_id = self.ontology_dict.get(cell_value);
-
-                    curie_id
-                        .and_then(|id| self.ontology_dict.get(id))
-                        .unwrap_or_else(|| {
-                            if !cell_value.is_empty() {
-                                error_info.insert(MappingErrorInfo {
-                                    column: col.name().to_string(),
-                                    table: table.context().name().to_string(),
-                                    old_value: cell_value.to_string(),
-                                    possible_mappings: vec![],
-                                });
-                            }
-                            cell_value
-                        })
+                    if self.ontology_dict.is_id(cell_value) {
+                        cell_value
+                    } else if let Some(curie_id) = self.ontology_dict.get(cell_value) {
+                        curie_id
+                    } else {
+                        if !cell_value.is_empty() {
+                            error_info.insert(MappingErrorInfo {
+                                column: col.name().to_string(),
+                                table: table.context().name().to_string(),
+                                old_value: cell_value.to_string(),
+                                possible_mappings: vec![],
+                            });
+                        }
+                        cell_value
+                    }
                 });
                 table
                     .data_mut()
@@ -137,7 +136,7 @@ mod tests {
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_utils::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, TransformError};
-    use crate::transform::strategies::synonyms_to_primary_terms::SynonymsToPrimaryTermsStrategy;
+    use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
     use crate::transform::traits::Strategy;
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
@@ -156,12 +155,7 @@ mod tests {
     fn test_hpo_syns_strategy(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
-            [
-                "pneumonia",
-                "Big calvaria",
-                "Joint inflammation",
-                "Nail psoriasis",
-            ],
+            ["pneumonia", "HP:0000256", "HP:0001369", "Nail psoriasis"],
         );
         let col2 = Column::new(
             "more_phenotypic_features".into(),
@@ -175,7 +169,7 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
+        let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabel,
         };
@@ -183,11 +177,11 @@ mod tests {
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
-            ["Pneumonia", "Macrocephaly", "Arthritis", "Nail psoriasis"],
+            ["HP:0002090", "HP:0000256", "HP:0001369", "HP:0033327"],
         );
         let expected_col2 = Column::new(
             "more_phenotypic_features".into(),
-            ["Asthma", "Asthma", "Arthritis", "Nail psoriasis"],
+            ["HP:0002099", "HP:0002099", "HP:0001369", "HP:0033327"],
         );
         let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
         assert_eq!(cdf.into_data(), expected_df);
@@ -211,7 +205,7 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
+        let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabel,
         };
@@ -222,7 +216,7 @@ mod tests {
             info,
         }) = strat_result
         {
-            assert_eq!(strategy_name, "SynonymsToPrimaryTermsStrategy");
+            assert_eq!(strategy_name, "OntologyNormaliserStrategy");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "phenotypic_features".to_string(),
@@ -251,11 +245,11 @@ mod tests {
 
         let col1_after_strat = Column::new(
             "phenotypic_features".into(),
-            ["abcdef", "Macrocephaly", "Arthritis", "12355"],
+            ["abcdef", "HP:0000256", "HP:0001369", "12355"],
         );
         let col2_after_strat = Column::new(
             "more_phenotypic_features".into(),
-            ["Asthma", "Asthma", "jimmy", "Nail psoriasis"],
+            ["HP:0002099", "HP:0002099", "jimmy", "HP:0033327"],
         );
         let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
@@ -277,7 +271,7 @@ mod tests {
         let col2 = Column::new(
             "more_phenotypic_features".into(),
             [
-                AnyValue::String("Reactive airway disease"),
+                AnyValue::String("HP:0002099"),
                 AnyValue::Null,
                 AnyValue::String("asthma"),
                 AnyValue::String("nail psoriasis"),
@@ -288,7 +282,7 @@ mod tests {
         let df = DataFrame::new(vec![col1, col2]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
-        let get_hpo_labels_strat = SynonymsToPrimaryTermsStrategy {
+        let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabel,
         };
@@ -297,21 +291,21 @@ mod tests {
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("Pneumonia"),
+                AnyValue::String("HP:0002090"),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
-                AnyValue::String("Macrocephaly"),
+                AnyValue::String("HP:0002099"),
+                AnyValue::String("HP:0033327"),
+                AnyValue::String("HP:0000256"),
                 AnyValue::Null,
             ],
         );
         let expected_col2 = Column::new(
             "more_phenotypic_features".into(),
             [
-                AnyValue::String("Asthma"),
+                AnyValue::String("HP:0002099"),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
+                AnyValue::String("HP:0002099"),
+                AnyValue::String("HP:0033327"),
                 AnyValue::Null,
                 AnyValue::Null,
             ],
