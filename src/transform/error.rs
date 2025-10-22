@@ -51,5 +51,5 @@ pub enum TransformError {
     #[allow(dead_code)]
     BuilderError(String),
     CastingError(String),
-    VariantError(String),
+    VariantParseError(String),
 }
