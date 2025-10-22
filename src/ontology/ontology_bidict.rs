@@ -108,14 +108,9 @@ impl From<&FullCsrOntology> for OntologyBiDict {
             }
         }
 
-        let ont_ref = OntologyRef::from(prefix);
+        let ont_ref = OntologyRef::from(prefix).with_version(ontology.version());
 
-        OntologyBiDict::new(
-            ont_ref.with_version(ontology.version()),
-            label_to_id,
-            synonym_to_id,
-            id_to_label,
-        )
+        OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
 }
 
