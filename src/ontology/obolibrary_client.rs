@@ -50,7 +50,10 @@ impl ObolibraryClient {
 
         let resp = get(url.clone())?;
 
-        Ok(resp)
+        match resp.status().is_success() {
+            true => Ok(resp),
+            false => Err(ClientError::Request(resp.error_for_status().unwrap_err())),
+        }
     }
 }
 
