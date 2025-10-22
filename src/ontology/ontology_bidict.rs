@@ -1,12 +1,14 @@
+use crate::ontology::enums::OntologyRef;
 use ontolius::Identified;
-use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontolius::ontology::{MetadataAware, OntologyTerms};
 use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct OntologyBiDict {
+    pub ontology: OntologyRef,
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
@@ -14,11 +16,13 @@ pub struct OntologyBiDict {
 
 impl OntologyBiDict {
     pub fn new(
+        ontology: OntologyRef,
         label_to_id: HashMap<String, String>,
         synonym_to_id: HashMap<String, String>,
         id_to_label: HashMap<String, String>,
     ) -> OntologyBiDict {
         OntologyBiDict {
+            ontology,
             label_to_id,
             synonym_to_id,
             id_to_label,
@@ -86,9 +90,13 @@ impl From<&FullCsrOntology> for OntologyBiDict {
         let mut label_to_id: HashMap<String, String> = HashMap::new();
         let mut synonym_to_id: HashMap<String, String> = HashMap::new();
         let mut id_to_label: HashMap<String, String> = HashMap::new();
+        let mut prefix = "".to_string();
 
-        ontology.iter_terms().for_each(|term| {
+        for term in ontology.iter_terms() {
             if term.is_current() {
+                if prefix.is_empty() {
+                    prefix = term.identifier().prefix().to_string();
+                }
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {
                     synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
@@ -98,9 +106,16 @@ impl From<&FullCsrOntology> for OntologyBiDict {
                     term.name().to_string(),
                 );
             }
-        });
+        }
 
-        OntologyBiDict::new(label_to_id, synonym_to_id, id_to_label)
+        let ont_ref = OntologyRef::from(prefix);
+
+        OntologyBiDict::new(
+            ont_ref.with_version(ontology.version()),
+            label_to_id,
+            synonym_to_id,
+            id_to_label,
+        )
     }
 }
 
