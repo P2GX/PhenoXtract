@@ -1,5 +1,7 @@
+use crate::ontology::error::ClientError;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BioRegistryResource {
     pub prefix: String,
@@ -50,7 +52,7 @@ impl BioRegistryClient {
     ///
     /// This function will return an error if the HTTP request fails or if the
     /// JSON deserialization of the response body fails.
-    pub fn get_resource(&self, prefix: &str) -> Result<BioRegistryResource, reqwest::Error> {
+    pub fn get_resource(&self, prefix: &str) -> Result<BioRegistryResource, ClientError> {
         let url = self.api_url.clone() + "registry/" + prefix;
 
         let client = Client::new();
@@ -59,7 +61,7 @@ impl BioRegistryClient {
             .header("User-Agent", "phenoxtractor")
             .send()?;
 
-        response.json()
+        Ok(response.json()?)
     }
 }
 

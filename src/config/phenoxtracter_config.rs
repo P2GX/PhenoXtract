@@ -215,7 +215,7 @@ data_sources:
       context:
         - identifier: "patient_id"
           header_context: subject_id
-          data_context: hpo_label
+          data_context: hpo_label_or_id
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
             hash_map:
@@ -238,7 +238,7 @@ data_sources:
         context:
           - identifier: "lab_result_.*"
             header_context: subject_id
-            data_context: hpo_label
+            data_context: hpo_label_or_id
             fill_missing: "Zollinger-Ellison syndrome"
             alias_map:
               hash_map:
@@ -252,7 +252,7 @@ data_sources:
               - "Col_2"
               - "Col_3"
             header_context: subject_id
-            data_context: hpo_label
+            data_context: hpo_label_or_id
             fill_missing: "Zollinger-Ellison syndrome"
             alias_map:
               hash_map:
@@ -312,7 +312,7 @@ meta_data:
                         vec![SeriesContext::new(
                             Identifier::Regex("patient_id".to_string()),
                             PhenopacketContext::SubjectId,
-                            PhenopacketContext::HpoLabel,
+                            PhenopacketContext::HpoLabelOrId,
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                             Some(AliasMap::new(
                                 HashMap::from([
@@ -353,7 +353,7 @@ meta_data:
                             vec![SeriesContext::new(
                                 Identifier::Regex("lab_result_.*".to_string()),
                                 PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabel,
+                                PhenopacketContext::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([
@@ -375,7 +375,7 @@ meta_data:
                                     "Col_3".to_string(),
                                 ]),
                                 PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabel,
+                                PhenopacketContext::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([("smoker".to_string(), "true".to_string())]),

@@ -1,3 +1,4 @@
+use crate::ontology::error::ClientError;
 use reqwest::blocking::{Response, get};
 
 pub struct ObolibraryClient {
@@ -38,7 +39,7 @@ impl ObolibraryClient {
         ontology_prefix: &str,
         file_name: &str,
         version: &str,
-    ) -> Result<Response, reqwest::Error> {
+    ) -> Result<Response, ClientError> {
         let url = match version {
             "latest" => format!("{}/{}", self.base_url, file_name),
             _ => format!(

@@ -64,9 +64,7 @@ impl TableContext {
 #[serde(rename_all = "snake_case")]
 pub enum Context {
     #[allow(unused)]
-    HpoId,
-    #[allow(unused)]
-    HpoLabel,
+    HpoLabelOrId,
     #[allow(unused)]
     OnsetDateTime,
     #[allow(unused)]

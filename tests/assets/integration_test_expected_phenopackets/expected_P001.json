@@ -31,6 +31,15 @@
     },
     {
       "type": {
+        "id": "HP:0012373",
+        "label": "Abnormal eye physiology"
+      },
+      "onset": {
+        "timestamp": "1998-04-25T00:00:00Z"
+      }
+    },
+    {
+      "type": {
         "id": "HP:0002090",
         "label": "Pneumonia"
       },

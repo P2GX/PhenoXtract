@@ -5,5 +5,7 @@ mod obolibrary_client;
 pub mod obolibrary_ontology_registry;
 pub mod ontology_bidict;
 pub use obolibrary_ontology_registry::ObolibraryOntologyRegistry;
+mod hgnc_client;
+pub use hgnc_client::HGNCClient;
 pub mod traits;
 pub mod utils;
