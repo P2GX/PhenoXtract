@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// resources and allows specifying known versions for resources before resolution.
 #[derive(Clone, Default, Debug)]
 #[allow(dead_code)]
-pub(crate) struct CachedResourceResolver {
+pub struct CachedResourceResolver {
     cache: HashMap<String, Resource>,
     known_versions: HashMap<String, String>,
     bio_reg_client: BioRegistryClient,
@@ -18,15 +18,11 @@ pub(crate) struct CachedResourceResolver {
 
 impl CachedResourceResolver {
     #[allow(dead_code)]
-    pub fn new(
-        cache: HashMap<String, Resource>,
-        known_versions: HashMap<String, String>,
-        bio_reg_client: BioRegistryClient,
-    ) -> CachedResourceResolver {
+    pub fn new(known_versions: HashMap<String, String>) -> CachedResourceResolver {
         Self {
-            cache,
+            cache: HashMap::new(),
             known_versions,
-            bio_reg_client,
+            bio_reg_client: BioRegistryClient::default(),
         }
     }
 

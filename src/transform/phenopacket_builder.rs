@@ -1,6 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::ISO8601_DUR_PATTERN;
+use crate::ontology::HGNCClient;
+use crate::ontology::enums::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::TransformError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
@@ -15,25 +18,45 @@ use phenopackets::schema::v2::core::{
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
+use std::fs::metadata;
 use std::sync::Arc;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    hpo_dict: Arc<OntologyBiDict>,
+    ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
+    hgnc_client: HGNCClient,
+    resource_resolver: CachedResourceResolver,
 }
 
 impl PhenopacketBuilder {
-    pub fn new(hpo_dict: Arc<OntologyBiDict>) -> PhenopacketBuilder {
+    pub fn new(
+        ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
+        resource_resolver: CachedResourceResolver,
+    ) -> PhenopacketBuilder {
         PhenopacketBuilder {
-            subject_to_phenopacket: HashMap::default(),
-            hpo_dict,
+            ontology_bidicts,
+            resource_resolver,
+            ..Default::default()
         }
     }
-    #[allow(dead_code)]
+
     pub fn build(&self) -> Vec<Phenopacket> {
-        self.subject_to_phenopacket.values().cloned().collect()
+        let mut phenopackets: Vec<Phenopacket> =
+            self.subject_to_phenopacket.values().cloned().collect();
+        let now = Utc::now().to_string();
+
+        phenopackets.iter_mut().for_each(|pp| {
+            if let Some(metadata) = pp.meta_data.as_mut() {
+                metadata.created = Some(
+                    Self::try_parse_timestamp(&now)
+                        .expect("Failed to parse current timestamp for phenopacket metadata"),
+                )
+            }
+        });
+
+        phenopackets
     }
     #[allow(dead_code)]
     pub fn build_for_id(&self, #[allow(unused)] id: String) -> Result<Phenopacket, TransformError> {
@@ -198,8 +221,8 @@ impl PhenopacketBuilder {
         }
 
         let term = self.query_hpo_identifiers(phenotype)?;
-        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
+        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
         let feature = if let Some(pos) =
             phenopacket.phenotypic_features.iter().position(|feature| {
                 if let Some(t) = &feature.r#type {
@@ -230,7 +253,7 @@ impl PhenopacketBuilder {
             let onset_te = Self::try_parse_time_element(onset)?;
             feature.onset = Some(onset_te);
         }
-
+        self.add_resource(phenopacket_id, &OntologyRef::Hpo(None).to_string());
         Ok(())
     }
 
@@ -243,7 +266,11 @@ impl PhenopacketBuilder {
             })
     }
     fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<OntologyClass, TransformError> {
-        self.hpo_dict
+        let hpo_dict = self
+            .ontology_bidicts
+            .get(&OntologyRef::Hpo(None).to_string())
+            .expect("No ontology bidirectional for the HPO in PhenopacketBuilder");
+        hpo_dict
             .get(hpo_query)
             .ok_or_else(|| {
                 TransformError::BuilderError(
@@ -251,12 +278,12 @@ impl PhenopacketBuilder {
                 )
             })
             .and_then(|found| {
-                let corresponding_label_or_id = self.hpo_dict.get(found).ok_or_else(|| {
+                let corresponding_label_or_id = hpo_dict.get(found).ok_or_else(|| {
                     TransformError::BuilderError(
                         format!("Could not find ontology class for {hpo_query}").to_string(),
                     )
                 })?;
-                let (label, id) = if self.hpo_dict.is_primary_label(found) {
+                let (label, id) = if hpo_dict.is_primary_label(found) {
                     (found.to_string(), corresponding_label_or_id.to_string())
                 } else {
                     (corresponding_label_or_id.to_string(), found.to_string())
@@ -304,12 +331,38 @@ impl PhenopacketBuilder {
         let nanos = utc_dt.timestamp_subsec_nanos() as i32;
         Ok(TimestampProtobuf { seconds, nanos })
     }
+
+    fn add_resource(&mut self, phenopacket_id: &str, resource_id: &str) {
+        let needs_resource = self
+            .get_or_create_phenopacket(phenopacket_id)
+            .meta_data
+            .as_ref()
+            .map(|meta_data| {
+                !meta_data
+                    .resources
+                    .iter()
+                    .any(|resource| resource.id.to_lowercase() == resource_id.to_lowercase())
+            })
+            .unwrap_or(true);
+
+        if needs_resource {
+            let resource = self.resource_resolver.resolve(resource_id).unwrap();
+
+            let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+            phenopacket
+                .meta_data
+                .get_or_insert_with(Default::default)
+                .resources
+                .push(resource);
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::HPO_DICT;
+
+    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
@@ -358,6 +411,38 @@ mod tests {
         })
     }
 
+    fn build_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
+        let hpo_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&HPO_REF.clone(), None)
+            .unwrap();
+        let mondo_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&MONDO_REF.clone(), None)
+            .unwrap();
+        let geno_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&GENO_REF.clone(), None)
+            .unwrap();
+
+        HashMap::from_iter(vec![
+            (hpo_dict.ontology.to_string(), hpo_dict),
+            (mondo_dict.ontology.to_string(), mondo_dict),
+            (geno_dict.ontology.to_string(), geno_dict),
+        ])
+    }
+    fn build_phenopacket_builder() -> PhenopacketBuilder {
+        let bi_dicts = build_dicts();
+        let know_versions: HashMap<String, String> =
+            HashMap::from_iter(bi_dicts.iter().map(|(ont_prefix, bidict)| {
+                (ont_prefix.clone(), bidict.ontology.version().to_string())
+            }));
+        let resource_resolver = CachedResourceResolver::new(know_versions);
+        PhenopacketBuilder::new(build_dicts(), resource_resolver)
+    }
     #[rstest]
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
@@ -365,7 +450,7 @@ mod tests {
         onset_age: Option<&str>,
         onset_age_te: Option<TimeElement>,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
         builder
             .upsert_phenotypic_feature(
                 phenopacket_id.as_str(),
@@ -399,7 +484,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -422,7 +507,7 @@ mod tests {
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         builder
             .upsert_phenotypic_feature(
@@ -458,7 +543,7 @@ mod tests {
 
     #[rstest]
     fn test_different_phenopacket_ids(valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -498,7 +583,7 @@ mod tests {
 
     #[rstest]
     fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -555,7 +640,7 @@ mod tests {
         onset_timestamp_te: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         // Add a feature
         builder
@@ -600,7 +685,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_individual() {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -656,7 +741,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_vital_status() {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
 
@@ -684,7 +769,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_label() {
-        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let builder = build_phenopacket_builder();
 
         // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
         let result = builder.query_hpo_identifiers("Seizure").unwrap();
@@ -695,7 +780,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_id() {
-        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let builder = build_phenopacket_builder();
 
         // Query using the ID instead of label
         let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
@@ -706,7 +791,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_invalid_query() {
-        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let builder = build_phenopacket_builder();
 
         // Nonexistent label or ID should yield an error
         let result = builder.query_hpo_identifiers("NonexistentTerm");
@@ -794,7 +879,7 @@ mod tests {
 
     #[rstest]
     fn test_get_or_create_phenopacket() {
-        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let mut builder = build_phenopacket_builder();
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);

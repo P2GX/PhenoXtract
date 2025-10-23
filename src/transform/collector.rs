@@ -397,7 +397,9 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_utils::HPO_DICT;
+    use crate::ontology::ontology_bidict::OntologyBiDict;
+    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
+    use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use crate::transform::collector::Collector;
     use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -413,9 +415,44 @@ mod tests {
     use polars::prelude::{Column, NamedFrom, Series};
     use prost_types::Timestamp as TimestampProtobuf;
     use rstest::{fixture, rstest};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
+    fn build_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
+        let hpo_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&HPO_REF.clone(), None)
+            .unwrap();
+        let mondo_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&MONDO_REF.clone(), None)
+            .unwrap();
+        let geno_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap()
+            .build_bidict(&GENO_REF.clone(), None)
+            .unwrap();
+
+        HashMap::from_iter(vec![
+            (hpo_dict.ontology.to_string(), hpo_dict),
+            (mondo_dict.ontology.to_string(), mondo_dict),
+            (geno_dict.ontology.to_string(), geno_dict),
+        ])
+    }
+    fn build_phenopacket_builder() -> PhenopacketBuilder {
+        let bi_dicts = build_dicts();
+        let know_versions: HashMap<String, String> =
+            HashMap::from_iter(bi_dicts.iter().map(|(ont_prefix, bidict)| {
+                (ont_prefix.clone(), bidict.ontology.version().to_string())
+            }));
+        let resource_resolver = CachedResourceResolver::new(know_versions);
+        PhenopacketBuilder::new(build_dicts(), resource_resolver)
+    }
     fn init_collector() -> Collector {
-        let phenopacket_builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        let phenopacket_builder = build_phenopacket_builder();
+
         Collector {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),
