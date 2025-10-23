@@ -254,18 +254,18 @@ impl PhenopacketBuilder {
                 what: "hpo query".to_string(),
                 value: hpo_query.to_string(),
             })
-            .and_then(|found| {
+            .map(|found| {
                 let corresponding_label_or_id = self
                     .hpo_dict
                     .get(found)
-                    .expect(&format!("Could not find hpo label or id from {}", found));
+                    .unwrap_or_else(|| panic!("Could not find hpo label or id from {}", found));
                 let (label, id) = if self.hpo_dict.is_primary_label(found) {
                     (found.to_string(), corresponding_label_or_id.to_string())
                 } else {
                     (corresponding_label_or_id.to_string(), found.to_string())
                 };
                 Ok(OntologyClass { id, label })
-            })
+            })?
     }
 
     fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {

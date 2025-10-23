@@ -2,12 +2,12 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::{MappingError, TransformationError};
-use crate::transform::error::{DataProcessingError, MappingErrorInfo, StrategyError};
+use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
-use polars::polars_utils::total_ord::ToTotalOrd;
+
 use polars::prelude::{DataType, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;

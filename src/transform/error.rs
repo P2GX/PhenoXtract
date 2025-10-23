@@ -1,5 +1,4 @@
 use crate::config::table_context::Context;
-use hgvs::parser::Error as HgvsParseError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -87,7 +86,13 @@ pub enum TransformError {
     #[error("StrategyError error: {0}")]
     StrategyError(#[from] StrategyError),
     #[error("CollectorError error: {0}")]
-    CollectorError(#[from] CollectorError),
+    CollectorError(#[from] Box<CollectorError>),
+}
+
+impl From<CollectorError> for TransformError {
+    fn from(err: CollectorError) -> Self {
+        TransformError::CollectorError(Box::new(err))
+    }
 }
 
 #[derive(Debug, Error)]
@@ -104,11 +109,22 @@ pub enum StrategyError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
     },
-
     #[error(transparent)]
-    DataProcessing(#[from] DataProcessingError),
+    DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
-    PolarsError(#[from] PolarsError),
+    PolarsError(Box<PolarsError>),
+}
+
+impl From<DataProcessingError> for StrategyError {
+    fn from(err: DataProcessingError) -> Self {
+        StrategyError::DataProcessing(Box::new(err))
+    }
+}
+
+impl From<PolarsError> for StrategyError {
+    fn from(err: PolarsError) -> Self {
+        StrategyError::PolarsError(Box::new(err))
+    }
 }
 
 #[derive(Debug, Error)]
@@ -128,7 +144,7 @@ pub enum CollectorError {
     },
 
     #[error(transparent)]
-    DataProcessing(#[from] DataProcessingError),
+    DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(#[from] PolarsError),
     #[error("ParseFloatError error: {0}")]
@@ -137,6 +153,11 @@ pub enum CollectorError {
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
 }
 
+impl From<DataProcessingError> for CollectorError {
+    fn from(err: DataProcessingError) -> Self {
+        CollectorError::DataProcessing(Box::new(err))
+    }
+}
 #[derive(Debug, Error)]
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]

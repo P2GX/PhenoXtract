@@ -1,7 +1,7 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::error::{CollectorError, DataProcessingError, StrategyError};
+use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;

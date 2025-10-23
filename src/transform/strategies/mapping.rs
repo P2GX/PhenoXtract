@@ -141,10 +141,10 @@ impl Strategy for MappingStrategy {
                 .collect();
 
             for col_name in col_names {
-                let original_column = table.data().column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name)?;
 
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
-                    let casted_col = original_column.cast(&DataType::String).map_err(|err| {
+                    let casted_col = original_column.cast(&DataType::String).map_err(|_| {
                         DataProcessingError::CastingError {
                             col_name: col_name.clone(),
                             from: original_column.dtype().clone(),
