@@ -45,17 +45,12 @@ pub(crate) fn validate_unique_identifiers(
 pub(crate) fn validate_subject_ids_context(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
-    let is_valid = (!table_context
+    let is_valid = table_context
         .filter_series_context()
-        .where_header_context(Filter::Is(&Context::SubjectId))
+        .where_data_context(Filter::Is(&Context::SubjectId))
         .collect()
-        .is_empty())
-        ^ (table_context
-            .filter_series_context()
-            .where_data_context(Filter::Is(&Context::SubjectId))
-            .collect()
-            .len()
-            == 1);
+        .len()
+        == 1;
 
     if is_valid {
         Ok(())
@@ -136,20 +131,11 @@ mod tests {
     }
 
     #[rstest]
-    #[case::subject_id_in_column_context(
-        TableContext::new(
-      "test".to_string(),
-      vec![regex("test").with_header_context(Context::SubjectId)],
-    ),
-    )]
-    #[case::subject_id_in_column_cell_context(
-        TableContext::new(
-          "test".to_string(),
-          vec![regex("test").with_data_context(Context::SubjectId)],
-        ),
-    )]
-    fn test_validate_subject_ids_context(#[case] table_context: TableContext) {
-        let result = validate_subject_ids_context(&table_context);
+    fn test_validate_subject_ids_context() {
+        let result = validate_subject_ids_context(&TableContext::new(
+            "test".to_string(),
+            vec![regex("test").with_data_context(Context::SubjectId)],
+        ));
         assert!(result.is_ok());
     }
 
