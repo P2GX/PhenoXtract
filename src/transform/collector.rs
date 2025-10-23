@@ -76,6 +76,93 @@ impl Collector {
         Ok(self.phenopacket_builder.build())
     }
 
+    fn collect_individual(
+        &mut self,
+        patient_cdf: &ContextualizedDataFrame,
+        phenopacket_id: &str,
+        patient_id: &str,
+    ) -> Result<(), TransformError> {
+        let date_of_birth = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::DateOfBirth,
+            patient_id,
+        )?;
+
+        let subject_sex = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::SubjectSex,
+            patient_id,
+        )?;
+
+        self.phenopacket_builder
+            .upsert_individual(
+                phenopacket_id,
+                patient_id,
+                None,
+                date_of_birth.as_deref(),
+                None,
+                subject_sex.as_deref(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|_| {
+                CollectionError(format!(
+                    "Error when upserting individual data for {phenopacket_id}"
+                ))
+            })?;
+
+        let status = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::VitalStatus,
+            patient_id,
+        )?;
+
+        if let Some(status) = status {
+            let time_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::TimeOfDeath,
+                patient_id,
+            )?;
+
+            let cause_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::CauseOfDeath,
+                patient_id,
+            )?;
+
+            let survival_time_days = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::SurvivalTimeDays,
+                patient_id,
+            )?;
+            let survival_time_days = survival_time_days
+                .map(|str| str.parse::<f64>().map(|f| f as u32))
+                .transpose()
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Could not parse survival time in days as u32 for {phenopacket_id}."
+                    ))
+                })?;
+
+            self.phenopacket_builder
+                .upsert_vital_status(
+                    phenopacket_id,
+                    status.as_str(),
+                    time_of_death.as_deref(),
+                    cause_of_death.as_deref(),
+                    survival_time_days,
+                )
+                .map_err(|_| {
+                    CollectionError(format!(
+                        "Error when upserting vital status data for {phenopacket_id}"
+                    ))
+                })?;
+        }
+
+        Ok(())
+    }
+
     fn collect_phenotypic_features(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
@@ -104,6 +191,11 @@ impl Collector {
         for hpo_sc in hpo_scs {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
+
+            if hpo_cols.len() == 0 {
+                warn!("HPO Series context {hpo_sc:?} found with no associated columns. It has been ignored during collection.");
+                continue;
+            }
 
             let linked_onset_cols = hpo_sc.get_building_block_id().map_or(vec![], |bb_id| {
                 patient_cdf
@@ -260,88 +352,164 @@ impl Collector {
         Ok(())
     }
 
-    fn collect_individual(
-        &mut self,
+    fn collect_interpretations(
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
-        patient_id: &str,
     ) -> Result<(), TransformError> {
-        let date_of_birth = Self::collect_single_multiplicity_element(
-            patient_cdf,
-            Context::DateOfBirth,
-            patient_id,
-        )?;
 
-        let subject_sex = Self::collect_single_multiplicity_element(
-            patient_cdf,
-            Context::SubjectSex,
-            patient_id,
-        )?;
+        let disease_in_cells_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::OmimLabelOrId))
+            .where_data_context(Filter::Is(&Context::OrphanetLabelOrId))
+            .where_data_context(Filter::Is(&Context::MondoLabelOrId))
+            .collect();
 
-        self.phenopacket_builder
-            .upsert_individual(
-                phenopacket_id,
-                patient_id,
-                None,
-                date_of_birth.as_deref(),
-                None,
-                subject_sex.as_deref(),
-                None,
-                None,
-                None,
-            )
-            .map_err(|_| {
+        for disease_sc in disease_in_cells_scs {
+
+            let sc_id = disease_sc.get_identifier();
+            let bb_id = disease_sc.get_building_block_id();
+            let disease_cols = patient_cdf.get_columns(sc_id);
+
+            if disease_cols.len() == 0 {
+                warn!("Disease SeriesContext {disease_sc:?} found with no associated columns. It has been ignored during collection.");
+                continue;
+            }
+
+            let linked_hgnc_cols = bb_id.map_or(vec![], |bb_id| {
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::HgncSymbolOrId))
+                    .collect()
+            });
+
+            let linked_geno_cols = bb_id.map_or(vec![], |bb_id| {
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::GenoLabelOrId))
+                    .collect()
+            });
+
+            let linked_hgvs_cols =bb_id.map_or(vec![], |bb_id| {
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::Hgvs))
+                    .collect()
+            });
+
+            // ========================= VALID LINKING =========================
+            //
+            // 1. No columns are linked.
+            //    → `ProgressStatus` = *UNSOLVED*.
+            //
+            // 2. One or more linked HGNC (i.e. gene) columns,
+            //    with no linked HGVS and no linked GENO.
+            //    → `ProgressStatus` = *SOLVED*.
+            //
+            //    - If there are two HGNC genes linked to a subject, these will be
+            //      added as separate *CONTRIBUTORY* `GenomicInterpretations`.
+            //    - If there is a single HGNC linked to a patient, it will be added as a
+            //      *CAUSATIVE* `GenomicInterpretation`.
+            //
+            // 3. One or more linked HGVS (i.e. variant) columns,
+            //    with no more than one linked HGNC column and no more than one linked GENO column.
+            //    → `ProgressStatus` = *SOLVED*.
+            //
+            //    - If there are multiple HGVS variants linked to a subject, these will be
+            //      added as separate *CONTRIBUTORY* `VariantInterpretations`.
+            //    - If there is a single HGVS linked to a patient, it will be added as a
+            //      *CAUSATIVE* `VariantInterpretation`.
+            //    - If there is a single HGNC column, the genes will be added as the
+            //      `gene_context`.
+            //    - If there is a single GENO column, the genotypes will be added to the
+            //      `allelic_state` field.
+            //
+            // ========================= INVALID LINKING =========================
+            //
+            // All other linking arrangements are invalid.
+            //
+
+            let valid_linking_case_one = linked_geno_cols.len() == 0 && linked_hgvs_cols.len() == 0 && linked_hgnc_cols.len() == 0;
+            let valid_linking_case_two = linked_geno_cols.len() == 0 && linked_hgvs_cols.len() == 0 && linked_hgnc_cols.len() > 0;
+            let valid_linking_case_three = linked_geno_cols.len() <= 1 && linked_hgvs_cols.len() > 0 && linked_hgnc_cols.len() <= 1;
+
+            let valid_linking = valid_linking_case_one || valid_linking_case_two || valid_linking_case_three;
+
+            if linked_onset_cols.len() > 1 {
+                warn!(
+                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
+                );
+            }
+
+            let onset_col = if valid_onset_linking {
+                linked_onset_cols.first().unwrap()
+            } else {
+                null_col
+            };
+
+            let onset_col_cast_to_string = onset_col.cast(&DataType::String).map_err(|_| {
                 CollectionError(format!(
-                    "Error when upserting individual data for {phenopacket_id}"
+                    "Could not cast column {} to String for phenopacket {}.",
+                    onset_col.name(),
+                    phenopacket_id
+                ))
+            })?;
+            let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
+                CollectionError(format!(
+                    "Error when converting onset col {} to StringChunked.",
+                    onset_col.name()
                 ))
             })?;
 
-        let status = Self::collect_single_multiplicity_element(
-            patient_cdf,
-            Context::VitalStatus,
-            patient_id,
-        )?;
-
-        if let Some(status) = status {
-            let time_of_death = Self::collect_single_multiplicity_element(
-                patient_cdf,
-                Context::TimeOfDeath,
-                patient_id,
-            )?;
-
-            let cause_of_death = Self::collect_single_multiplicity_element(
-                patient_cdf,
-                Context::CauseOfDeath,
-                patient_id,
-            )?;
-
-            let survival_time_days = Self::collect_single_multiplicity_element(
-                patient_cdf,
-                Context::SurvivalTimeDays,
-                patient_id,
-            )?;
-            let survival_time_days = survival_time_days
-                .map(|str| str.parse::<f64>().map(|f| f as u32))
-                .transpose()
-                .map_err(|_| {
+            for disease_col in disease_cols {
+                let stringified_disease_col = disease_col.str().map_err(|_| {
                     CollectionError(format!(
-                        "Could not parse survival time in days as u32 for {phenopacket_id}."
+                        "Error when converting disease col {} to StringChunked.",
+                        disease_col.name()
                     ))
                 })?;
 
-            self.phenopacket_builder
-                .upsert_vital_status(
-                    phenopacket_id,
-                    status.as_str(),
-                    time_of_death.as_deref(),
-                    cause_of_death.as_deref(),
-                    survival_time_days,
-                )
-                .map_err(|_| {
-                    CollectionError(format!(
-                        "Error when upserting vital status data for {phenopacket_id}"
-                    ))
-                })?;
+                let hpo_onset_pairs = stringified_hpo_col.iter().zip(stringified_onset_col.iter());
+
+                for (hpo, onset) in hpo_onset_pairs {
+                    if let Some(hpo) = hpo {
+                        self.phenopacket_builder
+                            .upsert_phenotypic_feature(
+                                phenopacket_id,
+                                hpo,
+                                None,
+                                None,
+                                None,
+                                None,
+                                onset,
+                                None,
+                                None,
+                            )
+                            .map_err(|_| {
+                                CollectionError(format!(
+                                    "Error when upserting HPO term {} in column {}",
+                                    hpo,
+                                    patient_hpo_col.name()
+                                ))
+                            })?;
+                    } else if let Some(onset) = onset {
+                        warn!(
+                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
+                    onset,
+                    patient_hpo_col.name(),
+                    phenopacket_id
+                );
+                    }
+                }
+                Ok(())
+
+            }
         }
 
         Ok(())

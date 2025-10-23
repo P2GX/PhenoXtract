@@ -61,6 +61,18 @@ pub enum Context {
     #[allow(unused)]
     HpoLabelOrId,
     #[allow(unused)]
+    OmimLabelOrId,
+    #[allow(unused)]
+    OrphanetLabelOrId,
+    #[allow(unused)]
+    MondoLabelOrId,
+    #[allow(unused)]
+    HgncSymbolOrId,
+    #[allow(unused)]
+    GenoLabelOrId,
+    #[allow(unused)]
+    Hgvs,
+    #[allow(unused)]
     OnsetDateTime,
     #[allow(unused)]
     OnsetAge,
