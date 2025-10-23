@@ -2,6 +2,7 @@
 use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::TransformError;
+use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
@@ -22,6 +23,7 @@ use std::sync::Arc;
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hpo_dict: Arc<OntologyBiDict>,
+    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {
@@ -29,6 +31,7 @@ impl PhenopacketBuilder {
         PhenopacketBuilder {
             subject_to_phenopacket: HashMap::default(),
             hpo_dict,
+            variant_parser: VariantParser::new(),
         }
     }
     #[allow(dead_code)]
