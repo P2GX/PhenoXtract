@@ -9,7 +9,6 @@ use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{Column, DataType, Series, StringChunked};
 use std::collections::HashSet;
-use itertools::izip;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -193,7 +192,7 @@ impl Collector {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
 
-            if hpo_cols.len() == 0 {
+            if hpo_cols.is_empty() {
                 warn!(
                     "HPO Series context {hpo_sc:?} found with no associated columns. It has been ignored during collection."
                 );
@@ -355,7 +354,12 @@ impl Collector {
         Ok(())
     }
 
+    /// this function finds diseases associated with the patient
+    /// and the genes, variants, and allelic states associated with that disease (associated here = in the same row of the patient_cdf)
+    /// and passes the disease, alongside the genes, variants and allelic states to the collector
+    /// which will then use that data to complete the Phenopacket, making sensible inferences
     fn collect_interpretations(
+        &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), TransformError> {
@@ -372,163 +376,102 @@ impl Collector {
             let bb_id = disease_sc.get_building_block_id();
             let disease_cols = patient_cdf.get_columns(sc_id);
 
-            if disease_cols.len() == 0 {
-                warn!(
-                    "Disease SeriesContext {disease_sc:?} found with no associated columns. It has been ignored during collection."
-                );
-                continue;
-            }
+            //let's assume there's exactly one disease_col per SC otherwise things are weird
+            let disease_col = disease_cols.first().unwrap();
+            let stringified_disease_col = disease_col.str().unwrap();
 
-            let stringified_disease_cols: Vec<&StringChunked> = disease_cols
-                .iter()
-                .map(|col| {
-                    col.str().map_err(|_| {
-                        CollectionError(format!(
-                            "Unexpectedly could not convert {} to StringChunked.",
-                            col.name()
-                        ))
-                    })
-                })
-                .collect()?;
+            let stringified_linked_hgnc_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::HgncSymbolOrId,
+            )?;
+            let stringified_linked_hgvs_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::Hgvs,
+            )?;
+            let stringified_linked_geno_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::GenoLabelOrId,
+            )?;
 
-            let stringified_linked_hgnc_cols: Vec<&StringChunked> = bb_id
-                .map_or(vec![], |bb_id| {
-                    patient_cdf
-                        .filter_columns()
-                        .where_building_block(Filter::Is(bb_id))
-                        .where_header_context(Filter::IsNone)
-                        .where_data_context(Filter::Is(&Context::HgncSymbolOrId))
-                        .collect()
-                })
-                .iter()
-                .map(|col| {
-                    col.str().map_err(|_| {
-                        CollectionError(format!(
-                            "Unexpectedly could not convert {} to StringChunked.",
-                            col.name()
-                        ))
-                    })
-                })
-                .collect()?;
+            let n_rows = patient_cdf.data().height();
 
-            let stringified_linked_hgvs_cols: Vec<&StringChunked> = bb_id
-                .map_or(vec![], |bb_id| {
-                    patient_cdf
-                        .filter_columns()
-                        .where_building_block(Filter::Is(bb_id))
-                        .where_header_context(Filter::IsNone)
-                        .where_data_context(Filter::Is(&Context::Hgvs))
-                        .collect()
-                })
-                .iter()
-                .map(|col| {
-                    col.str().map_err(|_| {
-                        CollectionError(format!(
-                            "Unexpectedly could not convert {} to StringChunked.",
-                            col.name()
-                        ))
-                    })
-                })
-                .collect()?;
+            for row_idx in 0..n_rows {
+                let disease = stringified_disease_col.get(row_idx);
 
-            let stringified_linked_geno_cols: Vec<&StringChunked> = bb_id
-                .map_or(vec![], |bb_id| {
-                    patient_cdf
-                        .filter_columns()
-                        .where_building_block(Filter::Is(bb_id))
-                        .where_header_context(Filter::IsNone)
-                        .where_data_context(Filter::Is(&Context::GenoLabelOrId))
-                        .collect()
-                })
-                .iter()
-                .map(|col| {
-                    col.str().map_err(|_| {
-                        CollectionError(format!(
-                            "Unexpectedly could not convert {} to StringChunked.",
-                            col.name()
-                        ))
-                    })
-                })
-                .collect()?;
+                let genes = stringified_linked_hgnc_cols
+                    .iter()
+                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let variants = stringified_linked_hgvs_cols
+                    .iter()
+                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let genos = stringified_linked_geno_cols
+                    .iter()
+                    .filter_map(|geno_col| geno_col.get(row_idx))
+                    .collect::<Vec<&str>>();
 
-            //rewrite the below so the decision is made on a patient level
-
-            // ========================= VALID LINKING =========================
-            //
-            // 1. No columns are linked.
-            //    → `ProgressStatus` = *UNSOLVED*.
-            //
-            // 2. One or more linked HGNC (i.e. gene) columns,
-            //    with no linked HGVS and no linked GENO.
-            //    → `ProgressStatus` = *SOLVED*.
-            //
-            //    - If there are two HGNC genes linked to a subject, these will be
-            //      added as separate *CONTRIBUTORY* `GenomicInterpretations`.
-            //    - If there is a single HGNC linked to a patient, it will be added as a
-            //      *CAUSATIVE* `GenomicInterpretation`.
-            //
-            // 3. One or more linked HGVS (i.e. variant) columns,
-            //    with no more than one linked HGNC column and no more than one linked GENO column.
-            //    → `ProgressStatus` = *SOLVED*.
-            //
-            //    - If there are multiple HGVS variants linked to a subject, these will be
-            //      added as separate *CONTRIBUTORY* `VariantInterpretations`.
-            //    - If there is a single HGVS linked to a patient, it will be added as a
-            //      *CAUSATIVE* `VariantInterpretation`.
-            //    - If there is a single HGNC column, the genes will be added as the
-            //      `gene_context`.
-            //    - If there is a single GENO column, the genotypes will be added to the
-            //      `allelic_state` field.
-            //
-            // ========================= INVALID LINKING =========================
-            //
-            // All other linking arrangements are invalid.
-            //
-            // one disease col, one gene col ETC per BB. Otherwise things get very complicated
-
-            for row in patient_cdf.data() {
-
-            }
-
-            for disease_col in stringified_disease_cols {
-
-                let disease_hgnc_hgvs_geno_tuples = izip!(disease_col.iter(), stringified_linked_hgnc_cols.iter(), stringified_linked_hgvs_cols.iter(), stringified_linked_geno_cols.iter());
-
-                for (disease,hgncs,) in disease_hgnc_hgvs_geno_tuples {
-                    if let Some(hpo) = hpo {
-                        self.phenopacket_builder
-                            .upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo,
-                                None,
-                                None,
-                                None,
-                                None,
-                                onset,
-                                None,
-                                None,
-                            )
-                            .map_err(|_| {
-                                CollectionError(format!(
-                                    "Error when upserting HPO term {} in column {}",
-                                    hpo,
-                                    patient_hpo_col.name()
-                                ))
-                            })?;
-                    } else if let Some(onset) = onset {
+                if let Some(disease) = disease {
+                    self.phenopacket_builder
+                        .upsert_interpretation(phenopacket_id, disease, genes, variants, genos)
+                        .map_err(|err| {
+                            CollectionError(format!(
+                                "Error when upserting disease {} in column {}: {err:?}",
+                                disease,
+                                disease_col.name()
+                            ))
+                        })?;
+                } else {
+                    if !genes.is_empty() {
                         warn!(
-                            "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
-                            onset,
-                            patient_hpo_col.name(),
-                            phenopacket_id
+                            "Genes were found with no associated disease for patient {phenopacket_id}"
                         );
                     }
+                    if !variants.is_empty() {
+                        warn!(
+                            "Variants were found with no associated disease for patient {phenopacket_id}"
+                        );
+                    }
+                    if !genos.is_empty() {
+                        warn!(
+                            "Allelic states were found with no associated disease for patient {phenopacket_id}"
+                        );
+                    }
+                    continue;
                 }
-                Ok(())
             }
         }
 
         Ok(())
+    }
+
+    fn get_stringified_cols_with_data_context_in_bb<'a>(
+        patient_cdf: &'a ContextualizedDataFrame,
+        bb_id: Option<&'a str>,
+        context: &'a Context,
+    ) -> Result<Vec<&'a StringChunked>, TransformError> {
+        let cols = bb_id.map_or(vec![], |bb_id| {
+            patient_cdf
+                .filter_columns()
+                .where_building_block(Filter::Is(bb_id))
+                .where_header_context(Filter::IsNone)
+                .where_data_context(Filter::Is(context))
+                .collect()
+        });
+
+        cols.iter()
+            .map(|col| {
+                col.str().map_err(|_| {
+                    CollectionError(format!(
+                        "Unexpectedly could not convert {} to StringChunked.",
+                        col.name()
+                    ))
+                })
+            })
+            .collect()
     }
 
     /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
@@ -1337,16 +1280,16 @@ mod tests {
         );
         assert!(sme.is_err());
         assert!(
-            sme.as_ref().err().unwrap()
-                == &CollectionError(
-                "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
-                    .to_string(),
-            )
-                || sme.as_ref().err().unwrap()
-                == &CollectionError(
-                "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
-                    .to_string(),
-            )
-        )
+    sme.as_ref().err().unwrap()
+        == &CollectionError(
+        "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
+            .to_string(),
+    )
+        || sme.as_ref().err().unwrap()
+        == &CollectionError(
+        "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
+            .to_string(),
+    )
+)
     }
 }
