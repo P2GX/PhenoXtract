@@ -4,14 +4,10 @@ use hgvs::parser::HgvsVariant;
 use std::str::FromStr;
 
 #[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct VariantParser;
 
 impl VariantParser {
-    pub fn new() -> Self {
-        VariantParser {}
-    }
-
     /// this function will try to parse var_string as a variant in different formats (currently only HGVS accepted)
     /// and then return the appropriate variant syntax
     /// if all attempts to parse var_string fail, then an error will be thrown

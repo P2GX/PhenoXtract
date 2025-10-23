@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hpo_dict: Arc<OntologyBiDict>,
@@ -29,9 +29,8 @@ pub struct PhenopacketBuilder {
 impl PhenopacketBuilder {
     pub fn new(hpo_dict: Arc<OntologyBiDict>) -> PhenopacketBuilder {
         PhenopacketBuilder {
-            subject_to_phenopacket: HashMap::default(),
             hpo_dict,
-            variant_parser: VariantParser::new(),
+            ..Default::default()
         }
     }
     #[allow(dead_code)]
