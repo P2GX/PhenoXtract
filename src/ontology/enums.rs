@@ -77,3 +77,9 @@ impl std::fmt::Display for OntologyRef {
         }
     }
 }
+
+impl Default for OntologyRef {
+    fn default() -> Self {
+        OntologyRef::Other("".to_string(), None)
+    }
+}
