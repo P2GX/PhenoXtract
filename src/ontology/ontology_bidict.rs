@@ -1,7 +1,7 @@
 use crate::ontology::enums::OntologyRef;
 use ontolius::Identified;
+use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
-use ontolius::ontology::{MetadataAware, OntologyTerms};
 use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
