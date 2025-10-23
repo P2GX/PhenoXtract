@@ -45,9 +45,6 @@ impl CachedOntologyFactory {
             OntologyRef::Hpo(_) => ObolibraryOntologyRegistry::default_hpo_registry(),
             OntologyRef::Mondo(_) => ObolibraryOntologyRegistry::default_mondo_registry(),
             OntologyRef::Geno(_) => ObolibraryOntologyRegistry::default_geno_registry(),
-            OntologyRef::Omim(_) => {
-                panic!("Ontology factory does not support omim registry.")
-            }
             OntologyRef::Other(prefix, _) => {
                 let registry_path = ObolibraryOntologyRegistry::default_registry_path(prefix)
                     .map_err(|err| Self::wrap_error(err, ontology))?;
@@ -146,16 +143,12 @@ mod tests {
             ontology: ontology.clone(),
             file_name: None,
         }));
-        assert!(factory.cache.contains_key(&CacheKey {
-            ontology: ontology.clone(),
-            file_name: None,
-        }));
 
         Ok(())
     }
 
     #[rstest]
-    fn test_build_bidict_wildcard() -> Result<(), OntologyFactoryError> {
+    fn test_build_bidict_other() -> Result<(), OntologyFactoryError> {
         let ontology = OntologyRef::Other("ro".to_string(), None);
 
         let mut factory = CachedOntologyFactory::default();
@@ -163,10 +156,6 @@ mod tests {
 
         assert!(Arc::strong_count(&result) >= 1);
 
-        assert!(factory.cache.contains_key(&CacheKey {
-            ontology: ontology.clone(),
-            file_name: None,
-        }));
         assert!(factory.cache.contains_key(&CacheKey {
             ontology: ontology.clone(),
             file_name: None,
