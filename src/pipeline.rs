@@ -3,19 +3,16 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
-use crate::ontology::traits::OntologyRegistry;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
-use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::utils::init_ontolius;
+use crate::ontology::CachedOntologyFactory;
+use crate::ontology::enums::OntologyRef;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
-use std::sync::Arc;
 use validator::Validate;
 
 #[allow(dead_code)]
@@ -86,11 +83,9 @@ impl Pipeline {
     #[allow(dead_code)]
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
         // In progress
-        let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry()?;
         // TOOD: Read hpo version from config later
-        let registry_path = hpo_registry.register("latest")?;
-        let hpo = init_ontolius(registry_path)?;
-        let hpo_dict = Arc::new(OntologyBiDict::from(hpo));
+        let mut factory = CachedOntologyFactory::default();
+        let hpo_dict = factory.build_bidict(&OntologyRef::Hpo(None), None).unwrap();
         let builder = PhenopacketBuilder::new(hpo_dict);
         let tf_module =
             TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));

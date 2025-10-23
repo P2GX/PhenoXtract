@@ -7,10 +7,9 @@ use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::ObolibraryOntologyRegistry;
-use phenoxtract::ontology::ontology_bidict::OntologyBiDict;
-use phenoxtract::ontology::traits::OntologyRegistry;
-use phenoxtract::ontology::utils::init_ontolius;
+use phenoxtract::ontology::enums::OntologyRef;
+
+use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
@@ -20,7 +19,6 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
@@ -162,9 +160,12 @@ fn test_pipeline_integration(
 ) {
     //Set-up
     let cohort_name = "my_cohort";
-    let hpo_registry = ObolibraryOntologyRegistry::default_hpo_registry().unwrap();
-    let hpo = init_ontolius(hpo_registry.register("2025-09-01").unwrap()).unwrap();
-    let hpo_dict = Arc::new(OntologyBiDict::from(hpo));
+
+    let mut onto_factory = CachedOntologyFactory::default();
+
+    let hpo_dict = onto_factory
+        .build_bidict(&OntologyRef::Hpo(Some("2025-09-01".to_string())), None)
+        .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
