@@ -1,16 +1,19 @@
 use crate::config::table_context::OutputDataType;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::CastingError;
+use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column, TimeUnit};
 
-fn cast_to_bool(column: &Column) -> Result<Column, TransformError> {
+fn cast_to_bool(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
     let str_col = column
         .str()
-        .map_err(|_err| CastingError(format!("Could not convert {col_name} to StringChunked.")))?;
+        .map_err(|_err| DataProcessingError::CastingError {
+            col_name: col_name.as_str().to_string(),
+            from: column.dtype().clone(),
+            to: DataType::String,
+        })?;
 
     let bools = str_col
         .iter()
@@ -18,43 +21,55 @@ fn cast_to_bool(column: &Column) -> Result<Column, TransformError> {
             Some(raw_bool) => match raw_bool.to_lowercase().as_str() {
                 "true" => Ok(AnyValue::Boolean(true)),
                 "false" => Ok(AnyValue::Boolean(false)),
-                _ => Err(CastingError(format!(
-                    "Could not cast {raw_bool} in column {col_name} as boolean."
-                ))),
+                _ => Err(DataProcessingError::CastingError {
+                    col_name: col_name.as_str().to_string(),
+                    from: DataType::String,
+                    to: DataType::Boolean,
+                }),
             },
             None => Ok(AnyValue::Null),
         })
-        .collect::<Result<Vec<AnyValue>, TransformError>>()?;
+        .collect::<Result<Vec<AnyValue>, DataProcessingError>>()?;
 
     Ok(Column::new(col_name.clone(), bools))
 }
 
-fn cast_to_date(column: &Column) -> Result<Column, TransformError> {
+fn cast_to_date(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
     let str_col = column
         .str()
-        .map_err(|_err| CastingError(format!("Could not convert {col_name} to StringChunked.")))?;
+        .map_err(|_err| DataProcessingError::CastingError {
+            col_name: col_name.to_string(),
+            from: column.dtype().clone(),
+            to: DataType::String,
+        })?;
 
     let dates = str_col
         .iter()
         .map(|opt| match opt {
             Some(raw_date) => try_parse_string_date(raw_date)
                 .map(|datetime| AnyValue::Date(datetime.to_epoch_days()))
-                .ok_or(CastingError(format!(
-                    "Could not cast {raw_date} in column {col_name} as date."
-                ))),
+                .ok_or(DataProcessingError::CastingError {
+                    col_name: col_name.to_string(),
+                    from: column.dtype().clone(),
+                    to: DataType::Date,
+                }),
             None => Ok(AnyValue::Null),
         })
-        .collect::<Result<Vec<AnyValue>, TransformError>>()?;
+        .collect::<Result<Vec<AnyValue>, DataProcessingError>>()?;
 
     Ok(Column::new(col_name.clone(), dates))
 }
 
-fn cast_to_datetime(column: &Column) -> Result<Column, TransformError> {
+fn cast_to_datetime(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
     let str_col = column
         .str()
-        .map_err(|_err| CastingError(format!("Could not convert {col_name} to StringChunked.")))?;
+        .map_err(|_err| DataProcessingError::CastingError {
+            col_name: col_name.to_string(),
+            from: column.dtype().clone(),
+            to: DataType::String,
+        })?;
 
     let datetimes = str_col
         .iter()
@@ -67,57 +82,59 @@ fn cast_to_datetime(column: &Column) -> Result<Column, TransformError> {
                         None,
                     )
                 })
-                .ok_or(CastingError(format!(
-                    "Could not cast {raw_datetime} in column {col_name} as datetime."
-                ))),
+                .ok_or(DataProcessingError::CastingError {
+                    col_name: col_name.to_string(),
+                    from: column.dtype().clone(),
+                    to: DataType::Datetime(TimeUnit::Milliseconds, None),
+                }),
             None => Ok(AnyValue::Null),
         })
-        .collect::<Result<Vec<AnyValue>, TransformError>>()?;
+        .collect::<Result<Vec<AnyValue>, DataProcessingError>>()?;
 
     Ok(Column::new(col_name.clone(), datetimes))
 }
 
-pub fn polars_column_cast_ambivalent(column: &Column) -> Result<Column, TransformError> {
+pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
     let col_name = column.name();
     debug!("Trying to cast column: {col_name}.");
 
     if column.dtype() != &DataType::String {
         debug!("Ignored {col_name}. Not of string type.");
-        return Ok(column.clone());
+        return column.clone();
     }
 
     if let Ok(casted) = cast_to_bool(column) {
         debug!("Casted column: {col_name} to bool.");
-        return Ok(casted);
+        return casted;
     }
 
     if let Ok(casted) = column.strict_cast(&DataType::Int32) {
         debug!("Casted column: {col_name} to i32.");
-        return Ok(casted);
+        return casted;
     }
 
     if let Ok(casted) = column.strict_cast(&DataType::Float64) {
         debug!("Casted column: {col_name} to f64.");
-        return Ok(casted);
+        return casted;
     }
 
     if let Ok(casted) = cast_to_date(column) {
         debug!("Casted column: {col_name} to date.");
-        return Ok(casted);
+        return casted;
     }
 
     if let Ok(casted) = cast_to_datetime(column) {
         debug!("Casted column: {col_name} to datetime.");
-        return Ok(casted);
+        return casted;
     }
 
-    Ok(column.clone())
+    column.clone()
 }
 
 pub fn polars_column_cast_specific(
     column: &Column,
     desired_output_dtype: &OutputDataType,
-) -> Result<Column, TransformError> {
+) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
     debug!("Trying to cast column: {col_name} to datatype: {desired_output_dtype:?}");
 
@@ -126,10 +143,10 @@ pub fn polars_column_cast_specific(
         return Ok(column.clone());
     }
 
-    let failed_parse_err = || {
-        CastingError(format!(
-            "Unable to convert column {col_name} to {desired_output_dtype:?}."
-        ))
+    let failed_parse_err = |dtype: DataType| DataProcessingError::CastingError {
+        col_name: col_name.to_string(),
+        from: column.dtype().clone(),
+        to: dtype,
     };
 
     match desired_output_dtype {
@@ -142,13 +159,13 @@ pub fn polars_column_cast_specific(
             .inspect(|_casted| {
                 debug!("Casted column: {col_name} to Int32.");
             })
-            .map_err(|_| failed_parse_err()),
+            .map_err(|_| failed_parse_err(DataType::Int32)),
         OutputDataType::Float64 => column
             .strict_cast(&DataType::Float64)
             .inspect(|_casted| {
                 debug!("Casted column: {col_name} to Float64.");
             })
-            .map_err(|_| failed_parse_err()),
+            .map_err(|_| failed_parse_err(DataType::Float64)),
         OutputDataType::Date => cast_to_date(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to Date.");
         }),
@@ -384,7 +401,7 @@ mod tests {
         #[case] expected_dtype: DataType,
         #[case] expected: Column,
     ) {
-        let casted_col = polars_column_cast_ambivalent(&input).unwrap();
+        let casted_col = polars_column_cast_ambivalent(&input);
         assert_eq!(casted_col.dtype(), &expected_dtype);
         assert_eq!(casted_col, expected);
     }
@@ -393,7 +410,7 @@ mod tests {
     #[case::string(string_col(), DataType::String)]
     #[case::mixed_bag(mixed_bag_col(), DataType::String)]
     fn test_no_change_ambivalent(#[case] input: Column, #[case] expected_dtype: DataType) {
-        let casted_col = polars_column_cast_ambivalent(&input).unwrap();
+        let casted_col = polars_column_cast_ambivalent(&input);
         assert_eq!(casted_col.dtype(), &expected_dtype);
         assert_eq!(casted_col, input);
     }

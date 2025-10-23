@@ -1,7 +1,6 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::StrategyError;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
@@ -146,7 +145,7 @@ impl ContextualizedDataFrame {
         &mut self,
         transformed_vec: Vec<T>,
         col_name: &str,
-    ) -> Result<&mut ContextualizedDataFrame, TransformError>
+    ) -> Result<&mut ContextualizedDataFrame, StrategyError>
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
@@ -155,13 +154,10 @@ impl ContextualizedDataFrame {
         let transform_result = self
             .data_mut()
             .replace(col_name, transformed_series)
-            .map_err(|_| {
-                StrategyError(
-                    format!(
-                        "Could not insert transformed column {col_name} into table {table_name}."
-                    )
-                    .to_string(),
-                )
+            .map_err(|_| StrategyError::TransformationError {
+                transformation: "replace".to_string(),
+                col_name: col_name.to_string(),
+                table_name,
             });
         match transform_result {
             Ok(df) => Ok(self),
