@@ -163,7 +163,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict_wildcard() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::Other("sdfgsdf".to_string(), None);
+        let ontology = OntologyRef::Other("ro".to_string(), None);
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_bidict(&ontology, None)?;
