@@ -2626,6 +2626,7 @@ dependencies = [
  "directories",
  "either",
  "hgvs",
+ "itertools",
  "log",
  "mockito",
  "once_cell",
