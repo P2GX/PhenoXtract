@@ -1,5 +1,6 @@
+use std::any::Any;
 use ontolius::Identified;
-use ontolius::ontology::OntologyTerms;
+use ontolius::ontology::{HierarchyTraversals, MetadataAware, OntologyTerms};
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
@@ -7,9 +8,9 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct OntologyBiDict {
-    label_to_id: HashMap<String, String>,
+    pub label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
-    id_to_label: HashMap<String, String>,
+    pub id_to_label: HashMap<String, String>,
 }
 
 impl OntologyBiDict {

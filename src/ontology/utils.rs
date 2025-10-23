@@ -2,8 +2,7 @@ use crate::ontology::error::DatasourceError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
-use polars::prelude::{BooleanChunked, ChunkFilter, CsvReadOptions, SerReader};
-use regex::Regex;
+use polars::prelude::{CsvReadOptions, SerReader};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,7 +16,7 @@ pub fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::
 }
 
 #[allow(dead_code)]
-pub fn init_omim_dict(hpoa_path: PathBuf) -> Result<OntologyBiDict, DatasourceError> {
+pub fn init_omim_dict(_hpoa_path: PathBuf) -> Result<OntologyBiDict, DatasourceError> {
     let sep = '\t';
     let mut csv_read_options = CsvReadOptions::default()
         .with_has_header(true)
@@ -43,12 +42,14 @@ pub fn init_omim_dict(hpoa_path: PathBuf) -> Result<OntologyBiDict, DatasourceEr
     let mut label_to_id = HashMap::new();
     let mut id_to_label = HashMap::new();
 
-    let id_disease_name_pairs = stringified_database_id_col.iter().zip(stringified_disease_id_col.iter());
+    let id_disease_name_pairs = stringified_database_id_col
+        .iter()
+        .zip(stringified_disease_id_col.iter());
 
     for (id, disease_name) in id_disease_name_pairs {
         if let (Some(id), Some(disease_name)) = (id, disease_name) {
             let id_split = id.split(':').collect::<Vec<&str>>();
-            if !id_to_label.contains_key(id) && id_split.get(0) == Some(&"OMIM") {
+            if !id_to_label.contains_key(id) && id_split.first() == Some(&"OMIM") {
                 label_to_id.insert(disease_name.to_string(), id.to_string());
                 id_to_label.insert(id.to_string(), disease_name.to_string());
             }
@@ -64,6 +65,7 @@ pub fn init_omim_dict(hpoa_path: PathBuf) -> Result<OntologyBiDict, DatasourceEr
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use super::*;
     use crate::ontology::obolibrary_ontology_registry::ObolibraryOntologyRegistry;
     use crate::ontology::traits::OntologyRegistry;
@@ -98,7 +100,18 @@ mod tests {
     #[rstest]
     fn test_init_omim_dict() {
         // assert that the database_id is exclusively OMIM and Orpha?
-        let bidict = init_omim_dict(PathBuf::from("fake_path")).unwrap();
-        dbg!(&bidict);
+        let res = init_omim_dict(PathBuf::from("fake_path"));
+        let bidict = res.unwrap();
+        let label_to_id_keys = bidict.label_to_id.keys().cloned().collect::<HashSet<String>>();
+        let label_to_id_vals = bidict.label_to_id.values().cloned().collect::<HashSet<String>>();
+        let id_to_label_keys = bidict.id_to_label.keys().cloned().collect::<HashSet<String>>();
+        let id_to_label_vals = bidict.id_to_label.values().cloned().collect::<HashSet<String>>();
+        let diff1: HashSet<String> = id_to_label_keys.difference(&label_to_id_vals).cloned().collect();
+        let diff2: HashSet<String> = label_to_id_vals.difference(&id_to_label_keys).cloned().collect();
+/*        let diff1: HashSet<String>= label_keys.difference(&label_vals).cloned().collect();
+        let diff2: HashSet<String>= label_vals.difference(&label_keys).cloned().collect();
+        dbg!(&diff1);
+        dbg!(&diff2);*/
+        println!("label_to_id_key");
     }
 }
