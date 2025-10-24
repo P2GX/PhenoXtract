@@ -1,4 +1,4 @@
-use crate::transform::error::TransformError;
+use crate::transform::error::PhenopacketBuilderError;
 use hgvs;
 use hgvs::parser::HgvsVariant;
 use std::str::FromStr;
@@ -12,20 +12,21 @@ impl VariantParser {
     /// and then return the appropriate variant syntax
     /// if all attempts to parse var_string fail, then an error will be thrown
     #[allow(unused)]
-    pub fn try_parse_syntax(var_string: &str) -> Result<&str, TransformError> {
-        let hgvs_result = HgvsVariant::from_str(var_string);
-        match hgvs_result {
-            Ok(hgvs) => match hgvs {
-                HgvsVariant::CdsVariant { .. } => Ok("hgvs.c"),
-                HgvsVariant::GenomeVariant { .. } => Ok("hgvs.g"),
-                HgvsVariant::MtVariant { .. } => Ok("hgvs.m"),
-                HgvsVariant::TxVariant { .. } => Ok("hgvs.n"),
-                HgvsVariant::ProtVariant { .. } => Ok("hgvs.p"),
-                HgvsVariant::RnaVariant { .. } => Ok("hgvs.r"),
-            },
-            Err(err) => Err(TransformError::VariantParseError(format!(
-                "Could not parse {var_string} as a HGVS variant. Currently only variants in HGVS format can be parsed. Error: {err}"
-            ))),
+    pub fn try_parse_syntax(var_string: &str) -> Result<&str, PhenopacketBuilderError> {
+        let hgvs = HgvsVariant::from_str(var_string).map_err(|e| {
+            PhenopacketBuilderError::ParsingError {
+                what: "HGVS Variant".to_string(),
+                value: "var_string".to_string(),
+            }
+        })?;
+
+        match hgvs {
+            HgvsVariant::CdsVariant { .. } => Ok("hgvs.c"),
+            HgvsVariant::GenomeVariant { .. } => Ok("hgvs.g"),
+            HgvsVariant::MtVariant { .. } => Ok("hgvs.m"),
+            HgvsVariant::TxVariant { .. } => Ok("hgvs.n"),
+            HgvsVariant::ProtVariant { .. } => Ok("hgvs.p"),
+            HgvsVariant::RnaVariant { .. } => Ok("hgvs.r"),
         }
     }
 }

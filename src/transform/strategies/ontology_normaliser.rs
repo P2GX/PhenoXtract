@@ -1,12 +1,13 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::TransformError::{MappingError, StrategyError};
-use crate::transform::error::{MappingErrorInfo, TransformError};
+use crate::transform::error::StrategyError::{MappingError, TransformationError};
+use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
+
 use polars::prelude::{DataType, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
@@ -66,7 +67,7 @@ impl Strategy for OntologyNormaliserStrategy {
     fn internal_transform(
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), StrategyError> {
         info!("Applying HPOSynonymsToPrimaryTerms strategy to data.");
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
@@ -85,12 +86,8 @@ impl Strategy for OntologyNormaliserStrategy {
                 .collect();
 
             for col_name in column_names {
-                let col = table.data().column(&col_name).map_err(|_| {
-                    StrategyError(format!(
-                        "Unexpectedly could not find column {col_name} in DataFrame."
-                    ))
-                })?;
-                let mapped_column = col.str().unwrap().apply_mut(|cell_value| {
+                let col = table.data().column(&col_name)?;
+                let mapped_column = col.str()?.apply_mut(|cell_value| {
                     if self.ontology_dict.is_id(cell_value) {
                         cell_value
                     } else if let Some(curie_id) = self.ontology_dict.get(cell_value) {
@@ -110,10 +107,10 @@ impl Strategy for OntologyNormaliserStrategy {
                 table
                     .data_mut()
                     .replace(&col_name, mapped_column)
-                    .map_err(|_| {
-                        StrategyError(format!(
-                            "Could not replace {col_name} column in {table_name}."
-                        ))
+                    .map_err(|_| TransformationError {
+                        transformation: "replace".to_string(),
+                        col_name: col_name.to_string(),
+                        table_name: table_name.to_string(),
                     })?;
             }
         }
@@ -135,7 +132,7 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_utils::HPO_DICT;
-    use crate::transform::error::{MappingErrorInfo, TransformError};
+    use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
     use crate::transform::traits::Strategy;
     use polars::datatypes::AnyValue;
@@ -211,7 +208,7 @@ mod tests {
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
-        if let Err(TransformError::MappingError {
+        if let Err(StrategyError::MappingError {
             strategy_name,
             info,
         }) = strat_result

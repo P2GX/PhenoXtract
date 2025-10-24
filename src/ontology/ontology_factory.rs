@@ -5,6 +5,7 @@ use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::OntologyRegistry;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
+use serde::de::StdError;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -103,8 +104,14 @@ impl CachedOntologyFactory {
         Ok(Arc::new(ontolius))
     }
 
-    fn wrap_error<E: Into<anyhow::Error>>(err: E, ontology: &OntologyRef) -> OntologyFactoryError {
-        OntologyFactoryError::CantBuild(err.into(), ontology.clone())
+    fn wrap_error<E: Into<Box<dyn StdError + Send + Sync>>>(
+        err: E,
+        ontology: &OntologyRef,
+    ) -> OntologyFactoryError {
+        OntologyFactoryError::CantBuild {
+            source: err.into(),
+            ontology: ontology.clone(),
+        }
     }
 }
 

@@ -55,8 +55,8 @@ impl DataSource {
                     cdf.data()
                         .get_columns()
                         .first()
-                        .ok_or(ExtractionError::VectorIndexing(
-                            "No columns in DataFrame".to_string(),
+                        .ok_or(ExtractionError::EmptyTable(
+                            cdf.context().name().to_string(),
                         ))?;
 
                 column_names = Some(Either::Right(index_col
@@ -154,9 +154,9 @@ impl Extractable for DataSource {
                         .contexts
                         .iter()
                         .find(|context| context.name() == sheet_name)
-                        .ok_or(ExtractionError::UnableToFindTableContext(format!(
-                            "Can't find table context with name {sheet_name}"
-                        )))?;
+                        .ok_or(ExtractionError::UnableToFindTableContext(
+                            sheet_name.to_string(),
+                        ))?;
 
                     let range = match workbook.worksheet_range(sheet_name) {
                         Ok(r) => r,
