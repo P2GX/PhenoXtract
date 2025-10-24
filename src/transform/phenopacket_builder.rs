@@ -19,7 +19,6 @@ use phenopackets::schema::v2::core::{
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::metadata;
 use std::sync::Arc;
 
 #[allow(dead_code)]
@@ -365,8 +364,8 @@ mod tests {
     use super::*;
 
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
-    use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
+    use phenopackets::schema::v2::core::{Age as age_struct, Resource};
     use rstest::*;
 
     #[fixture]
@@ -887,5 +886,25 @@ mod tests {
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
         assert_eq!(pp.id, phenopacket_id);
         assert_eq!(builder.subject_to_phenopacket.len(), 1);
+    }
+
+    #[rstest]
+    fn test_ensure_resource() {
+        let mut builder = build_phenopacket_builder();
+        let pp_id = "test_id".to_string();
+        builder.ensure_resource(&pp_id, "omim");
+
+        let pp = builder.build().first().unwrap().clone();
+        let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();
+
+        let expected_resource = Resource {
+            id: "omim".to_string(),
+            name: "Online Mendelian Inheritance in Man".to_string(),
+            url: "https://omim.org/".to_string(),
+            version: "-".to_string(),
+            namespace_prefix: "omim".to_string(),
+            iri_prefix: "https://omim.org/MIM:$1".to_string(),
+        };
+        assert_eq!(omim_resrouce, &expected_resource);
     }
 }
