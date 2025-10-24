@@ -562,7 +562,6 @@ mod tests {
     ) {
         let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
-        // Add a feature
         builder
             .upsert_phenotypic_feature(
                 phenopacket_id.as_str(),

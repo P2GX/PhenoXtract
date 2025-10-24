@@ -249,6 +249,7 @@ fn test_pipeline_integration(
         let data = fs::read_to_string(extracted_pp_file.unwrap().path()).unwrap();
         let extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
         let extracted_pp_id = extracted_pp.id.clone();
+
         assert_eq!(
             extracted_pp,
             expected_phenopackets.get(&extracted_pp_id).unwrap().clone()
