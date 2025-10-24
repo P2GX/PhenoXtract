@@ -356,6 +356,6 @@ where
     );
 }
 
-pub fn sort_resources_case_insensitive(resources: &mut Vec<Resource>) {
+pub fn sort_resources_case_insensitive(resources: &mut [Resource]) {
     resources.sort_by(|a, b| a.id.to_lowercase().cmp(&b.id.to_lowercase()));
 }
