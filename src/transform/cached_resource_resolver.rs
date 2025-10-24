@@ -1,4 +1,5 @@
 use crate::ontology::BioRegistryClient;
+use crate::ontology::traits::HasPrefixId;
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Resource;
 use std::collections::HashMap;
@@ -49,17 +50,17 @@ impl CachedResourceResolver {
     /// * `Some(Resource)` if the resource was successfully resolved with all required fields
     /// * `None` if the resource couldn't be found or is missing required fields
     #[allow(dead_code)]
-    pub fn resolve(&mut self, id: &str) -> Option<Resource> {
-        let id = id.to_lowercase();
-        debug!("Resolve id: {}", id);
-        self.cache.get(&id).cloned().or_else(|| {
+    pub fn resolve(&mut self, resource_ref: &impl HasPrefixId) -> Option<Resource> {
+        let prefix_id = resource_ref.prefix_id().to_lowercase();
+        debug!("Resolve id: {}", prefix_id);
+        self.cache.get(&prefix_id).cloned().or_else(|| {
             debug!("Cache not hit");
-            let response = self.bio_reg_client.get_resource(&id);
+            let response = self.bio_reg_client.get_resource(&prefix_id);
 
             response.ok().and_then(|bio_reg_resource| {
                 let resolved_version = self
                     .known_versions
-                    .get(&id)
+                    .get(&prefix_id)
                     .cloned()
                     .or(bio_reg_resource.version)
                     .or(Some("-".to_string()));
@@ -72,7 +73,7 @@ impl CachedResourceResolver {
                     .or(bio_reg_resource.homepage);
 
                 CachedResourceResolver::log_missing_fields(
-                    &id,
+                    &prefix_id,
                     &resolved_version,
                     &resolved_url,
                     &bio_reg_resource.name,
@@ -88,8 +89,8 @@ impl CachedResourceResolver {
                     namespace_prefix: bio_reg_resource.preferred_prefix?,
                     iri_prefix: bio_reg_resource.uri_format?,
                 };
-                debug!("Cached resource: {}", id);
-                self.cache.insert(id, resource.clone());
+                debug!("Cached resource: {}", prefix_id);
+                self.cache.insert(prefix_id, resource.clone());
 
                 Some(resource)
             })
@@ -139,16 +140,18 @@ impl CachedResourceResolver {
 
 #[cfg(test)]
 mod tests {
+    use crate::ontology::resource_references::ResourceRef;
+    use crate::ontology::traits::HasPrefixId;
     use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use rstest::rstest;
 
     #[rstest]
     fn test_resolve() {
-        let resource_id = "hp";
+        let resource_id = ResourceRef::new("".to_string(), "hp".to_string());
         let mut resolver = CachedResourceResolver::default();
-        let hpo_metadata = resolver.resolve(resource_id).unwrap();
+        let hpo_metadata = resolver.resolve(&resource_id).unwrap();
 
-        assert_eq!(hpo_metadata.id, resource_id);
+        assert_eq!(hpo_metadata.id, resource_id.prefix_id());
         assert_eq!(hpo_metadata.name, "Human Phenotype Ontology");
         assert_eq!(hpo_metadata.url, "http://purl.obolibrary.org/obo/hp.json");
         assert_eq!(hpo_metadata.namespace_prefix, "HP");
@@ -161,8 +164,8 @@ mod tests {
     #[rstest]
     fn test_resolve_versionless_resource() {
         let mut resolver = CachedResourceResolver::default();
-
-        let hgnc_metadata = resolver.resolve("hgnc").unwrap();
+        let resource_id = ResourceRef::new("".to_string(), "hgnc".to_string());
+        let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");
         assert_eq!(hgnc_metadata.version, "-");
@@ -170,10 +173,12 @@ mod tests {
 
     #[rstest]
     fn test_resolve_known_version() {
+        let resource_id = ResourceRef::new("".to_string(), "hgnc".to_string());
+
         let know_version = "1.2.3.4";
         let mut resolver = CachedResourceResolver::default();
         resolver.add_known_version("hgnc", know_version);
-        let hgnc_metadata = resolver.resolve("hgnc").unwrap();
+        let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");
         assert_eq!(hgnc_metadata.version, know_version);
