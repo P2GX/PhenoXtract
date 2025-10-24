@@ -9,3 +9,11 @@ pub trait OntologyRegistry {
     #[allow(dead_code)]
     fn get_location(&mut self, version: &str) -> Option<PathBuf>;
 }
+
+pub trait HasPrefixId {
+    fn prefix_id(&self) -> &str;
+}
+
+pub trait HasVersion {
+    fn version(&self) -> &str;
+}
