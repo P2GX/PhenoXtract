@@ -1,6 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::collector::Collector;
-use crate::transform::error::TransformError;
+use crate::transform::error::{StrategyError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
@@ -31,7 +31,7 @@ impl TransformerModule {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
 
-        self.collector.collect(data)
+        Ok(self.collector.collect(data)?)
     }
 
     pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
@@ -41,7 +41,7 @@ impl TransformerModule {
         }
     }
 
-    fn polars_dataframe_cast_ambivalent(data: &mut DataFrame) -> Result<(), TransformError> {
+    fn polars_dataframe_cast_ambivalent(data: &mut DataFrame) -> Result<(), StrategyError> {
         let col_names: Vec<String> = data
             .get_column_names()
             .iter()
@@ -49,14 +49,11 @@ impl TransformerModule {
             .collect();
 
         for col_name in col_names {
-            let column = data
-                .column(col_name.as_str())
-                .map_err(|err| TransformError::CastingError(err.to_string()))?;
+            let column = data.column(col_name.as_str())?;
 
-            let casted_series = polars_column_cast_ambivalent(column)?.take_materialized_series();
+            let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
 
-            data.replace(col_name.as_str(), casted_series.clone())
-                .map_err(|err| TransformError::CastingError(err.to_string()))?;
+            data.replace(col_name.as_str(), casted_series.clone())?;
         }
         Ok(())
     }
