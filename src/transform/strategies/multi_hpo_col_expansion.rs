@@ -1,8 +1,7 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::HpoColMaker;
 use log::{info, warn};
@@ -39,7 +38,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
     fn internal_transform(
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), StrategyError> {
         for table in tables.iter_mut() {
             if table
                 .filter_columns()
@@ -54,13 +53,13 @@ impl Strategy for MultiHPOColExpansionStrategy {
             let table_name = table.context().name().to_string();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
-            let stringified_subject_id_col = table.filter_columns().where_data_context(Filter::Is(&Context::SubjectId)).collect()
+            let stringified_subject_id_col = table
+                .filter_columns()
+                .where_data_context(Filter::Is(&Context::SubjectId))
+                .collect()
                 .last()
-                .ok_or(StrategyError(format!(
-                    "Could not find SubjectID column in table {table_name}"
-                )))?.str()
-                .map_err(|_| {
-                    StrategyError("Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string())})?;
+                .ok_or(DataProcessingError::EmptyFilteringError)?
+                .str()?;
 
             let mut new_hpo_cols = vec![];
             let mut new_series_contexts = vec![];
@@ -88,13 +87,16 @@ impl Strategy for MultiHPOColExpansionStrategy {
                         .collect(),
                 };
 
-                let stringified_multi_hpo_block = multi_hpo_block.iter()
+                let stringified_multi_hpo_block = multi_hpo_block
+                    .iter()
                     .map(|col| {
-                        col.str().map_err(|_| StrategyError(
-                            "Unexpectedly could not convert SubjectID column to string column when applying MultiHPOColExpansion strategy.".to_string()
-                        ))
+                        col.str().map_err(|_| DataProcessingError::CastingError {
+                            col_name: col.name().to_string(),
+                            from: col.dtype().clone(),
+                            to: DataType::String,
+                        })
                     })
-                    .collect::<Result<Vec<&StringChunked>, TransformError>>()?;
+                    .collect::<Result<Vec<&StringChunked>, DataProcessingError>>()?;
 
                 let patient_to_hpo = Self::get_patient_to_hpo_data(
                     stringified_subject_id_col,
@@ -113,10 +115,13 @@ impl Strategy for MultiHPOColExpansionStrategy {
 
             for new_hpo_col in new_hpo_cols {
                 let new_hpo_col_name = new_hpo_col.name().clone();
-                table
-                    .data_mut()
-                    .with_column(new_hpo_col)
-                    .map_err(|_| StrategyError(format!("Unexpectedly could not add HPO column {new_hpo_col_name} to table {table_name}. Possible duplicates?")))?;
+                table.data_mut().with_column(new_hpo_col).map_err(|_| {
+                    StrategyError::TransformationError {
+                        transformation: "add column".to_string(),
+                        col_name: new_hpo_col_name.to_string(),
+                        table_name: table_name.to_string(),
+                    }
+                })?;
             }
 
             for new_sc in new_series_contexts {

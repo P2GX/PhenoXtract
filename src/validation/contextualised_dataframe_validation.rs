@@ -1,4 +1,6 @@
+use crate::config::table_context::Context;
 use crate::extract::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -20,27 +22,46 @@ pub(crate) fn validate_one_context_per_column(
         }
     });
 
-    let result = fail_validation_on_duplicates(duplicates.clone());
-    result.map_err(|mut err| {
-        err.add_param(
-            Cow::from("contextualised_dataframe_name"),
-            &cdf.context().name(),
+    fail_validation_on_duplicates(
+        &duplicates,
+        "contextualised_dataframe_name",
+        "There were columns in the CDF which were identified by multiple Series Contexts. A column can be identified by at most one Series Context.",
+    )
+}
+
+pub(crate) fn validate_single_subject_id_column(
+    table_context: &ContextualizedDataFrame,
+) -> Result<(), ValidationError> {
+    let is_valid = table_context
+        .filter_columns()
+        .where_data_context(Filter::Is(&Context::SubjectId))
+        .collect()
+        .len()
+        == 1;
+
+    if is_valid {
+        Ok(())
+    } else {
+        let mut error = ValidationError::new("subject_id_column");
+        error.add_param(Cow::from("table_name"), &table_context.context().name());
+
+        let error_message = format!(
+            "Found more than one or no column with data context {} in table {}",
+            Context::SubjectId,
+            table_context.context().name()
         );
-        err.add_param(
-            Cow::from("column_with_multiple_series_contexts"),
-            &duplicates,
-        );
-        err.with_message(Cow::Owned(
-            "There were columns in the CDF which were identified by multiple Series Contexts. A column can be identified by at most one Series Context.".to_string(),
-        ))
-    })
+        Err(error.with_message(Cow::Owned(error_message)))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
-    use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
+    use crate::validation::contextualised_dataframe_validation::{
+        validate_one_context_per_column, validate_single_subject_id_column,
+    };
     use polars::prelude::{Column, DataFrame};
     use rstest::{fixture, rstest};
 
@@ -102,6 +123,74 @@ mod tests {
         assert!(
             cols_with_multiple_scs == vec!["column_2".to_string(), "abcabcabc".to_string()]
                 || cols_with_multiple_scs == vec!["abcabcabc".to_string(), "column_2".to_string()]
+        );
+    }
+
+    #[rstest]
+    fn test_validate_single_subject_id_column_no_subject_id() {
+        let table_context = ContextualizedDataFrame::new(
+            TableContext::default().with_name("test_table"),
+            DataFrame::new(vec![]).unwrap(),
+        );
+
+        let result = validate_single_subject_id_column(&table_context);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+
+        assert_eq!(error.code, "subject_id_column");
+        assert!(
+            error
+                .message
+                .clone()
+                .unwrap()
+                .to_string()
+                .contains("test_table")
+        );
+        assert!(
+            error
+                .message
+                .unwrap()
+                .to_string()
+                .contains("more than one or no column")
+        );
+    }
+
+    #[rstest]
+    fn test_validate_single_subject_id_column_multiple_subject_ids() {
+        let table_context = ContextualizedDataFrame::new(
+            TableContext::new(
+                "test_table".to_string(),
+                vec![SeriesContext::default().with_identifier(Regex("sub_col*".to_string()))],
+            ),
+            DataFrame::new(vec![
+                Column::new("sub_col_1".into(), ["P001"]),
+                Column::new("sub_col_2".into(), ["P001"]),
+            ])
+            .unwrap(),
+        );
+
+        let result = validate_single_subject_id_column(&table_context);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert_eq!(error.code, "subject_id_column");
+
+        assert_eq!(error.code, "subject_id_column");
+        assert!(
+            error
+                .message
+                .clone()
+                .unwrap()
+                .to_string()
+                .contains("test_table")
+        );
+        assert!(
+            error
+                .message
+                .unwrap()
+                .to_string()
+                .contains("more than one or no column")
         );
     }
 }

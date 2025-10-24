@@ -1,8 +1,7 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::CollectionError;
+use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
@@ -28,40 +27,31 @@ impl Collector {
     pub fn collect(
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
-    ) -> Result<Vec<Phenopacket>, TransformError> {
+    ) -> Result<Vec<Phenopacket>, CollectorError> {
         for cdf in cdfs {
             let subject_id_cols = cdf
                 .filter_columns()
                 .where_data_context(Filter::Is(&Context::SubjectId))
                 .collect();
             if subject_id_cols.len() > 1 {
-                return Err(CollectionError(format!(
-                    "Multiple SubjectID columns were found in table {}.",
-                    cdf.context().name()
-                )));
+                return Err(CollectorError::ExpectedSingleColumn {
+                    table_name: cdf.context().name().to_string(),
+                    context: Context::SubjectId,
+                });
             }
 
-            let subject_id_col = subject_id_cols.last().ok_or(CollectionError(format!(
-                "Could not find SubjectID column in table {}",
-                cdf.context().name()
-            )))?;
+            let subject_id_col = subject_id_cols
+                .last()
+                .ok_or(DataProcessingError::EmptyFilteringError)?;
 
             let patient_dfs = cdf
                 .data()
-                .partition_by(vec![subject_id_col.name().as_str()], true)
-                .map_err(|_| {
-                    CollectionError(format!(
-                        "Error when partitioning dataframe {} by SubjectID column.",
-                        cdf.context().name()
-                    ))
-                })?;
+                .partition_by(vec![subject_id_col.name().as_str()], true)?;
 
             for patient_df in patient_dfs.iter() {
                 let patient_id = patient_df
-                    .column(subject_id_col.name())
-                    .unwrap()
-                    .get(0)
-                    .unwrap()
+                    .column(subject_id_col.name())?
+                    .get(0)?
                     .str_value();
 
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
@@ -167,7 +157,7 @@ impl Collector {
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), CollectorError> {
         let hpo_terms_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
@@ -224,18 +214,13 @@ impl Collector {
             };
 
             let onset_col_cast_to_string = onset_col.cast(&DataType::String).map_err(|_| {
-                CollectionError(format!(
-                    "Could not cast column {} to String for phenopacket {}.",
-                    onset_col.name(),
-                    phenopacket_id
-                ))
+                DataProcessingError::CastingError {
+                    col_name: onset_col.name().to_string(),
+                    from: onset_col.dtype().clone(),
+                    to: DataType::String,
+                }
             })?;
-            let stringified_onset_col = onset_col_cast_to_string.str().map_err(|_| {
-                CollectionError(format!(
-                    "Error when converting onset col {} to StringChunked.",
-                    onset_col.name()
-                ))
-            })?;
+            let stringified_onset_col = onset_col_cast_to_string.str()?;
 
             for hpo_col in hpo_cols {
                 if hpo_sc.get_header_context() == &Context::None
@@ -256,37 +241,24 @@ impl Collector {
         phenopacket_id: &str,
         patient_hpo_col: &Column,
         stringified_onset_col: &StringChunked,
-    ) -> Result<(), TransformError> {
-        let stringified_hpo_col = patient_hpo_col.str().map_err(|_| {
-            CollectionError(format!(
-                "Error when converting HPO col {} to StringChunked.",
-                patient_hpo_col.name()
-            ))
-        })?;
+    ) -> Result<(), CollectorError> {
+        let stringified_hpo_col = patient_hpo_col.str()?;
 
         let hpo_onset_pairs = stringified_hpo_col.iter().zip(stringified_onset_col.iter());
 
         for (hpo, onset) in hpo_onset_pairs {
             if let Some(hpo) = hpo {
-                self.phenopacket_builder
-                    .upsert_phenotypic_feature(
-                        phenopacket_id,
-                        hpo,
-                        None,
-                        None,
-                        None,
-                        None,
-                        onset,
-                        None,
-                        None,
-                    )
-                    .map_err(|_| {
-                        CollectionError(format!(
-                            "Error when upserting HPO term {} in column {}",
-                            hpo,
-                            patient_hpo_col.name()
-                        ))
-                    })?;
+                self.phenopacket_builder.upsert_phenotypic_feature(
+                    phenopacket_id,
+                    hpo,
+                    None,
+                    None,
+                    None,
+                    None,
+                    onset,
+                    None,
+                    None,
+                )?;
             } else if let Some(onset) = onset {
                 warn!(
                     "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
@@ -304,15 +276,10 @@ impl Collector {
         phenopacket_id: &str,
         patient_hpo_col: &Column,
         stringified_onset_col: &StringChunked,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), CollectorError> {
         let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
 
-        let boolified_hpo_col = patient_hpo_col.bool().map_err(|_| {
-            CollectionError(format!(
-                "Error when converting HPO col {} to BooleanChunked.",
-                patient_hpo_col.name()
-            ))
-        })?;
+        let boolified_hpo_col = patient_hpo_col.bool()?;
 
         let bool_onset_pairs = boolified_hpo_col.iter().zip(stringified_onset_col.iter());
 
@@ -323,25 +290,17 @@ impl Collector {
             if let Some(observation_status) = observation_status {
                 let excluded = if observation_status { None } else { Some(true) };
 
-                self.phenopacket_builder
-                    .upsert_phenotypic_feature(
-                        phenopacket_id,
-                        hpo_id,
-                        None,
-                        excluded,
-                        None,
-                        None,
-                        onset,
-                        None,
-                        None,
-                    )
-                    .map_err(|_| {
-                        CollectionError(format!(
-                            "Error when upserting HPO term {} in column {}",
-                            hpo_id,
-                            patient_hpo_col.name()
-                        ))
-                    })?;
+                self.phenopacket_builder.upsert_phenotypic_feature(
+                    phenopacket_id,
+                    hpo_id,
+                    None,
+                    excluded,
+                    None,
+                    None,
+                    onset,
+                    None,
+                    None,
+                )?;
             } else if let Some(onset) = onset {
                 warn!(
                     "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
@@ -485,7 +444,7 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         context: Context,
         patient_id: &str,
-    ) -> Result<Option<String>, TransformError> {
+    ) -> Result<Option<String>, CollectorError> {
         let cols_of_element_type = patient_cdf
             .filter_columns()
             .where_data_context(Filter::Is(&context))
@@ -498,8 +457,14 @@ impl Collector {
         let mut unique_values: HashSet<String> = HashSet::new();
 
         for col in cols_of_element_type {
-            let stringified_col = col.cast(&DataType::String).map_err(|_| CollectionError(format!("Could not cast column {} to String when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
-            let stringified_col_str = stringified_col.str().map_err(|_| CollectionError(format!("Could not convert column {} to StringChunked when searching for {} element for patient {}.", col.name(), context, patient_id)))?;
+            let stringified_col =
+                col.cast(&DataType::String)
+                    .map_err(|_| DataProcessingError::CastingError {
+                        col_name: col.name().to_string(),
+                        from: col.dtype().clone(),
+                        to: DataType::String,
+                    })?;
+            let stringified_col_str = stringified_col.str()?;
             stringified_col_str.into_iter().for_each(|opt_val| {
                 if let Some(val) = opt_val {
                     unique_values.insert(val.to_string());
@@ -508,9 +473,11 @@ impl Collector {
         }
 
         if unique_values.len() > 1 {
-            Err(CollectionError(format!(
-                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
-            )))
+            Err(CollectorError::ExpectedSingleValue {
+                table_name: patient_cdf.context().name().to_string(),
+                patient_id: patient_id.to_string(),
+                context,
+            })
         } else {
             match unique_values.iter().next() {
                 Some(unique_val) => Ok(Some(unique_val.clone())),
@@ -526,7 +493,6 @@ mod tests {
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_utils::HPO_DICT;
     use crate::transform::collector::Collector;
-    use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};

@@ -1,6 +1,8 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::{MappingErrorInfo, MappingSuggestion, TransformError};
+use crate::transform::error::{
+    DataProcessingError, MappingErrorInfo, MappingSuggestion, StrategyError,
+};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
@@ -115,7 +117,7 @@ impl Strategy for MappingStrategy {
     fn internal_transform(
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), StrategyError> {
         info!(
             "Applying Mapping strategy to data. Applying synonyms to columns with header_context {} and data_context {}.",
             self.header_context, self.data_context
@@ -139,12 +141,16 @@ impl Strategy for MappingStrategy {
                 .collect();
 
             for col_name in col_names {
-                let original_column = table.data().column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name)?;
 
                 let col: Cow<Column> = if original_column.dtype() != &DataType::String {
-                    let casted_col = original_column
-                        .cast(&DataType::String)
-                        .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                    let casted_col = original_column.cast(&DataType::String).map_err(|_| {
+                        DataProcessingError::CastingError {
+                            col_name: col_name.clone(),
+                            from: original_column.dtype().clone(),
+                            to: DataType::String,
+                        }
+                    })?;
                     Cow::Owned(casted_col)
                 } else {
                     Cow::Borrowed(original_column)
@@ -152,10 +158,10 @@ impl Strategy for MappingStrategy {
 
                 let mapped_column = col
                     .str()
-                    .map_err(|_| {
-                        TransformError::StrategyError(format!(
-                            "Unexpectedly could not convert column {col_name} to string column."
-                        ))
+                    .map_err(|_| DataProcessingError::CastingError {
+                        col_name: col.name().to_string(),
+                        from: col.dtype().clone(),
+                        to: DataType::String,
                     })?
                     .apply_mut(|cell_value| {
                         if cell_value.is_empty() {
@@ -181,24 +187,29 @@ impl Strategy for MappingStrategy {
                             }
                         }
                     });
-
+                let table_name = table.context().name().to_string();
                 table
                     .data_mut()
                     .replace(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
-                            TransformError::StrategyError(format!(
-                                "Unable to cast column from {} to {}",
-                                self.column_dtype, self.out_dtype
-                            ))
+                            DataProcessingError::CastingError {
+                                col_name: col_name.to_string(),
+                                from: mapped_column.dtype().clone(),
+                                to: self.out_dtype.clone(),
+                            }
                         })?,
                     )
-                    .map_err(|err| TransformError::StrategyError(err.to_string()))?;
+                    .map_err(|_| StrategyError::TransformationError {
+                        transformation: "replace".to_string(),
+                        col_name,
+                        table_name,
+                    })?;
             }
         }
 
         if !error_info.is_empty() {
-            Err(TransformError::MappingError {
+            Err(StrategyError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 info: error_info.into_iter().collect(),
             })
@@ -312,7 +323,7 @@ mod tests {
         let err = strategy.transform(&mut [&mut table]);
 
         match err {
-            Err(TransformError::MappingError {
+            Err(StrategyError::MappingError {
                 strategy_name,
                 mut info,
             }) => {

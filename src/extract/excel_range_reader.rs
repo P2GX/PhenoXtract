@@ -48,7 +48,7 @@ impl ExcelRangeReader {
         &'a self,
         loading_vectors: &mut Vec<Vec<AnyValue<'a>>>,
     ) -> Result<(), ExtractionError> {
-        let sheet_name = &self.extraction_config.name;
+        let sheet_name = self.extraction_config.name.as_str();
         for (row_index, row) in self.range.rows().enumerate() {
             for (col_index, cell_data) in row.iter().enumerate() {
                 let index_to_load = if self.extraction_config.patients_are_rows {
@@ -57,14 +57,9 @@ impl ExcelRangeReader {
                     row_index
                 };
 
-                let vector_to_load = loading_vectors
-                    .get_mut(index_to_load)
-                    .ok_or(ExtractionError::ExcelIndexing(
-                    format!(
-                        "Out of bounds index when loading vector {index_to_load} in {sheet_name}."
-                    )
-                    .to_string(),
-                ))?;
+                let vector_to_load = loading_vectors.get_mut(index_to_load).ok_or(
+                    ExtractionError::ExcelIndexing(index_to_load, sheet_name.to_string()),
+                )?;
 
                 match *cell_data {
                     Data::Empty => vector_to_load.push(AnyValue::Null),
@@ -130,11 +125,11 @@ impl ExcelRangeReader {
                 let data;
 
                 if self.extraction_config.has_headers {
-                    let h = vec.first().ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
-                    header = h.get_str().ok_or(ExtractionError::NoStringInHeader("Header string was empty.".to_string()))?.to_string();
-                    data = vec.get(1..).ok_or(ExtractionError::VectorIndexing("Empty vector.".to_string()))?;
+                    let h = vec.first().ok_or(ExtractionError::EmptyVector)?;
+                    header = h.get_str().ok_or(ExtractionError::NoStringInHeader)?.to_string();
+                    data = vec.get(1..).ok_or(ExtractionError::EmptyVector)?;
                 } else {
-                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(format!("Attempt to access vector at {i}. On Vector with len {}", default_column_names.len()).to_string()))?.to_string();
+                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(i,default_column_names.len()))?.to_string();
                     data = vec;
                 }
 

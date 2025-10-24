@@ -1,60 +1,32 @@
 use crate::extract::error::ExtractionError;
 use crate::ontology::error::RegistryError;
 use crate::transform::error::TransformError;
+use thiserror::Error;
 
 use crate::load::error::LoadError;
 use validator::ValidationErrors;
 
 #[allow(dead_code)]
+#[derive(Debug, Error)]
 pub enum ConstructionError {
-    NotFound(String),
-    Registry(RegistryError),
-    Ontolius(anyhow::Error),
+    #[error("Registry error: {0}")]
+    Registry(#[from] RegistryError),
+    #[error("Ontolius error: {0}")]
+    Ontolius(#[from] anyhow::Error),
 }
 
-impl From<RegistryError> for ConstructionError {
-    fn from(err: RegistryError) -> Self {
-        ConstructionError::Registry(err)
-    }
-}
-
-impl From<anyhow::Error> for ConstructionError {
-    fn from(err: anyhow::Error) -> Self {
-        ConstructionError::Ontolius(err)
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum PipelineError {
     #[allow(dead_code)]
-    Extraction(ExtractionError),
+    #[error("Extraction error: {0}")]
+    Extraction(#[from] ExtractionError),
     #[allow(dead_code)]
-    Transform(TransformError),
+    #[error("Transform error: {0}")]
+    Transform(#[from] TransformError),
     #[allow(dead_code)]
-    Validation(ValidationErrors),
+    #[error("Validation error: {0}")]
+    Validation(#[from] ValidationErrors),
     #[allow(dead_code)]
-    Load(LoadError),
-}
-
-impl From<LoadError> for PipelineError {
-    fn from(err: LoadError) -> Self {
-        PipelineError::Load(err)
-    }
-}
-impl From<ExtractionError> for PipelineError {
-    fn from(err: ExtractionError) -> PipelineError {
-        PipelineError::Extraction(err)
-    }
-}
-
-impl From<TransformError> for PipelineError {
-    fn from(err: TransformError) -> PipelineError {
-        PipelineError::Transform(err)
-    }
-}
-
-impl From<ValidationErrors> for PipelineError {
-    fn from(err: ValidationErrors) -> PipelineError {
-        PipelineError::Validation(err)
-    }
+    #[error("Load error: {0}")]
+    Load(#[from] LoadError),
 }

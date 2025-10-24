@@ -1,8 +1,9 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
-use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
+use crate::transform::error::StrategyError;
+use crate::validation::contextualised_dataframe_validation::{
+    validate_one_context_per_column, validate_single_subject_id_column,
+};
 use log::debug;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -14,7 +15,8 @@ use validator::Validate;
 /// This allows for processing the data within the `DataFrame` according to the
 /// rules and semantic information defined in the context.
 #[derive(Clone, Validate, Default, Debug, PartialEq)]
-#[validate(schema(function = "validate_one_context_per_column"))]
+#[validate(schema(function = "validate_one_context_per_column",))]
+#[validate(schema(function = "validate_single_subject_id_column",))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -146,7 +148,7 @@ impl ContextualizedDataFrame {
         &mut self,
         transformed_vec: Vec<T>,
         col_name: &str,
-    ) -> Result<&mut ContextualizedDataFrame, TransformError>
+    ) -> Result<&mut ContextualizedDataFrame, StrategyError>
     where
         Series: NamedFrom<Vec<T>, Phantom>,
     {
@@ -155,13 +157,10 @@ impl ContextualizedDataFrame {
         let transform_result = self
             .data_mut()
             .replace(col_name, transformed_series)
-            .map_err(|_| {
-                StrategyError(
-                    format!(
-                        "Could not insert transformed column {col_name} into table {table_name}."
-                    )
-                    .to_string(),
-                )
+            .map_err(|_| StrategyError::TransformationError {
+                transformation: "replace".to_string(),
+                col_name: col_name.to_string(),
+                table_name,
             });
         match transform_result {
             Ok(df) => Ok(self),

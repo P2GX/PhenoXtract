@@ -1,7 +1,6 @@
 use crate::config::table_context::{AliasMap, OutputDataType};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::StrategyError;
+use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_specific;
 use log::info;
@@ -43,7 +42,7 @@ impl Strategy for AliasMapStrategy {
     fn internal_transform(
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), StrategyError> {
         info!("Applying AliasMap strategy to data.");
 
         for table in tables.iter_mut() {
@@ -58,9 +57,13 @@ impl Strategy for AliasMapStrategy {
                 let original_column = table.data().column(&col_name).unwrap();
 
                 let stringified_col: Cow<Column> = if original_column.dtype() != &DataType::String {
-                    let casted_col = original_column
-                        .cast(&DataType::String)
-                        .map_err(|err| StrategyError(err.to_string()))?;
+                    let casted_col = original_column.cast(&DataType::String).map_err(|_| {
+                        DataProcessingError::CastingError {
+                            col_name: col_name.to_string(),
+                            from: original_column.dtype().clone(),
+                            to: DataType::String,
+                        }
+                    })?;
                     Cow::Owned(casted_col)
                 } else {
                     Cow::Borrowed(original_column)
@@ -68,22 +71,15 @@ impl Strategy for AliasMapStrategy {
 
                 let hash_map = alias_map.get_hash_map();
 
-                let aliased_string_chunked = stringified_col.str()
-                    .map_err(|_| {
-                        StrategyError(format!(
-                            "Unexpectedly could not convert column {col_name} to string column when applying AliasMap strategy."
-                        ))
-                    })?
-                    .apply_mut(|s| {
-                        if s.is_empty() {
-                            return s;
-                        }
-
-                        match hash_map.get(s) {
-                            Some(alias) => alias,
-                            None => s,
-                        }
-                    });
+                let aliased_string_chunked = stringified_col.str()?.apply_mut(|s| {
+                    if s.is_empty() {
+                        return s;
+                    }
+                    match hash_map.get(s) {
+                        Some(alias) => alias,
+                        None => s,
+                    }
+                });
 
                 let aliased_col = Column::new(col_name.clone(), aliased_string_chunked);
 
@@ -98,7 +94,11 @@ impl Strategy for AliasMapStrategy {
                 table
                     .data_mut()
                     .replace(&col_name, recast_series)
-                    .map_err(|err| StrategyError(err.to_string()))?;
+                    .map_err(|_| StrategyError::TransformationError {
+                        transformation: "replace".to_string(),
+                        col_name: col_name.to_string(),
+                        table_name: table_name.to_string(),
+                    })?;
             }
 
             info!("AliasMap strategy successfully applied to table: {table_name}");

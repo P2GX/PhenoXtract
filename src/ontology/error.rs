@@ -1,83 +1,46 @@
+use crate::ontology::enums::OntologyRef;
 use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
-
-#[derive(Debug)]
+use std::error::Error as StdError;
+use std::fmt::Debug;
+use thiserror::Error;
+#[derive(Debug, Error)]
 pub enum RegistryError {
-    #[allow(dead_code)]
-    Io(std::io::Error),
-    #[allow(dead_code)]
-    Http(reqwest::Error),
-    #[allow(dead_code)]
-    EnvironmentVarNotSet(String),
-    #[allow(dead_code)]
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("Cant setup directory for registry.")]
+    CantEstablishRegistryDir,
+    #[error("Not Registered: {0}")]
     NotRegistered(String),
-    #[allow(dead_code)]
-    UnableToResolveVersion(String),
-    #[allow(dead_code)]
-    Client(ClientError),
+    #[error("Cant resolve version: {0} for file {1:?}")]
+    UnableToResolveVersion(String, Option<String>),
+    #[error("Client error: {0}")]
+    Client(#[from] ClientError),
 }
 
-impl From<std::io::Error> for RegistryError {
-    fn from(err: std::io::Error) -> Self {
-        RegistryError::Io(err)
-    }
-}
-
-impl From<reqwest::Error> for RegistryError {
-    fn from(err: reqwest::Error) -> Self {
-        RegistryError::Http(err)
-    }
-}
-
-impl From<ClientError> for RegistryError {
-    fn from(err: ClientError) -> Self {
-        RegistryError::Client(err)
-    }
-}
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ClientError {
-    #[allow(dead_code)]
-    CacheCommit(CommitError),
-    #[allow(dead_code)]
-    CacheStorage(StorageError),
-    #[allow(dead_code)]
-    CacheTransaction(TransactionError),
-    #[allow(dead_code)]
-    CacheDatabase(DatabaseError),
-    #[allow(dead_code)]
-    CacheTable(TableError),
-    #[allow(dead_code)]
-    Request(reqwest::Error),
+    #[error("Cache commit error: {0}")]
+    CacheCommit(#[from] CommitError),
+    #[error("Cache storage error: {0}")]
+    CacheStorage(#[from] StorageError),
+    #[error("Cache transaction error: {0}")]
+    CacheTransaction(#[from] TransactionError),
+    #[error("Cache database error: {0}")]
+    CacheDatabase(#[from] DatabaseError),
+    #[error("Cache table error: {0}")]
+    CacheTable(#[from] TableError),
+    #[error("Request error: {0}")]
+    Request(#[from] reqwest::Error),
 }
 
-impl From<CommitError> for ClientError {
-    fn from(err: CommitError) -> Self {
-        ClientError::CacheCommit(err)
-    }
-}
-
-impl From<StorageError> for ClientError {
-    fn from(err: StorageError) -> Self {
-        ClientError::CacheStorage(err)
-    }
-}
-impl From<TransactionError> for ClientError {
-    fn from(err: TransactionError) -> Self {
-        ClientError::CacheTransaction(err)
-    }
-}
-impl From<DatabaseError> for ClientError {
-    fn from(err: DatabaseError) -> Self {
-        ClientError::CacheDatabase(err)
-    }
-}
-
-impl From<TableError> for ClientError {
-    fn from(err: TableError) -> Self {
-        ClientError::CacheTable(err)
-    }
-}
-impl From<reqwest::Error> for ClientError {
-    fn from(err: reqwest::Error) -> Self {
-        ClientError::Request(err)
-    }
+#[derive(Debug, Error)]
+pub enum OntologyFactoryError {
+    #[error("Failed to build ontology '{ontology}'")]
+    CantBuild {
+        #[source]
+        source: Box<dyn StdError + Send + Sync>,
+        ontology: OntologyRef,
+    },
 }

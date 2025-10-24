@@ -1,3 +1,4 @@
+use crate::ontology::enums::OntologyRef;
 use ontolius::Identified;
 use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -5,20 +6,23 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct OntologyBiDict {
+    pub ontology: OntologyRef,
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
 }
 
 impl OntologyBiDict {
-    pub fn new(
+    pub(crate) fn new(
+        ontology: OntologyRef,
         label_to_id: HashMap<String, String>,
         synonym_to_id: HashMap<String, String>,
         id_to_label: HashMap<String, String>,
     ) -> OntologyBiDict {
         OntologyBiDict {
+            ontology,
             label_to_id,
             synonym_to_id,
             id_to_label,
@@ -44,28 +48,32 @@ impl OntologyBiDict {
     /// * `Some(&str)` containing the corresponding ID or label name if a match is found.
     /// * `None` if the input string does not match any known label, synonym, or ID.
     pub fn get(&self, key: &str) -> Option<&str> {
-        let lowered = key.trim().to_lowercase();
+        let normalized_key = Self::normalize_key(key);
 
-        if let Some(identifier) = self.label_to_id.get(&lowered) {
+        if let Some(identifier) = self.label_to_id.get(&normalized_key) {
             return Some(identifier);
         }
-        if let Some(identifier) = self.synonym_to_id.get(&lowered) {
+        if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
             return Some(identifier);
         }
-        if let Some(label) = self.id_to_label.get(&lowered) {
+        if let Some(label) = self.id_to_label.get(&normalized_key) {
             return Some(label);
         }
         None
     }
 
     pub fn is_primary_label(&self, key: &str) -> bool {
-        self.label_to_id.contains_key(&key.trim().to_lowercase())
+        self.label_to_id.contains_key(&Self::normalize_key(key))
     }
     pub fn is_synonym(&self, key: &str) -> bool {
-        self.synonym_to_id.contains_key(&key.trim().to_lowercase())
+        self.synonym_to_id.contains_key(&Self::normalize_key(key))
     }
     pub fn is_id(&self, key: &str) -> bool {
-        self.id_to_label.contains_key(&key.trim().to_lowercase())
+        self.id_to_label.contains_key(&Self::normalize_key(key))
+    }
+
+    fn normalize_key(key: &str) -> String {
+        key.trim().to_lowercase()
     }
 }
 
@@ -83,11 +91,12 @@ impl From<FullCsrOntology> for OntologyBiDict {
 
 impl From<&FullCsrOntology> for OntologyBiDict {
     fn from(ontology: &FullCsrOntology) -> Self {
-        let mut label_to_id: HashMap<String, String> = HashMap::new();
-        let mut synonym_to_id: HashMap<String, String> = HashMap::new();
-        let mut id_to_label: HashMap<String, String> = HashMap::new();
+        let map_size = ontology.len();
+        let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
+        let mut synonym_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
+        let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
 
-        ontology.iter_terms().for_each(|term| {
+        for term in ontology.iter_terms() {
             if term.is_current() {
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {
@@ -98,9 +107,11 @@ impl From<&FullCsrOntology> for OntologyBiDict {
                     term.name().to_string(),
                 );
             }
-        });
+        }
 
-        OntologyBiDict::new(label_to_id, synonym_to_id, id_to_label)
+        let ont_ref = OntologyRef::from(ontology);
+
+        OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
 }
 

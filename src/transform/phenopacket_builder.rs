@@ -1,7 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::TransformError;
+use crate::transform::error::PhenopacketBuilderError;
+use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
@@ -18,17 +19,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hpo_dict: Arc<OntologyBiDict>,
+    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {
     pub fn new(hpo_dict: Arc<OntologyBiDict>) -> PhenopacketBuilder {
         PhenopacketBuilder {
-            subject_to_phenopacket: HashMap::default(),
             hpo_dict,
+            ..Default::default()
         }
     }
     #[allow(dead_code)]
@@ -36,8 +38,8 @@ impl PhenopacketBuilder {
         self.subject_to_phenopacket.values().cloned().collect()
     }
     #[allow(dead_code)]
-    pub fn build_for_id(&self, #[allow(unused)] id: String) -> Result<Phenopacket, TransformError> {
-        Ok(Phenopacket::default())
+    pub fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
+        self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
     #[allow(dead_code)]
@@ -52,7 +54,7 @@ impl PhenopacketBuilder {
         karyotypic_sex: Option<&str>,
         gender: Option<&str>,
         taxonomy: Option<&str>,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), PhenopacketBuilderError> {
         if alternate_ids.is_some() {
             warn!("alternate_ids - not implemented for individual yet");
         }
@@ -80,7 +82,10 @@ impl PhenopacketBuilder {
 
         if let Some(sex) = sex {
             individual.sex = Sex::from_str_name(sex)
-                .ok_or_else(|| TransformError::BuilderError(format!("Could not parse {sex}")))?
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Sex".to_string(),
+                    value: sex.to_string(),
+                })?
                 .into();
         }
         Ok(())
@@ -93,15 +98,14 @@ impl PhenopacketBuilder {
         time_of_death: Option<&str>,
         cause_of_death: Option<&str>,
         survival_time_in_days: Option<u32>,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), PhenopacketBuilderError> {
         if cause_of_death.is_some() {
             warn!("cause_of_death - not implemented for vital_status yet");
         }
 
-        let status = Status::from_str_name(status).ok_or({
-            TransformError::BuilderError(format!(
-                "Could not interpret {status} as status for {phenopacket_id}"
-            ))
+        let status = Status::from_str_name(status).ok_or(PhenopacketBuilderError::ParsingError {
+            what: "vital status".to_string(),
+            value: status.to_string(),
         })? as i32;
 
         let time_of_death = match time_of_death {
@@ -180,7 +184,7 @@ impl PhenopacketBuilder {
         onset: Option<&str>,
         resolution: Option<&str>,
         evidence: Option<&str>,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), PhenopacketBuilderError> {
         if severity.is_some() {
             warn!("severity phenotypic feature not implemented yet");
         }
@@ -330,30 +334,31 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-    fn query_hpo_identifiers(&self, hpo_query: &str) -> Result<OntologyClass, TransformError> {
+    fn query_hpo_identifiers(
+        &self,
+        hpo_query: &str,
+    ) -> Result<OntologyClass, PhenopacketBuilderError> {
         self.hpo_dict
             .get(hpo_query)
-            .ok_or_else(|| {
-                TransformError::BuilderError(
-                    format!("Could not find ontology class for {hpo_query}").to_string(),
-                )
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "hpo query".to_string(),
+                value: hpo_query.to_string(),
             })
-            .and_then(|found| {
-                let corresponding_label_or_id = self.hpo_dict.get(found).ok_or_else(|| {
-                    TransformError::BuilderError(
-                        format!("Could not find ontology class for {hpo_query}").to_string(),
-                    )
-                })?;
+            .map(|found| {
+                let corresponding_label_or_id = self
+                    .hpo_dict
+                    .get(found)
+                    .unwrap_or_else(|| panic!("Could not find hpo label or id from {}", found));
                 let (label, id) = if self.hpo_dict.is_primary_label(found) {
                     (found.to_string(), corresponding_label_or_id.to_string())
                 } else {
                     (corresponding_label_or_id.to_string(), found.to_string())
                 };
                 Ok(OntologyClass { id, label })
-            })
+            })?
     }
 
-    fn try_parse_time_element(te_string: &str) -> Result<TimeElement, TransformError> {
+    fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
         //try to parse the string as a datetime
         if let Ok(ts) = Self::try_parse_timestamp(te_string) {
             let datetime_te = TimeElement {
@@ -373,19 +378,19 @@ impl PhenopacketBuilder {
             return Ok(age_te);
         }
 
-        Err(TransformError::BuilderError(format!(
-            "Could not parse {te_string} as a TimeElement."
-        )))
+        Err(PhenopacketBuilderError::ParsingError {
+            what: "TimeElement".to_string(),
+            value: te_string.to_string(),
+        })
     }
 
-    fn try_parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, TransformError> {
+    fn try_parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, PhenopacketBuilderError> {
         let utc_dt = try_parse_string_datetime(ts_string)
             .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
             .map(|naive| Utc.from_utc_datetime(&naive))
-            .ok_or_else(|| {
-                TransformError::BuilderError(format!(
-                    "Could not parse {ts_string} as a Protobuf Timestamp."
-                ))
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "Timestamp".to_string(),
+                value: ts_string.to_string(),
             })?;
 
         let seconds = utc_dt.timestamp();
@@ -785,7 +790,6 @@ mod tests {
     fn test_query_hpo_identifiers_with_valid_id() {
         let builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
-        // Query using the ID instead of label
         let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
 
         assert_eq!(result.label, "Seizure");
@@ -796,16 +800,9 @@ mod tests {
     fn test_query_hpo_identifiers_invalid_query() {
         let builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
-        // Nonexistent label or ID should yield an error
         let result = builder.query_hpo_identifiers("NonexistentTerm");
 
         assert!(result.is_err());
-
-        if let Err(TransformError::BuilderError(msg)) = result {
-            assert!(msg.contains("Could not find ontology class for NonexistentTerm"));
-        } else {
-            panic!("Expected BuilderError for invalid query");
-        }
     }
 
     #[rstest]

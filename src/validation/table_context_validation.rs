@@ -1,4 +1,5 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -34,30 +35,37 @@ pub(crate) fn validate_unique_identifiers(
         })
         .collect::<Vec<String>>();
 
-    fail_validation_on_duplicates(duplicates)
+    fail_validation_on_duplicates(
+        &duplicates,
+        "duplicates",
+        "Found duplicate identifiers in SeriesContexts",
+    )
 }
 
-pub(crate) fn validate_at_least_one_subject_id(
+pub(crate) fn validate_subject_ids_context(
     table_context: &TableContext,
 ) -> Result<(), ValidationError> {
-    for column in table_context.context() {
-        if column.get_header_context() == &Context::SubjectId
-            || column.get_data_context() == &Context::SubjectId
-        {
-            return Ok(());
-        }
-    }
+    let is_valid = table_context
+        .filter_series_context()
+        .where_data_context(Filter::Is(&Context::SubjectId))
+        .collect()
+        .len()
+        == 1;
 
-    let mut error = ValidationError::new("missing_subject_id");
-    error.add_param(Cow::from("table_name"), &table_context.name());
-    Err(error.with_message(Cow::Owned(
-        "Missing SubjectID on table. Every table needs to have at least one.".to_string(),
-    )))
+    if is_valid {
+        Ok(())
+    } else {
+        let mut error = ValidationError::new("missing_subject_id");
+        error.add_param(Cow::from("table_name"), &table_context.name());
+        Err(error.with_message(Cow::Owned(
+            "SubjectID columns have unexpected configuration. If SubjectIDs are in the headers then at least one Series Context with header_context = SubjectID needs to be provided. If SubjectIDs are in the cells, then exactly one SeriesContext must be provided.".to_string(),
+        )))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_at_least_one_subject_id, validate_unique_identifiers};
+    use super::{validate_subject_ids_context, validate_unique_identifiers};
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 
     use rstest::rstest;
@@ -123,22 +131,27 @@ mod tests {
     }
 
     #[rstest]
-    #[case::subject_id_in_column_context(
-        TableContext::new(
-      "test".to_string(),
-      vec![regex("test").with_header_context(Context::SubjectId)],
-    ),
-    )]
-    #[case::subject_id_in_column_cell_context(
-        TableContext::new(
-          "test".to_string(),
-          vec![regex("test").with_data_context(Context::SubjectId)],
-        ),
-    )]
-    fn test_validation_succeeds_when_subject_id_is_present(#[case] table_context: TableContext) {
-        let result = validate_at_least_one_subject_id(&table_context);
+    fn test_validate_subject_ids_context() {
+        let result = validate_subject_ids_context(&TableContext::new(
+            "test".to_string(),
+            vec![regex("test").with_data_context(Context::SubjectId)],
+        ));
         assert!(result.is_ok());
     }
+
+    #[rstest]
+    fn test_validate_subject_ids_context_err() {
+        let table_context = TableContext::new(
+            "test".to_string(),
+            vec![
+                regex("test").with_data_context(Context::SubjectId),
+                regex("test_2").with_data_context(Context::SubjectId),
+            ],
+        );
+        let result = validate_subject_ids_context(&table_context);
+        assert!(result.is_err());
+    }
+
     /// This test covers the failure scenario where columns and rows exist,
     /// but none of them are marked with the SubjectId context.
     #[rstest]
@@ -151,7 +164,7 @@ mod tests {
             ],
         );
 
-        let result = validate_at_least_one_subject_id(&table_context);
+        let result = validate_subject_ids_context(&table_context);
         assert!(result.is_err());
     }
 
@@ -161,7 +174,7 @@ mod tests {
     fn test_validation_fails_for_empty_table() {
         let table_context = TableContext::new("empty_table".to_string(), vec![]);
 
-        let result = validate_at_least_one_subject_id(&table_context);
+        let result = validate_subject_ids_context(&table_context);
         assert!(result.is_err());
     }
 
@@ -170,7 +183,7 @@ mod tests {
     fn test_validation_fails_for_table_with_empty_vectors() {
         let table_context = TableContext::new("table_with_empty_vecs".to_string(), vec![]);
 
-        let result = validate_at_least_one_subject_id(&table_context);
+        let result = validate_subject_ids_context(&table_context);
         assert!(result.is_err());
     }
 }
