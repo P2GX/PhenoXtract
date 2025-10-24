@@ -1,4 +1,4 @@
-use crate::ontology::enums::OntologyRef;
+use crate::ontology::resource_references::OntologyRef;
 use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
 use std::error::Error as StdError;
 use std::fmt::Debug;

@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::ontology::CachedOntologyFactory;
-use crate::ontology::enums::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::resource_references::OntologyRef;
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::sync::{Arc, Mutex};
@@ -10,11 +10,11 @@ pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> =
     Lazy::new(|| Arc::new(Mutex::new(CachedOntologyFactory::default())));
 
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::Hpo(Some("2025-09-01".to_string())));
+    Lazy::new(|| OntologyRef::hp(Some("2025-09-01".to_string())));
 pub(crate) static GENO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::Mondo(Some("2025-10-07".to_string())));
+    Lazy::new(|| OntologyRef::mondo(Some("2025-10-07".to_string())));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::Geno(Some("2025-07-25".to_string())));
+    Lazy::new(|| OntologyRef::geno(Some("2025-07-25".to_string())));
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     ONTOLOGY_FACTORY

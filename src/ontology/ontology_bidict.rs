@@ -1,7 +1,7 @@
-use crate::ontology::enums::OntologyRef;
+use crate::ontology::resource_references::OntologyRef;
 use ontolius::Identified;
-use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontolius::ontology::{MetadataAware, OntologyTerms};
 use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -75,22 +75,8 @@ impl OntologyBiDict {
     fn normalize_key(key: &str) -> String {
         key.trim().to_lowercase()
     }
-}
 
-impl From<Arc<FullCsrOntology>> for OntologyBiDict {
-    fn from(ontology: Arc<FullCsrOntology>) -> Self {
-        Self::from(ontology.as_ref())
-    }
-}
-
-impl From<FullCsrOntology> for OntologyBiDict {
-    fn from(ontology: FullCsrOntology) -> Self {
-        Self::from(&ontology)
-    }
-}
-
-impl From<&FullCsrOntology> for OntologyBiDict {
-    fn from(ontology: &FullCsrOntology) -> Self {
+    pub fn from_ontology(ontology: Arc<FullCsrOntology>, ontology_prefix: &str) -> Self {
         let map_size = ontology.len();
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut synonym_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
@@ -109,7 +95,7 @@ impl From<&FullCsrOntology> for OntologyBiDict {
             }
         }
 
-        let ont_ref = OntologyRef::from(ontology);
+        let ont_ref = OntologyRef::from(ontology_prefix).with_version(ontology.version());
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
@@ -123,26 +109,30 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = OntologyBiDict::from(HPO.clone());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
 
         assert_eq!(hpo_dict.get("HP:0000256"), Some("Macrocephaly"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = OntologyBiDict::from(HPO.clone());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
         assert_eq!(hpo_dict.get("Macrocephaly"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = OntologyBiDict::from(HPO.clone());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
         assert_eq!(hpo_dict.get("Big head"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = OntologyBiDict::from(HPO.clone());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
         let hpo_id = hpo_dict.get("Big head");
         assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Macrocephaly"));
     }
