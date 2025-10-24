@@ -32,13 +32,9 @@ pub struct PhenopacketBuilder {
 }
 
 impl PhenopacketBuilder {
-    pub fn new(
-        ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
-        resource_resolver: CachedResourceResolver,
-    ) -> PhenopacketBuilder {
+    pub fn new(ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>) -> PhenopacketBuilder {
         PhenopacketBuilder {
             ontology_bidicts,
-            resource_resolver,
             ..Default::default()
         }
     }
@@ -283,7 +279,10 @@ impl PhenopacketBuilder {
         let hpo_dict = self
             .ontology_bidicts
             .get(OntologyRef::HPO_PREFIX)
-            .expect("No ontology bidirectional for the HPO in PhenopacketBuilder");
+            .expect(&format!(
+                "No bidirectional ontology for the {} in PhenopacketBuilder",
+                OntologyRef::HPO_PREFIX
+            ));
         hpo_dict
             .get(hpo_query)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
@@ -445,14 +444,13 @@ mod tests {
             .unwrap();
 
         HashMap::from_iter(vec![
-            (hpo_dict.ontology.to_string(), hpo_dict),
-            (mondo_dict.ontology.to_string(), mondo_dict),
-            (geno_dict.ontology.to_string(), geno_dict),
+            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }
     fn build_phenopacket_builder() -> PhenopacketBuilder {
-        let resource_resolver = CachedResourceResolver::default();
-        PhenopacketBuilder::new(build_dicts(), resource_resolver)
+        PhenopacketBuilder::new(build_dicts())
     }
     #[rstest]
     fn test_upsert_phenotypic_feature_success(

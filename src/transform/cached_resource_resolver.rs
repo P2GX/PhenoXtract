@@ -141,7 +141,7 @@ mod tests {
     #[rstest]
     fn test_resolve_versionless_resource() {
         let mut resolver = CachedResourceResolver::default();
-        let resource_id = ResourceRef::new("hgnc".to_string(), "".to_string());
+        let resource_id = ResourceRef::new("hgnc".to_string(), "latest".to_string());
         let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");

@@ -348,8 +348,8 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::ontology_bidict::OntologyBiDict;
+    use crate::ontology::traits::HasPrefixId;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
-    use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use crate::transform::collector::Collector;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
@@ -385,14 +385,13 @@ mod tests {
             .unwrap();
 
         HashMap::from_iter(vec![
-            (hpo_dict.ontology.to_string(), hpo_dict),
-            (mondo_dict.ontology.to_string(), mondo_dict),
-            (geno_dict.ontology.to_string(), geno_dict),
+            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }
     fn build_phenopacket_builder() -> PhenopacketBuilder {
-        let resource_resolver = CachedResourceResolver::default();
-        PhenopacketBuilder::new(build_dicts(), resource_resolver)
+        PhenopacketBuilder::new(build_dicts())
     }
     fn init_collector() -> Collector {
         let phenopacket_builder = build_phenopacket_builder();

@@ -216,10 +216,10 @@ fn test_pipeline_integration(
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
-    let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([(hpo_dict.ontology.to_string(), hpo_dict)]),
-        Default::default(),
-    );
+    let phenopacket_builder = PhenopacketBuilder::new(HashMap::from_iter([(
+        hpo_dict.ontology.to_string(),
+        hpo_dict,
+    )]));
     //Create the pipeline
     let transformer_module = TransformerModule::new(
         strategies,

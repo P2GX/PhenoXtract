@@ -40,9 +40,10 @@ impl OntologyRef {
             version: version.unwrap_or_else(|| "latest".to_string()),
         })
     }
-
-    fn with_prefix(prefix: &str, version: Option<String>) -> Self {
-        Self::new(prefix.to_string(), version)
+    #[allow(dead_code)]
+    fn with_prefix(mut self, prefix: &str) -> Self {
+        self.0.prefix_id = prefix.to_string();
+        self
     }
 
     pub fn with_version(mut self, version: &str) -> Self {
@@ -51,15 +52,15 @@ impl OntologyRef {
     }
 
     pub fn hp(version: Option<String>) -> Self {
-        Self::with_prefix(Self::HPO_PREFIX, version)
+        Self::new(Self::HPO_PREFIX.to_string(), version)
     }
 
     pub fn mondo(version: Option<String>) -> Self {
-        Self::with_prefix(Self::MONDO_PREFIX, version)
+        Self::new(Self::MONDO_PREFIX.to_string(), version)
     }
 
     pub fn geno(version: Option<String>) -> Self {
-        Self::with_prefix(Self::GENO_PREFIX, version)
+        Self::new(Self::GENO_PREFIX.to_string(), version)
     }
 }
 
@@ -115,8 +116,10 @@ impl DatabaseRef {
         })
     }
 
-    fn with_prefix(prefix: &str, version: Option<String>) -> Self {
-        Self::new(prefix.to_string(), version)
+    #[allow(dead_code)]
+    fn with_prefix(mut self, prefix: &str) -> Self {
+        self.0.prefix_id = prefix.to_string();
+        self
     }
 
     pub fn with_version(mut self, version: &str) -> Self {
@@ -125,11 +128,11 @@ impl DatabaseRef {
     }
 
     pub fn omim(version: Option<String>) -> Self {
-        Self::with_prefix(Self::OMIM_PREFIX, version)
+        Self::new(Self::OMIM_PREFIX.to_string(), version)
     }
 
     pub fn hgnc(version: Option<String>) -> Self {
-        Self::with_prefix(Self::HGNC_PREFIX, version)
+        Self::new(Self::HGNC_PREFIX.to_string(), version)
     }
 }
 

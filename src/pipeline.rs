@@ -11,7 +11,6 @@ use crate::ontology::CachedOntologyFactory;
 
 use crate::ontology::resource_references::OntologyRef;
 use crate::transform::Collector;
-use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
@@ -89,8 +88,7 @@ impl Pipeline {
         // TOOD: Read hpo version from config later
         let mut factory = CachedOntologyFactory::default();
         let hpo_dict = factory.build_bidict(&OntologyRef::hp(None), None).unwrap();
-        let builder =
-            PhenopacketBuilder::new(HashMap::default(), CachedResourceResolver::default());
+        let builder = PhenopacketBuilder::new(HashMap::default());
         let tf_module =
             TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
         let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
