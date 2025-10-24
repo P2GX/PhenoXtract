@@ -216,10 +216,14 @@ fn test_pipeline_integration(
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
+    let phenopacket_builder = PhenopacketBuilder::new(HashMap::from_iter([(
+        hpo_dict.ontology.to_string(),
+        hpo_dict,
+    )]));
     //Create the pipeline
     let transformer_module = TransformerModule::new(
         strategies,
-        Collector::new(PhenopacketBuilder::new(hpo_dict), cohort_name.to_owned()),
+        Collector::new(phenopacket_builder, cohort_name.to_owned()),
     );
 
     let output_dir = assets_path.join("do_not_push");
