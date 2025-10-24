@@ -348,7 +348,6 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::ontology_bidict::OntologyBiDict;
-    use crate::ontology::traits::HasVersion;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
     use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use crate::transform::collector::Collector;
@@ -392,12 +391,7 @@ mod tests {
         ])
     }
     fn build_phenopacket_builder() -> PhenopacketBuilder {
-        let bi_dicts = build_dicts();
-        let know_versions: HashMap<String, String> =
-            HashMap::from_iter(bi_dicts.iter().map(|(ont_prefix, bidict)| {
-                (ont_prefix.clone(), bidict.ontology.version().to_string())
-            }));
-        let resource_resolver = CachedResourceResolver::new(know_versions);
+        let resource_resolver = CachedResourceResolver::default();
         PhenopacketBuilder::new(build_dicts(), resource_resolver)
     }
     fn init_collector() -> Collector {

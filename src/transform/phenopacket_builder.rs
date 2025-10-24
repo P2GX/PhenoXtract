@@ -282,7 +282,7 @@ impl PhenopacketBuilder {
     ) -> Result<OntologyClass, PhenopacketBuilderError> {
         let hpo_dict = self
             .ontology_bidicts
-            .get(&OntologyRef::HPO_PREFIX.to_string())
+            .get(OntologyRef::HPO_PREFIX)
             .expect("No ontology bidirectional for the HPO in PhenopacketBuilder");
         hpo_dict
             .get(hpo_query)
@@ -378,7 +378,6 @@ mod tests {
     use super::*;
 
     use crate::ontology::resource_references::ResourceRef;
-    use crate::ontology::traits::HasVersion;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, Resource};
@@ -452,12 +451,7 @@ mod tests {
         ])
     }
     fn build_phenopacket_builder() -> PhenopacketBuilder {
-        let bi_dicts = build_dicts();
-        let know_versions: HashMap<String, String> =
-            HashMap::from_iter(bi_dicts.iter().map(|(ont_prefix, bidict)| {
-                (ont_prefix.clone(), bidict.ontology.version().to_string())
-            }));
-        let resource_resolver = CachedResourceResolver::new(know_versions);
+        let resource_resolver = CachedResourceResolver::default();
         PhenopacketBuilder::new(build_dicts(), resource_resolver)
     }
     #[rstest]

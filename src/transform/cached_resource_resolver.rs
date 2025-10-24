@@ -17,14 +17,6 @@ pub struct CachedResourceResolver {
 }
 
 impl CachedResourceResolver {
-    #[allow(dead_code)]
-    pub fn new(known_versions: HashMap<String, String>) -> CachedResourceResolver {
-        Self {
-            cache: HashMap::new(),
-            bio_reg_client: BioRegistryClient::default(),
-        }
-    }
-
     /// Resolves a resource by its ID, returning cached data if available or fetching
     /// from BioRegistry if not.
     ///
