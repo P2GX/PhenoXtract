@@ -109,30 +109,26 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::HPO_PREFIX);
 
         assert_eq!(hpo_dict.get("HP:0000256"), Some("Macrocephaly"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::HPO_PREFIX);
         assert_eq!(hpo_dict.get("Macrocephaly"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::HPO_PREFIX);
         assert_eq!(hpo_dict.get("Big head"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::HPO_PREFIX);
         let hpo_id = hpo_dict.get("Big head");
         assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Macrocephaly"));
     }
