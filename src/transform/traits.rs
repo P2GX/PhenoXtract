@@ -1,5 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
+use crate::transform::error::StrategyError;
 use std::fmt::Debug;
 
 #[allow(dead_code)]
@@ -15,7 +15,7 @@ use std::fmt::Debug;
 /// only attempted when the context is appropriate, preventing unnecessary work or
 /// potential errors.
 pub trait Strategy: Debug {
-    fn transform(&self, tables: &mut [&mut ContextualizedDataFrame]) -> Result<(), TransformError> {
+    fn transform(&self, tables: &mut [&mut ContextualizedDataFrame]) -> Result<(), StrategyError> {
         match self.is_valid(tables) {
             true => self.internal_transform(tables),
             false => Ok(()),
@@ -27,5 +27,5 @@ pub trait Strategy: Debug {
     fn internal_transform(
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
-    ) -> Result<(), TransformError>;
+    ) -> Result<(), StrategyError>;
 }
