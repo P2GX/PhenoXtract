@@ -35,11 +35,6 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.8.0
 
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest@0.9.99
-
       - name: Test
         run: cargo test --color always --all-features --lib --all-targets --workspace
       # run: cargo nextest run --workspace --lib --all-targets --all-features

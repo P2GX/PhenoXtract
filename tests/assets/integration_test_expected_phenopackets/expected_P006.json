@@ -2,9 +2,13 @@
   "id": "my_cohort-P006",
   "subject": {
     "id": "P006",
+    "dateOfBirth": "1952-02-16T00:00:00Z",
     "vitalStatus": {
       "status": "DECEASED",
-      "survivalTimeInDays": 0
+      "timeOfDeath": {
+        "timestamp": "2024-10-03T00:00:00Z"
+      },
+      "survivalTimeInDays": 1432
     },
     "sex": "FEMALE",
     "karyotypicSex": "UNKNOWN_KARYOTYPE"
@@ -26,6 +30,12 @@
       "type": {
         "id": "HP:0002045",
         "label": "Hypothermia"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0012373",
+        "label": "Abnormal eye physiology"
       }
     },
     {

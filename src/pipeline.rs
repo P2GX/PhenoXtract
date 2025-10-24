@@ -3,12 +3,12 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
-use crate::ontology::traits::OntologyRegistry;
 use crate::transform::transform_module::TransformerModule;
 
 use crate::error::{ConstructionError, PipelineError};
-use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-use crate::ontology::utils::init_ontolius;
+use crate::ontology::CachedOntologyFactory;
+
+use crate::ontology::resource_references::OntologyRef;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use log::info;
@@ -29,8 +29,8 @@ impl Pipeline {
         &mut self,
         extractables: &mut [impl Extractable + Validate],
     ) -> Result<(), PipelineError> {
-        let mut data = self.extract(extractables)?;
-        let phenopackets = self.transform(data.as_mut_slice())?;
+        let data = self.extract(extractables)?;
+        let phenopackets = self.transform(data)?;
         self.load(phenopackets.as_slice())?;
         Ok(())
     }
@@ -51,12 +51,12 @@ impl Pipeline {
 
     pub fn transform(
         &mut self,
-        tables: &mut [ContextualizedDataFrame],
+        data: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, PipelineError> {
         info!("Starting Transformation");
-        tables.iter().try_for_each(|t| t.validate())?;
+        data.iter().try_for_each(|t| t.validate())?;
 
-        let phenopackets = self.transformer_module.run(tables)?;
+        let phenopackets = self.transformer_module.run(data)?;
         info!(
             "Concluded Transformation. Found {:?} Phenopackets",
             phenopackets.len()
@@ -84,11 +84,10 @@ impl Pipeline {
     #[allow(dead_code)]
     pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
         // In progress
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()?;
         // TOOD: Read hpo version from config later
-        let registry_path = hpo_registry.register("latest")?;
-        let hpo = init_ontolius(registry_path)?;
-        let builder = PhenopacketBuilder::new(hpo);
+        let mut factory = CachedOntologyFactory::default();
+        let hpo_dict = factory.build_bidict(&OntologyRef::hp(None), None).unwrap();
+        let builder = PhenopacketBuilder::new(hpo_dict);
         let tf_module =
             TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
         let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));

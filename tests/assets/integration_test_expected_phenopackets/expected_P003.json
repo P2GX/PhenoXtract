@@ -2,6 +2,7 @@
   "id": "my_cohort-P003",
   "subject": {
     "id": "P003",
+    "dateOfBirth": "2005-04-26T00:00:00Z",
     "vitalStatus": {
       "status": "ALIVE",
       "survivalTimeInDays": 0
@@ -14,6 +15,12 @@
       "type": {
         "id": "HP:0025044",
         "label": "Lung abscess"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0001631",
+        "label": "Atrial septal defect"
       }
     }
   ]

@@ -1,23 +1,46 @@
-#[derive(Debug)]
+use crate::ontology::resource_references::OntologyRef;
+use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
+use std::error::Error as StdError;
+use std::fmt::Debug;
+use thiserror::Error;
+#[derive(Debug, Error)]
 pub enum RegistryError {
-    #[allow(dead_code)]
-    Io(std::io::Error),
-    #[allow(dead_code)]
-    Http(reqwest::Error),
-    #[allow(dead_code)]
-    EnvironmentVarNotSet(String),
-    #[allow(dead_code)]
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("Cant setup directory for registry.")]
+    CantEstablishRegistryDir,
+    #[error("Not Registered: {0}")]
     NotRegistered(String),
+    #[error("Cant resolve version: {0} for file {1:?}")]
+    UnableToResolveVersion(String, Option<String>),
+    #[error("Client error: {0}")]
+    Client(#[from] ClientError),
 }
 
-impl From<std::io::Error> for RegistryError {
-    fn from(err: std::io::Error) -> Self {
-        RegistryError::Io(err)
-    }
+#[derive(Debug, Error)]
+pub enum ClientError {
+    #[error("Cache commit error: {0}")]
+    CacheCommit(#[from] CommitError),
+    #[error("Cache storage error: {0}")]
+    CacheStorage(#[from] StorageError),
+    #[error("Cache transaction error: {0}")]
+    CacheTransaction(#[from] TransactionError),
+    #[error("Cache database error: {0}")]
+    CacheDatabase(#[from] DatabaseError),
+    #[error("Cache table error: {0}")]
+    CacheTable(#[from] TableError),
+    #[error("Request error: {0}")]
+    Request(#[from] reqwest::Error),
 }
 
-impl From<reqwest::Error> for RegistryError {
-    fn from(err: reqwest::Error) -> Self {
-        RegistryError::Http(err)
-    }
+#[derive(Debug, Error)]
+pub enum OntologyFactoryError {
+    #[error("Failed to build ontology '{ontology}'")]
+    CantBuild {
+        #[source]
+        source: Box<dyn StdError + Send + Sync>,
+        ontology: OntologyRef,
+    },
 }

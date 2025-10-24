@@ -1,33 +1,36 @@
 #![allow(clippy::too_many_arguments)]
-use crate::transform::error::TransformError;
-use anyhow::anyhow;
+use crate::constants::ISO8601_DUR_PATTERN;
+use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::transform::error::PhenopacketBuilderError;
+use crate::transform::variant_syntax_parser::VariantParser;
+use crate::utils::{try_parse_string_date, try_parse_string_datetime};
+use chrono::{TimeZone, Utc};
 use log::warn;
-use ontolius::ontology::OntologyTerms;
-use ontolius::ontology::csr::FullCsrOntology;
-use ontolius::term::simple::SimpleTerm;
-use ontolius::term::{MinimalTerm, Synonymous};
-use ontolius::{Identified, TermId};
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::Evidence;
+use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
+use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    Age as IndividualAge, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
+    VitalStatus,
 };
+use prost_types::Timestamp as TimestampProtobuf;
+use regex::Regex;
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    hpo: Arc<FullCsrOntology>,
+    hpo_dict: Arc<OntologyBiDict>,
+    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {
-    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketBuilder {
+    pub fn new(hpo_dict: Arc<OntologyBiDict>) -> PhenopacketBuilder {
         PhenopacketBuilder {
-            subject_to_phenopacket: HashMap::default(),
-            hpo,
+            hpo_dict,
+            ..Default::default()
         }
     }
     #[allow(dead_code)]
@@ -35,8 +38,8 @@ impl PhenopacketBuilder {
         self.subject_to_phenopacket.values().cloned().collect()
     }
     #[allow(dead_code)]
-    pub fn build_for_id(&self, #[allow(unused)] id: String) -> Result<Phenopacket, TransformError> {
-        Ok(Phenopacket::default())
+    pub fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
+        self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
     #[allow(dead_code)]
@@ -46,24 +49,17 @@ impl PhenopacketBuilder {
         individual_id: &str,
         alternate_ids: Option<&[&str]>,
         date_of_birth: Option<&str>,
-        time_at_last_encounter: Option<TimeElement>,
-        vital_status: Option<VitalStatus>,
+        time_at_last_encounter: Option<&str>,
         sex: Option<&str>,
         karyotypic_sex: Option<&str>,
         gender: Option<&str>,
         taxonomy: Option<&str>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), PhenopacketBuilderError> {
         if alternate_ids.is_some() {
             warn!("alternate_ids - not implemented for individual yet");
         }
-        if date_of_birth.is_some() {
-            warn!("date_of_birth - not implemented for individual yet");
-        }
         if time_at_last_encounter.is_some() {
             warn!("time_at_last_encounter - not implemented for individual yet");
-        }
-        if vital_status.is_some() {
-            warn!("vital_status - not fully implemented for individual yet");
         }
         if karyotypic_sex.is_some() {
             warn!("karyotypic_sex - not implemented for individual yet");
@@ -80,15 +76,54 @@ impl PhenopacketBuilder {
         let individual = phenopacket.subject.get_or_insert(Individual::default());
         individual.id = individual_id.to_string();
 
-        if let Some(vs) = vital_status {
-            individual.vital_status = Some(vs);
+        if let Some(date_of_birth) = date_of_birth {
+            individual.date_of_birth = Some(Self::try_parse_timestamp(date_of_birth)?);
         }
 
         if let Some(sex) = sex {
             individual.sex = Sex::from_str_name(sex)
-                .ok_or_else(|| anyhow!("Could not parse {sex}"))?
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Sex".to_string(),
+                    value: sex.to_string(),
+                })?
                 .into();
         }
+        Ok(())
+    }
+
+    pub fn upsert_vital_status(
+        &mut self,
+        phenopacket_id: &str,
+        status: &str,
+        time_of_death: Option<&str>,
+        cause_of_death: Option<&str>,
+        survival_time_in_days: Option<u32>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        if cause_of_death.is_some() {
+            warn!("cause_of_death - not implemented for vital_status yet");
+        }
+
+        let status = Status::from_str_name(status).ok_or(PhenopacketBuilderError::ParsingError {
+            what: "vital status".to_string(),
+            value: status.to_string(),
+        })? as i32;
+
+        let time_of_death = match time_of_death {
+            Some(tod_string) => Some(Self::try_parse_time_element(tod_string)?),
+            None => None,
+        };
+
+        let survival_time_in_days = survival_time_in_days.unwrap_or(0);
+
+        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+        let individual = phenopacket.subject.get_or_insert(Individual::default());
+
+        individual.vital_status = Some(VitalStatus {
+            status,
+            time_of_death,
+            cause_of_death: None,
+            survival_time_in_days,
+        });
         Ok(())
     }
 
@@ -102,7 +137,7 @@ impl PhenopacketBuilder {
     /// # Arguments
     ///
     /// * `phenopacket_id` - A `String` that uniquely identifies the target phenopacket.
-    /// * `phenotype` - A string slice (`&str`) representing the ontology term or id for the
+    /// * `phenotype` - A string slice (`&str`) representing the ontology label or id for the
     ///   phenotype (e.g., `"HP:0000118" or "Phenotypic abnormality"`).
     /// * `description` - An optional free-text description of the feature.
     /// * `excluded` - An optional boolean indicating if the feature is explicitly absent.
@@ -146,13 +181,10 @@ impl PhenopacketBuilder {
         excluded: Option<bool>,
         severity: Option<&str>,
         modifiers: Option<Vec<&str>>,
-        onset: Option<TimeElement>,
-        resolution: Option<TimeElement>,
-        evidence: Option<Evidence>,
-    ) -> Result<(), anyhow::Error> {
-        if excluded.is_some() {
-            warn!("is_observed phenotypic feature not implemented yet");
-        }
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        evidence: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
         if severity.is_some() {
             warn!("severity phenotypic feature not implemented yet");
         }
@@ -169,13 +201,13 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let term = self.raw_to_full_term(phenotype)?;
+        let term = self.query_hpo_identifiers(phenotype)?;
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
 
         let feature = if let Some(pos) =
             phenopacket.phenotypic_features.iter().position(|feature| {
                 if let Some(t) = &feature.r#type {
-                    t.id == term.identifier().to_string()
+                    t.id == term.id
                 } else {
                     false
                 }
@@ -183,10 +215,7 @@ impl PhenopacketBuilder {
             &mut phenopacket.phenotypic_features[pos]
         } else {
             let new_feature = PhenotypicFeature {
-                r#type: Some(OntologyClass {
-                    id: term.identifier().to_string(),
-                    label: term.name().to_string(),
-                }),
+                r#type: Some(term),
                 ..Default::default()
             };
             phenopacket.phenotypic_features.push(new_feature);
@@ -197,14 +226,18 @@ impl PhenopacketBuilder {
             feature.description = desc.to_string();
         }
 
+        if let Some(excluded) = excluded {
+            feature.excluded = excluded;
+        }
+
         if let Some(onset) = onset {
-            feature.onset = Some(onset);
+            let onset_te = Self::try_parse_time_element(onset)?;
+            feature.onset = Some(onset_te);
         }
 
         Ok(())
     }
 
-    // TODO: Add test after MVP
     fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())
@@ -213,35 +246,75 @@ impl PhenopacketBuilder {
                 ..Default::default()
             })
     }
-    // TODO: Add test after MVP
-    fn raw_to_full_term(&self, raw_term: &str) -> Result<SimpleTerm, anyhow::Error> {
-        let term = TermId::from_str(raw_term)
-            .ok()
-            .and_then(|term_id| self.hpo.as_ref().term_by_id(&term_id))
-            .or_else(|| {
-                self.hpo.as_ref().iter_terms().find(|term| {
-                    term.is_current()
-                        && (term.name().to_lowercase() == raw_term.to_lowercase().trim()
-                            || term.synonyms().iter().any(|syn| {
-                                syn.name.to_lowercase() == raw_term.to_lowercase().trim()
-                            }))
-                })
-            });
-        if term.is_none() {
-            return Err(anyhow!("Could not find ontology class for {raw_term}"));
+    fn query_hpo_identifiers(
+        &self,
+        hpo_query: &str,
+    ) -> Result<OntologyClass, PhenopacketBuilderError> {
+        self.hpo_dict
+            .get(hpo_query)
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "hpo query".to_string(),
+                value: hpo_query.to_string(),
+            })
+            .map(|found| {
+                let corresponding_label_or_id = self
+                    .hpo_dict
+                    .get(found)
+                    .unwrap_or_else(|| panic!("Could not find hpo label or id from {}", found));
+                let (label, id) = if self.hpo_dict.is_primary_label(found) {
+                    (found.to_string(), corresponding_label_or_id.to_string())
+                } else {
+                    (corresponding_label_or_id.to_string(), found.to_string())
+                };
+                Ok(OntologyClass { id, label })
+            })?
+    }
+
+    fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
+        //try to parse the string as a datetime
+        if let Ok(ts) = Self::try_parse_timestamp(te_string) {
+            let datetime_te = TimeElement {
+                element: Some(Timestamp(ts)),
+            };
+            return Ok(datetime_te);
         }
-        let term = term.unwrap();
-        if term.is_obsolete() {
-            return Err(anyhow!("Could only find obsolete term for: {raw_term}"));
+
+        let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
+        let is_iso8601_dur = re.is_match(te_string);
+        if is_iso8601_dur {
+            let age_te = TimeElement {
+                element: Some(Age(IndividualAge {
+                    iso8601duration: te_string.to_string(),
+                })),
+            };
+            return Ok(age_te);
         }
-        Ok(term.clone())
+
+        Err(PhenopacketBuilderError::ParsingError {
+            what: "TimeElement".to_string(),
+            value: te_string.to_string(),
+        })
+    }
+
+    fn try_parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, PhenopacketBuilderError> {
+        let utc_dt = try_parse_string_datetime(ts_string)
+            .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
+            .map(|naive| Utc.from_utc_datetime(&naive))
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "Timestamp".to_string(),
+                value: ts_string.to_string(),
+            })?;
+
+        let seconds = utc_dt.timestamp();
+        let nanos = utc_dt.timestamp_subsec_nanos() as i32;
+        Ok(TimestampProtobuf { seconds, nanos })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::HPO;
+    use crate::test_utils::HPO_DICT;
     use phenopackets::schema::v2::core::Age as age_struct;
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use rstest::*;
@@ -257,7 +330,17 @@ mod tests {
     }
 
     #[fixture]
-    fn onset_te() -> Option<TimeElement> {
+    fn another_phenotype() -> String {
+        "Microcephaly".to_string()
+    }
+
+    #[fixture]
+    fn onset_age() -> Option<&'static str> {
+        Some("P48Y4M21D")
+    }
+
+    #[fixture]
+    fn onset_age_te() -> Option<TimeElement> {
         Some(TimeElement {
             element: Some(Age(age_struct {
                 iso8601duration: "P48Y4M21D".to_string(),
@@ -266,39 +349,41 @@ mod tests {
     }
 
     #[fixture]
-    fn onset_te_alt() -> Option<TimeElement> {
-        Some(TimeElement {
-            element: Some(Age(age_struct {
-                iso8601duration: "P12Y5M028D".to_string(),
-            })),
-        })
+    fn onset_timestamp() -> Option<&'static str> {
+        Some("2005-10-01T12:34:56Z")
     }
 
     #[fixture]
-    fn another_phenotype() -> String {
-        "Microcephaly".to_string()
+    fn onset_timestamp_te() -> Option<TimeElement> {
+        Some(TimeElement {
+            element: Some(Timestamp(TimestampProtobuf {
+                seconds: 1128170096,
+                nanos: 0,
+            })),
+        })
     }
 
     #[rstest]
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
         valid_phenotype: String,
-        onset_te: Option<TimeElement>,
+        onset_age: Option<&str>,
+        onset_age_te: Option<TimeElement>,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            onset_te.clone(),
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                onset_age,
+                None,
+                None,
+            )
+            .unwrap();
 
         assert!(builder.subject_to_phenopacket.contains_key(&phenopacket_id));
 
@@ -314,12 +399,12 @@ mod tests {
 
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
-        assert_eq!(feature_onset, &onset_te.unwrap());
+        assert_eq!(feature_onset, &onset_age_te.unwrap());
     }
 
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -342,33 +427,35 @@ mod tests {
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
-        let result1 = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result1.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
-        let result2 = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &another_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result2.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &another_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
@@ -376,36 +463,38 @@ mod tests {
 
     #[rstest]
     fn test_different_phenopacket_ids(valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
 
-        let result1 = builder.upsert_phenotypic_feature(
-            id1.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result1.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                id1.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
-        let result2 = builder.upsert_phenotypic_feature(
-            id2.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result2.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                id2.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         assert!(builder.subject_to_phenopacket.contains_key(&id1));
         assert!(builder.subject_to_phenopacket.contains_key(&id2));
@@ -414,7 +503,7 @@ mod tests {
 
     #[rstest]
     fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -445,19 +534,19 @@ mod tests {
             .insert(phenopacket_id.clone(), existing_phenopacket);
 
         // Add another feature
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
@@ -466,11 +555,12 @@ mod tests {
     #[rstest]
     fn test_update_onset_of_phenotypic_feature(
         phenopacket_id: String,
-        onset_te: Option<TimeElement>,
-        onset_te_alt: Option<TimeElement>,
+        onset_age: Option<&str>,
+        onset_timestamp: Option<&str>,
+        onset_timestamp_te: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         // Add a feature
         builder
@@ -481,26 +571,26 @@ mod tests {
                 None,
                 None,
                 None,
-                onset_te,
+                onset_age,
                 None,
                 None,
             )
             .unwrap();
 
         // Update the same feature
-        let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
-            &valid_phenotype,
-            None,
-            None,
-            None,
-            None,
-            onset_te_alt.clone(),
-            None,
-            None,
-        );
-
-        assert!(result.is_ok());
+        builder
+            .upsert_phenotypic_feature(
+                phenopacket_id.as_str(),
+                &valid_phenotype,
+                None,
+                None,
+                None,
+                None,
+                onset_timestamp,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
@@ -510,68 +600,198 @@ mod tests {
 
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
-        assert_eq!(feature_onset, &onset_te_alt.unwrap());
+        assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
 
-    //todo to be updated when upsert individual is fully implemented
     #[rstest]
     fn test_upsert_individual() {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
 
         // Test just upserting the individual id
-        let result = builder.upsert_individual(
-            phenopacket_id,
-            individual_id,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(result.is_ok());
+        builder
+            .upsert_individual(
+                phenopacket_id,
+                individual_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
-        // Test upserting the other entries
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
         assert_eq!(individual.id, individual_id);
         assert_eq!(individual.sex, 0);
         assert_eq!(individual.vital_status, None);
 
-        let vs = VitalStatus {
-            status: 1,
-            ..Default::default()
-        };
-
-        let result = builder.upsert_individual(
-            phenopacket_id,
-            individual_id,
-            None,
-            None,
-            None,
-            Some(vs.clone()),
-            Some("MALE"),
-            None,
-            None,
-            None,
-        );
-        assert!(result.is_ok());
+        // Test upserting the other entries
+        builder
+            .upsert_individual(
+                phenopacket_id,
+                individual_id,
+                None,
+                Some("2001-01-29"),
+                None,
+                Some("MALE"),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(individual.sex, Sex::Male as i32);
-        assert_eq!(individual.vital_status, Some(vs));
+        assert_eq!(
+            individual.date_of_birth,
+            Some(TimestampProtobuf {
+                seconds: 980726400,
+                nanos: 0,
+            })
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_vital_status() {
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        let phenopacket_id = "pp_001";
+
+        builder
+            .upsert_vital_status(phenopacket_id, "ALIVE", Some("P81Y5M13D"), None, Some(322))
+            .unwrap();
+
+        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let individual = phenopacket.subject.as_ref().unwrap();
+
+        assert_eq!(
+            individual.vital_status,
+            Some(VitalStatus {
+                status: 1,
+                time_of_death: Some(TimeElement {
+                    element: Some(Age(IndividualAge {
+                        iso8601duration: "P81Y5M13D".to_string()
+                    }))
+                }),
+                cause_of_death: None,
+                survival_time_in_days: 322,
+            })
+        );
+    }
+
+    #[rstest]
+    fn test_query_hpo_identifiers_with_valid_label() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
+        let result = builder.query_hpo_identifiers("Seizure").unwrap();
+
+        assert_eq!(result.label, "Seizure");
+        assert_eq!(result.id, "HP:0001250");
+    }
+
+    #[rstest]
+    fn test_query_hpo_identifiers_with_valid_id() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
+
+        assert_eq!(result.label, "Seizure");
+        assert_eq!(result.id, "HP:0001250");
+    }
+
+    #[rstest]
+    fn test_query_hpo_identifiers_invalid_query() {
+        let builder = PhenopacketBuilder::new(HPO_DICT.clone());
+
+        let result = builder.query_hpo_identifiers("NonexistentTerm");
+
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_parse_time_element_duration() {
+        let te = PhenopacketBuilder::try_parse_time_element("P81Y5M13D").unwrap();
+        assert_eq!(
+            te,
+            TimeElement {
+                element: Some(Age(IndividualAge {
+                    iso8601duration: "P81Y5M13D".to_string()
+                }))
+            }
+        );
+    }
+
+    #[rstest]
+    fn test_parse_time_element_datetime() {
+        let te_date = PhenopacketBuilder::try_parse_time_element("2001-01-29").unwrap();
+        assert_eq!(
+            te_date,
+            TimeElement {
+                element: Some(Timestamp(TimestampProtobuf {
+                    seconds: 980726400,
+                    nanos: 0,
+                })),
+            }
+        );
+        let te_datetime =
+            PhenopacketBuilder::try_parse_time_element("2015-06-05T09:17:39Z").unwrap();
+        assert_eq!(
+            te_datetime,
+            TimeElement {
+                element: Some(Timestamp(TimestampProtobuf {
+                    seconds: 1433495859,
+                    nanos: 0,
+                })),
+            }
+        );
+    }
+
+    #[rstest]
+    #[case("P81D5M13Y")]
+    #[case("8D5M13Y")]
+    #[case("09:17:39Z")]
+    #[case("2020-20-15T09:17:39Z")]
+    fn test_parse_time_element_invalid(#[case] date_str: &str) {
+        let result = PhenopacketBuilder::try_parse_time_element(date_str);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_parse_timestamp() {
+        let ts_date = PhenopacketBuilder::try_parse_timestamp("2001-01-29").unwrap();
+        assert_eq!(
+            ts_date,
+            TimestampProtobuf {
+                seconds: 980726400,
+                nanos: 0,
+            }
+        );
+        let ts_datetime = PhenopacketBuilder::try_parse_timestamp("2015-06-05T09:17:39Z").unwrap();
+        assert_eq!(
+            ts_datetime,
+            TimestampProtobuf {
+                seconds: 1433495859,
+                nanos: 0,
+            }
+        );
+        let result = PhenopacketBuilder::try_parse_timestamp("09:17:39Z");
+        assert!(result.is_err());
+        let result = PhenopacketBuilder::try_parse_timestamp("2020-20-15T09:17:39Z");
+        assert!(result.is_err());
     }
 
     #[rstest]
     fn test_get_or_create_phenopacket() {
-        let mut builder = PhenopacketBuilder::new(HPO.clone());
+        let mut builder = PhenopacketBuilder::new(HPO_DICT.clone());
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);

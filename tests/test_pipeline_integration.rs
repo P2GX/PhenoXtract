@@ -1,18 +1,18 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
 use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, SeriesContext, TableContext,
+    AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
 };
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::GithubOntologyRegistry;
-use phenoxtract::ontology::traits::OntologyRegistry;
-use phenoxtract::ontology::utils::init_ontolius;
-use phenoxtract::transform::strategies::alias_map::AliasMapStrategy;
-use phenoxtract::transform::strategies::hpo_synonyms_to_primary_terms::HPOSynonymsToPrimaryTermsStrategy;
-use phenoxtract::transform::strategies::mapping::MappingStrategy;
+use phenoxtract::ontology::resource_references::OntologyRef;
+
+use phenoxtract::ontology::CachedOntologyFactory;
+use phenoxtract::transform::strategies::MappingStrategy;
+use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
+use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use rstest::{fixture, rstest};
@@ -22,10 +22,10 @@ use std::path::PathBuf;
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
-    let mut vs_alias_map: HashMap<String, String> = HashMap::default();
-    vs_alias_map.insert("Yes".to_string(), "ALIVE".to_string());
-    vs_alias_map.insert("No".to_string(), "DECEASED".to_string());
-    AliasMap::ToString(vs_alias_map)
+    let mut vs_hash_map: HashMap<String, String> = HashMap::default();
+    vs_hash_map.insert("Yes".to_string(), "ALIVE".to_string());
+    vs_hash_map.insert("No".to_string(), "DECEASED".to_string());
+    AliasMap::new(vs_hash_map, OutputDataType::String)
 }
 
 #[fixture]
@@ -33,30 +33,61 @@ fn csv_context() -> TableContext {
     TableContext::new(
         "CSV_Table".to_string(),
         vec![
-            SeriesContext::new(
-                Identifier::Regex("0".to_string()),
-                Default::default(),
-                Context::SubjectId,
-                None,
-                None,
-                vec![],
-            ),
-            SeriesContext::new(
-                Identifier::Regex("1".to_string()),
-                Default::default(),
-                Context::HpoLabel,
-                None,
-                None,
-                vec![],
-            ),
-            SeriesContext::new(
-                Identifier::Regex("2".to_string()),
-                Default::default(),
-                Context::HpoLabel,
-                None,
-                None,
-                vec![],
-            ),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("0".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("1".to_string()))
+                .with_data_context(Context::HpoLabelOrId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("2".to_string()))
+                .with_data_context(Context::HpoLabelOrId),
+        ],
+    )
+}
+
+#[fixture]
+fn csv_context_2() -> TableContext {
+    TableContext::new(
+        "CSV_Table_2".to_string(),
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("HP:0012373".to_string()))
+                .with_header_context(Context::HpoLabelOrId)
+                .with_data_context(Context::ObservationStatus)
+                .with_building_block_id(Some("A".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Rhinorrhea".to_string()))
+                .with_header_context(Context::HpoLabelOrId)
+                .with_data_context(Context::ObservationStatus)
+                .with_building_block_id(Some("A".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Date of onset".to_string()))
+                .with_data_context(Context::OnsetDateTime)
+                .with_building_block_id(Some("A".to_string())),
+        ],
+    )
+}
+
+#[fixture]
+fn csv_context_3() -> TableContext {
+    TableContext::new(
+        "CSV_Table_3".to_string(),
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("HPOs".to_string()))
+                .with_data_context(Context::MultiHpoId)
+                .with_building_block_id(Some("B".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Date of onset".to_string()))
+                .with_data_context(Context::OnsetDateTime)
+                .with_building_block_id(Some("B".to_string())),
         ],
     )
 }
@@ -67,99 +98,81 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
         TableContext::new(
             "basic info".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    vec![],
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Sex".to_string()),
-                    Default::default(),
-                    Context::SubjectSex,
-                    None,
-                    None,
-                    vec![],
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Living".to_string()),
-                    Default::default(),
-                    Context::VitalStatus,
-                    None,
-                    Some(vital_status_aliases),
-                    vec![],
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Sex".to_string()))
+                    .with_data_context(Context::SubjectSex),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Living".to_string()))
+                    .with_data_context(Context::VitalStatus)
+                    .with_alias_map(Some(vital_status_aliases)),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("DOB".to_string()))
+                    .with_data_context(Context::DateOfBirth),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Time of death".to_string()))
+                    .with_data_context(Context::TimeOfDeath),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex(
+                        "Survival time since diagnosis (days)".to_string(),
+                    ))
+                    .with_data_context(Context::SurvivalTimeDays),
             ],
         ),
         TableContext::new(
             "conditions".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    vec![],
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Phenotypic Features".to_string()),
-                    Default::default(),
-                    Context::HpoLabel,
-                    None,
-                    None,
-                    vec![Identifier::Regex("Age of onset".to_string())],
-                ),
-                SeriesContext::new(
-                    Identifier::Regex("Age of onset".to_string()),
-                    Default::default(),
-                    Context::OnsetAge,
-                    None,
-                    None,
-                    vec![],
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Phenotypic Features".to_string()))
+                    .with_data_context(Context::HpoLabelOrId)
+                    .with_building_block_id(Some("C".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Age of onset".to_string()))
+                    .with_data_context(Context::OnsetAge)
+                    .with_building_block_id(Some("C".to_string())),
             ],
         ),
         TableContext::new(
             "more conditions".to_string(),
             vec![
-                SeriesContext::new(
-                    Identifier::Regex("Patient ID".to_string()),
-                    Default::default(),
-                    Context::SubjectId,
-                    None,
-                    None,
-                    vec![],
-                ),
-                SeriesContext::new(
-                    Identifier::Regex(r"Phenotypic Features \d+".to_string()),
-                    Default::default(),
-                    Context::HpoLabel,
-                    None,
-                    None,
-                    vec![],
-                ),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex(r"Phenotypic Features \d+".to_string()))
+                    .with_data_context(Context::HpoLabelOrId),
             ],
         ),
     ]
 }
 
 #[rstest]
-fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<TableContext>) {
-    // TODO: Load pipeline from config file. Can not be done yet, because strategies are not ready to be loaded from file
-
+fn test_pipeline_integration(
+    csv_context: TableContext,
+    csv_context_2: TableContext,
+    csv_context_3: TableContext,
+    excel_context: Vec<TableContext>,
+) {
     //Set-up
     let cohort_name = "my_cohort";
-    let hpo_registry = GithubOntologyRegistry::default_hpo_registry().unwrap();
-    let hpo = init_ontolius(hpo_registry.register("v2025-09-01").unwrap()).unwrap();
 
+    let mut onto_factory = CachedOntologyFactory::default();
+
+    let hpo_dict = onto_factory
+        .build_bidict(&OntologyRef::hp(Some("2025-09-01".to_string())), None)
+        .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
     //Configure data sources and contexts
     let csv_path = assets_path.clone().join("csv_data.csv");
+    let csv_path_2 = assets_path.clone().join("csv_data_2.csv");
+    let csv_path_3 = assets_path.clone().join("csv_data_3.csv");
     let excel_path = assets_path.clone().join("excel_data.xlsx");
 
     let mut data_sources = [
@@ -168,6 +181,18 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
             None,
             csv_context,
             ExtractionConfig::new("CSV_Table".to_string(), false, true),
+        )),
+        DataSource::Csv(CSVDataSource::new(
+            csv_path_2,
+            None,
+            csv_context_2,
+            ExtractionConfig::new("CSV_Table_2".to_string(), true, false),
+        )),
+        DataSource::Csv(CSVDataSource::new(
+            csv_path_3,
+            None,
+            csv_context_3,
+            ExtractionConfig::new("CSV_Table_3".to_string(), true, false),
         )),
         DataSource::Excel(ExcelDatasource::new(
             excel_path,
@@ -183,14 +208,18 @@ fn test_pipeline_integration(csv_context: TableContext, excel_context: Vec<Table
     //Configure strategies (a.k.a. transformations)
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
-        Box::new(HPOSynonymsToPrimaryTermsStrategy::new(hpo.clone())),
+        Box::new(OntologyNormaliserStrategy::new(
+            hpo_dict.clone(),
+            Context::HpoLabelOrId,
+        )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
+        Box::new(MultiHPOColExpansionStrategy),
     ];
 
     //Create the pipeline
     let transformer_module = TransformerModule::new(
         strategies,
-        Collector::new(PhenopacketBuilder::new(hpo), cohort_name.to_owned()),
+        Collector::new(PhenopacketBuilder::new(hpo_dict), cohort_name.to_owned()),
     );
 
     let output_dir = assets_path.join("do_not_push");

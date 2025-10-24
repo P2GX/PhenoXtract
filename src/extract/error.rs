@@ -1,30 +1,23 @@
 use calamine::XlsxError;
 use polars::prelude::PolarsError;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ExtractionError {
-    #[allow(unused)]
-    Polars(PolarsError),
-    #[allow(dead_code)]
-    Calamine(XlsxError),
-    #[allow(dead_code)]
-    ExcelIndexing(String),
-    #[allow(dead_code)]
-    VectorIndexing(String),
-    #[allow(dead_code)]
-    NoStringInHeader(String),
-    #[allow(dead_code)]
+    #[error("Polars error: {0}")]
+    Polars(#[from] PolarsError),
+    #[error("XlsxError error: {0}")]
+    Calamine(#[from] XlsxError),
+    #[error("Out of bounds index when loading vector {0} in {1}.")]
+    ExcelIndexing(usize, String),
+    #[error("Attempt to access vector at {0}. On Vector with len {1}")]
+    VectorIndexing(usize, usize),
+    #[error("Empty vector.")]
+    EmptyVector,
+    #[error("Table {0}  was empty.")]
+    EmptyTable(String),
+    #[error("Header was not a string.")]
+    NoStringInHeader,
+    #[error("Can't find table context with name {0}")]
     UnableToFindTableContext(String),
-}
-
-impl From<PolarsError> for ExtractionError {
-    fn from(err: PolarsError) -> Self {
-        ExtractionError::Polars(err)
-    }
-}
-
-impl From<XlsxError> for ExtractionError {
-    fn from(err: XlsxError) -> Self {
-        ExtractionError::Calamine(err)
-    }
 }
