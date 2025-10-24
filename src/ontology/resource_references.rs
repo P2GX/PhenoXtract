@@ -63,6 +63,18 @@ impl OntologyRef {
     }
 }
 
+impl HasVersion for OntologyRef {
+    fn version(&self) -> &str {
+        self.0.version()
+    }
+}
+
+impl HasPrefixId for OntologyRef {
+    fn prefix_id(&self) -> &str {
+        self.0.prefix_id()
+    }
+}
+
 impl Deref for OntologyRef {
     type Target = ResourceRef;
 
@@ -118,6 +130,18 @@ impl DatabaseRef {
 
     pub fn hgnc(version: Option<String>) -> Self {
         Self::with_prefix(Self::HGNC_PREFIX, version)
+    }
+}
+
+impl HasVersion for DatabaseRef {
+    fn version(&self) -> &str {
+        self.0.version()
+    }
+}
+
+impl HasPrefixId for DatabaseRef {
+    fn prefix_id(&self) -> &str {
+        self.0.prefix_id()
     }
 }
 

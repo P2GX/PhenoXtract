@@ -1,5 +1,5 @@
 use crate::ontology::BioRegistryClient;
-use crate::ontology::traits::HasPrefixId;
+use crate::ontology::traits::{HasPrefixId, HasVersion};
 use log::{debug, warn};
 use phenopackets::schema::v2::core::Resource;
 use std::collections::HashMap;
@@ -13,7 +13,6 @@ use std::collections::HashMap;
 #[allow(dead_code)]
 pub struct CachedResourceResolver {
     cache: HashMap<String, Resource>,
-    known_versions: HashMap<String, String>,
     bio_reg_client: BioRegistryClient,
 }
 
@@ -22,7 +21,6 @@ impl CachedResourceResolver {
     pub fn new(known_versions: HashMap<String, String>) -> CachedResourceResolver {
         Self {
             cache: HashMap::new(),
-            known_versions,
             bio_reg_client: BioRegistryClient::default(),
         }
     }
@@ -46,7 +44,7 @@ impl CachedResourceResolver {
     /// * `Some(Resource)` if the resource was successfully resolved with all required fields
     /// * `None` if the resource couldn't be found or is missing required fields
     #[allow(dead_code)]
-    pub fn resolve(&mut self, resource_ref: &impl HasPrefixId) -> Option<Resource> {
+    pub fn resolve(&mut self, resource_ref: &(impl HasPrefixId + HasVersion)) -> Option<Resource> {
         let prefix_id = resource_ref.prefix_id().to_lowercase();
         debug!("Resolve id: {}", prefix_id);
         self.cache.get(&prefix_id).cloned().or_else(|| {
@@ -54,13 +52,10 @@ impl CachedResourceResolver {
             let response = self.bio_reg_client.get_resource(&prefix_id);
 
             response.ok().and_then(|bio_reg_resource| {
-                let resolved_version = self
-                    .known_versions
-                    .get(&prefix_id)
-                    .cloned()
-                    .or(bio_reg_resource.version)
-                    .or(Some("-".to_string()));
-
+                let resolved_version: Option<String> = match resource_ref.version() {
+                    "latest" => bio_reg_resource.version.unwrap_or("-".to_string()).into(),
+                    version => version.to_string().into(),
+                };
                 let resolved_url = bio_reg_resource
                     .download_json
                     .or(bio_reg_resource.download_owl)
@@ -91,12 +86,6 @@ impl CachedResourceResolver {
                 Some(resource)
             })
         })
-    }
-
-    #[allow(dead_code)]
-    pub fn add_known_version(&mut self, id: &str, version: &str) {
-        self.known_versions
-            .insert(id.to_string(), version.to_string());
     }
 
     fn log_missing_fields(
@@ -165,18 +154,5 @@ mod tests {
 
         assert_eq!(hgnc_metadata.id, "hgnc");
         assert_eq!(hgnc_metadata.version, "-");
-    }
-
-    #[rstest]
-    fn test_resolve_known_version() {
-        let resource_id = ResourceRef::new("hgnc".to_string(), "".to_string());
-
-        let know_version = "1.2.3.4";
-        let mut resolver = CachedResourceResolver::default();
-        resolver.add_known_version("hgnc", know_version);
-        let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
-
-        assert_eq!(hgnc_metadata.id, "hgnc");
-        assert_eq!(hgnc_metadata.version, know_version);
     }
 }

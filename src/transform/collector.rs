@@ -348,6 +348,7 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::ontology::ontology_bidict::OntologyBiDict;
+    use crate::ontology::traits::HasVersion;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
     use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use crate::transform::collector::Collector;

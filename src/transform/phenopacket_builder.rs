@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::ISO8601_DUR_PATTERN;
-use crate::ontology::HGNCClient;
-use crate::ontology::enums::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::traits::{HasPrefixId, HasVersion};
+use crate::ontology::{HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::variant_syntax_parser::VariantParser;
@@ -256,7 +256,15 @@ impl PhenopacketBuilder {
             let onset_te = Self::try_parse_time_element(onset)?;
             feature.onset = Some(onset_te);
         }
-        self.ensure_resource(phenopacket_id, &OntologyRef::Hpo(None).to_string());
+        self.ensure_resource(
+            phenopacket_id,
+            &self
+                .ontology_bidicts
+                .get(OntologyRef::HPO_PREFIX)
+                .unwrap()
+                .ontology
+                .clone(),
+        );
         Ok(())
     }
 
@@ -274,7 +282,7 @@ impl PhenopacketBuilder {
     ) -> Result<OntologyClass, PhenopacketBuilderError> {
         let hpo_dict = self
             .ontology_bidicts
-            .get(&OntologyRef::Hpo(None).to_string())
+            .get(&OntologyRef::HPO_PREFIX.to_string())
             .expect("No ontology bidirectional for the HPO in PhenopacketBuilder");
         hpo_dict
             .get(hpo_query)
@@ -335,16 +343,20 @@ impl PhenopacketBuilder {
         Ok(TimestampProtobuf { seconds, nanos })
     }
 
-    fn ensure_resource(&mut self, phenopacket_id: &str, resource_id: &str) {
+    fn ensure_resource(
+        &mut self,
+        phenopacket_id: &str,
+        resource_id: &(impl HasPrefixId + HasVersion),
+    ) {
         let needs_resource = self
             .get_or_create_phenopacket(phenopacket_id)
             .meta_data
             .as_ref()
             .map(|meta_data| {
-                !meta_data
-                    .resources
-                    .iter()
-                    .any(|resource| resource.id.to_lowercase() == resource_id.to_lowercase())
+                !meta_data.resources.iter().any(|resource| {
+                    resource.id.to_lowercase() == resource_id.prefix_id().to_lowercase()
+                        && resource.version.to_lowercase() == resource.version.to_lowercase()
+                })
             })
             .unwrap_or(true);
 
@@ -365,6 +377,8 @@ impl PhenopacketBuilder {
 mod tests {
     use super::*;
 
+    use crate::ontology::resource_references::ResourceRef;
+    use crate::ontology::traits::HasVersion;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, Resource};
@@ -886,7 +900,11 @@ mod tests {
     fn test_ensure_resource() {
         let mut builder = build_phenopacket_builder();
         let pp_id = "test_id".to_string();
-        builder.ensure_resource(&pp_id, "omim");
+
+        builder.ensure_resource(
+            &pp_id,
+            &ResourceRef::new("omim".to_string(), "".to_string()),
+        );
 
         let pp = builder.build().first().unwrap().clone();
         let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();
