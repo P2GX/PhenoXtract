@@ -255,7 +255,7 @@ impl PhenopacketBuilder {
             let onset_te = Self::try_parse_time_element(onset)?;
             feature.onset = Some(onset_te);
         }
-        self.add_resource(phenopacket_id, &OntologyRef::Hpo(None).to_string());
+        self.ensure_resource(phenopacket_id, &OntologyRef::Hpo(None).to_string());
         Ok(())
     }
 
@@ -334,7 +334,7 @@ impl PhenopacketBuilder {
         Ok(TimestampProtobuf { seconds, nanos })
     }
 
-    fn add_resource(&mut self, phenopacket_id: &str, resource_id: &str) {
+    fn ensure_resource(&mut self, phenopacket_id: &str, resource_id: &str) {
         let needs_resource = self
             .get_or_create_phenopacket(phenopacket_id)
             .meta_data
