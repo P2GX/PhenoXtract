@@ -1,12 +1,12 @@
 use crate::ontology::enums::OntologyRef;
 use ontolius::Identified;
+use ontolius::ontology::OntologyTerms;
 use ontolius::ontology::csr::FullCsrOntology;
-use ontolius::ontology::{MetadataAware, OntologyTerms};
 use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct OntologyBiDict {
     pub ontology: OntologyRef,
     label_to_id: HashMap<String, String>,
@@ -71,6 +71,7 @@ impl OntologyBiDict {
     pub fn is_id(&self, key: &str) -> bool {
         self.id_to_label.contains_key(&Self::normalize_key(key))
     }
+
     fn normalize_key(key: &str) -> String {
         key.trim().to_lowercase()
     }
@@ -94,13 +95,9 @@ impl From<&FullCsrOntology> for OntologyBiDict {
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut synonym_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
-        let mut prefix = "".to_string();
 
         for term in ontology.iter_terms() {
             if term.is_current() {
-                if prefix.is_empty() {
-                    prefix = term.identifier().prefix().to_string();
-                }
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {
                     synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
@@ -112,7 +109,7 @@ impl From<&FullCsrOntology> for OntologyBiDict {
             }
         }
 
-        let ont_ref = OntologyRef::from(prefix).with_version(ontology.version());
+        let ont_ref = OntologyRef::from(ontology);
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }

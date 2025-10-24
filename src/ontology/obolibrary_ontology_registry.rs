@@ -55,11 +55,13 @@ impl ObolibraryOntologyRegistry {
         self
     }
 
-    pub fn default_registry_path(id: &str) -> Result<PathBuf, RegistryError> {
+    pub fn default_registry_path(ontology_prefix: &str) -> Result<PathBuf, RegistryError> {
         let pkg_name = env!("CARGO_PKG_NAME");
         ProjectDirs::from("", "", pkg_name)
-            .map(|proj| proj.cache_dir().join(id))
-            .or_else(|| home_dir().map(|dir| dir.join(format!(".{pkg_name}")).join(id)))
+            .map(|proj| proj.cache_dir().join(ontology_prefix))
+            .or_else(|| {
+                home_dir().map(|dir| dir.join(format!(".{pkg_name}")).join(ontology_prefix))
+            })
             .ok_or_else(|| RegistryError::CantEstablishRegistryDir)
     }
 
@@ -305,7 +307,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
             .clone()
             .join(self.construct_file_name(resolved_version.as_str()));
         if !file_path.exists() {
-            debug!("Unable to deregistered: {}", file_path.display());
+            debug!("Unable to deregister: {}", file_path.display());
             return Err(RegistryError::NotRegistered(
                 file_path.display().to_string(),
             ));
