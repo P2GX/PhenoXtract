@@ -42,10 +42,6 @@ macro_rules! skip_in_ci {
     };
 }
 
-struct PhenopacketAsserter {
-    pp_id: String,
-}
-
 pub fn assert_pp(is: Phenopacket, expected: Phenopacket) {
     assert_field(&is.id, &expected.id, &is.id, "phenopacket_id");
     assert_individual(&is, &expected);
