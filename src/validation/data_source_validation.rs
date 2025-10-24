@@ -20,7 +20,11 @@ pub(crate) fn validate_unique_sheet_names(sheets: &[TableContext]) -> Result<(),
         })
         .collect();
 
-    fail_validation_on_duplicates(duplicates)
+    fail_validation_on_duplicates(
+        &duplicates,
+        "duplicates",
+        "Found duplicate sheet names in TableContext",
+    )
 }
 
 pub(crate) fn validate_extraction_config_unique_ids(
@@ -39,7 +43,11 @@ pub(crate) fn validate_extraction_config_unique_ids(
         })
         .collect();
 
-    fail_validation_on_duplicates(duplicates)
+    fail_validation_on_duplicates(
+        &duplicates,
+        "duplicates",
+        "Found duplicate extraction config names",
+    )
 }
 
 pub(crate) fn validate_extraction_config_links(
@@ -146,7 +154,7 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
 
-        assert_eq!(error.code.to_string(), "unique");
+        assert_eq!(error.code.to_string(), "duplicates");
     }
 
     #[test]

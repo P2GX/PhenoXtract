@@ -5,6 +5,7 @@ use crate::ontology::enums::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::TransformError;
+use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
@@ -28,6 +29,7 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: HGNCClient,
     resource_resolver: CachedResourceResolver,
+    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {

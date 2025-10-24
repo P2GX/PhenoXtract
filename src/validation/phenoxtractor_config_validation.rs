@@ -23,7 +23,7 @@ pub fn validate_unique_data_sources(sources: &[DataSource]) -> Result<(), Valida
             return Err(ValidationError::new("Unable to convert source to string"));
         }
     }
-    fail_validation_on_duplicates(duplicates)
+    fail_validation_on_duplicates(&duplicates, "duplicates", "Found duplicate data sources")
 }
 
 #[cfg(test)]

@@ -1,3 +1,7 @@
+use ontolius::Identified;
+use ontolius::ontology::csr::FullCsrOntology;
+use ontolius::ontology::{MetadataAware, OntologyTerms};
+
 type Version = String;
 type OntologyPrefix = String;
 
@@ -48,6 +52,21 @@ impl From<String> for OntologyRef {
     }
 }
 
+impl From<&FullCsrOntology> for OntologyRef {
+    fn from(ontology: &FullCsrOntology) -> Self {
+        let mut ont_ref = None;
+
+        if let Some(term) = ontology.iter_terms().next() {
+            ont_ref = Some(
+                OntologyRef::from(term.identifier().prefix().to_string())
+                    .with_version(ontology.version()),
+            );
+        }
+
+        ont_ref.expect("Ontology must contain at least one term")
+    }
+}
+
 impl std::fmt::Display for OntologyRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -56,5 +75,11 @@ impl std::fmt::Display for OntologyRef {
             Self::Geno(_) => write!(f, "GENO"),
             Self::Other(prefix, _) => write!(f, "{}", prefix),
         }
+    }
+}
+
+impl Default for OntologyRef {
+    fn default() -> Self {
+        OntologyRef::Other("".to_string(), None)
     }
 }
