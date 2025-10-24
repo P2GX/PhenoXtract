@@ -70,7 +70,6 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 .map(|&bb_id| Some(bb_id))
                 .collect::<Vec<Option<&str>>>();
             bb_ids.push(None);
-            bb_ids.sort();
 
             for bb_id in bb_ids {
                 let multi_hpo_filter = table
