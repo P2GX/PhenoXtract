@@ -147,7 +147,7 @@ mod tests {
 
     #[rstest]
     fn test_resolve() {
-        let resource_id = ResourceRef::new("".to_string(), "hp".to_string());
+        let resource_id = ResourceRef::new("hp".to_string(), "".to_string());
         let mut resolver = CachedResourceResolver::default();
         let hpo_metadata = resolver.resolve(&resource_id).unwrap();
 
@@ -164,7 +164,7 @@ mod tests {
     #[rstest]
     fn test_resolve_versionless_resource() {
         let mut resolver = CachedResourceResolver::default();
-        let resource_id = ResourceRef::new("".to_string(), "hgnc".to_string());
+        let resource_id = ResourceRef::new("hgnc".to_string(), "".to_string());
         let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
 
         assert_eq!(hgnc_metadata.id, "hgnc");
@@ -173,7 +173,7 @@ mod tests {
 
     #[rstest]
     fn test_resolve_known_version() {
-        let resource_id = ResourceRef::new("".to_string(), "hgnc".to_string());
+        let resource_id = ResourceRef::new("hgnc".to_string(), "".to_string());
 
         let know_version = "1.2.3.4";
         let mut resolver = CachedResourceResolver::default();

@@ -290,6 +290,21 @@ mod tests {
         let expected_df = df![
             "subject_id" => &[AnyValue::String("P001"), AnyValue::String("P002"), AnyValue::String("P002"),AnyValue::String("P003")],
             "age" => &[AnyValue::Int32(51), AnyValue::Int32(4), AnyValue::Int32(4), AnyValue::Int32(15)],
+                        "HP:1111111#A" => &[
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Null,],
+            "HP:2222222#A" => &[
+                AnyValue::Null,
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Null,],
+            "HP:3333333#A" => &[
+                AnyValue::Null,
+                AnyValue::Boolean(true),
+                AnyValue::Boolean(true),
+                AnyValue::Null,],
             "HP:1111111" => &[
                 AnyValue::Boolean(true),
                 AnyValue::Null,
@@ -305,21 +320,7 @@ mod tests {
                 AnyValue::Boolean(true),
                 AnyValue::Boolean(true),
                 AnyValue::Null,],
-            "HP:1111111#A" => &[
-                AnyValue::Boolean(true),
-                AnyValue::Boolean(true),
-                AnyValue::Boolean(true),
-                AnyValue::Null,],
-            "HP:2222222#A" => &[
-                AnyValue::Null,
-                AnyValue::Boolean(true),
-                AnyValue::Boolean(true),
-                AnyValue::Null,],
-            "HP:3333333#A" => &[
-                AnyValue::Null,
-                AnyValue::Boolean(true),
-                AnyValue::Boolean(true),
-                AnyValue::Null,],
+
         ].unwrap();
 
         let expected_tc = TableContext::new(
@@ -333,14 +334,6 @@ mod tests {
                     .with_data_context(Context::SubjectAge),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111".to_string(),
-                        "HP:4444444".to_string(),
-                        "HP:5555555".to_string(),
-                    ]))
-                    .with_header_context(Context::HpoLabelOrId)
-                    .with_data_context(Context::ObservationStatus),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
                         "HP:1111111#A".to_string(),
                         "HP:2222222#A".to_string(),
                         "HP:3333333#A".to_string(),
@@ -348,6 +341,14 @@ mod tests {
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id(Some("A".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Multi(vec![
+                        "HP:1111111".to_string(),
+                        "HP:4444444".to_string(),
+                        "HP:5555555".to_string(),
+                    ]))
+                    .with_header_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::ObservationStatus),
             ],
         );
 
