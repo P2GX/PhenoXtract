@@ -5,9 +5,9 @@ use crate::validation::contextualised_dataframe_validation::{
     validate_one_context_per_column, validate_single_subject_id_column,
 };
 use log::debug;
+use ordermap::OrderSet;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
-use std::collections::HashSet;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -176,7 +176,7 @@ impl ContextualizedDataFrame {
         ColumnFilter::new(self)
     }
 
-    pub fn get_building_block_ids(&self) -> HashSet<&str> {
+    pub fn get_building_block_ids(&self) -> OrderSet<&str> {
         self.context()
             .context()
             .iter()
@@ -375,7 +375,7 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
-        let mut expected_bb_ids = HashSet::new();
+        let mut expected_bb_ids = OrderSet::new();
         expected_bb_ids.insert("block_1");
 
         assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
