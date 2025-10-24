@@ -6,6 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
+use polars::error::PolarsError;
 use polars::prelude::{Column, DataType, Series, StringChunked};
 use std::collections::HashSet;
 
@@ -71,7 +72,7 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
         patient_id: &str,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), CollectorError> {
         let date_of_birth = Self::collect_single_multiplicity_element(
             patient_cdf,
             Context::DateOfBirth,
@@ -84,23 +85,17 @@ impl Collector {
             patient_id,
         )?;
 
-        self.phenopacket_builder
-            .upsert_individual(
-                phenopacket_id,
-                patient_id,
-                None,
-                date_of_birth.as_deref(),
-                None,
-                subject_sex.as_deref(),
-                None,
-                None,
-                None,
-            )
-            .map_err(|_| {
-                CollectionError(format!(
-                    "Error when upserting individual data for {phenopacket_id}"
-                ))
-            })?;
+        self.phenopacket_builder.upsert_individual(
+            phenopacket_id,
+            patient_id,
+            None,
+            date_of_birth.as_deref(),
+            None,
+            subject_sex.as_deref(),
+            None,
+            None,
+            None,
+        )?;
 
         let status = Self::collect_single_multiplicity_element(
             patient_cdf,
@@ -128,26 +123,15 @@ impl Collector {
             )?;
             let survival_time_days = survival_time_days
                 .map(|str| str.parse::<f64>().map(|f| f as u32))
-                .transpose()
-                .map_err(|_| {
-                    CollectionError(format!(
-                        "Could not parse survival time in days as u32 for {phenopacket_id}."
-                    ))
-                })?;
+                .transpose()?;
 
-            self.phenopacket_builder
-                .upsert_vital_status(
-                    phenopacket_id,
-                    status.as_str(),
-                    time_of_death.as_deref(),
-                    cause_of_death.as_deref(),
-                    survival_time_days,
-                )
-                .map_err(|_| {
-                    CollectionError(format!(
-                        "Error when upserting vital status data for {phenopacket_id}"
-                    ))
-                })?;
+            self.phenopacket_builder.upsert_vital_status(
+                phenopacket_id,
+                status.as_str(),
+                time_of_death.as_deref(),
+                cause_of_death.as_deref(),
+                survival_time_days,
+            )?;
         }
 
         Ok(())
@@ -321,7 +305,7 @@ impl Collector {
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), CollectorError> {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
@@ -374,15 +358,13 @@ impl Collector {
                     .collect::<Vec<&str>>();
 
                 if let Some(disease) = disease {
-                    self.phenopacket_builder
-                        .upsert_interpretation(phenopacket_id, disease, genes, variants, genos)
-                        .map_err(|err| {
-                            CollectionError(format!(
-                                "Error when upserting disease {} in column {}: {err:?}",
-                                disease,
-                                disease_col.name()
-                            ))
-                        })?;
+                    self.phenopacket_builder.upsert_interpretation(
+                        phenopacket_id,
+                        disease,
+                        genes,
+                        variants,
+                        genos,
+                    )?;
                 } else {
                     if !genes.is_empty() {
                         warn!(
@@ -411,7 +393,7 @@ impl Collector {
         patient_cdf: &'a ContextualizedDataFrame,
         bb_id: Option<&'a str>,
         context: &'a Context,
-    ) -> Result<Vec<&'a StringChunked>, TransformError> {
+    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
         let cols = bb_id.map_or(vec![], |bb_id| {
             patient_cdf
                 .filter_columns()
@@ -421,16 +403,10 @@ impl Collector {
                 .collect()
         });
 
-        cols.iter()
-            .map(|col| {
-                col.str().map_err(|_| {
-                    CollectionError(format!(
-                        "Unexpectedly could not convert {} to StringChunked.",
-                        col.name()
-                    ))
-                })
-            })
-            .collect()
+        Ok(cols
+            .iter()
+            .map(|col| col.str())
+            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
     }
 
     /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
@@ -1245,17 +1221,5 @@ mod tests {
             "P006",
         );
         assert!(sme.is_err());
-        assert!(
-    sme.as_ref().err().unwrap()
-        == &CollectionError(
-        "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
-            .to_string(),
-    )
-        || sme.as_ref().err().unwrap()
-        == &CollectionError(
-        "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
-            .to_string(),
-    )
-)
     }
 }

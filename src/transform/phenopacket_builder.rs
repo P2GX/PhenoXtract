@@ -276,7 +276,7 @@ impl PhenopacketBuilder {
         genes: Vec<&str>,
         variants: Vec<&str>,
         genos: Vec<&str>,
-    ) -> Result<(), TransformError> {
+    ) -> Result<(), PhenopacketBuilderError> {
         let valid_linking_case_one = genes.is_empty() && variants.is_empty() && genos.is_empty();
         let valid_linking_case_two = !genes.is_empty() && variants.is_empty() && genos.is_empty();
         let valid_linking_case_three = genes.len() <= 1 && !variants.is_empty() && genos.len() <= 1;
@@ -285,7 +285,8 @@ impl PhenopacketBuilder {
             valid_linking_case_one || valid_linking_case_two || valid_linking_case_three;
 
         if !valid_linking {
-            return Err(TransformError::BuilderError(
+            //TODO
+            return Err(PhenopacketBuilderError::SomeError(
                 format!(
                     "Invalid linking arrangement for disease {disease} for patient {phenopacket_id}"
                 )

@@ -162,4 +162,6 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
+    #[error("{0}")]
+    SomeError(String),
 }
