@@ -30,9 +30,9 @@ impl HasPrefixId for ResourceRef {
 pub struct OntologyRef(ResourceRef);
 
 impl OntologyRef {
-    pub const HPO_PREFIX: &'static str = "HP";
-    pub const MONDO_PREFIX: &'static str = "MONDO";
-    pub const GENO_PREFIX: &'static str = "GENO";
+    pub const HPO_PREFIX: &'static str = "hp";
+    pub const MONDO_PREFIX: &'static str = "mondo";
+    pub const GENO_PREFIX: &'static str = "geno";
 
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
@@ -93,8 +93,8 @@ impl From<&str> for OntologyRef {
 pub struct DatabaseRef(ResourceRef);
 
 impl DatabaseRef {
-    pub const OMIM_PREFIX: &'static str = "OMIM";
-    pub const HGNC_PREFIX: &'static str = "HGNC";
+    pub const OMIM_PREFIX: &'static str = "omim";
+    pub const HGNC_PREFIX: &'static str = "hgnc";
 
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         DatabaseRef(ResourceRef {
