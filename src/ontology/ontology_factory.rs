@@ -94,7 +94,7 @@ impl CachedOntologyFactory {
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
                 cached.ontology.clone(),
-                &ontology_ref.prefix_id(),
+                ontology_ref.prefix_id(),
             ))
         });
 

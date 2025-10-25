@@ -279,10 +279,12 @@ impl PhenopacketBuilder {
         let hpo_dict = self
             .ontology_bidicts
             .get(OntologyRef::HPO_PREFIX)
-            .expect(&format!(
-                "No bidirectional ontology for {} in PhenopacketBuilder",
-                OntologyRef::HPO_PREFIX
-            ));
+            .unwrap_or_else(|| {
+                panic!(
+                    "No bidirectional ontology for {} in PhenopacketBuilder",
+                    OntologyRef::HPO_PREFIX
+                )
+            });
         hpo_dict
             .get(hpo_query)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
