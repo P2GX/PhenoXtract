@@ -257,7 +257,9 @@ impl PhenopacketBuilder {
             &self
                 .ontology_bidicts
                 .get(OntologyRef::HPO_PREFIX)
-                .unwrap()
+                .ok_or_else(|| {
+                    PhenopacketBuilderError::MissingBiDict(OntologyRef::HPO_PREFIX.to_string())
+                })?
                 .ontology
                 .clone(),
         );
@@ -279,12 +281,10 @@ impl PhenopacketBuilder {
         let hpo_dict = self
             .ontology_bidicts
             .get(OntologyRef::HPO_PREFIX)
-            .unwrap_or_else(|| {
-                panic!(
-                    "No bidirectional ontology for {} in PhenopacketBuilder",
-                    OntologyRef::HPO_PREFIX
-                )
-            });
+            .ok_or_else(|| {
+                PhenopacketBuilderError::MissingBiDict(OntologyRef::HPO_PREFIX.to_string())
+            })?;
+
         hpo_dict
             .get(hpo_query)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
@@ -382,8 +382,8 @@ mod tests {
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, Resource};
+    use pretty_assertions::assert_eq;
     use rstest::*;
-
     #[fixture]
     fn phenopacket_id() -> String {
         "cohort_patient_001".to_string()
