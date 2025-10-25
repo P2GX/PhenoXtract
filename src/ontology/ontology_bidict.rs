@@ -83,7 +83,8 @@ impl OntologyBiDict {
         let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
 
         for term in ontology.iter_terms() {
-            if term.is_current() {
+            let prefix = term.identifier().prefix().to_string().to_lowercase();
+            if term.is_current() && prefix == ontology_prefix.to_lowercase() {
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {
                     synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());

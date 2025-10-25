@@ -10,20 +10,57 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{
     OntologyClass, PhenotypicFeature, Resource, TimeElement, Update,
 };
+use pretty_assertions::assert_eq;
 use prost_types::Timestamp;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> =
     Lazy::new(|| Arc::new(Mutex::new(CachedOntologyFactory::default())));
 
+pub(crate) static MONDO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+    let mock_mondo_label_to_id: HashMap<String, String> = HashMap::from_iter([
+        (
+            "platelet signal processing defect".to_string(),
+            "MONDO:0008258".to_string(),
+        ),
+        (
+            "heart defects-limb shortening syndrome".to_string(),
+            "MONDO:0008917".to_string(),
+        ),
+        (
+            "macular degeneration, age-related, 3".to_string(),
+            "MONDO:0012145".to_string(),
+        ),
+        (
+            "spondylocostal dysostosis".to_string(),
+            "MONDO:0000359".to_string(),
+        ),
+        (
+            "inflammatory diarrhea".to_string(),
+            "MONDO:0000252".to_string(),
+        ),
+    ]);
+
+    let mock_mondo_id_to_label: HashMap<String, String> = mock_mondo_label_to_id
+        .iter()
+        .map(|(label, id)| (id.to_string(), label.to_string()))
+        .collect();
+
+    Arc::new(OntologyBiDict::new(
+        MONDO_REF.clone(),
+        mock_mondo_label_to_id,
+        HashMap::new(),
+        mock_mondo_id_to_label,
+    ))
+});
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::hp(Some("2025-09-01".to_string())));
 pub(crate) static GENO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::mondo(Some("2025-10-07".to_string())));
-pub(crate) static MONDO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::geno(Some("2025-07-25".to_string())));
+pub(crate) static MONDO_REF: Lazy<OntologyRef> =
+    Lazy::new(|| OntologyRef::mondo(Some("2025-10-07".to_string())));
 use validator::ValidateRequired;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
@@ -56,4 +93,14 @@ macro_rules! skip_in_ci {
             return;
         }
     };
+}
+
+pub(crate) fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
+    if let Some(meta) = &mut actual.meta_data {
+        meta.created = None;
+    }
+    if let Some(meta) = &mut expected.meta_data {
+        meta.created = None;
+    }
+    assert_eq!(actual, expected);
 }
