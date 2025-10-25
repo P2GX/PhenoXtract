@@ -279,10 +279,12 @@ impl PhenopacketBuilder {
         let hpo_dict = self
             .ontology_bidicts
             .get(OntologyRef::HPO_PREFIX)
-            .expect(&format!(
-                "No bidirectional ontology for the {} in PhenopacketBuilder",
-                OntologyRef::HPO_PREFIX
-            ));
+            .unwrap_or_else(|| {
+                panic!(
+                    "No bidirectional ontology for {} in PhenopacketBuilder",
+                    OntologyRef::HPO_PREFIX
+                )
+            });
         hpo_dict
             .get(hpo_query)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
@@ -377,7 +379,7 @@ mod tests {
     use super::*;
 
     use crate::ontology::resource_references::ResourceRef;
-    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_REF, ONTOLOGY_FACTORY};
+    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, Resource};
     use rstest::*;
@@ -432,11 +434,7 @@ mod tests {
             .unwrap()
             .build_bidict(&HPO_REF.clone(), None)
             .unwrap();
-        let mondo_dict = ONTOLOGY_FACTORY
-            .lock()
-            .unwrap()
-            .build_bidict(&MONDO_REF.clone(), None)
-            .unwrap();
+
         let geno_dict = ONTOLOGY_FACTORY
             .lock()
             .unwrap()
@@ -445,7 +443,10 @@ mod tests {
 
         HashMap::from_iter(vec![
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            (
+                MONDO_BIDICT.ontology.prefix_id().to_string(),
+                MONDO_BIDICT.clone(),
+            ),
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }
@@ -651,7 +652,6 @@ mod tests {
     ) {
         let mut builder = build_phenopacket_builder();
 
-        // Add a feature
         builder
             .upsert_phenotypic_feature(
                 phenopacket_id.as_str(),
@@ -895,7 +895,7 @@ mod tests {
 
         builder.ensure_resource(
             &pp_id,
-            &ResourceRef::new("omim".to_string(), "".to_string()),
+            &ResourceRef::new("omim".to_string(), "latest".to_string()),
         );
 
         let pp = builder.build().first().unwrap().clone();

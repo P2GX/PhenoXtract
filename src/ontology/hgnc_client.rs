@@ -283,6 +283,7 @@ impl Debug for HGNCClient {
 mod tests {
     use super::*;
     use crate::skip_in_ci;
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
     use serial_test::serial;
     use tempfile::TempDir;

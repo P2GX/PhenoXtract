@@ -10,11 +10,13 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::ontology::CachedOntologyFactory;
+use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
+use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
@@ -217,7 +219,7 @@ fn test_pipeline_integration(
     ];
 
     let phenopacket_builder = PhenopacketBuilder::new(HashMap::from_iter([(
-        hpo_dict.ontology.to_string(),
+        hpo_dict.ontology.prefix_id().to_string(),
         hpo_dict,
     )]));
     //Create the pipeline
@@ -251,11 +253,19 @@ fn test_pipeline_integration(
 
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
         let data = fs::read_to_string(extracted_pp_file.unwrap().path()).unwrap();
-        let extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-        let extracted_pp_id = extracted_pp.id.clone();
-        assert_eq!(
-            extracted_pp,
-            expected_phenopackets.get(&extracted_pp_id).unwrap().clone()
-        );
+        let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
+        let mut extracted_pp_id = expected_phenopackets
+            .get(&extracted_pp.id.clone())
+            .unwrap()
+            .clone();
+
+        if let Some(meta) = &mut extracted_pp.meta_data {
+            meta.created = None;
+        }
+        if let Some(meta) = &mut extracted_pp_id.meta_data {
+            meta.created = None;
+        }
+
+        assert_eq!(extracted_pp, extracted_pp_id);
     }
 }
