@@ -24,13 +24,19 @@ impl MappingSuggestion {
             .map(|(key, value)| MappingSuggestion::new(key.clone(), value.to_string()))
             .collect()
     }
-
     #[allow(dead_code)]
     pub fn suggestions_to_hashmap(suggestions: Vec<MappingSuggestion>) -> HashMap<String, String> {
         suggestions
             .into_iter()
             .map(|mapping| (mapping.from, mapping.to))
             .collect()
+    }
+}
+
+impl Display for MappingSuggestion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "'{}' -> '{}'", self.from, self.to)?;
+        Ok(())
     }
 }
 
@@ -46,7 +52,7 @@ impl Display for MappingErrorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "column '{}' in table '{}' with value '{}'",
+            "Column '{}' in table '{}' with value '{}'",
             self.column, self.table, self.old_value
         )?;
         if !self.possible_mappings.is_empty() {
@@ -60,12 +66,6 @@ impl Display for MappingErrorInfo {
             write!(f, ")")?;
         }
         Ok(())
-    }
-}
-
-impl Display for MappingSuggestion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}' -> '{}'", self.from, self.to)
     }
 }
 
@@ -83,9 +83,9 @@ pub enum DataProcessingError {
 }
 #[derive(Debug, Error)]
 pub enum TransformError {
-    #[error("StrategyError error: {0}")]
+    #[error(transparent)]
     StrategyError(#[from] StrategyError),
-    #[error("CollectorError error: {0}")]
+    #[error(transparent)]
     CollectorError(#[from] Box<CollectorError>),
 }
 
@@ -93,6 +93,39 @@ impl From<CollectorError> for TransformError {
     fn from(err: CollectorError) -> Self {
         TransformError::CollectorError(Box::new(err))
     }
+}
+
+fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
+    let mut grouped: HashMap<(&str, &str), Vec<&MappingErrorInfo>> = HashMap::new();
+
+    for error in errors {
+        grouped
+            .entry((&error.column, &error.table))
+            .or_insert_with(Vec::new)
+            .push(error);
+    }
+
+    let mut result = String::new();
+    for ((column, table), group) in grouped {
+        result.push_str(&format!("  Column '{}' in table '{}':\n", column, table));
+        for error in group {
+            result.push_str(&format!("    - '{}'", error.old_value));
+            if !error.possible_mappings.is_empty() {
+                result.push_str(&format!(
+                    " (possible mappings: {})",
+                    error
+                        .possible_mappings
+                        .iter()
+                        .map(|pm| pm.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ));
+            }
+            result.push('\n');
+        }
+    }
+
+    result
 }
 
 #[derive(Debug, Error)]
@@ -104,7 +137,10 @@ pub enum StrategyError {
         col_name: String,
         table_name: String,
     },
-    #[error("Strategy '{strategy_name}' unable to map {}", info.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", "))]
+    #[error(
+        "Strategy '{strategy_name}' unable to map: \n {}",
+        format_grouped_errors(info)
+    )]
     MappingError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
@@ -149,7 +185,7 @@ pub enum CollectorError {
     PolarsError(#[from] PolarsError),
     #[error("ParseFloatError error: {0}")]
     ParseFloatError(#[from] ParseFloatError),
-    #[error("PhenopacketBuilderError error: {0}")]
+    #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
 }
 

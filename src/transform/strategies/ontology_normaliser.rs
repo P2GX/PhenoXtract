@@ -94,12 +94,15 @@ impl Strategy for OntologyNormaliserStrategy {
                         curie_id
                     } else {
                         if !cell_value.is_empty() {
-                            error_info.insert(MappingErrorInfo {
+                            let mapping_error_info = MappingErrorInfo {
                                 column: col.name().to_string(),
                                 table: table.context().name().to_string(),
                                 old_value: cell_value.to_string(),
                                 possible_mappings: vec![],
-                            });
+                            };
+                            if !error_info.contains(&mapping_error_info) {
+                                error_info.insert(mapping_error_info);
+                            }
                         }
                         cell_value
                     }

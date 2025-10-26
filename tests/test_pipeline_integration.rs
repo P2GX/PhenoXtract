@@ -239,6 +239,11 @@ fn test_pipeline_integration(
     //Run the pipeline on the data sources
     let res = pipeline.run(&mut data_sources);
 
+    if let Err(e) = res {
+        eprintln!("Error: {}", e); // Uses Display
+        panic!("Test failed");
+    }
+
     res.unwrap();
 
     let expected_phenopackets_files =
