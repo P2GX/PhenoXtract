@@ -1,10 +1,11 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::StrategyError;
+use crate::validation::cdf_checks::{check_dangling_sc, check_orphaned_columns};
 use crate::validation::contextualised_dataframe_validation::{
     validate_one_context_per_column, validate_single_subject_id_column,
 };
-use log::debug;
+use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 use regex::{Regex, escape};
@@ -48,8 +49,10 @@ impl ContextualizedDataFrame {
         self.context.context()
     }
 
-    pub fn add_series_context(&mut self, sc: SeriesContext) {
+    pub fn add_series_context(&mut self, sc: SeriesContext) -> Result<(), StrategyError> {
+        check_dangling_sc(&sc, self)?;
         self.context.context_mut().push(sc);
+        Ok(())
     }
 
     pub fn data(&self) -> &DataFrame {
@@ -119,6 +122,9 @@ impl ContextualizedDataFrame {
                         .collect::<Vec<&str>>(),
                     pattern
                 );
+                if found_columns.is_empty() {
+                    warn!("No columns found for regex {}", pattern);
+                }
                 found_columns
             }
             Identifier::Multi(multi) => {
@@ -137,6 +143,9 @@ impl ContextualizedDataFrame {
                         .collect::<Vec<&str>>(),
                     multi
                 );
+                if found_columns.is_empty() {
+                    warn!("No columns found for multi identifiers {:?}", multi);
+                }
                 found_columns
             }
         }
@@ -184,39 +193,119 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
-    pub fn remove_scs_with_context(&mut self, header_context: &Context, data_context: &Context) {
-        self.context.context_mut().retain(|sc| {
-            sc.get_header_context() != header_context || sc.get_data_context() != data_context
-        });
+    pub fn insert_columns_with_series_context(
+        &mut self,
+        sc: SeriesContext,
+        cols: &[Column],
+    ) -> Result<&mut Self, StrategyError> {
+        let col_names = cols
+            .iter()
+            .map(|col| col.name().as_str())
+            .collect::<Vec<&str>>();
+        check_orphaned_columns(col_names.as_slice(), sc.get_identifier())?;
+
+        let table_name = self.context.name().to_string();
+        for col in cols {
+            let col_name = col.name().to_string();
+            self.data
+                .with_column(col.clone())
+                .map_err(|_| StrategyError::TransformationError {
+                    transformation: "add column".to_string(),
+                    col_name: col_name.to_string(),
+                    table_name: table_name.clone(),
+                })?;
+        }
+
+        self.add_series_context(sc.clone())?;
+
+        Ok(self)
     }
 
-    pub fn remove_scs_and_cols_with_context(
+    pub fn bulk_insert_columns_with_series_context(
+        &mut self,
+        inserts: &[(SeriesContext, Vec<Column>)],
+    ) -> Result<&mut Self, StrategyError> {
+        for (sc, cols) in inserts.iter() {
+            self.insert_columns_with_series_context(sc.clone(), cols)?;
+        }
+
+        Ok(self)
+    }
+
+    pub fn drop_scs_and_cols_with_context(
         &mut self,
         header_context: &Context,
         data_context: &Context,
-    ) -> &mut Self {
-        let cols_to_remove_names = self
+    ) -> Result<&mut Self, StrategyError> {
+        let col_names: Vec<String> = self
             .filter_columns()
             .where_header_context(Filter::Is(header_context))
             .where_data_context(Filter::Is(data_context))
             .collect()
             .iter()
             .map(|col| col.name().to_string())
-            .collect::<Vec<String>>();
+            .collect();
 
-        for col_name in cols_to_remove_names.iter() {
-            self.data_mut().drop_in_place(col_name).unwrap_or_else(|_| {
-                panic!(
-                    "Unexpectedly could not remove column {} from table {}.",
-                    col_name,
-                    self.context.name()
-                )
-            });
-        }
-
+        let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
+        self.remove_many_columns(col_refs.as_slice())?;
         self.remove_scs_with_context(header_context, data_context);
 
-        self
+        Ok(self)
+    }
+
+    pub fn drop_series_context(&mut self, sc_id: &Identifier) -> Result<&mut Self, StrategyError> {
+        let col_names: Vec<String> = self
+            .get_columns(sc_id)
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect();
+
+        let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
+        self.remove_many_columns(&col_refs)?;
+        self.remove_series_context(sc_id);
+
+        Ok(self)
+    }
+
+    pub fn drop_many_series_context(
+        &mut self,
+        sc_ids: &[Identifier],
+    ) -> Result<&mut Self, StrategyError> {
+        for sc_id in sc_ids {
+            self.drop_series_context(sc_id)?;
+        }
+        Ok(self)
+    }
+
+    fn remove_scs_with_context(&mut self, header_context: &Context, data_context: &Context) {
+        self.context.context_mut().retain(|sc| {
+            sc.get_header_context() != header_context || sc.get_data_context() != data_context
+        });
+    }
+
+    fn remove_series_context(&mut self, to_remove: &Identifier) {
+        self.context
+            .context_mut()
+            .retain(|sc| sc.get_identifier() != to_remove);
+    }
+
+    fn remove_column(&mut self, col_name: &str) -> Result<&mut Self, StrategyError> {
+        self.data_mut().drop_in_place(col_name).map_err(|_| {
+            StrategyError::TransformationError {
+                transformation: "drop column".to_string(),
+                col_name: col_name.to_string(),
+                table_name: self.context.name().to_string(),
+            }
+        })?;
+        Ok(self)
+    }
+
+    fn remove_many_columns(&mut self, col_names: &[&str]) -> Result<&mut Self, StrategyError> {
+        for col_name in col_names {
+            self.remove_column(col_name)?;
+        }
+
+        Ok(self)
     }
 }
 
@@ -408,7 +497,8 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.remove_scs_and_cols_with_context(&Context::None, &Context::SubjectId);
+        cdf.drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
+            .unwrap();
 
         assert_eq!(cdf.context.context().len(), 3);
         assert_eq!(cdf.data.width(), 4);
@@ -419,7 +509,8 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.remove_scs_and_cols_with_context(&Context::VitalStatus, &Context::None);
+        cdf.drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
+            .unwrap();
 
         assert_eq!(cdf.context.context().len(), 4);
         assert_eq!(cdf.data.width(), 6);
