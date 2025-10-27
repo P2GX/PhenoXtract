@@ -71,7 +71,10 @@ impl DataSource {
             }
 
             let transposed = cdf.data_mut().transpose(None, column_names.clone())?;
-            cdf.set_data(transposed);
+            return Ok(ContextualizedDataFrame::new(
+                cdf.context().clone(),
+                transposed,
+            ));
         }
 
         Ok(cdf)

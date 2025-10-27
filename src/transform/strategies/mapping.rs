@@ -187,24 +187,17 @@ impl Strategy for MappingStrategy {
                             }
                         }
                     });
-                let table_name = table.context().name().to_string();
-                table
-                    .data_mut()
-                    .replace(
-                        &col_name,
-                        mapped_column.cast(&self.out_dtype).map_err(|_| {
-                            DataProcessingError::CastingError {
-                                col_name: col_name.to_string(),
-                                from: mapped_column.dtype().clone(),
-                                to: self.out_dtype.clone(),
-                            }
-                        })?,
-                    )
-                    .map_err(|_| StrategyError::TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name,
-                        table_name,
-                    })?;
+
+                table.builder().replace_column(
+                    &col_name,
+                    mapped_column.cast(&self.out_dtype).map_err(|_| {
+                        DataProcessingError::CastingError {
+                            col_name: col_name.to_string(),
+                            from: mapped_column.dtype().clone(),
+                            to: self.out_dtype.clone(),
+                        }
+                    })?,
+                )?;
             }
         }
 
@@ -290,7 +283,10 @@ mod tests {
         let mut table = make_test_dataframe();
 
         let series = Series::new("sex".into(), vec![5.6]);
-        table.data_mut().replace("sex", series.clone()).unwrap();
+        table
+            .builder()
+            .replace_column("sex", series.clone())
+            .unwrap();
 
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
         strategy.synonym_map = HashMap::from([("5.6".to_string(), "male".to_string())]);

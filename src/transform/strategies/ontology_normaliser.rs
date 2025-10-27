@@ -1,14 +1,14 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::StrategyError::{MappingError, TransformationError};
+use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use polars::prelude::{DataType, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -73,8 +73,6 @@ impl Strategy for OntologyNormaliserStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name().to_string();
-
             let column_names: Vec<PlSmallStr> = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
@@ -105,13 +103,8 @@ impl Strategy for OntologyNormaliserStrategy {
                     }
                 });
                 table
-                    .data_mut()
-                    .replace(&col_name, mapped_column)
-                    .map_err(|_| TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name: col_name.to_string(),
-                        table_name: table_name.to_string(),
-                    })?;
+                    .builder()
+                    .replace_column(&col_name, mapped_column.into_series())?;
             }
         }
 
