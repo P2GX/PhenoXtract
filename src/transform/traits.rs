@@ -1,8 +1,9 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
+use crate::transform::error::StrategyError;
+use std::fmt::Debug;
 
 #[allow(dead_code)]
-/// Represents a strategy for transforming a `ContextualizedDataFrame`.
+/// Represents a strategy for transforming a collection of references to `ContextualizedDataFrame` structs.
 ///
 /// This trait defines a standard interface for applying a conditional transformation
 /// to a data structure in place. It decouples the decision of *whether* a transformation
@@ -13,16 +14,18 @@ use crate::transform::error::TransformError;
 /// defined in `internal_transform`. This pattern ensures that transformations are
 /// only attempted when the context is appropriate, preventing unnecessary work or
 /// potential errors.
-pub trait Strategy {
-    fn transform(&self, table: &mut ContextualizedDataFrame) -> Result<(), TransformError> {
-        match self.is_valid(table) {
-            true => self.internal_transform(table),
+pub trait Strategy: Debug {
+    fn transform(&self, tables: &mut [&mut ContextualizedDataFrame]) -> Result<(), StrategyError> {
+        match self.is_valid(tables) {
+            true => self.internal_transform(tables),
             false => Ok(()),
         }
     }
 
-    fn is_valid(&self, table: &ContextualizedDataFrame) -> bool;
+    fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool;
 
-    fn internal_transform(&self, table: &mut ContextualizedDataFrame)
-    -> Result<(), TransformError>;
+    fn internal_transform(
+        &self,
+        tables: &mut [&mut ContextualizedDataFrame],
+    ) -> Result<(), StrategyError>;
 }

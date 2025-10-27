@@ -1,0 +1,59 @@
+{
+  "id": "my_cohort-P006",
+  "subject": {
+    "id": "P006",
+    "dateOfBirth": "1952-02-16T00:00:00Z",
+    "vitalStatus": {
+      "status": "DECEASED",
+      "timeOfDeath": {
+        "timestamp": "2024-10-03T00:00:00Z"
+      },
+      "survivalTimeInDays": 1432
+    },
+    "sex": "FEMALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0002615",
+        "label": "Hypotension"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0001945",
+        "label": "Fever"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002045",
+        "label": "Hypothermia"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0012373",
+        "label": "Abnormal eye physiology"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0000256",
+        "label": "Macrocephaly"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P42Y11M11D"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0004322",
+        "label": "Short stature"
+      }
+    }
+  ]
+}

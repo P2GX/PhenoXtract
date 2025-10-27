@@ -1,4 +1,9 @@
 pub mod alias_map;
-mod hpo_synonyms_to_primary_terms;
-pub mod sex_mapping;
-pub mod utils;
+pub use alias_map::AliasMapStrategy;
+pub mod mapping;
+pub use mapping::MappingStrategy;
+pub mod ontology_normaliser;
+pub use ontology_normaliser::OntologyNormaliserStrategy;
+
+pub mod multi_hpo_col_expansion;
+pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;

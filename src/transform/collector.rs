@@ -1,20 +1,17 @@
 use crate::config::table_context::Context;
-use crate::config::table_context::Context::{HpoLabel, Living, OnsetAge, SubjectId, SubjectSex};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::TransformError;
-use crate::transform::error::TransformError::CollectionError;
+use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
-use crate::transform::strategies::utils::convert_col_to_string_vec;
+use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::time_element::Element::Age;
-use phenopackets::schema::v2::core::vital_status::Status;
-use phenopackets::schema::v2::core::{Age as age_struct, TimeElement, VitalStatus};
-use polars::prelude::{Column, IntoLazy, col, lit};
+use polars::prelude::{Column, DataType, Series, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
-struct Collector {
+#[derive(Debug)]
+pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
 }
@@ -30,46 +27,38 @@ impl Collector {
     pub fn collect(
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
-    ) -> Result<Vec<Phenopacket>, TransformError> {
+    ) -> Result<Vec<Phenopacket>, CollectorError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf.get_cols_with_data_context(SubjectId);
+            let subject_id_cols = cdf
+                .filter_columns()
+                .where_data_context(Filter::Is(&Context::SubjectId))
+                .collect();
             if subject_id_cols.len() > 1 {
-                return Err(CollectionError(format!(
-                    "Multiple SubjectID columns were found in table {}.",
-                    cdf.context().name
-                )));
+                return Err(CollectorError::ExpectedSingleColumn {
+                    table_name: cdf.context().name().to_string(),
+                    context: Context::SubjectId,
+                });
             }
 
-            let subject_id_col = subject_id_cols.last().ok_or(CollectionError(format!(
-                "Could not find SubjectID column in table {}",
-                cdf.context().name
-            )))?;
-            let subject_id_col_name = subject_id_col.name().to_string();
-            let unique_patient_ids =
-                convert_col_to_string_vec(&subject_id_col.unique().map_err(|_err| {
-                    CollectionError(format!(
-                        "Failed to extract unique subject IDs from {subject_id_col_name}"
-                    ))
-                })?)?;
+            let subject_id_col = subject_id_cols
+                .last()
+                .ok_or(DataProcessingError::EmptyFilteringError)?;
 
-            for patient_id in &unique_patient_ids {
+            let patient_dfs = cdf
+                .data()
+                .partition_by(vec![subject_id_col.name().as_str()], true)?;
+
+            for patient_df in patient_dfs.iter() {
+                let patient_id = patient_df
+                    .column(subject_id_col.name())?
+                    .get(0)?
+                    .str_value();
+
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
-                let patient_df = cdf
-                    .data
-                    .clone()
-                    .lazy()
-                    .filter(col(&subject_id_col_name).eq(lit(patient_id.clone())))
-                    .collect()
-                    .map_err(|_err| {
-                        CollectionError(format!(
-                            "Could not extract sub-Dataframe for patient {} in table {}.",
-                            patient_id,
-                            cdf.context().name
-                        ))
-                    })?;
-                let patient_cdf = ContextualizedDataFrame::new(cdf.context().clone(), patient_df);
-                self.collect_individual(&patient_cdf, &phenopacket_id, patient_id)?;
+                let patient_cdf =
+                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
+                self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &phenopacket_id)?;
             }
         }
@@ -77,84 +66,156 @@ impl Collector {
         Ok(self.phenopacket_builder.build())
     }
 
-    //todo better tests after MVP, e.g. test the errors appear when they should
     fn collect_phenotypic_features(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
-    ) -> Result<(), TransformError> {
-        let pf_scs = patient_cdf.get_scs_with_data_context(HpoLabel);
+    ) -> Result<(), CollectorError> {
+        let hpo_terms_in_cells_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::HpoLabelOrId))
+            .collect();
 
-        for pf_sc in pf_scs {
-            let pf_cols = patient_cdf.get_columns(&pf_sc.identifier);
-            let linked_onset_cols = patient_cdf.get_linked_cols_with_data_context(pf_sc, OnsetAge);
-            // it is very unclear how linking would work otherwise
+        let hpo_term_in_header_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_data_context(Filter::Is(&Context::ObservationStatus))
+            .collect();
+
+        let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat();
+
+        let null_col = &&Column::from(Series::full_null(
+            "null_col".into(),
+            patient_cdf.data().height(),
+            &DataType::String,
+        ));
+
+        for hpo_sc in hpo_scs {
+            let sc_id = hpo_sc.get_identifier();
+            let hpo_cols = patient_cdf.get_columns(sc_id);
+
+            let linked_onset_cols = hpo_sc.get_building_block_id().map_or(vec![], |bb_id| {
+                patient_cdf
+                    .filter_columns()
+                    .where_building_block(Filter::Is(bb_id))
+                    .where_header_context(Filter::IsNone)
+                    .where_data_context(Filter::Is(&Context::OnsetAge))
+                    .where_data_context(Filter::Is(&Context::OnsetDateTime))
+                    .collect()
+            });
+
             let valid_onset_linking = linked_onset_cols.len() == 1;
 
-            for pf_col in pf_cols {
-                let onset_col = if valid_onset_linking {
-                    linked_onset_cols.first().unwrap()
+            if linked_onset_cols.len() > 1 {
+                warn!(
+                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
+                );
+            }
+
+            let onset_col = if valid_onset_linking {
+                linked_onset_cols.first().unwrap()
+            } else {
+                null_col
+            };
+
+            let onset_col_cast_to_string = onset_col.cast(&DataType::String).map_err(|_| {
+                DataProcessingError::CastingError {
+                    col_name: onset_col.name().to_string(),
+                    from: onset_col.dtype().clone(),
+                    to: DataType::String,
+                }
+            })?;
+            let stringified_onset_col = onset_col_cast_to_string.str()?;
+
+            for hpo_col in hpo_cols {
+                if hpo_sc.get_header_context() == &Context::None
+                    && hpo_sc.get_data_context() == &Context::HpoLabelOrId
+                {
+                    self.collect_hpo_in_cells_col(phenopacket_id, hpo_col, stringified_onset_col)?;
                 } else {
-                    &&Column::new("OnsetAge".into(), vec!["null"; pf_col.len()])
-                };
-
-                let stringified_pf_col = convert_col_to_string_vec(pf_col)?;
-                let stringified_onset_col = convert_col_to_string_vec(onset_col)?;
-
-                let pf_onset_pairs: Vec<(&String, &String)> = stringified_pf_col
-                    .iter()
-                    .zip(stringified_onset_col.iter())
-                    .collect();
-
-                for (hpo_label, onset_age) in pf_onset_pairs {
-                    if hpo_label == "null" {
-                        if onset_age != "null" {
-                            warn!(
-                                "Non-null Onset {} found for null HPO Label in table {} for phenopacket {}",
-                                onset_age,
-                                patient_cdf.context().name,
-                                phenopacket_id
-                            );
-                        }
-                    } else {
-                        let onset_te = if onset_age == "null" {
-                            None
-                        } else {
-                            Some(TimeElement {
-                                element: Some(Age(age_struct {
-                                    iso8601duration: onset_age.to_string(),
-                                })),
-                            })
-                        };
-
-                        self.phenopacket_builder
-                            .upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo_label,
-                                None,
-                                None,
-                                None,
-                                None,
-                                onset_te,
-                                None,
-                                None,
-                            )
-                            .map_err(|_err| {
-                                CollectionError(format!(
-                                    "Error when upserting HPO term {} in column {}",
-                                    hpo_label,
-                                    pf_col.name()
-                                ))
-                            })?;
-                    }
+                    self.collect_hpo_in_header_col(phenopacket_id, hpo_col, stringified_onset_col)?;
                 }
             }
         }
 
-        // todo deal with other types of pf col
-        //ideally we will create a multi_pf col to several single_pf cols strategy
-        //and we also want to deal with pf columns with observation status as data context
+        Ok(())
+    }
 
+    fn collect_hpo_in_cells_col(
+        &mut self,
+        phenopacket_id: &str,
+        patient_hpo_col: &Column,
+        stringified_onset_col: &StringChunked,
+    ) -> Result<(), CollectorError> {
+        let stringified_hpo_col = patient_hpo_col.str()?;
+
+        let hpo_onset_pairs = stringified_hpo_col.iter().zip(stringified_onset_col.iter());
+
+        for (hpo, onset) in hpo_onset_pairs {
+            if let Some(hpo) = hpo {
+                self.phenopacket_builder.upsert_phenotypic_feature(
+                    phenopacket_id,
+                    hpo,
+                    None,
+                    None,
+                    None,
+                    None,
+                    onset,
+                    None,
+                    None,
+                )?;
+            } else if let Some(onset) = onset {
+                warn!(
+                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
+                    onset,
+                    patient_hpo_col.name(),
+                    phenopacket_id
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_hpo_in_header_col(
+        &mut self,
+        phenopacket_id: &str,
+        patient_hpo_col: &Column,
+        stringified_onset_col: &StringChunked,
+    ) -> Result<(), CollectorError> {
+        let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
+
+        let boolified_hpo_col = patient_hpo_col.bool()?;
+
+        let bool_onset_pairs = boolified_hpo_col.iter().zip(stringified_onset_col.iter());
+
+        //if the cell bool is null, no phenotype is upserted
+        //if the cell bool is true, the phenotype is upserted with excluded = None
+        //if the cell bool is false, the phenotype is upserted with excluded = true
+        for (observation_status, onset) in bool_onset_pairs {
+            if let Some(observation_status) = observation_status {
+                let excluded = if observation_status { None } else { Some(true) };
+
+                self.phenopacket_builder.upsert_phenotypic_feature(
+                    phenopacket_id,
+                    hpo_id,
+                    None,
+                    excluded,
+                    None,
+                    None,
+                    onset,
+                    None,
+                    None,
+                )?;
+            } else if let Some(onset) = onset {
+                warn!(
+                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
+                    onset,
+                    patient_hpo_col.name(),
+                    phenopacket_id
+                );
+            }
+        }
         Ok(())
     }
 
@@ -163,46 +224,71 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
         patient_id: &str,
-    ) -> Result<(), TransformError> {
-        let subject_sex =
-            Self::collect_single_multiplicity_element(patient_cdf, SubjectSex, patient_id)?;
-        let vital_status_string =
-            Self::collect_single_multiplicity_element(patient_cdf, Living, patient_id)?;
-        let vital_status = match vital_status_string {
-            None => None,
-            Some(s) => {
-                let status = Status::from_str_name(s.as_str()).ok_or(CollectionError(format!(
-                    "Could not interpret {s} as status for {patient_id}."
-                )))? as i32;
-                Some(VitalStatus {
-                    status,
-                    ..Default::default()
-                })
-            }
-        };
+    ) -> Result<(), CollectorError> {
+        let date_of_birth = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::DateOfBirth,
+            patient_id,
+        )?;
 
-        self.phenopacket_builder
-            .upsert_individual(
-                phenopacket_id,
+        let subject_sex = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::SubjectSex,
+            patient_id,
+        )?;
+
+        self.phenopacket_builder.upsert_individual(
+            phenopacket_id,
+            patient_id,
+            None,
+            date_of_birth.as_deref(),
+            None,
+            subject_sex.as_deref(),
+            None,
+            None,
+            None,
+        )?;
+
+        let status = Self::collect_single_multiplicity_element(
+            patient_cdf,
+            Context::VitalStatus,
+            patient_id,
+        )?;
+
+        if let Some(status) = status {
+            let time_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::TimeOfDeath,
                 patient_id,
-                None,
-                None,
-                None,
-                vital_status,
-                subject_sex.as_deref(),
-                None,
-                None,
-                None,
-            )
-            .map_err(|_err| {
-                CollectionError(format!(
-                    "Error when upserting individual data for {phenopacket_id}"
-                ))
-            })?;
+            )?;
+
+            let cause_of_death = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::CauseOfDeath,
+                patient_id,
+            )?;
+
+            let survival_time_days = Self::collect_single_multiplicity_element(
+                patient_cdf,
+                Context::SurvivalTimeDays,
+                patient_id,
+            )?;
+            let survival_time_days = survival_time_days
+                .map(|str| str.parse::<f64>().map(|f| f as u32))
+                .transpose()?;
+
+            self.phenopacket_builder.upsert_vital_status(
+                phenopacket_id,
+                status.as_str(),
+                time_of_death.as_deref(),
+                cause_of_death.as_deref(),
+                survival_time_days,
+            )?;
+        }
+
         Ok(())
     }
 
-    //todo! test after MVP
     /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
     /// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
     /// this function will:
@@ -214,8 +300,11 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         context: Context,
         patient_id: &str,
-    ) -> Result<Option<String>, TransformError> {
-        let cols_of_element_type = patient_cdf.get_cols_with_data_context(context.clone());
+    ) -> Result<Option<String>, CollectorError> {
+        let cols_of_element_type = patient_cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&context))
+            .collect();
 
         if cols_of_element_type.is_empty() {
             return Ok(None);
@@ -224,61 +313,58 @@ impl Collector {
         let mut unique_values: HashSet<String> = HashSet::new();
 
         for col in cols_of_element_type {
-            let stringified_col_no_nulls = convert_col_to_string_vec(&col.drop_nulls())?;
-            stringified_col_no_nulls.iter().for_each(|val| {
-                unique_values.insert(val.clone());
+            let stringified_col =
+                col.cast(&DataType::String)
+                    .map_err(|_| DataProcessingError::CastingError {
+                        col_name: col.name().to_string(),
+                        from: col.dtype().clone(),
+                        to: DataType::String,
+                    })?;
+            let stringified_col_str = stringified_col.str()?;
+            stringified_col_str.into_iter().for_each(|opt_val| {
+                if let Some(val) = opt_val {
+                    unique_values.insert(val.to_string());
+                }
             });
         }
 
         if unique_values.len() > 1 {
-            Err(CollectionError(format!(
-                "Found multiple values of {context} for {patient_id} when there should only be one: {unique_values:?}."
-            )))
+            Err(CollectorError::ExpectedSingleValue {
+                table_name: patient_cdf.context().name().to_string(),
+                patient_id: patient_id.to_string(),
+                context,
+            })
         } else {
-            Ok(unique_values.iter().next().cloned())
+            match unique_values.iter().next() {
+                Some(unique_val) => Ok(Some(unique_val.clone())),
+                None => Ok(None),
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Context::{
-        HpoLabel, Living, OnsetAge, SubjectId, SubjectSex,
-    };
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::ontology::github_ontology_registry::GithubOntologyRegistry;
-    use crate::ontology::traits::OntologyRegistry;
-    use crate::ontology::utils::init_ontolius;
-    use crate::skip_in_ci;
+    use crate::test_utils::HPO_DICT;
     use crate::transform::collector::Collector;
-    use crate::transform::error::TransformError::CollectionError;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::time_element::Element::Age;
+    use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
         Age as age_struct, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
         VitalStatus,
     };
-    use polars::datatypes::AnyValue;
+    use polars::datatypes::{AnyValue, DataType};
     use polars::frame::DataFrame;
-    use polars::prelude::Column;
+    use polars::prelude::{Column, NamedFrom, Series};
+    use prost_types::Timestamp as TimestampProtobuf;
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
 
-    #[fixture]
-    fn tmp_dir() -> TempDir {
-        TempDir::new().unwrap()
-    }
-
-    fn init_collector(tmp_dir: TempDir) -> Collector {
-        let hpo_registry = GithubOntologyRegistry::default_hpo_registry()
-            .unwrap()
-            .with_registry_path(tmp_dir.path().into());
-        let hpo_path = hpo_registry.register("latest").unwrap();
-        let hpo_ontology = init_ontolius(hpo_path).unwrap();
-        let phenopacket_builder = PhenopacketBuilder::new(hpo_ontology);
+    fn init_collector() -> Collector {
+        let phenopacket_builder = PhenopacketBuilder::new(HPO_DICT.clone());
         Collector {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),
@@ -287,49 +373,65 @@ mod tests {
 
     #[fixture]
     fn tc() -> TableContext {
-        let id_sc = SeriesContext::new(
-            Identifier::Regex("subject_id".to_string()),
-            Context::None,
-            SubjectId,
-            None,
-            None,
-            vec![],
-        );
-        let pf_sc = SeriesContext::new(
-            Identifier::Regex("phenotypic_features".to_string()),
-            Context::None,
-            HpoLabel,
-            None,
-            None,
-            vec![Identifier::Regex("onset_age".to_string())],
-        );
-        let onset_sc = SeriesContext::new(
-            Identifier::Regex("onset_age".to_string()),
-            Context::None,
-            OnsetAge,
-            None,
-            None,
-            vec![Identifier::Regex("phenotypic_features".to_string())],
-        );
-        let sex_sc = SeriesContext::new(
-            Identifier::Regex("sex".to_string()),
-            Context::None,
-            SubjectSex,
-            None,
-            None,
-            vec![],
-        );
-        let vital_status_sc = SeriesContext::new(
-            Identifier::Regex("vital_status".to_string()),
-            Context::None,
-            Living,
-            None,
-            None,
-            vec![],
-        );
+        let id_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("subject_id".to_string()))
+            .with_data_context(Context::SubjectId);
+
+        let pf_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_data_context(Context::HpoLabelOrId)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_age".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let dob_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("dob".to_string()))
+            .with_data_context(Context::DateOfBirth);
+
+        let sex_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("sex".to_string()))
+            .with_data_context(Context::SubjectSex);
+
+        let vital_status_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("vital_status".to_string()))
+            .with_data_context(Context::VitalStatus);
+
+        let time_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_of_death".to_string()))
+            .with_data_context(Context::TimeOfDeath);
+
+        let survival_time_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("survival_time".to_string()))
+            .with_data_context(Context::SurvivalTimeDays);
+
+        let runny_nose_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("HP:0031417".to_string()))
+            .with_header_context(Context::HpoLabelOrId)
+            .with_data_context(Context::ObservationStatus)
+            .with_building_block_id(Some("Block_2".to_string()));
+
+        let runny_nose_onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("runny_nose_onset".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_2".to_string()));
+
         TableContext::new(
             "patient_data".to_string(),
-            vec![id_sc, pf_sc, onset_sc, sex_sc, vital_status_sc],
+            vec![
+                id_sc,
+                pf_sc,
+                onset_sc,
+                dob_sc,
+                sex_sc,
+                vital_status_sc,
+                time_of_death_sc,
+                survival_time_sc,
+                runny_nose_sc,
+                runny_nose_onset_sc,
+            ],
         )
     }
 
@@ -344,6 +446,17 @@ mod tests {
                 element: Some(Age(age_struct {
                     iso8601duration: "P40Y10M05D".to_string(),
                 })),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn pf_pneumonia_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002090".to_string(),
+                label: "Pneumonia".to_string(),
             }),
             ..Default::default()
         }
@@ -366,6 +479,17 @@ mod tests {
     }
 
     #[fixture]
+    fn pf_asthma_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0002099".to_string(),
+                label: "Asthma".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn pf_nail_psoriasis() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -382,6 +506,17 @@ mod tests {
     }
 
     #[fixture]
+    fn pf_nail_psoriasis_no_onset() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0033327".to_string(),
+                label: "Nail psoriasis".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn pf_macrocephaly() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -392,18 +527,37 @@ mod tests {
         }
     }
 
-    #[rstest]
-    fn test_collect(
-        tc: TableContext,
-        tmp_dir: TempDir,
-        pf_pneumonia: PhenotypicFeature,
-        pf_asthma: PhenotypicFeature,
-        pf_nail_psoriasis: PhenotypicFeature,
-        pf_macrocephaly: PhenotypicFeature,
-    ) {
-        skip_in_ci!();
-        let mut collector = init_collector(tmp_dir);
+    #[fixture]
+    fn pf_runny_nose() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0031417".to_string(),
+                label: "Rhinorrhea".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Timestamp(TimestampProtobuf {
+                    seconds: -154742400,
+                    nanos: 0,
+                })),
+            }),
+            ..Default::default()
+        }
+    }
 
+    #[fixture]
+    fn pf_runny_nose_excluded() -> PhenotypicFeature {
+        PhenotypicFeature {
+            r#type: Some(OntologyClass {
+                id: "HP:0031417".to_string(),
+                label: "Rhinorrhea".to_string(),
+            }),
+            excluded: true,
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn df_multi_patient() -> DataFrame {
         let id_col = Column::new(
             "subject_id".into(),
             ["P001", "P001", "P002", "P002", "P002", "P003"],
@@ -453,15 +607,127 @@ mod tests {
             ],
         );
 
-        let df = DataFrame::new(vec![
+        DataFrame::new(vec![
             id_col,
             pf_col,
             onset_col,
             subject_sex_col,
             vital_status_col,
         ])
-        .unwrap();
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        .unwrap()
+    }
+
+    #[fixture]
+    fn df_single_patient() -> DataFrame {
+        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
+        let dob_col = Column::new(
+            "dob".into(),
+            [
+                AnyValue::String("1960-02-05"),
+                AnyValue::String("1960-02-05"),
+                AnyValue::Null,
+                AnyValue::String("1960-02-05"),
+            ],
+        );
+        let subject_sex_col = Column::new(
+            "sex".into(),
+            [
+                AnyValue::String("FEMALE"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let vital_status_col = Column::new(
+            "vital_status".into(),
+            [
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::String("ALIVE"),
+                AnyValue::Null,
+            ],
+        );
+        let time_of_death_col = Column::new(
+            "time_of_death".into(),
+            [
+                AnyValue::String("2001-01-29"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let survival_time_col = Column::new(
+            "survival_time".into(),
+            [
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+            ],
+        );
+        let pf_col = Column::new(
+            "phenotypic_features".into(),
+            [
+                AnyValue::String("Pneumonia"),
+                AnyValue::Null,
+                AnyValue::String("Asthma"),
+                AnyValue::String("Nail psoriasis"),
+            ],
+        );
+        let onset_col = Column::new(
+            "onset_age".into(),
+            [
+                AnyValue::String("P40Y10M05D"),
+                AnyValue::Null,
+                AnyValue::String("P12Y5M028D"),
+                AnyValue::String("P48Y4M21D"),
+            ],
+        );
+        let runny_nose_col = Column::new(
+            "HP:0031417".into(),
+            [
+                AnyValue::Boolean(true),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let runny_nose_onset_col = Column::new(
+            "runny_nose_onset".into(),
+            [
+                AnyValue::String("1965-02-05"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        DataFrame::new(vec![
+            id_col,
+            dob_col,
+            subject_sex_col,
+            vital_status_col,
+            survival_time_col,
+            time_of_death_col,
+            pf_col,
+            onset_col,
+            runny_nose_col,
+            runny_nose_onset_col,
+        ])
+        .unwrap()
+    }
+
+    #[rstest]
+    fn test_collect(
+        df_multi_patient: DataFrame,
+        tc: TableContext,
+        pf_pneumonia: PhenotypicFeature,
+        pf_asthma: PhenotypicFeature,
+        pf_nail_psoriasis: PhenotypicFeature,
+        pf_macrocephaly: PhenotypicFeature,
+    ) {
+        let mut collector = init_collector();
+
+        let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
         let collect_result = collector.collect(vec![cdf]);
         let phenopackets = collect_result.unwrap();
@@ -529,40 +795,20 @@ mod tests {
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
-        tmp_dir: TempDir,
         pf_pneumonia: PhenotypicFeature,
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
+        pf_runny_nose: PhenotypicFeature,
+        df_single_patient: DataFrame,
     ) {
-        skip_in_ci!();
+        let mut collector = init_collector();
 
-        let mut collector = init_collector(tmp_dir);
-        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
-        let pf_col = Column::new(
-            "phenotypic_features".into(),
-            [
-                AnyValue::String("Pneumonia"),
-                AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
-            ],
-        );
-        let onset_col = Column::new(
-            "onset_age".into(),
-            [
-                AnyValue::String("P40Y10M05D"),
-                AnyValue::Null,
-                AnyValue::String("P12Y5M028D"),
-                AnyValue::String("P48Y4M21D"),
-            ],
-        );
-        let df = DataFrame::new(vec![id_col, pf_col, onset_col]).unwrap();
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
         let phenopacket_id = "cohort2019-P006".to_string();
-
-        let collect_pfs_result = collector.collect_phenotypic_features(&cdf, &phenopacket_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_phenotypic_features(&patient_cdf, &phenopacket_id)
+            .unwrap();
         let phenopackets = collector.phenopacket_builder.build();
 
         let mut expected_p006 = Phenopacket {
@@ -572,18 +818,76 @@ mod tests {
         expected_p006.phenotypic_features.push(pf_pneumonia);
         expected_p006.phenotypic_features.push(pf_asthma);
         expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+        expected_p006.phenotypic_features.push(pf_runny_nose);
 
         assert_eq!(phenopackets.len(), 1);
         assert_eq!(phenopackets[0], expected_p006);
     }
 
     #[rstest]
-    fn test_collect_individual(tc: TableContext, tmp_dir: TempDir) {
-        skip_in_ci!();
+    fn test_collect_phenotypic_features_invalid_linking(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+        pf_asthma_no_onset: PhenotypicFeature,
+        pf_pneumonia_no_onset: PhenotypicFeature,
+        pf_nail_psoriasis_no_onset: PhenotypicFeature,
+        pf_runny_nose: PhenotypicFeature,
+    ) {
+        let mut collector = init_collector();
 
-        let mut collector = init_collector(tmp_dir);
-        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
-        let pf_col = Column::new(
+        let onset_dt_col = Column::new(
+            "onset_date".into(),
+            [
+                AnyValue::String("03.06.1956"),
+                AnyValue::Null,
+                AnyValue::String("26.04.2005"),
+                AnyValue::String("16.02.1952"),
+            ],
+        );
+
+        df_single_patient.with_column(onset_dt_col).unwrap();
+
+        let mut patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+
+        let onset_dt_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_date".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        patient_cdf.add_series_context(onset_dt_sc);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_phenotypic_features(&patient_cdf, &phenopacket_id)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006
+            .phenotypic_features
+            .push(pf_pneumonia_no_onset);
+        expected_p006.phenotypic_features.push(pf_asthma_no_onset);
+        expected_p006
+            .phenotypic_features
+            .push(pf_nail_psoriasis_no_onset);
+        expected_p006.phenotypic_features.push(pf_runny_nose);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_hpo_in_cells_col(
+        pf_pneumonia: PhenotypicFeature,
+        pf_asthma_no_onset: PhenotypicFeature,
+        pf_nail_psoriasis: PhenotypicFeature,
+    ) {
+        let mut collector = init_collector();
+
+        let patient_hpo_col = Column::new(
             "phenotypic_features".into(),
             [
                 AnyValue::String("Pneumonia"),
@@ -592,40 +896,102 @@ mod tests {
                 AnyValue::String("Nail psoriasis"),
             ],
         );
-        let subject_sex_col = Column::new(
-            "sex".into(),
+        let patient_onset_col = Column::new(
+            "onset_age".into(),
             [
-                AnyValue::String("FEMALE"),
+                AnyValue::String("P40Y10M05D"),
                 AnyValue::Null,
                 AnyValue::Null,
-                AnyValue::Null,
+                AnyValue::String("P48Y4M21D"),
             ],
         );
-        let vital_status_col = Column::new(
-            "vital_status".into(),
-            [
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::Null,
-            ],
+
+        let stringified_onset_col = patient_onset_col.str().unwrap();
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_hpo_in_cells_col(&phenopacket_id, &patient_hpo_col, stringified_onset_col)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006.phenotypic_features.push(pf_pneumonia);
+        expected_p006.phenotypic_features.push(pf_asthma_no_onset);
+        expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_hpo_in_header_col(pf_runny_nose_excluded: PhenotypicFeature) {
+        let mut collector = init_collector();
+
+        let patient_hpo_col = Column::new(
+            "HP:0031417#(block foo)".into(),
+            [AnyValue::Boolean(false), AnyValue::Null],
         );
-        let df = DataFrame::new(vec![id_col, pf_col, subject_sex_col, vital_status_col]).unwrap();
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        let patient_onset_col = Column::from(Series::full_null(
+            "null_onset_col".into(),
+            2,
+            &DataType::String,
+        ));
+
+        let stringified_onset_col = patient_onset_col.str().unwrap();
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+        collector
+            .collect_hpo_in_header_col(&phenopacket_id, &patient_hpo_col, stringified_onset_col)
+            .unwrap();
+        let phenopackets = collector.phenopacket_builder.build();
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            ..Default::default()
+        };
+        expected_p006
+            .phenotypic_features
+            .push(pf_runny_nose_excluded);
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_eq!(phenopackets[0], expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame) {
+        let mut collector = init_collector();
+
+        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
         let phenopacket_id = "cohort2019-P006".to_string();
         let patient_id = "P006".to_string();
 
-        let collect_pfs_result = collector.collect_individual(&cdf, &phenopacket_id, &patient_id);
-        assert!(collect_pfs_result.is_ok());
+        collector
+            .collect_individual(&patient_cdf, &phenopacket_id, &patient_id)
+            .unwrap();
+
         let phenopackets = collector.phenopacket_builder.build();
 
         let indiv = Individual {
             id: "P006".to_string(),
+            date_of_birth: Some(TimestampProtobuf {
+                seconds: -312595200,
+                nanos: 0,
+            }),
             sex: Sex::Female as i32,
             vital_status: Some(VitalStatus {
                 status: Status::Alive as i32,
-                ..Default::default()
+                time_of_death: Some(TimeElement {
+                    element: Some(Timestamp(TimestampProtobuf {
+                        seconds: 980726400,
+                        nanos: 0,
+                    })),
+                }),
+                cause_of_death: None,
+                survival_time_in_days: 155,
             }),
             ..Default::default()
         };
@@ -641,21 +1007,82 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_individual_err(tc: TableContext, tmp_dir: TempDir) {
-        skip_in_ci!();
+    fn test_collect_single_multiplicity_element_nulls_and_non_nulls(
+        tc: TableContext,
+        df_single_patient: DataFrame,
+    ) {
+        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
+        let sme = Collector::collect_single_multiplicity_element(
+            &patient_cdf,
+            Context::SubjectSex,
+            "P006",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(sme, "FEMALE");
+    }
 
-        let mut collector = init_collector(tmp_dir);
-        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
-        let pf_col = Column::new(
-            "phenotypic_features".into(),
+    #[rstest]
+    fn test_collect_single_multiplicity_element_nulls(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
+        let null_subject_sex_col = Series::new(
+            "sex".into(),
             [
-                AnyValue::String("Pneumonia"),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
             ],
         );
-        let subject_sex_col = Column::new(
+        df_single_patient
+            .replace("sex", null_subject_sex_col)
+            .unwrap();
+        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
+        let sme = Collector::collect_single_multiplicity_element(
+            &patient_cdf,
+            Context::SubjectSex,
+            "P006",
+        )
+        .unwrap();
+        assert_eq!(sme, None);
+    }
+
+    #[rstest]
+    fn test_collect_single_multiplicity_element_multiple(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
+        let many_subject_sex_col = Series::new(
+            "sex".into(),
+            [
+                AnyValue::String("MALE"),
+                AnyValue::String("MALE"),
+                AnyValue::String("MALE"),
+                AnyValue::String("MALE"),
+            ],
+        );
+        df_single_patient
+            .replace("sex", many_subject_sex_col)
+            .unwrap();
+        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
+        let sme = Collector::collect_single_multiplicity_element(
+            &patient_cdf,
+            Context::SubjectSex,
+            "P006",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(sme, "MALE");
+    }
+
+    #[rstest]
+    fn test_collect_single_multiplicity_element_err(
+        tc: TableContext,
+        mut df_single_patient: DataFrame,
+    ) {
+        let invalid_subject_sex_col = Series::new(
             "sex".into(),
             [
                 AnyValue::String("FEMALE"),
@@ -664,25 +1091,15 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![id_col, pf_col, subject_sex_col]).unwrap();
-        let cdf = ContextualizedDataFrame::new(tc, df);
-
-        let phenopacket_id = "cohort2019-P006".to_string();
-        let patient_id = "P006".to_string();
-
-        let collect_pfs_result = collector.collect_individual(&cdf, &phenopacket_id, &patient_id);
-        assert!(collect_pfs_result.is_err());
-        assert!(
-            collect_pfs_result.as_ref().err().unwrap()
-                == &CollectionError(
-                    "Found multiple values of SubjectSex for P006 when there should only be one: {\"MALE\", \"FEMALE\"}."
-                        .to_string(),
-                )
-                || collect_pfs_result.as_ref().err().unwrap()
-                    == &CollectionError(
-                        "Found multiple values of SubjectSex for P006 when there should only be one: {\"FEMALE\", \"MALE\"}."
-                            .to_string(),
-                    )
-        )
+        df_single_patient
+            .replace("sex", invalid_subject_sex_col)
+            .unwrap();
+        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
+        let sme = Collector::collect_single_multiplicity_element(
+            &patient_cdf,
+            Context::SubjectSex,
+            "P006",
+        );
+        assert!(sme.is_err());
     }
 }

@@ -1,0 +1,9 @@
+{
+  "id": "my_cohort-P004",
+  "subject": {
+    "id": "P004",
+    "dateOfBirth": "2020-03-15T00:00:00Z",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  }
+}

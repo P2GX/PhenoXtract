@@ -1,0 +1,46 @@
+{
+  "id": "my_cohort-P002",
+  "subject": {
+    "id": "P002",
+    "dateOfBirth": "1985-12-12T00:00:00Z",
+    "vitalStatus": {
+      "status": "DECEASED",
+      "timeOfDeath": {
+        "age": {
+          "iso8601duration": "P32Y"
+        }
+      },
+      "survivalTimeInDays": 123
+    },
+    "sex": "MALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0031417",
+        "label": "Rhinorrhea"
+      },
+      "onset": {
+        "timestamp": "2021-02-23T00:00:00Z"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0000256",
+        "label": "Macrocephaly"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P1Y2M3D"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002099",
+        "label": "Asthma"
+      }
+    }
+  ]
+}

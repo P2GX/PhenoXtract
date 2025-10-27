@@ -10,6 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  CI: true
 
 jobs:
   compile_and_test:
@@ -34,13 +35,9 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.8.0
 
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest@0.9.99
-
       - name: Test
-        run: cargo nextest run --workspace --lib --all-targets --all-features
+        run: cargo test --color always --all-features --lib --all-targets --workspace
+      # run: cargo nextest run --workspace --lib --all-targets --all-features
 
   format:
     name: Code Format
