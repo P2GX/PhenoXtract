@@ -516,4 +516,155 @@ mod tests {
         assert_eq!(cdf.data.width(), 6);
         assert_eq!(cdf.data.height(), 3);
     }
+
+    #[rstest]
+    fn test_drop_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+
+        let filter_cols = cdf
+            .filter_columns()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect();
+        assert!(!filter_cols.is_empty());
+        let filter_sc = cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect();
+        assert!(!filter_sc.is_empty());
+
+        cdf.drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
+            .unwrap();
+
+        let filter_cols = cdf
+            .filter_columns()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect();
+        assert!(filter_cols.is_empty());
+        let filter_sc = cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect();
+        assert!(filter_sc.is_empty());
+    }
+
+    #[rstest]
+    fn test_remove_column_nonexistent() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
+            .unwrap();
+
+        let result = cdf.remove_column("nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_remove_many_columns() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_width = cdf.data.width() - 2;
+
+        cdf.remove_many_columns(&["different", "age"]).unwrap();
+        assert_eq!(cdf.data().width(), expected_width);
+        assert!(cdf.data().column("different").is_err());
+        assert!(cdf.data().column("age").is_err());
+        assert!(cdf.data().column("bronchitis").is_ok());
+    }
+
+    #[rstest]
+    fn test_remove_series_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
+            .unwrap();
+
+        let expected_len = cdf.series_contexts().len() - 1;
+        cdf.remove_series_context(&Identifier::Regex("bronchitis".to_string()));
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+    }
+
+    #[rstest]
+    fn test_drop_series_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_len = cdf.context.context().len() - 1;
+
+        cdf.drop_series_context(&Identifier::Regex("bronchitis".to_string()))
+            .unwrap();
+
+        assert!(cdf.data().column("bronchitis").is_err());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+    }
+
+    #[rstest]
+    fn test_drop_many_series_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_len = cdf.context.context().len() - 1;
+
+        cdf.drop_many_series_context(&[
+            Identifier::Regex("different".to_string()),
+            Identifier::Regex("age".to_string()),
+        ])
+        .unwrap();
+
+        assert!(cdf.data().column("different").is_err());
+        assert!(cdf.data().column("age").is_err());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+    }
+
+    #[rstest]
+    fn test_insert_columns_with_series_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_len = cdf.context.context().len() + 1;
+        let expected_width = cdf.data.width() + 1;
+        let new_col = Column::new("test_col".into(), &[10, 11, 12]);
+        let sc =
+            SeriesContext::default().with_identifier(Identifier::Regex("test_col".to_string()));
+
+        cdf.insert_columns_with_series_context(sc, &[new_col])
+            .unwrap();
+
+        assert!(cdf.data().column("test_col").is_ok());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+        assert_eq!(cdf.data().width(), expected_width);
+    }
+
+    #[rstest]
+    fn test_bulk_insert_columns_with_series_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let expected_len = cdf.context.context().len() + 2;
+        let expected_width = cdf.data.width() + 2;
+        let col_d = Column::new("test_col_1".into(), &[10, 11, 12]);
+        let col_e = Column::new("test_col_2".into(), &[13, 14, 15]);
+        let sc1 =
+            SeriesContext::default().with_identifier(Identifier::Regex("test_col_1".to_string()));
+        let sc2 =
+            SeriesContext::default().with_identifier(Identifier::Regex("test_col_2".to_string()));
+
+        let inserts = vec![(sc1, vec![col_d]), (sc2, vec![col_e])];
+
+        cdf.bulk_insert_columns_with_series_context(&inserts)
+            .unwrap();
+
+        assert!(cdf.data().column("test_col_1").is_ok());
+        assert!(cdf.data().column("test_col_2").is_ok());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+        assert_eq!(cdf.data().width(), expected_width);
+    }
 }
