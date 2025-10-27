@@ -52,6 +52,7 @@ impl ContextualizedDataFrame {
     pub fn add_series_context(&mut self, sc: SeriesContext) -> Result<(), StrategyError> {
         check_dangling_sc(&sc, self)?;
         self.context.context_mut().push(sc);
+        //TODO: Call Validate
         Ok(())
     }
 
@@ -171,6 +172,7 @@ impl ContextualizedDataFrame {
                 col_name: col_name.to_string(),
                 table_name,
             });
+        //TODO: Call Validate
         match transform_result {
             Ok(df) => Ok(self),
             Err(e) => Err(e),
@@ -217,7 +219,7 @@ impl ContextualizedDataFrame {
         }
 
         self.add_series_context(sc.clone())?;
-
+        //TODO: Call Validate
         Ok(self)
     }
 
@@ -249,7 +251,7 @@ impl ContextualizedDataFrame {
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self.remove_many_columns(col_refs.as_slice())?;
         self.remove_scs_with_context(header_context, data_context);
-
+        //TODO: Call Validate
         Ok(self)
     }
 
@@ -263,7 +265,7 @@ impl ContextualizedDataFrame {
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self.remove_many_columns(&col_refs)?;
         self.remove_series_context(sc_id);
-
+        //TODO: Call Validate
         Ok(self)
     }
 
