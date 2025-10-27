@@ -105,8 +105,9 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     bb_id,
                     patient_to_hpo,
                 );
-
-                inserts.push((new_sc, new_hpo_cols_from_block));
+                if !new_hpo_cols_from_block.is_empty() {
+                    inserts.push((new_sc, new_hpo_cols_from_block));
+                }
             }
 
             table.bulk_insert_columns_with_series_context(inserts.as_slice())?;
