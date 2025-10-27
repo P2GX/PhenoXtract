@@ -101,7 +101,7 @@ fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
     for error in errors {
         grouped
             .entry((&error.column, &error.table))
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(error);
     }
 
