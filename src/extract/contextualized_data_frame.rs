@@ -558,8 +558,6 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
-            .unwrap();
 
         let result = cdf.remove_column("nonexistent");
         assert!(result.is_err());
@@ -584,8 +582,6 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
-            .unwrap();
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.remove_series_context(&Identifier::Regex("bronchitis".to_string()));
@@ -650,6 +646,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         let expected_len = cdf.context.context().len() + 2;
         let expected_width = cdf.data.width() + 2;
+
         let col_d = Column::new("test_col_1".into(), &[10, 11, 12]);
         let col_e = Column::new("test_col_2".into(), &[13, 14, 15]);
         let sc1 =
