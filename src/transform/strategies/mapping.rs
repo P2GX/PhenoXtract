@@ -240,7 +240,7 @@ mod tests {
 
     #[rstest]
     fn test_sex_mapping_strategy_success() {
-        let mut table = make_test_dataframe();
+        let table = make_test_dataframe();
         let filtered_table = table
             .clone()
             .into_data()
@@ -248,7 +248,8 @@ mod tests {
             .filter(col("sex").eq(lit("mole")).not())
             .collect()
             .unwrap();
-        table.set_data(filtered_table);
+
+        let mut table = ContextualizedDataFrame::new(table.context().clone(), filtered_table);
 
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
