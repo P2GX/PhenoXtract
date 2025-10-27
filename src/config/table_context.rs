@@ -151,6 +151,15 @@ impl Default for Identifier {
     }
 }
 
+impl Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Identifier::Regex(regex) => write!(f, "{}", regex),
+            Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum OutputDataType {
     Boolean,

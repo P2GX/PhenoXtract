@@ -2,7 +2,7 @@ pub mod config;
 pub mod extract;
 pub mod load;
 pub use pipeline::Pipeline;
-mod error;
+pub mod error;
 pub mod ontology;
 pub mod pipeline;
 

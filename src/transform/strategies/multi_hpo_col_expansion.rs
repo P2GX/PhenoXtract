@@ -60,9 +60,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 .last()
                 .ok_or(DataProcessingError::EmptyFilteringError)?
                 .str()?;
-
-            let mut new_hpo_cols = vec![];
-            let mut new_series_contexts = vec![];
+            let mut inserts: Vec<(SeriesContext, Vec<Column>)> = Vec::new();
 
             let mut bb_ids = table
                 .get_building_block_ids()
@@ -102,32 +100,28 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     stringified_multi_hpo_block,
                 );
 
-                let (new_hpo_cols_from_this_block, new_sc) = Self::create_new_cols_with_sc(
+                let (new_hpo_cols_from_block, new_sc) = Self::create_new_cols_with_sc(
                     stringified_subject_id_col,
                     bb_id,
                     patient_to_hpo,
                 );
-
-                new_hpo_cols.extend(new_hpo_cols_from_this_block);
-                new_series_contexts.push(new_sc);
+                if !new_hpo_cols_from_block.is_empty() {
+                    inserts.push((new_sc, new_hpo_cols_from_block));
+                }
             }
 
-            for new_hpo_col in new_hpo_cols {
-                let new_hpo_col_name = new_hpo_col.name().clone();
-                table.data_mut().with_column(new_hpo_col).map_err(|_| {
-                    StrategyError::TransformationError {
-                        transformation: "add column".to_string(),
-                        col_name: new_hpo_col_name.to_string(),
-                        table_name: table_name.to_string(),
-                    }
-                })?;
-            }
+            table.bulk_insert_columns_with_series_context(inserts.as_slice())?;
 
-            for new_sc in new_series_contexts {
-                table.add_series_context(new_sc);
-            }
+            let contexts_to_drop: Vec<Identifier> = table
+                .filter_series_context()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::MultiHpoId))
+                .collect()
+                .iter()
+                .map(|sc| sc.get_identifier().clone())
+                .collect();
 
-            table.remove_scs_and_cols_with_context(&Context::None, &Context::MultiHpoId);
+            table.drop_many_series_context(contexts_to_drop.as_slice())?;
         }
 
         Ok(())
@@ -231,6 +225,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
+    use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
 
     #[fixture]
