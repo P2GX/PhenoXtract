@@ -1,4 +1,5 @@
 use crate::config::table_context::Context;
+use crate::validation::error::ValidationError as PxValidationError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -104,13 +105,16 @@ pub enum StrategyError {
         col_name: String,
         table_name: String,
     },
+
     #[error("Strategy '{strategy_name}' unable to map {}", info.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", "))]
     MappingError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
-    DataProcessing(Box<DataProcessingError>),
+    ValidationError(#[from] PxValidationError),
+    #[error(transparent)]
+    DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
 }
