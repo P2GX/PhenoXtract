@@ -9,6 +9,7 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
@@ -157,7 +158,7 @@ fn test_pipeline_integration(
     csv_context_2: TableContext,
     csv_context_3: TableContext,
     excel_context: Vec<TableContext>,
-) {
+) -> Result<(), PipelineError> {
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -231,9 +232,7 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    let res = pipeline.run(&mut data_sources);
-
-    res.unwrap();
+    pipeline.run(&mut data_sources)?;
 
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
@@ -254,4 +253,5 @@ fn test_pipeline_integration(
             expected_phenopackets.get(&extracted_pp_id).unwrap().clone()
         );
     }
+    Ok(())
 }
