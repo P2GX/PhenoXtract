@@ -9,6 +9,7 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::strategies::MappingStrategy;
@@ -159,7 +160,7 @@ fn test_pipeline_integration(
     csv_context_2: TableContext,
     csv_context_3: TableContext,
     excel_context: Vec<TableContext>,
-) {
+) -> Result<(), PipelineError> {
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -273,4 +274,5 @@ fn test_pipeline_integration(
 
         assert_eq!(extracted_pp, extracted_pp_id);
     }
+    Ok(())
 }
