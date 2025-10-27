@@ -10,6 +10,8 @@ use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::prelude::{Column, DataFrame, Series};
 use regex::{Regex, escape};
+use std::mem::ManuallyDrop;
+use std::ptr;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -296,19 +298,30 @@ mod tests {
     }
 }
 
+#[must_use = "Builder must be finalized with .build()"]
 pub struct ContextualizedDataFrameBuilder<'a> {
     cdf: &'a mut ContextualizedDataFrame,
+    is_dirty: bool,
 }
 
 impl<'a> ContextualizedDataFrameBuilder<'a> {
     pub fn new(cdf: &'a mut ContextualizedDataFrame) -> Self {
-        Self { cdf }
+        Self {
+            cdf,
+            is_dirty: false,
+        }
+    }
+
+    fn mark_dirty(mut self) -> Self {
+        self.is_dirty = true;
+        self
     }
 
     pub fn add_series_context(self, sc: SeriesContext) -> Result<Self, StrategyError> {
         check_dangling_sc(&sc, self.cdf)?;
         self.cdf.context.context_mut().push(sc);
-        Ok(self)
+
+        Ok(self.mark_dirty())
     }
 
     pub fn replace_column(
@@ -326,7 +339,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
                 table_name,
             })?;
 
-        Ok(self)
+        Ok(self.mark_dirty())
     }
     pub fn drop_scs_and_cols_with_context(
         mut self,
@@ -346,7 +359,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self = self.remove_many_columns(col_refs.as_slice())?;
         self = self.remove_scs_with_context(header_context, data_context);
-        Ok(self)
+
+        Ok(self.mark_dirty())
     }
 
     pub fn insert_columns_with_series_context(
@@ -370,7 +384,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         }
 
         self.cdf.context.context_mut().push(sc);
-        Ok(self)
+
+        Ok(self.mark_dirty())
     }
 
     pub fn bulk_insert_columns_with_series_context(
@@ -380,7 +395,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         for (sc, cols) in inserts.iter() {
             self = self.insert_columns_with_series_context(sc.clone(), cols)?;
         }
-        Ok(self)
+
+        Ok(self.mark_dirty())
     }
 
     pub fn drop_series_context(mut self, sc_id: &Identifier) -> Result<Self, StrategyError> {
@@ -395,7 +411,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self = self.remove_many_columns(col_refs.as_slice())?;
         self = self.remove_series_context(sc_id);
 
-        Ok(self)
+        Ok(self.mark_dirty())
     }
 
     pub fn drop_many_series_context(
@@ -406,7 +422,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             self = self.drop_series_context(sc_id)?;
         }
 
-        Ok(self)
+        Ok(self.mark_dirty())
     }
 
     fn remove_series_context(self, to_remove: &Identifier) -> Self {
@@ -426,7 +442,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
                 col_name: col_name.to_string(),
                 table_name: self.cdf.context().name().to_string(),
             })?;
-        Ok(self)
+
+        Ok(self.mark_dirty())
     }
 
     fn remove_many_columns(mut self, col_names: &[&str]) -> Result<Self, StrategyError> {
@@ -434,18 +451,42 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             self = self.remove_column(col_name)?;
         }
 
-        Ok(self)
+        Ok(self.mark_dirty())
     }
 
     fn remove_scs_with_context(self, header_context: &Context, data_context: &Context) -> Self {
         self.cdf.context.context_mut().retain(|sc| {
             sc.get_header_context() != header_context || sc.get_data_context() != data_context
         });
-        self
+        self.mark_dirty()
     }
     pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
         self.cdf.validate().unwrap();
-        Ok(self.cdf)
+
+        let builder = ManuallyDrop::new(self);
+        let cdf_ref = unsafe { ptr::read(&builder.cdf) };
+
+        Ok(cdf_ref)
+    }
+
+    /// Only for test use
+    #[cfg(test)]
+    pub(crate) fn build_dirty(self) -> &'a mut ContextualizedDataFrame {
+        let builder = ManuallyDrop::new(self);
+        unsafe { ptr::read(&builder.cdf) }
+    }
+}
+
+impl<'b> Drop for ContextualizedDataFrameBuilder<'b> {
+    fn drop(&mut self) {
+        if self.is_dirty {
+            let struct_name = std::any::type_name::<Self>()
+                .split("::")
+                .last()
+                .unwrap()
+                .to_string();
+            panic!(".build() was not called on {struct_name} after modifying data.");
+        }
     }
 }
 
@@ -508,7 +549,8 @@ mod test_builder {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         cdf.builder()
-            .remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus);
+            .remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
+            .build_dirty();
 
         assert_eq!(cdf.context().context().len(), 2);
     }
@@ -519,7 +561,8 @@ mod test_builder {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         cdf.builder()
-            .remove_scs_with_context(&Context::VitalStatus, &Context::None);
+            .remove_scs_with_context(&Context::VitalStatus, &Context::None)
+            .build_dirty();
 
         assert_eq!(cdf.context().context().len(), 4);
         assert_eq!(cdf.data().width(), 6);
@@ -533,7 +576,8 @@ mod test_builder {
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert_eq!(cdf.context().context().len(), 3);
         assert_eq!(cdf.data().width(), 4);
@@ -546,7 +590,8 @@ mod test_builder {
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert_eq!(cdf.context().context().len(), 4);
         assert_eq!(cdf.data().width(), 6);
@@ -574,7 +619,8 @@ mod test_builder {
 
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         let filter_cols = cdf
             .filter_columns()
@@ -609,7 +655,8 @@ mod test_builder {
 
         cdf.builder()
             .remove_many_columns(&["different", "age"])
-            .unwrap();
+            .unwrap()
+            .build_dirty();
         assert_eq!(cdf.data().width(), expected_width);
         assert!(cdf.data().column("different").is_err());
         assert!(cdf.data().column("age").is_err());
@@ -624,7 +671,8 @@ mod test_builder {
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.builder()
-            .remove_series_context(&Identifier::Regex("bronchitis".to_string()));
+            .remove_series_context(&Identifier::Regex("bronchitis".to_string()))
+            .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
 
@@ -637,7 +685,8 @@ mod test_builder {
 
         cdf.builder()
             .drop_series_context(&Identifier::Regex("bronchitis".to_string()))
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert!(cdf.data().column("bronchitis").is_err());
         assert_eq!(cdf.series_contexts().len(), expected_len);
@@ -655,7 +704,8 @@ mod test_builder {
                 Identifier::Regex("different".to_string()),
                 Identifier::Regex("age".to_string()),
             ])
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert!(cdf.data().column("different").is_err());
         assert!(cdf.data().column("age").is_err());
@@ -675,7 +725,8 @@ mod test_builder {
 
         cdf.builder()
             .insert_columns_with_series_context(sc, &[new_col])
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert!(cdf.data().column("test_col").is_ok());
         assert_eq!(cdf.series_contexts().len(), expected_len);
@@ -701,7 +752,8 @@ mod test_builder {
 
         cdf.builder()
             .bulk_insert_columns_with_series_context(&inserts)
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         assert!(cdf.data().column("test_col_1").is_ok());
         assert!(cdf.data().column("test_col_2").is_ok());
@@ -720,7 +772,8 @@ mod test_builder {
                 "user.name",
                 Series::new("user.name".to_string().into(), transformed_vec),
             )
-            .unwrap();
+            .unwrap()
+            .build_dirty();
 
         let expected_df = df!(
         "user.name" => &[1001,1002,1003],

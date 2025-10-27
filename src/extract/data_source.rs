@@ -102,7 +102,7 @@ impl Extractable for DataSource {
 
                 let mut csv_data = DataSource::conditional_transpose(
                     csv_data,
-                    csv_source.context.name().clone(),
+                    csv_source.context.name(),
                     &csv_source.extraction_config.patients_are_rows,
                     &csv_source.extraction_config.has_headers,
                 )?;

@@ -104,7 +104,8 @@ impl Strategy for OntologyNormaliserStrategy {
                 });
                 table
                     .builder()
-                    .replace_column(&col_name, mapped_column.into_series())?;
+                    .replace_column(&col_name, mapped_column.into_series())?
+                    .build()?;
             }
         }
 
@@ -131,14 +132,17 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
+    use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
-
     #[fixture]
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
             .with_data_context(Context::HpoLabelOrId);
-        TableContext::new("patient_data".to_string(), vec![sc])
+        let sc_pid = SeriesContext::default()
+            .with_identifier(Identifier::from("sub_ids"))
+            .with_data_context(Context::SubjectId);
+        TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }
 
     #[rstest]
@@ -156,7 +160,8 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4"]);
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -173,7 +178,8 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0002099", "HP:0002099", "HP:0001369", "HP:0033327"],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
+        let expected_df =
+            DataFrame::new(vec![expected_col1, expected_col2, col_pid.clone()]).unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -192,7 +198,9 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4"]);
+
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -241,7 +249,8 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0002099", "HP:0002099", "jimmy", "HP:0033327"],
         );
-        let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
+        let df_after_strat =
+            DataFrame::new(vec![col1_after_strat, col2_after_strat, col_pid]).unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
     }
 
@@ -269,7 +278,9 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4", "5", "6"]);
+
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -300,7 +311,7 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
-        assert_eq!(cdf.into_data(), expected_df);
+        let expected_df = DataFrame::new(vec![expected_col1, expected_col2, col_pid]).unwrap();
+        assert_eq!(cdf.data(), &expected_df);
     }
 }

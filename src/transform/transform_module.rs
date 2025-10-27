@@ -4,7 +4,6 @@ use crate::transform::error::{StrategyError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::frame::DataFrame;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -56,7 +55,8 @@ impl TransformerModule {
 
             let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
             cdf.builder()
-                .replace_column(col_name.as_str(), casted_series)?;
+                .replace_column(col_name.as_str(), casted_series)?
+                .build()?;
         }
         Ok(())
     }
@@ -65,6 +65,7 @@ impl TransformerModule {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use polars::df;
     use polars::prelude::{DataType, TimeUnit};
     use rstest::rstest;
@@ -79,7 +80,18 @@ mod tests {
             "datetime_col" => &["2023-01-01T12:00:00", "2023-01-02T13:30:00", "2023-01-03T15:45:00"],
             "string_col" => &["hello", "world", "test"]
         ].unwrap();
-        let mut cdf = ContextualizedDataFrame::new(Default::default(), df.clone());
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_data_context(Context::SubjectId)
+                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                ],
+            ),
+            df.clone(),
+        );
+
         let result = TransformerModule::polars_dataframe_cast_ambivalent(&mut cdf);
         assert!(result.is_ok());
         assert_eq!(

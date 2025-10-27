@@ -91,7 +91,10 @@ impl Strategy for AliasMapStrategy {
                         .take_materialized_series()
                 };
 
-                table.builder().replace_column(&col_name, recast_series)?;
+                table
+                    .builder()
+                    .replace_column(&col_name, recast_series)?
+                    .build()?;
             }
 
             info!("AliasMap strategy successfully applied to table: {table_name}");

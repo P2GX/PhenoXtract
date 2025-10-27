@@ -188,16 +188,19 @@ impl Strategy for MappingStrategy {
                         }
                     });
 
-                table.builder().replace_column(
-                    &col_name,
-                    mapped_column.cast(&self.out_dtype).map_err(|_| {
-                        DataProcessingError::CastingError {
-                            col_name: col_name.to_string(),
-                            from: mapped_column.dtype().clone(),
-                            to: self.out_dtype.clone(),
-                        }
-                    })?,
-                )?;
+                table
+                    .builder()
+                    .replace_column(
+                        &col_name,
+                        mapped_column.cast(&self.out_dtype).map_err(|_| {
+                            DataProcessingError::CastingError {
+                                col_name: col_name.to_string(),
+                                from: mapped_column.dtype().clone(),
+                                to: self.out_dtype.clone(),
+                            }
+                        })?,
+                    )?
+                    .build()?;
             }
         }
 
@@ -222,7 +225,8 @@ mod tests {
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null]
+            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null],
+            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::Null]
         ]
         .unwrap();
 
@@ -232,6 +236,9 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("sex".to_string()))
                     .with_data_context(Context::SubjectSex),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("sub_id".to_string()))
+                    .with_data_context(Context::SubjectId),
             ],
         );
 
@@ -287,6 +294,8 @@ mod tests {
         table
             .builder()
             .replace_column("sex", series.clone())
+            .unwrap()
+            .build()
             .unwrap();
 
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
