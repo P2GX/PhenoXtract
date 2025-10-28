@@ -360,9 +360,12 @@ impl PhenopacketBuilder {
                 continue;
             };
 
-            let corresponding_label_or_id = bi_dict
-                .get(term)
-                .expect("Bidirectional dictionary inconsistency: missing reverse mapping");
+            let corresponding_label_or_id = bi_dict.get(term).unwrap_or_else(|| {
+                panic!(
+                    "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
+                    bi_dict.ontology.clone().into_inner()
+                )
+            });
 
             let (label, id) = if bi_dict.is_primary_label(term) {
                 (term, corresponding_label_or_id)

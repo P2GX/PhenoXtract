@@ -14,6 +14,12 @@ impl ResourceRef {
     }
 }
 
+impl Display for ResourceRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.prefix_id, self.version)
+    }
+}
+
 impl HasVersion for ResourceRef {
     fn version(&self) -> &str {
         &self.version
