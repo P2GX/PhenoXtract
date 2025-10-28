@@ -51,6 +51,9 @@ impl OntologyRef {
         self
     }
 
+    pub fn into_inner(self) -> ResourceRef {
+        self.0
+    }
     pub fn hp(version: Option<String>) -> Self {
         Self::new(Self::HPO_PREFIX.to_string(), version)
     }
