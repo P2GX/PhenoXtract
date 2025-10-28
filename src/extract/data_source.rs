@@ -42,7 +42,7 @@ impl Validate for DataSource {
 }
 impl DataSource {
     fn conditional_transpose(
-        mut cdf: DataFrame,
+        mut df: DataFrame,
         table_name: &str,
         patients_are_rows: &bool,
         has_header: &bool,
@@ -52,7 +52,7 @@ impl DataSource {
 
             if *has_header {
                 // Assuming, that the headers are in the first column of the dataframe
-                let index_col = cdf
+                let index_col = df
                     .get_columns()
                     .first()
                     .ok_or(ExtractionError::EmptyTable(table_name.to_string()))?;
@@ -65,14 +65,14 @@ impl DataSource {
                 .collect()));
 
                 let col_name = index_col.name().to_string();
-                cdf.drop_in_place(col_name.as_str())?;
+                df.drop_in_place(col_name.as_str())?;
             }
 
-            let transposed = cdf.transpose(None, column_names.clone())?;
+            let transposed = df.transpose(None, column_names.clone())?;
             return Ok(transposed);
         }
 
-        Ok(cdf)
+        Ok(df)
     }
 }
 
