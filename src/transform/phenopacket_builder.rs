@@ -256,14 +256,13 @@ impl PhenopacketBuilder {
         disease: Option<&str>,
         progress_status: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let mut disease_term: Option<OntologyClass> = None;
-        let mut resource_ref: Option<ResourceRef> = None;
-
-        if let Some(disease) = disease {
-            let (term, res_ref) = self.query_agnostic_identifiers(disease)?;
-            disease_term = Some(term);
-            resource_ref = Some(res_ref);
-        }
+        let (disease_term, resource_ref) = match disease {
+            Some(disease) => {
+                let (term, res_ref) = self.query_agnostic_identifiers(disease)?;
+                (Some(term), Some(res_ref))
+            }
+            None => (None, None),
+        };
 
         let interpretation = self.get_or_create_interpretation(phenopacket_id, interpretation_id);
 
