@@ -316,6 +316,10 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.is_dirty = true;
         self
     }
+    fn mark_clean(mut self) -> Self {
+        self.is_dirty = false;
+        self
+    }
 
     pub fn add_series_context(self, sc: SeriesContext) -> Result<Self, StrategyError> {
         check_dangling_sc(&sc, self.cdf)?;
@@ -460,10 +464,10 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         });
         self.mark_dirty()
     }
-    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
-        self.cdf.validate().unwrap();
 
-        let builder = ManuallyDrop::new(self);
+    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
+        self.cdf.validate()?;
+        let builder = ManuallyDrop::new(self.mark_clean());
         let cdf_ref = unsafe { ptr::read(&builder.cdf) };
 
         Ok(cdf_ref)
@@ -472,7 +476,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     /// Only for test use
     #[cfg(test)]
     pub(crate) fn build_dirty(self) -> &'a mut ContextualizedDataFrame {
-        let builder = ManuallyDrop::new(self);
+        let builder = ManuallyDrop::new(self.mark_clean());
         unsafe { ptr::read(&builder.cdf) }
     }
 }
