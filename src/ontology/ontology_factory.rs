@@ -79,22 +79,22 @@ impl CachedOntologyFactory {
 
     pub fn build_bidict(
         &mut self,
-        ontology: &OntologyRef,
+        ontology_ref: &OntologyRef,
         file_name: Option<&str>,
     ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
         let key = CacheKey {
-            ontology: ontology.clone(),
+            ontology: ontology_ref.clone(),
             file_name: file_name.map(str::to_string),
         };
 
-        self.build_ontology(ontology, file_name)?;
+        self.build_ontology(ontology_ref, file_name)?;
 
         let cached = self.cache.get(&key).expect("Just inserted");
 
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
                 cached.ontology.clone(),
-                &ontology.to_string(),
+                ontology_ref.prefix_id(),
             ))
         });
 

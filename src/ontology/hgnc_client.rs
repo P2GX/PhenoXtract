@@ -10,6 +10,7 @@ use reqwest;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
+use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;
@@ -268,10 +269,21 @@ impl Default for HGNCClient {
     }
 }
 
+impl Debug for HGNCClient {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HGNCClient")
+            .field("cache_file_path", &self.cache_file_path)
+            .field("api_url", &self.api_url)
+            .field("rate_limiter", &"<Ratelimiter>")
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::skip_in_ci;
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
     use serial_test::serial;
     use tempfile::TempDir;

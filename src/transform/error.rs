@@ -166,4 +166,6 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
+    #[error("Missing BiDict for {0}")]
+    MissingBiDict(String),
 }
