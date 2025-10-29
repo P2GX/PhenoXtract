@@ -1,5 +1,6 @@
 use crate::config::table_context::Identifier;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
 pub enum ValidationError {
@@ -15,4 +16,6 @@ pub enum ValidationError {
         sc_id: Identifier,
         table_name: String,
     },
+    #[error(transparent)]
+    ValidationCrateError(#[from] ValidationErrors),
 }

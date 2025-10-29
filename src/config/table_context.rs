@@ -133,6 +133,11 @@ pub enum Identifier {
     Multi(Vec<String>),
 }
 
+impl From<&str> for Identifier {
+    fn from(value: &str) -> Self {
+        Identifier::Regex(value.to_string())
+    }
+}
 impl Default for Identifier {
     fn default() -> Self {
         Identifier::Regex(String::new())
