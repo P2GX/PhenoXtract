@@ -332,7 +332,7 @@ impl PhenopacketBuilder {
             None => {
                 pp.interpretations.push(Interpretation {
                     id: interpretation_id.to_string(),
-                    progress_status: 1,
+                    progress_status: 1, // IN_PROGRESS
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
@@ -813,7 +813,7 @@ mod tests {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: interpretation_id.to_string(),
-                progress_status: 4,
+                progress_status: 4, // UNSOLVED
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: "MONDO:0012145".to_string(),
@@ -871,7 +871,7 @@ mod tests {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: interpretation_id.to_string(),
-                progress_status: 4,
+                progress_status: 4, // UNSOLVED
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: disease_id.to_string(),
