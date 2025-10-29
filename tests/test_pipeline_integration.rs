@@ -242,7 +242,7 @@ fn test_pipeline_integration(
 
     if let Err(e) = res {
         eprintln!("Error: {}", e);
-        println!("Integration tests failed!");
+        println!("Integration test failed!");
     }
 
     let expected_phenopackets_files =
