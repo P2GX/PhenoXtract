@@ -1127,13 +1127,12 @@ mod tests {
         let disease = "a sever disease, you do not want to have".to_string();
         let omim_id = "OMIM:0099";
         let mondo_ref = OntologyRef::mondo(None);
-        let omim_ref = DatabaseRef::omim(None);
+        let _omim_ref = DatabaseRef::omim(None);
         let label_to_id_mondo =
             HashMap::from_iter([(disease.to_string(), "MONDO:0032".to_string())]);
 
-        //let id_to_label_mondo = label_to_id_mondo.iter().map(|key, value| );
-        //let label_to_id_omim: HashMap<String, String> =
-        // HashMap::from_iter([(disease.to_string(), omim_id.to_string())]);
+        let _label_to_id_omim: HashMap<String, String> =
+            HashMap::from_iter([(disease.to_string(), omim_id.to_string())]);
         let custom_ontology_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
             (
                 mondo_ref.prefix_id().to_string(),
@@ -1162,7 +1161,7 @@ mod tests {
         ]);
         builder.ontology_bidicts = custom_ontology_dicts;
 
-        let (onto_class, resource_ref) = builder.query_disease_identifiers(&disease).unwrap();
+        let (onto_class, _resource_ref) = builder.query_disease_identifiers(&disease).unwrap();
 
         assert_eq!(onto_class.label, disease);
         //assert_eq!(onto_class.id, omim_id);
