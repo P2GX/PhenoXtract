@@ -146,7 +146,6 @@ pub enum CollectorError {
         patient_id: String,
         context: Context,
     },
-
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]

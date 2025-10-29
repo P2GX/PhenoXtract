@@ -14,6 +14,12 @@ impl ResourceRef {
     }
 }
 
+impl Display for ResourceRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.prefix_id, self.version)
+    }
+}
+
 impl HasVersion for ResourceRef {
     fn version(&self) -> &str {
         &self.version
@@ -51,6 +57,9 @@ impl OntologyRef {
         self
     }
 
+    pub fn into_inner(self) -> ResourceRef {
+        self.0
+    }
     pub fn hp(version: Option<String>) -> Self {
         Self::new(Self::HPO_PREFIX.to_string(), version)
     }

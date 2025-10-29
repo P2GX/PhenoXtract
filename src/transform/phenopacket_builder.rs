@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::ontology::{HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
@@ -13,8 +14,8 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Individual, OntologyClass, PhenotypicFeature, Sex, TimeElement,
-    VitalStatus,
+    Age as IndividualAge, Diagnosis, Individual, Interpretation, OntologyClass, PhenotypicFeature,
+    Sex, TimeElement, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -60,7 +61,6 @@ impl PhenopacketBuilder {
         self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
-    #[allow(dead_code)]
     pub fn upsert_individual(
         &mut self,
         phenopacket_id: &str,
@@ -219,26 +219,8 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let term = self.query_hpo_identifiers(phenotype)?;
-
-        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
-        let feature = if let Some(pos) =
-            phenopacket.phenotypic_features.iter().position(|feature| {
-                if let Some(t) = &feature.r#type {
-                    t.id == term.id
-                } else {
-                    false
-                }
-            }) {
-            &mut phenopacket.phenotypic_features[pos]
-        } else {
-            let new_feature = PhenotypicFeature {
-                r#type: Some(term),
-                ..Default::default()
-            };
-            phenopacket.phenotypic_features.push(new_feature);
-            phenopacket.phenotypic_features.last_mut().unwrap()
-        };
+        let phenotype = self.query_hpo_identifiers(phenotype)?;
+        let feature = self.get_or_create_phenotypic_feature(phenopacket_id, phenotype);
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
@@ -266,6 +248,39 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    pub fn upsert_interpretation(
+        &mut self,
+        phenopacket_id: &str,
+        interpretation_id: &str,
+        disease: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        let (disease_term, resource_ref) = match disease {
+            Some(disease) => {
+                let (term, res_ref) = self.query_disease_identifiers(disease)?;
+                (Some(term), Some(res_ref))
+            }
+            None => (None, None),
+        };
+
+        let interpretation = self.get_or_create_interpretation(phenopacket_id, interpretation_id);
+
+        if let Some(term) = disease_term
+            && let Some(res_ref) = &resource_ref
+        {
+            interpretation
+                .diagnosis
+                .get_or_insert_with(|| Diagnosis {
+                    disease: None,
+                    genomic_interpretations: vec![],
+                })
+                .disease = Some(term);
+            interpretation.progress_status = 4; // UNSOLVED
+            self.ensure_resource(phenopacket_id, res_ref);
+        }
+
+        Ok(())
+    }
+
     fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())
@@ -273,6 +288,97 @@ impl PhenopacketBuilder {
                 id: phenopacket_id.to_string(),
                 ..Default::default()
             })
+    }
+
+    fn get_or_create_phenotypic_feature(
+        &mut self,
+        phenopacket_id: &str,
+        phenotype: OntologyClass,
+    ) -> &mut PhenotypicFeature {
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pf_index = pp.phenotypic_features.iter().position(|feature| {
+            if let Some(t) = &feature.r#type {
+                t.id == phenotype.id
+            } else {
+                false
+            }
+        });
+
+        match pf_index {
+            None => {
+                let new_feature = PhenotypicFeature {
+                    r#type: Some(phenotype),
+                    ..Default::default()
+                };
+                pp.phenotypic_features.push(new_feature);
+                pp.phenotypic_features.last_mut().unwrap()
+            }
+            Some(index) => &mut pp.phenotypic_features[index],
+        }
+    }
+    fn get_or_create_interpretation(
+        &mut self,
+        phenopacket_id: &str,
+        interpretation_id: &str,
+    ) -> &mut Interpretation {
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let interpretation_index = pp
+            .interpretations
+            .iter()
+            .position(|inter| inter.id == interpretation_id);
+
+        match interpretation_index {
+            Some(pos) => &mut pp.interpretations[pos],
+            None => {
+                pp.interpretations.push(Interpretation {
+                    id: interpretation_id.to_string(),
+                    progress_status: 1, // IN_PROGRESS
+                    ..Default::default()
+                });
+                pp.interpretations.last_mut().unwrap()
+            }
+        }
+    }
+
+    fn query_disease_identifiers(
+        &self,
+        query: &str,
+    ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
+        for prefix in [
+            // TODO: add 'DatabaseRef::OMIM_PREFIX,', when OMIM is part of the project
+            OntologyRef::MONDO_PREFIX,
+        ] {
+            let bi_dict = self.ontology_bidicts.get(prefix).unwrap();
+            let Some(term) = bi_dict.get(query) else {
+                continue;
+            };
+
+            let corresponding_label_or_id = bi_dict.get(term).unwrap_or_else(|| {
+                panic!(
+                    "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
+                    bi_dict.ontology.clone().into_inner()
+                )
+            });
+
+            let (label, id) = if bi_dict.is_primary_label(term) {
+                (term, corresponding_label_or_id)
+            } else {
+                (corresponding_label_or_id, term)
+            };
+
+            return Ok((
+                OntologyClass {
+                    id: id.to_string(),
+                    label: label.to_string(),
+                },
+                bi_dict.ontology.clone().into_inner(),
+            ));
+        }
+
+        Err(PhenopacketBuilderError::ParsingError {
+            what: "agnostic query".to_string(),
+            value: query.to_string(),
+        })
     }
     fn query_hpo_identifiers(
         &self,
@@ -378,12 +484,14 @@ impl PhenopacketBuilder {
 mod tests {
     use super::*;
 
+    use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
-    use phenopackets::schema::v2::core::{Age as age_struct, Resource};
+    use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
+
     #[fixture]
     fn phenopacket_id() -> String {
         "cohort_patient_001".to_string()
@@ -403,7 +511,17 @@ mod tests {
     fn onset_age() -> Option<&'static str> {
         Some("P48Y4M21D")
     }
-
+    #[fixture]
+    fn mondo_resource() -> Resource {
+        Resource {
+            id: "mondo".to_string(),
+            name: "Mondo Disease Ontology".to_string(),
+            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
+            version: "2025-10-07".to_string(),
+            namespace_prefix: "MONDO".to_string(),
+            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
+        }
+    }
     #[fixture]
     fn onset_age_te() -> Option<TimeElement> {
         Some(TimeElement {
@@ -691,6 +809,96 @@ mod tests {
         let feature_onset = feature.onset.as_ref().unwrap();
         assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
+    #[rstest]
+    fn test_upsert_interpretation_update(mondo_resource: Resource) {
+        let mut builder = build_phenopacket_builder();
+        let phenopacket_id = "pp_001";
+        let interpretation_id = "interpretation_001";
+
+        let existing_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: interpretation_id.to_string(),
+                progress_status: 4, // UNSOLVED
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: "MONDO:0012145".to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        builder
+            .subject_to_phenopacket
+            .insert(phenopacket_id.to_string(), existing_pp.clone());
+
+        builder
+            .upsert_interpretation(
+                phenopacket_id,
+                interpretation_id,
+                Some("inflammatory diarrhea"),
+            )
+            .unwrap();
+
+        let mut expected_pp = existing_pp.clone();
+        expected_pp.interpretations.first_mut().unwrap().diagnosis = Some(Diagnosis {
+            disease: Some(OntologyClass {
+                id: "MONDO:0000252".to_string(),
+                label: "inflammatory diarrhea".to_string(),
+            }),
+            genomic_interpretations: vec![],
+        });
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation(mondo_resource: Resource) {
+        let mut builder = build_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let interpretation_id = "interpretation_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(phenopacket_id, interpretation_id, Some(disease_id))
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: interpretation_id.to_string(),
+                progress_status: 4, // UNSOLVED
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
 
     #[rstest]
     fn test_upsert_individual() {
@@ -910,5 +1118,54 @@ mod tests {
             iri_prefix: "https://omim.org/MIM:$1".to_string(),
         };
         assert_eq!(omim_resrouce, &expected_resource);
+    }
+
+    #[rstest]
+    fn test_disease_query_priority() {
+        // TODO: Finish once omim is part of the project.
+        let mut builder = build_phenopacket_builder();
+        let disease = "a sever disease, you do not want to have".to_string();
+        let omim_id = "OMIM:0099";
+        let mondo_ref = OntologyRef::mondo(None);
+        let _omim_ref = DatabaseRef::omim(None);
+        let label_to_id_mondo =
+            HashMap::from_iter([(disease.to_string(), "MONDO:0032".to_string())]);
+
+        let _label_to_id_omim: HashMap<String, String> =
+            HashMap::from_iter([(disease.to_string(), omim_id.to_string())]);
+        let custom_ontology_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
+            (
+                mondo_ref.prefix_id().to_string(),
+                Arc::new(OntologyBiDict::new(
+                    OntologyRef::mondo(None),
+                    label_to_id_mondo.clone(),
+                    HashMap::from_iter(
+                        label_to_id_mondo
+                            .iter()
+                            .map(|(key, value)| (value.clone(), key.clone())),
+                    ),
+                    Default::default(),
+                )),
+            ),
+            /*(omim_ref.prefix_id()
+            ,BiDict::new(
+                DatabaseRef::omim(None),
+                label_to_id_omim.clone(),
+                 HashMap::from_iter(
+                        label_to_id_omim
+                            .iter()
+                            .map(|(key, value)| (value.clone(), key.clone())),
+                    ),
+                Default::default(),)
+            ),*/
+        ]);
+        builder.ontology_bidicts = custom_ontology_dicts;
+
+        let (onto_class, _resource_ref) = builder.query_disease_identifiers(&disease).unwrap();
+
+        assert_eq!(onto_class.label, disease);
+        //assert_eq!(onto_class.id, omim_id);
+
+        //assert_eq!(resource_ref.prefix_id(), omim_ref.prefix_id());
     }
 }
