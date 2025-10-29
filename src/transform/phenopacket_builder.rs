@@ -11,7 +11,6 @@ use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
@@ -254,7 +253,6 @@ impl PhenopacketBuilder {
         phenopacket_id: &str,
         interpretation_id: &str,
         disease: Option<&str>,
-        progress_status: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let (disease_term, resource_ref) = match disease {
             Some(disease) => {
@@ -266,17 +264,6 @@ impl PhenopacketBuilder {
 
         let interpretation = self.get_or_create_interpretation(phenopacket_id, interpretation_id);
 
-        if let Some(progress_status) = progress_status {
-            let progress_status_typed =
-                ProgressStatus::from_str_name(progress_status).ok_or_else(|| {
-                    PhenopacketBuilderError::ParsingError {
-                        what: "progress status".to_string(),
-                        value: progress_status.to_string(),
-                    }
-                })?;
-            interpretation.progress_status = progress_status_typed.into();
-        }
-
         if let Some(term) = disease_term
             && let Some(res_ref) = &resource_ref
         {
@@ -287,6 +274,7 @@ impl PhenopacketBuilder {
                     genomic_interpretations: vec![],
                 })
                 .disease = Some(term);
+            interpretation.progress_status = 4; // UNSOLVED
             self.ensure_resource(phenopacket_id, res_ref);
         }
 
@@ -344,6 +332,7 @@ impl PhenopacketBuilder {
             None => {
                 pp.interpretations.push(Interpretation {
                     id: interpretation_id.to_string(),
+                    progress_status: 1,
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
@@ -824,7 +813,7 @@ mod tests {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: interpretation_id.to_string(),
-                progress_status: 2, // refers to "COMPLETED"
+                progress_status: 4,
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: "MONDO:0012145".to_string(),
@@ -849,7 +838,6 @@ mod tests {
                 phenopacket_id,
                 interpretation_id,
                 Some("inflammatory diarrhea"),
-                Some("IN_PROGRESS"),
             )
             .unwrap();
 
@@ -861,11 +849,6 @@ mod tests {
             }),
             genomic_interpretations: vec![],
         });
-        expected_pp
-            .interpretations
-            .first_mut()
-            .unwrap()
-            .progress_status = 1;
 
         assert_eq!(
             &expected_pp,
@@ -881,19 +864,14 @@ mod tests {
         let interpretation_id = "interpretation_001";
         let disease_id = "MONDO:0012145";
         builder
-            .upsert_interpretation(
-                phenopacket_id,
-                interpretation_id,
-                Some(disease_id),
-                Some("COMPLETED"),
-            )
+            .upsert_interpretation(phenopacket_id, interpretation_id, Some(disease_id))
             .unwrap();
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: interpretation_id.to_string(),
-                progress_status: 2, // refers to "COMPLETED"
+                progress_status: 4,
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: disease_id.to_string(),
