@@ -337,7 +337,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.cdf
             .data
             .replace(col_name, replacement_data)
-            .map_err(|_| StrategyError::TransformationError {
+            .map_err(|_| StrategyError::BuilderError {
                 transformation: "replace".to_string(),
                 col_name: col_name.to_string(),
                 table_name,
@@ -379,7 +379,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
 
         for col in cols {
             self.cdf.data.with_column(col.clone()).map_err(|_| {
-                StrategyError::TransformationError {
+                StrategyError::BuilderError {
                     transformation: "add column".to_string(),
                     col_name: col.name().to_string(),
                     table_name: table_name.clone(),
@@ -441,7 +441,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.cdf
             .data
             .drop_in_place(col_name)
-            .map_err(|_| StrategyError::TransformationError {
+            .map_err(|_| StrategyError::BuilderError {
                 transformation: "drop column".to_string(),
                 col_name: col_name.to_string(),
                 table_name: self.cdf.context().name().to_string(),

@@ -100,7 +100,7 @@ impl From<CollectorError> for TransformError {
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
     #[error("Could not {transformation} column '{col_name}' for table '{table_name}'")]
-    TransformationError {
+    BuilderError {
         transformation: String,
         col_name: String,
         table_name: String,
