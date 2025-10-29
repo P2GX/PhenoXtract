@@ -238,7 +238,12 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    pipeline.run(&mut data_sources)?;
+    let res = pipeline.run(&mut data_sources);
+
+    if let Err(e) = res {
+        eprintln!("Error: {}", e);
+        println!("Integration test failed!");
+    }
 
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();

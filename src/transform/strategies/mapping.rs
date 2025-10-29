@@ -156,38 +156,33 @@ impl Strategy for MappingStrategy {
                     Cow::Borrowed(original_column)
                 };
 
-                let mapped_column = col
-                    .str()
-                    .map_err(|_| DataProcessingError::CastingError {
-                        col_name: col.name().to_string(),
-                        from: col.dtype().clone(),
-                        to: DataType::String,
-                    })?
-                    .apply_mut(|cell_value| {
-                        if cell_value.is_empty() {
-                            return cell_value;
-                        }
+                let mapped_column = col.str()?.apply_mut(|cell_value| {
+                    if cell_value.is_empty() {
+                        return cell_value;
+                    }
 
-                        match self.synonym_map.get(cell_value.to_lowercase().trim()) {
-                            Some(alias) => {
-                                debug!("Converted '{cell_value}' to '{alias}'");
-                                alias
-                            }
-                            None => {
+                    match self.synonym_map.get(cell_value.to_lowercase().trim()) {
+                        Some(alias) => {
+                            debug!("Converted '{cell_value}' to '{alias}'");
+                            alias
+                        }
+                        None => {
+                            let mapping_error_info = MappingErrorInfo {
+                                column: col.name().to_string(),
+                                table: table.context().name().to_string(),
+                                old_value: cell_value.to_string(),
+                                possible_mappings: MappingSuggestion::from_hashmap(
+                                    &self.synonym_map,
+                                ),
+                            };
+                            if !error_info.contains(&mapping_error_info) {
                                 warn!("Unable to convert map '{cell_value}'");
-                                error_info.insert(MappingErrorInfo {
-                                    column: col.name().to_string(),
-                                    table: table.context().name().to_string(),
-                                    old_value: cell_value.to_string(),
-                                    possible_mappings: MappingSuggestion::from_hashmap(
-                                        &self.synonym_map,
-                                    ),
-                                });
-                                cell_value
+                                error_info.insert(mapping_error_info);
                             }
+                            cell_value
                         }
-                    });
-
+                    }
+                });
                 table
                     .builder()
                     .replace_column(
