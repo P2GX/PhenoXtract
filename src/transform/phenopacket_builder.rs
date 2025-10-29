@@ -256,7 +256,7 @@ impl PhenopacketBuilder {
     ) -> Result<(), PhenopacketBuilderError> {
         let (disease_term, resource_ref) = match disease {
             Some(disease) => {
-                let (term, res_ref) = self.query_agnostic_identifiers(disease)?;
+                let (term, res_ref) = self.query_disease_identifiers(disease)?;
                 (Some(term), Some(res_ref))
             }
             None => (None, None),
@@ -340,11 +340,15 @@ impl PhenopacketBuilder {
         }
     }
 
-    fn query_agnostic_identifiers(
+    fn query_disease_identifiers(
         &self,
         query: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
-        for bi_dict in self.ontology_bidicts.values() {
+        for prefix in [
+            // TODO: add 'DatabaseRef::OMIM_PREFIX,', when OMIM is part of the project
+            OntologyRef::MONDO_PREFIX,
+        ] {
+            let bi_dict = self.ontology_bidicts.get(prefix).unwrap();
             let Some(term) = bi_dict.get(query) else {
                 continue;
             };
@@ -480,12 +484,14 @@ impl PhenopacketBuilder {
 mod tests {
     use super::*;
 
+    use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
     use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
+
     #[fixture]
     fn phenopacket_id() -> String {
         "cohort_patient_001".to_string()
@@ -1112,5 +1118,55 @@ mod tests {
             iri_prefix: "https://omim.org/MIM:$1".to_string(),
         };
         assert_eq!(omim_resrouce, &expected_resource);
+    }
+
+    #[rstest]
+    fn test_disease_query_priority() {
+        // TODO: Finish once omim is part of the project.
+        let mut builder = build_phenopacket_builder();
+        let disease = "a sever disease, you do not want to have".to_string();
+        let omim_id = "OMIM:0099";
+        let mondo_ref = OntologyRef::mondo(None);
+        let omim_ref = DatabaseRef::omim(None);
+        let label_to_id_mondo =
+            HashMap::from_iter([(disease.to_string(), "MONDO:0032".to_string())]);
+
+        //let id_to_label_mondo = label_to_id_mondo.iter().map(|key, value| );
+        //let label_to_id_omim: HashMap<String, String> =
+        // HashMap::from_iter([(disease.to_string(), omim_id.to_string())]);
+        let custom_ontology_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
+            (
+                mondo_ref.prefix_id().to_string(),
+                Arc::new(OntologyBiDict::new(
+                    OntologyRef::mondo(None),
+                    label_to_id_mondo.clone(),
+                    HashMap::from_iter(
+                        label_to_id_mondo
+                            .iter()
+                            .map(|(key, value)| (value.clone(), key.clone())),
+                    ),
+                    Default::default(),
+                )),
+            ),
+            /*(omim_ref.prefix_id()
+            ,BiDict::new(
+                DatabaseRef::omim(None),
+                label_to_id_omim.clone(),
+                 HashMap::from_iter(
+                        label_to_id_omim
+                            .iter()
+                            .map(|(key, value)| (value.clone(), key.clone())),
+                    ),
+                Default::default(),)
+            ),*/
+        ]);
+        builder.ontology_bidicts = custom_ontology_dicts;
+
+        let (onto_class, resource_ref) = builder.query_disease_identifiers(&disease).unwrap();
+
+        assert_eq!(onto_class.label, disease);
+        //assert_eq!(onto_class.id, omim_id);
+
+        //assert_eq!(resource_ref.prefix_id(), omim_ref.prefix_id());
     }
 }
