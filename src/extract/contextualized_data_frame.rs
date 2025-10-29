@@ -495,7 +495,7 @@ impl<'b> Drop for ContextualizedDataFrameBuilder<'b> {
 }
 
 #[cfg(test)]
-mod test_builder {
+mod builder_tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::extract::contextualized_dataframe_filters::Filter;
