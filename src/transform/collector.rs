@@ -854,7 +854,12 @@ mod tests {
             .with_data_context(Context::OnsetDateTime)
             .with_building_block_id(Some("Block_1".to_string()));
 
-        patient_cdf.add_series_context(onset_dt_sc).unwrap();
+        patient_cdf
+            .builder()
+            .add_series_context(onset_dt_sc)
+            .unwrap()
+            .build()
+            .unwrap();
 
         let phenopacket_id = "cohort2019-P006".to_string();
         collector

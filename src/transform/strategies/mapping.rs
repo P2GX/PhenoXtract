@@ -187,10 +187,10 @@ impl Strategy for MappingStrategy {
                             }
                         }
                     });
-                let table_name = table.context().name().to_string();
+
                 table
-                    .data_mut()
-                    .replace(
+                    .builder()
+                    .replace_column(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
                             DataProcessingError::CastingError {
@@ -199,12 +199,8 @@ impl Strategy for MappingStrategy {
                                 to: self.out_dtype.clone(),
                             }
                         })?,
-                    )
-                    .map_err(|_| StrategyError::TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name,
-                        table_name,
-                    })?;
+                    )?
+                    .build()?;
             }
         }
 
@@ -229,7 +225,8 @@ mod tests {
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null]
+            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null],
+            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::Null]
         ]
         .unwrap();
 
@@ -239,6 +236,9 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("sex".to_string()))
                     .with_data_context(Context::SubjectSex),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("sub_id".to_string()))
+                    .with_data_context(Context::SubjectId),
             ],
         );
 
@@ -247,7 +247,7 @@ mod tests {
 
     #[rstest]
     fn test_sex_mapping_strategy_success() {
-        let mut table = make_test_dataframe();
+        let table = make_test_dataframe();
         let filtered_table = table
             .clone()
             .into_data()
@@ -255,7 +255,8 @@ mod tests {
             .filter(col("sex").eq(lit("mole")).not())
             .collect()
             .unwrap();
-        table.set_data(filtered_table);
+
+        let mut table = ContextualizedDataFrame::new(table.context().clone(), filtered_table);
 
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 
@@ -290,7 +291,12 @@ mod tests {
         let mut table = make_test_dataframe();
 
         let series = Series::new("sex".into(), vec![5.6]);
-        table.data_mut().replace("sex", series.clone()).unwrap();
+        table
+            .builder()
+            .replace_column("sex", series.clone())
+            .unwrap()
+            .build()
+            .unwrap();
 
         let mut strategy = MappingStrategy::default_sex_mapping_strategy();
         strategy.synonym_map = HashMap::from([("5.6".to_string(), "male".to_string())]);
