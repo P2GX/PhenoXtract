@@ -140,7 +140,7 @@ mod tests {
             .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
             .with_data_context(Context::HpoLabelOrId);
         let sc_pid = SeriesContext::default()
-            .with_identifier(Identifier::from("sub_ids"))
+            .with_identifier(Identifier::from("subject_ids"))
             .with_data_context(Context::SubjectId);
         TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }
@@ -160,7 +160,7 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4"]);
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
         let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
@@ -198,7 +198,7 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4"]);
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
 
         let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
@@ -278,7 +278,7 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let col_pid = Column::new("sub_ids".into(), ["1", "2", "3", "4", "5", "6"]);
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
 
         let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
