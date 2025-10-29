@@ -378,13 +378,14 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         let table_name = self.cdf.context().name().to_string();
 
         for col in cols {
-            self.cdf.data.with_column(col.clone()).map_err(|_| {
-                StrategyError::BuilderError {
+            self.cdf
+                .data
+                .with_column(col.clone())
+                .map_err(|_| StrategyError::BuilderError {
                     transformation: "add column".to_string(),
                     col_name: col.name().to_string(),
                     table_name: table_name.clone(),
-                }
-            })?;
+                })?;
         }
 
         self.cdf.context.context_mut().push(sc);
