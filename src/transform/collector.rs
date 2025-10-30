@@ -297,10 +297,7 @@ impl Collector {
         Ok(())
     }
 
-    /// this function finds diseases associated with the patient
-    /// and the genes, variants, and allelic states associated with that disease (associated here = in the same row of the patient_cdf)
-    /// and passes the disease, alongside the genes, variants and allelic states to the collector
-    /// which will then use that data to complete the Phenopacket, making sensible inferences
+    /// Finds all diseases associated with a patient and gives them to the phenopacket builder
     fn collect_interpretations(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
@@ -316,72 +313,26 @@ impl Collector {
 
         for disease_sc in disease_in_cells_scs {
             let sc_id = disease_sc.get_identifier();
-            let bb_id = disease_sc.get_building_block_id();
-            let disease_cols = patient_cdf.get_columns(sc_id);
 
-            //let's assume there's exactly one disease_col per SC otherwise things are weird
-            let disease_col = disease_cols.first().unwrap();
-            let stringified_disease_col = disease_col.str().unwrap();
-
-            let stringified_linked_hgnc_cols = Self::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::HgncSymbolOrId,
-            )?;
-            let stringified_linked_hgvs_cols = Self::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::Hgvs,
-            )?;
-            let stringified_linked_geno_cols = Self::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::GenoLabelOrId,
-            )?;
+            let stringified_disease_cols = patient_cdf
+                .get_columns(sc_id)
+                .iter()
+                .map(|col| col.str().unwrap())
+                .collect::<Vec<&StringChunked>>();
 
             let n_rows = patient_cdf.data().height();
 
             for row_idx in 0..n_rows {
-                let disease = stringified_disease_col.get(row_idx);
-
-                let genes = stringified_linked_hgnc_cols
-                    .iter()
-                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-                let variants = stringified_linked_hgvs_cols
-                    .iter()
-                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-                let genos = stringified_linked_geno_cols
-                    .iter()
-                    .filter_map(|geno_col| geno_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-
-                if let Some(disease) = disease {
-                    self.phenopacket_builder.upsert_interpretation(
-                        phenopacket_id,
-                        disease,
-                        genes,
-                        variants,
-                        genos,
-                    )?;
-                } else {
-                    if !genes.is_empty() {
-                        warn!(
-                            "Genes were found with no associated disease for patient {phenopacket_id}"
-                        );
+                for stringified_disease_col in stringified_disease_cols.iter() {
+                    let disease = stringified_disease_col.get(row_idx);
+                    if let Some(disease) = disease {
+                        let interpretation_id = format!("{phenopacket_id}-{disease}");
+                        self.phenopacket_builder.upsert_interpretation(
+                            phenopacket_id,
+                            interpretation_id.as_str(),
+                            Some(disease),
+                        )?;
                     }
-                    if !variants.is_empty() {
-                        warn!(
-                            "Variants were found with no associated disease for patient {phenopacket_id}"
-                        );
-                    }
-                    if !genos.is_empty() {
-                        warn!(
-                            "Allelic states were found with no associated disease for patient {phenopacket_id}"
-                        );
-                    }
-                    continue;
                 }
             }
         }
