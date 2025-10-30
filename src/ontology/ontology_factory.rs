@@ -101,6 +101,50 @@ impl CachedOntologyFactory {
         Ok(bidict.clone())
     }
 
+    pub fn hp(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::hp(version);
+        self.build_ontology(&onto_ref, None)
+    }
+    pub fn hp_bi_dict(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::hp(version);
+        self.build_bidict(&onto_ref, None)
+    }
+    pub fn mondo(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::mondo(version);
+        self.build_ontology(&onto_ref, None)
+    }
+    pub fn mondo_bi_dict(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::mondo(version);
+        self.build_bidict(&onto_ref, None)
+    }
+
+    pub fn geno(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::geno(version);
+        self.build_ontology(&onto_ref, None)
+    }
+    pub fn geno_bi_dict(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+        let onto_ref = OntologyRef::geno(version);
+        self.build_bidict(&onto_ref, None)
+    }
+
     fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
