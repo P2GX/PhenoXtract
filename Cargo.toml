@@ -29,6 +29,7 @@ ratelimit = "0.10.0"
 redb = "3.1.0"
 hgvs = "0.19.1"
 thiserror = "2.0.17"
+fenominal = { git = 'https://github.com/P2GX/fenominal.git', tag = '0.1.16' }
 
 [dev-dependencies]
 rstest = "0.26.1"

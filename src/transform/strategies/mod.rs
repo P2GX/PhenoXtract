@@ -5,5 +5,8 @@ pub use mapping::MappingStrategy;
 pub mod ontology_normaliser;
 pub use ontology_normaliser::OntologyNormaliserStrategy;
 
+pub mod fenominal;
+pub use fenominal::FenominalStrategy;
 pub mod multi_hpo_col_expansion;
+
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;
