@@ -936,9 +936,10 @@ mod tests {
                     status: Status::Deceased as i32,
                     ..Default::default()
                 }),
+
                 ..Default::default()
             }),
-            //meta_data: meta_data.clone(),
+            meta_data: Some(MetaData::default()),
             ..Default::default()
         };
 
@@ -1195,6 +1196,7 @@ mod tests {
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             subject: Some(indiv),
+            meta_data: Some(MetaData::default()),
             ..Default::default()
         };
 
