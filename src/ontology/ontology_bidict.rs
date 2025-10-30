@@ -83,7 +83,8 @@ impl OntologyBiDict {
         let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
 
         for term in ontology.iter_terms() {
-            if term.is_current() {
+            let prefix = term.identifier().prefix().to_string().to_lowercase();
+            if term.is_current() && prefix == ontology_prefix.to_lowercase() {
                 label_to_id.insert(term.name().to_lowercase(), term.identifier().to_string());
                 term.synonyms().iter().for_each(|syn| {
                     synonym_to_id.insert(syn.name.to_lowercase(), term.identifier().to_string());
@@ -109,30 +110,26 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
 
         assert_eq!(hpo_dict.get("HP:0000256"), Some("Macrocephaly"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
         assert_eq!(hpo_dict.get("Macrocephaly"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
         assert_eq!(hpo_dict.get("Big head"), Some("HP:0000256"));
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), &OntologyRef::hp(None).to_string());
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
         let hpo_id = hpo_dict.get("Big head");
         assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Macrocephaly"));
     }

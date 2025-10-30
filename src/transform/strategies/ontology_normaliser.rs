@@ -1,14 +1,14 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::StrategyError::{MappingError, TransformationError};
+use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use polars::prelude::{DataType, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -73,8 +73,6 @@ impl Strategy for OntologyNormaliserStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name().to_string();
-
             let column_names: Vec<PlSmallStr> = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
@@ -94,24 +92,23 @@ impl Strategy for OntologyNormaliserStrategy {
                         curie_id
                     } else {
                         if !cell_value.is_empty() {
-                            error_info.insert(MappingErrorInfo {
+                            let mapping_error_info = MappingErrorInfo {
                                 column: col.name().to_string(),
                                 table: table.context().name().to_string(),
                                 old_value: cell_value.to_string(),
                                 possible_mappings: vec![],
-                            });
+                            };
+                            if !error_info.contains(&mapping_error_info) {
+                                error_info.insert(mapping_error_info);
+                            }
                         }
                         cell_value
                     }
                 });
                 table
-                    .data_mut()
-                    .replace(&col_name, mapped_column)
-                    .map_err(|_| TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name: col_name.to_string(),
-                        table_name: table_name.to_string(),
-                    })?;
+                    .builder()
+                    .replace_column(&col_name, mapped_column.into_series())?
+                    .build()?;
             }
         }
 
@@ -138,14 +135,17 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
+    use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
-
     #[fixture]
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
             .with_data_context(Context::HpoLabelOrId);
-        TableContext::new("patient_data".to_string(), vec![sc])
+        let sc_pid = SeriesContext::default()
+            .with_identifier(Identifier::from("subject_ids"))
+            .with_data_context(Context::SubjectId);
+        TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }
 
     #[rstest]
@@ -163,7 +163,8 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -180,7 +181,8 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0002099", "HP:0002099", "HP:0001369", "HP:0033327"],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
+        let expected_df =
+            DataFrame::new(vec![expected_col1, expected_col2, col_pid.clone()]).unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -199,7 +201,9 @@ mod tests {
                 "Nail psoriasis",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -248,7 +252,8 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0002099", "HP:0002099", "jimmy", "HP:0033327"],
         );
-        let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
+        let df_after_strat =
+            DataFrame::new(vec![col1_after_strat, col2_after_strat, col_pid]).unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
     }
 
@@ -276,7 +281,9 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
+
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -307,7 +314,7 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
-        assert_eq!(cdf.into_data(), expected_df);
+        let expected_df = DataFrame::new(vec![expected_col1, expected_col2, col_pid]).unwrap();
+        assert_eq!(cdf.data(), &expected_df);
     }
 }

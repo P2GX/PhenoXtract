@@ -18,15 +18,15 @@ pub enum ConstructionError {
 #[derive(Debug, Error)]
 pub enum PipelineError {
     #[allow(dead_code)]
-    #[error("Extraction error: {0}")]
+    #[error(transparent)]
     Extraction(#[from] ExtractionError),
     #[allow(dead_code)]
-    #[error("Transform error: {0}")]
+    #[error(transparent)]
     Transform(#[from] TransformError),
     #[allow(dead_code)]
-    #[error("Validation error: {0}")]
+    #[error(transparent)]
     Validation(#[from] ValidationErrors),
     #[allow(dead_code)]
-    #[error("Load error: {0}")]
+    #[error(transparent)]
     Load(#[from] LoadError),
 }

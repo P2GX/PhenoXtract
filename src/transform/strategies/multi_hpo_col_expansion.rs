@@ -105,12 +105,11 @@ impl Strategy for MultiHPOColExpansionStrategy {
                     bb_id,
                     patient_to_hpo,
                 );
+
                 if !new_hpo_cols_from_block.is_empty() {
                     inserts.push((new_sc, new_hpo_cols_from_block));
                 }
             }
-
-            table.bulk_insert_columns_with_series_context(inserts.as_slice())?;
 
             let contexts_to_drop: Vec<Identifier> = table
                 .filter_series_context()
@@ -121,7 +120,11 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 .map(|sc| sc.get_identifier().clone())
                 .collect();
 
-            table.drop_many_series_context(contexts_to_drop.as_slice())?;
+            let cdf_builder = table.builder();
+            cdf_builder
+                .bulk_insert_columns_with_series_context(inserts.as_slice())?
+                .drop_many_series_context(contexts_to_drop.as_slice())?
+                .build()?;
         }
 
         Ok(())

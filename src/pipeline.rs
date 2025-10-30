@@ -4,6 +4,7 @@ use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 use crate::transform::transform_module::TransformerModule;
+use std::collections::HashMap;
 
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::CachedOntologyFactory;
@@ -87,7 +88,7 @@ impl Pipeline {
         // TOOD: Read hpo version from config later
         let mut factory = CachedOntologyFactory::default();
         let hpo_dict = factory.build_bidict(&OntologyRef::hp(None), None).unwrap();
-        let builder = PhenopacketBuilder::new(hpo_dict);
+        let builder = PhenopacketBuilder::new(HashMap::default());
         let tf_module =
             TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
         let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
