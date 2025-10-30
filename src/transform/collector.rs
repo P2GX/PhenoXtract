@@ -816,9 +816,10 @@ mod tests {
                     status: Status::Deceased as i32,
                     ..Default::default()
                 }),
+
                 ..Default::default()
             }),
-            //meta_data: meta_data.clone(),
+            meta_data: Some(MetaData::default()),
             ..Default::default()
         };
 
