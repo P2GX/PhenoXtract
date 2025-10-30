@@ -45,12 +45,11 @@ impl PhenopacketBuilder {
         let now = Utc::now().to_string();
 
         phenopackets.iter_mut().for_each(|pp| {
-            if let Some(metadata) = pp.meta_data.as_mut() {
-                metadata.created = Some(
-                    Self::try_parse_timestamp(&now)
-                        .expect("Failed to parse current timestamp for phenopacket metadata"),
-                )
-            }
+            let metadata = pp.meta_data.get_or_insert(Default::default());
+            metadata.created = Some(
+                Self::try_parse_timestamp(&now)
+                    .expect("Failed to parse current timestamp for phenopacket metadata"),
+            )
         });
 
         phenopackets
@@ -453,6 +452,43 @@ mod tests {
     fn build_phenopacket_builder() -> PhenopacketBuilder {
         PhenopacketBuilder::new(build_dicts())
     }
+
+    #[rstest]
+    fn test_build(phenopacket_id: String) {
+        use phenopackets::schema::v2::Phenopacket;
+
+        let mut builder = build_phenopacket_builder();
+        let phenopacket = Phenopacket {
+            id: phenopacket_id.clone(),
+            subject: Some(Individual {
+                id: "subject_1".to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        builder
+            .subject_to_phenopacket
+            .insert(phenopacket_id.clone(), phenopacket);
+
+        let builds = builder.build();
+        let build_pp = builds.first().unwrap();
+
+        assert_eq!(build_pp.id, phenopacket_id);
+        assert_eq!(
+            build_pp.subject,
+            Some(Individual {
+                id: "subject_1".to_string(),
+                ..Default::default()
+            })
+        );
+
+        if let Some(mm) = &build_pp.meta_data {
+            assert!(mm.created.is_some());
+        } else {
+            panic!("Meta data was None, when it should have been Some")
+        }
+    }
+
     #[rstest]
     fn test_upsert_phenotypic_feature_success(
         phenopacket_id: String,
