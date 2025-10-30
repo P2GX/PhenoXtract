@@ -1076,6 +1076,7 @@ mod tests {
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             subject: Some(indiv),
+            meta_data: Some(MetaData::default()),
             ..Default::default()
         };
 
