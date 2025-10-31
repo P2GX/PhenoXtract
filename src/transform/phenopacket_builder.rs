@@ -992,6 +992,82 @@ mod tests {
     }
 
     #[rstest]
+    fn test_upsert_disease(mondo_resource: Resource) {
+        let mut builder = build_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let interpretation_id = "interpretation_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: interpretation_id.to_string(),
+                progress_status: 4, // UNSOLVED
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_disease_twice(mondo_resource: Resource) {
+        let mut builder = build_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let interpretation_id = "interpretation_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: interpretation_id.to_string(),
+                progress_status: 4, // UNSOLVED
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
     fn test_upsert_individual() {
         let mut builder = build_phenopacket_builder();
 
