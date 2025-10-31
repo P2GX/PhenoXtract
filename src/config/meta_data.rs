@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 /// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct MetaData {
+    pub cohort_name: String,
     #[serde(default = "default_creator")]
     pub created_by: String,
     #[serde(default = "default_creator")]
     pub submitted_by: String,
-    pub cohort_name: String,
     #[serde(default = "crate::ontology::OntologyRef::hp")]
     pub hp_ref: OntologyRef,
     #[serde(default = "crate::ontology::OntologyRef::mondo")]
