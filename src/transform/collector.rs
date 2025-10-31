@@ -165,13 +165,6 @@ impl Collector {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
 
-            if hpo_cols.is_empty() {
-                warn!(
-                    "HPO Series context {hpo_sc:?} found with no associated columns. It has been ignored during collection."
-                );
-                continue;
-            }
-
             let linked_onset_cols = hpo_sc.get_building_block_id().map_or(vec![], |bb_id| {
                 patient_cdf
                     .filter_columns()
