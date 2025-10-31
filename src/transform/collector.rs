@@ -334,7 +334,19 @@ impl Collector {
                         self.phenopacket_builder.upsert_interpretation(
                             phenopacket_id,
                             interpretation_id.as_str(),
-                            Some(disease),
+                            disease,
+                        )?;
+
+                        self.phenopacket_builder.upsert_disease(
+                            phenopacket_id,
+                            disease,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
                         )?;
                     }
                 }

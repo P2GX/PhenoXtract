@@ -14,8 +14,8 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Individual, Interpretation, OntologyClass, PhenotypicFeature,
-    Sex, TimeElement, VitalStatus,
+    Age as IndividualAge, Diagnosis, Disease, Individual, Interpretation, OntologyClass,
+    PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -208,9 +208,6 @@ impl PhenopacketBuilder {
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
         }
-        if onset.is_some() {
-            warn!("onset phenotypic feature is not fully implemented yet");
-        }
         if resolution.is_some() {
             warn!("resolution phenotypic feature not implemented yet");
         }
@@ -251,31 +248,66 @@ impl PhenopacketBuilder {
         &mut self,
         phenopacket_id: &str,
         interpretation_id: &str,
-        disease: Option<&str>,
+        disease: &str,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (disease_term, resource_ref) = match disease {
-            Some(disease) => {
-                let (term, res_ref) = self.query_disease_identifiers(disease)?;
-                (Some(term), Some(res_ref))
-            }
-            None => (None, None),
-        };
+        let (term, res_ref) = self.query_disease_identifiers(disease)?;
 
         let interpretation = self.get_or_create_interpretation(phenopacket_id, interpretation_id);
 
-        if let Some(term) = disease_term
-            && let Some(res_ref) = &resource_ref
-        {
-            interpretation
-                .diagnosis
-                .get_or_insert_with(|| Diagnosis {
-                    disease: None,
-                    genomic_interpretations: vec![],
-                })
-                .disease = Some(term);
-            interpretation.progress_status = 4; // UNSOLVED
-            self.ensure_resource(phenopacket_id, res_ref);
+        interpretation
+            .diagnosis
+            .get_or_insert_with(|| Diagnosis {
+                disease: None,
+                genomic_interpretations: vec![],
+            })
+            .disease = Some(term);
+        interpretation.progress_status = 4; // UNSOLVED
+        self.ensure_resource(phenopacket_id, &res_ref);
+
+        Ok(())
+    }
+
+    pub fn upsert_disease(
+        &mut self,
+        phenopacket_id: &str,
+        disease: &str,
+        excluded: Option<bool>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        disease_stage: Option<&str>,
+        clinical_tnm_finding: Option<&str>,
+        primary_site: Option<&str>,
+        laterality: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        if excluded.is_some() {
+            warn!("excluded disease not implemented yet");
         }
+        if resolution.is_some() {
+            warn!("resolution disease not implemented yet");
+        }
+        if disease_stage.is_some() {
+            warn!("disease stage of disease not implemented yet");
+        }
+        if clinical_tnm_finding.is_some() {
+            warn!("clinical_tnm_finding disease not implemented yet");
+        }
+        if primary_site.is_some() {
+            warn!("primary_site disease not implemented yet");
+        }
+        if laterality.is_some() {
+            warn!("laterality disease not implemented yet");
+        }
+
+        let (disease_term, res_ref) = self.query_disease_identifiers(disease)?;
+
+        let disease = self.get_or_create_disease(phenopacket_id, &disease_term);
+
+        if let Some(onset) = onset {
+            let onset_te = Self::try_parse_time_element(onset)?;
+            disease.onset = Some(onset_te);
+        }
+
+        self.ensure_resource(phenopacket_id, &res_ref);
 
         Ok(())
     }
@@ -335,6 +367,30 @@ impl PhenopacketBuilder {
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
+            }
+        }
+    }
+
+    fn get_or_create_disease(
+        &mut self,
+        phenopacket_id: &str,
+        disease: &OntologyClass,
+    ) -> &mut Disease {
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        let disease_index = pp
+            .diseases
+            .iter()
+            .position(|dis| dis.term.as_ref() == Some(disease));
+
+        match disease_index {
+            Some(pos) => &mut pp.diseases[pos],
+            None => {
+                pp.diseases.push(Disease {
+                    term: Some(disease.clone()),
+                    ..Default::default()
+                });
+                pp.diseases.last_mut().unwrap()
             }
         }
     }
@@ -879,11 +935,7 @@ mod tests {
             .insert(phenopacket_id.to_string(), existing_pp.clone());
 
         builder
-            .upsert_interpretation(
-                phenopacket_id,
-                interpretation_id,
-                Some("inflammatory diarrhea"),
-            )
+            .upsert_interpretation(phenopacket_id, interpretation_id, "inflammatory diarrhea")
             .unwrap();
 
         let mut expected_pp = existing_pp.clone();
@@ -909,7 +961,7 @@ mod tests {
         let interpretation_id = "interpretation_001";
         let disease_id = "MONDO:0012145";
         builder
-            .upsert_interpretation(phenopacket_id, interpretation_id, Some(disease_id))
+            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
             .unwrap();
 
         let expected_pp = Phenopacket {
