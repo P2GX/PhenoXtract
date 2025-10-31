@@ -30,9 +30,9 @@ pub(crate) fn validate_one_context_per_column(
 }
 
 pub(crate) fn validate_single_subject_id_column(
-    table_context: &ContextualizedDataFrame,
+    cdf: &ContextualizedDataFrame,
 ) -> Result<(), ValidationError> {
-    let is_valid = table_context
+    let is_valid = cdf
         .filter_columns()
         .where_data_context(Filter::Is(&Context::SubjectId))
         .collect()
@@ -43,24 +43,24 @@ pub(crate) fn validate_single_subject_id_column(
         Ok(())
     } else {
         let mut error = ValidationError::new("subject_id_column");
-        error.add_param(Cow::from("table_name"), &table_context.context().name());
+        error.add_param(Cow::from("table_name"), &cdf.context().name());
 
         let error_message = format!(
             "Found more than one or no column with data context {} in table {}",
             Context::SubjectId,
-            table_context.context().name()
+            cdf.context().name()
         );
         Err(error.with_message(Cow::Owned(error_message)))
     }
 }
 
 pub(crate) fn validate_dangling_sc(
-    table_context: &ContextualizedDataFrame,
+    cdf: &ContextualizedDataFrame,
 ) -> Result<(), ValidationError> {
     let mut error = ValidationError::new("dangling_series_context");
 
-    for sc in table_context.series_contexts() {
-        if table_context.get_columns(sc.get_identifier()).is_empty() {
+    for sc in cdf.series_contexts() {
+        if cdf.get_columns(sc.get_identifier()).is_empty() {
             error.add_param(Cow::from("series_context"), &sc);
             let error_message = format!(
                 "SeriesContext identifier '{}' does not point to any column",
