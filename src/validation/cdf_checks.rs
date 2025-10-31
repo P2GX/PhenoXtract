@@ -1,5 +1,4 @@
-use crate::config::table_context::{Identifier, SeriesContext};
-use crate::extract::ContextualizedDataFrame;
+use crate::config::table_context::Identifier;
 use crate::validation::error::ValidationError as PxValidationError;
 use ordermap::OrderSet;
 use regex::Regex;
@@ -35,23 +34,6 @@ pub(crate) fn check_orphaned_columns(
             when: format!("inserting SeriesContext with id '{}'.", sc_identifier,).to_string(),
         });
     }
-    Ok(())
-}
-
-/// Validates that a SeriesContext matches at least one column in the dataframe.
-///
-/// Returns an error if the SeriesContext has no matching columns (dangling).
-pub(crate) fn check_dangling_sc(
-    sc: &SeriesContext,
-    cfd: &ContextualizedDataFrame,
-) -> Result<(), PxValidationError> {
-    if cfd.get_columns(sc.get_identifier()).is_empty() {
-        return Err(PxValidationError::DanglingSeriesContext {
-            sc_id: sc.get_identifier().clone(),
-            table_name: cfd.context().name().to_string(),
-        });
-    }
-
     Ok(())
 }
 

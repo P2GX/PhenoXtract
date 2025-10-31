@@ -163,7 +163,7 @@ mod tests {
     #[fixture]
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::default()
-            .with_identifier(Identifier::Regex("smokes.".to_string()))
+            .with_identifier(Identifier::Regex("smokes".to_string()))
             .with_data_context(Context::SmokerBool)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("false".to_string(), "true".to_string())]),

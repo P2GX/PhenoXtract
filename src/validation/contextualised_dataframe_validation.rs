@@ -30,9 +30,9 @@ pub(crate) fn validate_one_context_per_column(
 }
 
 pub(crate) fn validate_single_subject_id_column(
-    table_context: &ContextualizedDataFrame,
+    cdf: &ContextualizedDataFrame,
 ) -> Result<(), ValidationError> {
-    let is_valid = table_context
+    let is_valid = cdf
         .filter_columns()
         .where_data_context(Filter::Is(&Context::SubjectId))
         .collect()
@@ -43,27 +43,44 @@ pub(crate) fn validate_single_subject_id_column(
         Ok(())
     } else {
         let mut error = ValidationError::new("subject_id_column");
-        error.add_param(Cow::from("table_name"), &table_context.context().name());
+        error.add_param(Cow::from("table_name"), &cdf.context().name());
 
         let error_message = format!(
             "Found more than one or no column with data context {} in table {}",
             Context::SubjectId,
-            table_context.context().name()
+            cdf.context().name()
         );
         Err(error.with_message(Cow::Owned(error_message)))
     }
 }
 
+pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), ValidationError> {
+    let mut error = ValidationError::new("dangling_series_context");
+
+    for sc in cdf.series_contexts() {
+        if cdf.get_columns(sc.get_identifier()).is_empty() {
+            error.add_param(Cow::from("series_context"), &sc);
+            let error_message = format!(
+                "SeriesContext identifier '{}' does not point to any column",
+                sc.get_identifier(),
+            );
+            return Err(error.with_message(Cow::Owned(error_message)));
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::{
-        validate_one_context_per_column, validate_single_subject_id_column,
+        validate_dangling_sc, validate_one_context_per_column, validate_single_subject_id_column,
     };
     use polars::prelude::{Column, DataFrame};
     use rstest::{fixture, rstest};
+    use serde_json::from_value;
 
     #[fixture]
     fn df() -> DataFrame {
@@ -161,7 +178,7 @@ mod tests {
         let table_context = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
-                vec![SeriesContext::default().with_identifier(Regex("sub_col*".to_string()))],
+                vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
             ),
             DataFrame::new(vec![
                 Column::new("sub_col_1".into(), ["P001"]),
@@ -192,5 +209,32 @@ mod tests {
                 .to_string()
                 .contains("more than one or no column")
         );
+    }
+
+    #[rstest]
+    fn test_validate_dangling_sc() {
+        let sc = SeriesContext::default().with_identifier(Identifier::from("no-column"));
+        let table_context = ContextualizedDataFrame::new(
+            TableContext::new("test_table".to_string(), vec![sc.clone()]),
+            DataFrame::new(vec![]).unwrap(),
+        );
+        let result = validate_dangling_sc(&table_context);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+
+        assert_eq!(error.code, "dangling_series_context");
+        assert!(
+            error
+                .message
+                .clone()
+                .unwrap()
+                .to_string()
+                .contains("no-column")
+        );
+        let extracted_sc: SeriesContext =
+            from_value(error.params.get("series_context").unwrap().clone()).unwrap();
+
+        assert_eq!(sc, extracted_sc);
     }
 }
