@@ -293,6 +293,7 @@ impl Collector {
     /// as diseases and interpretations.
     fn collect_diseases_and_interpretations(
         &mut self,
+        patient_id: &str,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
@@ -332,12 +333,48 @@ impl Collector {
                 None
             };
 
+            let stringified_linked_hgnc_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::HgncSymbolOrId,
+            )?;
+            let stringified_linked_hgvs_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::Hgvs,
+            )?;
+            let stringified_linked_geno_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::GenoLabelOrId,
+            )?;
+
             for row_idx in 0..patient_cdf.data().height() {
+                let genes = stringified_linked_hgnc_cols
+                    .iter()
+                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let variants = stringified_linked_hgvs_cols
+                    .iter()
+                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let allelic_states = stringified_linked_geno_cols
+                    .iter()
+                    .filter_map(|geno_col| geno_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
+
                     if let Some(disease) = disease {
-                        self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease)?;
+                        self.phenopacket_builder.upsert_interpretation(
+                            patient_id,
+                            phenopacket_id,
+                            disease,
+                            genes.clone(),
+                            variants.clone(),
+                            allelic_states.clone(),
+                        )?;
 
                         let disease_onset = if let Some(onset_col) = stringified_linked_onset_col {
                             onset_col.get(row_idx)
@@ -356,6 +393,22 @@ impl Collector {
                             None,
                             None,
                         )?;
+                    } else {
+                        if !genes.is_empty() {
+                            warn!(
+                                "Genes were found with no associated disease for patient {phenopacket_id}"
+                            );
+                        }
+                        if !variants.is_empty() {
+                            warn!(
+                                "Variants were found with no associated disease for patient {phenopacket_id}"
+                            );
+                        }
+                        if !allelic_states.is_empty() {
+                            warn!(
+                                "Allelic states were found with no associated disease for patient {phenopacket_id}"
+                            );
+                        }
                     }
                 }
             }
@@ -1240,7 +1293,7 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
 
         collector
-            .collect_diseases_and_interpretations(&patient_cdf, &phenopacket_id)
+            .collect_diseases_and_interpretations("P006", &patient_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();

@@ -1,4 +1,5 @@
 use crate::config::table_context::Context;
+use crate::ontology::error::ClientError;
 use crate::validation::error::ValidationError as PxValidationError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
@@ -203,4 +204,6 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("Missing BiDict for {0}")]
     MissingBiDict(String),
+    #[error(transparent)]
+    HgncClient(#[from] ClientError),
 }

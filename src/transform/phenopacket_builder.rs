@@ -10,12 +10,14 @@ use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
+use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Disease, Individual, Interpretation, OntologyClass,
-    PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
+    OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -244,29 +246,124 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    // There are three allowable configurations of a disease alongside genes, variants and allelic states (a.k.a. genos)
+    // ========================= VALID CONFIGURATIONS =========================
+    //
+    // 1. There are no linked genes, variants or allelic states.
+    //    → `ProgressStatus` = *UNSOLVED*.
+    //
+    // 2. There is one or more gene, with no variants and no allelic states.
+    //    → `ProgressStatus` = *SOLVED*.
+    //
+    //    - If there are two HGNC genes linked to a subject, these will be
+    //      added as separate *CONTRIBUTORY* `GenomicInterpretations`.
+    //    - If there is a single HGNC linked to a patient, it will be added as a
+    //      *CAUSATIVE* `GenomicInterpretation`.
+    //
+    // 3. There is one or more variants, with at most one gene and at most one allelic state.
+    //    → `ProgressStatus` = *SOLVED*.
+    //
+    //    - If there are multiple HGVS variants linked to a subject, these will be
+    //      added as separate *CONTRIBUTORY* `VariantInterpretations`.
+    //    - If there is a single HGVS linked to a patient, it will be added as a
+    //      *CAUSATIVE* `VariantInterpretation`.
+    //    - If there is a gene, the genes will be added as the
+    //      `gene_context` to the VariantInterpretation.
+    //    - If there is a single geno (i.e. allelic state), the genotype will be added to the
+    //      `allelic_state` field of all variants.
+    //
+    // ========================= INVALID CONFIGURATIONS =========================
+    //
+    // All other arrangements are invalid.
+    //
     pub fn upsert_interpretation(
         &mut self,
+        patient_id: &str,
         phenopacket_id: &str,
         disease: &str,
+        genes: Vec<&str>,
+        variants: Vec<&str>,
+        allelic_states: Vec<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
+        self.ensure_resource(phenopacket_id, &res_ref);
+
+        let gene_info = self.gather_data_from_hgnc(&genes)?;
 
         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
+
+        let valid_linking_case_one =
+            genes.is_empty() && variants.is_empty() && allelic_states.is_empty();
+        let valid_linking_case_two =
+            !genes.is_empty() && variants.is_empty() && allelic_states.is_empty();
+        let valid_linking_case_three =
+            genes.len() <= 1 && !variants.is_empty() && allelic_states.len() <= 1;
+        let valid_linking =
+            valid_linking_case_one || valid_linking_case_two || valid_linking_case_three;
 
         let interpretation =
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
 
-        interpretation
-            .diagnosis
-            .get_or_insert_with(|| Diagnosis {
-                disease: None,
-                genomic_interpretations: vec![],
-            })
-            .disease = Some(term);
-        interpretation.progress_status = 4; // UNSOLVED
-        self.ensure_resource(phenopacket_id, &res_ref);
+        if !valid_linking {
+            interpretation.progress_status = 4; //UNSOLVED
+            warn!(
+                "Invalid gene-variant-allelic_state arrangement for Phenopacket interpretation {interpretation_id}."
+            );
+        }
+
+        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+
+        if valid_linking_case_two {
+            interpretation.progress_status = 3; //SOLVED
+
+            let interpretation_status_no = if genes.len() == 1 {
+                4 //CAUSATIVE
+            } else {
+                3 //CONTRIBUTIVE
+            };
+
+            for (symbol,id) in gene_info {
+
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    interpretation_status: interpretation_status_no,
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: id,
+                        symbol,
+                        ..Default::default()
+                    })),
+                };
+
+                genomic_interpretations.push(gi);
+
+            }
+        }
+
+        if valid_linking_case_three {
+            interpretation.progress_status = 3; //SOLVED
+        }
+
+        interpretation.diagnosis.get_or_insert(Diagnosis {
+            disease: Some(term),
+            genomic_interpretations: vec![],
+        });
 
         Ok(())
+    }
+
+    fn gather_data_from_hgnc(
+        &self,
+        genes: &Vec<&str>,
+    ) -> Result<Vec<(String, String)>, PhenopacketBuilderError> {
+        let mut symbol_id_pairs = vec![];
+        for gene in genes {
+            //todo self.ensure_resource(phenopacket_id, &hgnc_ref);
+            let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
+            let symbol_id_pairs_for_gene = hgnc_response.symbol_id_pair();
+            let (gene_symbol, hgnc_id) = symbol_id_pairs_for_gene.first().unwrap();
+            symbol_id_pairs.push((gene_symbol.to_string(), hgnc_id.to_string()));
+        }
+        Ok(symbol_id_pairs)
     }
 
     pub fn upsert_disease(
