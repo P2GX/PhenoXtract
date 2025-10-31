@@ -137,7 +137,7 @@ mod tests {
         assert_eq!(default_meta_data.cohort_name, "arkham 2025");
         assert_eq!(
             default_meta_data.hp_ref,
-            OntologyRef::new("hp".to_string(), Some("2025-09-01".to_string()))
+            OntologyRef::hp_with_version("2025-09-01")
         );
         assert_eq!(default_meta_data.mondo_ref, OntologyRef::mondo());
         assert_eq!(default_meta_data.geno_ref, OntologyRef::geno());
