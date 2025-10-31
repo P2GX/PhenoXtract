@@ -7,15 +7,29 @@ use crate::transform::strategies::{
 };
 use crate::transform::traits::Strategy;
 
-struct StrategyFactory {
+pub struct StrategyFactory {
     ontology_factory: CachedOntologyFactory,
 }
 
 impl StrategyFactory {
     #[allow(dead_code)]
-    fn try_from_config(
+    pub fn try_from_configs(
         &mut self,
-        config: StrategyConfig,
+        configs: &[StrategyConfig],
+    ) -> Result<Vec<Box<dyn Strategy>>, ConstructionError>
+    where
+        Self: Sized,
+    {
+        configs
+            .iter()
+            .map(|config| self.try_from_config(config))
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    pub fn try_from_config(
+        &mut self,
+        config: &StrategyConfig,
     ) -> Result<Box<dyn Strategy>, ConstructionError>
     where
         Self: Sized,
@@ -32,11 +46,10 @@ impl StrategyFactory {
                 ontology_prefix,
                 data_context,
             } => {
-                let ontology_bi_dict =
-                    self.ontology_factory.build_bidict(&ontology_prefix, None)?;
+                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
-                    data_context,
+                    data_context.clone(),
                 )))
             }
         }
