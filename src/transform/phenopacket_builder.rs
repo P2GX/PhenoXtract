@@ -247,12 +247,11 @@ impl PhenopacketBuilder {
     pub fn upsert_interpretation(
         &mut self,
         phenopacket_id: &str,
-        interpretation_id: &str,
         disease: &str,
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
 
-        let interpretation = self.get_or_create_interpretation(phenopacket_id, interpretation_id);
+        let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
         interpretation
             .diagnosis
@@ -307,6 +306,18 @@ impl PhenopacketBuilder {
             disease.onset = Some(onset_te);
         }
 
+        self.ensure_resource(phenopacket_id, &res_ref);
+        let interpretation =
+            self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
+
+        interpretation
+            .diagnosis
+            .get_or_insert_with(|| Diagnosis {
+                disease: None,
+                genomic_interpretations: vec![],
+            })
+            .disease = Some(term);
+        interpretation.progress_status = 4; // UNSOLVED
         self.ensure_resource(phenopacket_id, &res_ref);
 
         Ok(())
@@ -604,7 +615,7 @@ mod tests {
         })
     }
 
-    fn build_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
+    fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
         let hpo_dict = ONTOLOGY_FACTORY
             .lock()
             .unwrap()
@@ -626,15 +637,15 @@ mod tests {
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }
-    fn build_phenopacket_builder() -> PhenopacketBuilder {
-        PhenopacketBuilder::new(build_dicts())
+    fn build_test_phenopacket_builder() -> PhenopacketBuilder {
+        PhenopacketBuilder::new(build_test_dicts())
     }
 
     #[rstest]
     fn test_build(phenopacket_id: String) {
         use phenopackets::schema::v2::Phenopacket;
 
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         let phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
             subject: Some(Individual {
@@ -673,7 +684,7 @@ mod tests {
         onset_age: Option<&str>,
         onset_age_te: Option<TimeElement>,
     ) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         builder
             .upsert_phenotypic_feature(
                 phenopacket_id.as_str(),
@@ -707,7 +718,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -730,7 +741,7 @@ mod tests {
         valid_phenotype: String,
         another_phenotype: String,
     ) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         builder
             .upsert_phenotypic_feature(
@@ -766,7 +777,7 @@ mod tests {
 
     #[rstest]
     fn test_different_phenopacket_ids(valid_phenotype: String) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -806,7 +817,7 @@ mod tests {
 
     #[rstest]
     fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -863,7 +874,7 @@ mod tests {
         onset_timestamp_te: Option<TimeElement>,
         valid_phenotype: String,
     ) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         builder
             .upsert_phenotypic_feature(
@@ -904,16 +915,18 @@ mod tests {
         let feature_onset = feature.onset.as_ref().unwrap();
         assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
+
+    // todo this test currently doesn't really do anything
+    //  because we don't have a way to truly update an intepretation yet. COMING SOON!
     #[rstest]
     fn test_upsert_interpretation_update(mondo_resource: Resource) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         let phenopacket_id = "pp_001";
-        let interpretation_id = "interpretation_001";
 
         let existing_pp = Phenopacket {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
-                id: interpretation_id.to_string(),
+                id: "pp_001-MONDO:0012145".to_string(),
                 progress_status: 4, // UNSOLVED
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
@@ -936,13 +949,14 @@ mod tests {
 
         builder
             .upsert_interpretation(phenopacket_id, interpretation_id, "inflammatory diarrhea")
+            .upsert_interpretation(phenopacket_id, "macular degeneration, age-related, 3")
             .unwrap();
 
         let mut expected_pp = existing_pp.clone();
         expected_pp.interpretations.first_mut().unwrap().diagnosis = Some(Diagnosis {
             disease: Some(OntologyClass {
-                id: "MONDO:0000252".to_string(),
-                label: "inflammatory diarrhea".to_string(),
+                id: "MONDO:0012145".to_string(),
+                label: "macular degeneration, age-related, 3".to_string(),
             }),
             genomic_interpretations: vec![],
         });
@@ -955,10 +969,9 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation(mondo_resource: Resource) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
-        let interpretation_id = "interpretation_001";
         let disease_id = "MONDO:0012145";
         builder
             .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
@@ -1038,12 +1051,13 @@ mod tests {
         let disease_id = "MONDO:0012145";
         builder
             .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
+            .upsert_interpretation(phenopacket_id, disease_id)
             .unwrap();
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
-                id: interpretation_id.to_string(),
+                id: "pp_001-MONDO:0012145".to_string(),
                 progress_status: 4, // UNSOLVED
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
@@ -1069,7 +1083,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_individual() {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -1125,7 +1139,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_vital_status() {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
 
@@ -1153,7 +1167,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_label() {
-        let builder = build_phenopacket_builder();
+        let builder = build_test_phenopacket_builder();
 
         // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
         let result = builder.query_hpo_identifiers("Seizure").unwrap();
@@ -1164,7 +1178,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_id() {
-        let builder = build_phenopacket_builder();
+        let builder = build_test_phenopacket_builder();
 
         let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
 
@@ -1174,7 +1188,7 @@ mod tests {
 
     #[rstest]
     fn test_query_hpo_identifiers_invalid_query() {
-        let builder = build_phenopacket_builder();
+        let builder = build_test_phenopacket_builder();
 
         let result = builder.query_hpo_identifiers("NonexistentTerm");
 
@@ -1255,7 +1269,7 @@ mod tests {
 
     #[rstest]
     fn test_get_or_create_phenopacket() {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
@@ -1265,7 +1279,7 @@ mod tests {
 
     #[rstest]
     fn test_ensure_resource() {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         let pp_id = "test_id".to_string();
 
         builder.ensure_resource(
@@ -1290,7 +1304,7 @@ mod tests {
     #[rstest]
     fn test_disease_query_priority() {
         // TODO: Finish once omim is part of the project.
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
         let disease = "a sever disease, you do not want to have".to_string();
         let omim_id = "OMIM:0099";
         let mondo_ref = OntologyRef::mondo(None);

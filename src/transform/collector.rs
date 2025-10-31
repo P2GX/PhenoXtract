@@ -318,9 +318,10 @@ impl Collector {
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
                 .iter()
-                .map(|col| col.str().unwrap())
-                .collect::<Vec<&StringChunked>>();
+                .map(|col| col.str())
+                .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
+            for row_idx in 0..patient_cdf.data().height() {
             let stringified_linked_onset_age_cols =
                 Self::get_stringified_cols_with_data_context_in_bb(
                     patient_cdf,
@@ -373,6 +374,8 @@ impl Collector {
                             None,
                             None,
                         )?;
+                        self.phenopacket_builder
+                            .upsert_interpretation(phenopacket_id, disease)?;
                     }
                 }
             }
