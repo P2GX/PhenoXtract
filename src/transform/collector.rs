@@ -303,7 +303,6 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
@@ -327,8 +326,9 @@ impl Collector {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-
-                        let (term, _res_ref) = self.phenopacket_builder.query_disease_identifiers(disease)?;
+                        let (term, _res_ref) = self
+                            .phenopacket_builder
+                            .query_disease_identifiers(disease)?;
                         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
                         self.phenopacket_builder.upsert_interpretation(
@@ -432,7 +432,10 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
-    use phenopackets::schema::v2::core::{Age as age_struct, Individual, Interpretation, MetaData, OntologyClass, PhenotypicFeature, Resource, Sex, TimeElement, VitalStatus};
+    use phenopackets::schema::v2::core::{
+        Age as age_struct, Diagnosis, Individual, Interpretation, MetaData, OntologyClass,
+        PhenotypicFeature, Resource, Sex, TimeElement, VitalStatus,
+    };
     use polars::datatypes::{AnyValue, DataType};
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
@@ -442,7 +445,7 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    fn build_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
+    fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
         let hpo_dict = ONTOLOGY_FACTORY
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -464,11 +467,11 @@ mod tests {
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }
-    fn build_phenopacket_builder() -> PhenopacketBuilder {
-        PhenopacketBuilder::new(build_dicts())
+    fn build_test_phenopacket_builder() -> PhenopacketBuilder {
+        PhenopacketBuilder::new(build_test_dicts())
     }
-    fn init_collector() -> Collector {
-        let phenopacket_builder = build_phenopacket_builder();
+    fn init_test_collector() -> Collector {
+        let phenopacket_builder = build_test_phenopacket_builder();
 
         Collector {
             phenopacket_builder,
@@ -739,6 +742,18 @@ mod tests {
     }
 
     #[fixture]
+    fn mondo_meta_data_resource() -> Resource {
+        Resource {
+            id: "mondo".to_string(),
+            name: "Mondo Disease Ontology".to_string(),
+            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
+            version: "2025-10-07".to_string(),
+            namespace_prefix: "MONDO".to_string(),
+            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
+        }
+    }
+
+    #[fixture]
     fn df_single_patient() -> DataFrame {
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
         let dob_col = Column::new(
@@ -825,10 +840,10 @@ mod tests {
         let disease_col = Column::new(
             "diseases".into(),
             [
-                AnyValue::String("Marfan Syndrome"),
+                AnyValue::String("platelet signal processing defect"),
                 AnyValue::Null,
-                AnyValue::String("MONDO:0007947"), //also Marfan Syndrome
-                AnyValue::String("melanoma"),
+                AnyValue::String("MONDO:0008258"), //also platelet signal processing defect
+                AnyValue::String("Spondylocostal Dysostosis"),
             ],
         );
         DataFrame::new(vec![
@@ -842,7 +857,7 @@ mod tests {
             onset_col,
             runny_nose_col,
             runny_nose_onset_col,
-            disease_col
+            disease_col,
         ])
         .unwrap()
     }
@@ -857,7 +872,7 @@ mod tests {
         pf_macrocephaly: PhenotypicFeature,
         hp_meta_data_resource: Resource,
     ) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
@@ -939,7 +954,7 @@ mod tests {
         df_single_patient: DataFrame,
         hp_meta_data_resource: Resource,
     ) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -976,7 +991,7 @@ mod tests {
         pf_runny_nose: PhenotypicFeature,
         hp_meta_data_resource: Resource,
     ) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let onset_dt_col = Column::new(
             "onset_date".into(),
@@ -1038,7 +1053,7 @@ mod tests {
         pf_nail_psoriasis: PhenotypicFeature,
         hp_meta_data_resource: Resource,
     ) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let patient_hpo_col = Column::new(
             "phenotypic_features".into(),
@@ -1088,7 +1103,7 @@ mod tests {
         pf_runny_nose_excluded: PhenotypicFeature,
         hp_meta_data_resource: Resource,
     ) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let patient_hpo_col = Column::new(
             "HP:0031417#(block foo)".into(),
@@ -1126,7 +1141,7 @@ mod tests {
 
     #[rstest]
     fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame) {
-        let mut collector = init_collector();
+        let mut collector = init_test_collector();
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1172,8 +1187,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_interpretations(tc: TableContext, df_single_patient: DataFrame) {
-        let mut collector = init_collector();
+    fn test_collect_interpretations(
+        tc: TableContext,
+        df_single_patient: DataFrame,
+        mondo_meta_data_resource: Resource,
+    ) {
+        let mut collector = init_test_collector();
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1185,22 +1204,39 @@ mod tests {
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
-        let marfan_interpretation = Interpretation {
-            id: "P006-MONDO:0007947".to_string(),
+        let platelet_defect_interpretation = Interpretation {
+            id: "cohort2019-P006-MONDO:0008258".to_string(),
             progress_status: 4,
+            diagnosis: Some(Diagnosis {
+                disease: Some(OntologyClass {
+                    id: "MONDO:0008258".to_string(),
+                    label: "platelet signal processing defect".to_string(),
+                }),
+                ..Default::default()
+            }),
             ..Default::default()
         };
 
-        let melanoma_interpretation = Interpretation {
-            id: "P006-MONDO:0005105".to_string(),
+        let dysostosis_interpretation = Interpretation {
+            id: "cohort2019-P006-MONDO:0000359".to_string(),
             progress_status: 4,
+            diagnosis: Some(Diagnosis {
+                disease: Some(OntologyClass {
+                    id: "MONDO:0000359".to_string(),
+                    label: "spondylocostal dysostosis".to_string(),
+                }),
+                ..Default::default()
+            }),
             ..Default::default()
         };
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
-            interpretations: vec![marfan_interpretation,melanoma_interpretation],
-            meta_data: Some(MetaData::default()),
+            interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_meta_data_resource],
+                ..Default::default()
+            }),
             ..Default::default()
         };
 

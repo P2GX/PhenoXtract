@@ -347,7 +347,10 @@ impl PhenopacketBuilder {
             // TODO: add 'DatabaseRef::OMIM_PREFIX,', when OMIM is part of the project
             OntologyRef::MONDO_PREFIX,
         ] {
-            let bi_dict = self.ontology_bidicts.get(prefix).expect("Disease prefix was missing from Ontology Bidicts.");
+            let bi_dict = self
+                .ontology_bidicts
+                .get(prefix)
+                .expect("Disease prefix was missing from Ontology Bidicts.");
             let Some(term) = bi_dict.get(query) else {
                 continue;
             };
