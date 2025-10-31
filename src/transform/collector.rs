@@ -470,7 +470,7 @@ mod tests {
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
-        Age as age_struct, Diagnosis, Individual, Interpretation, MetaData, OntologyClass,
+        Age as age_struct, Diagnosis, Disease, Individual, Interpretation, MetaData, OntologyClass,
         PhenotypicFeature, Resource, Sex, TimeElement, VitalStatus,
     };
     use polars::datatypes::{AnyValue, DataType};
@@ -565,7 +565,13 @@ mod tests {
 
         let diseases_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("diseases".to_string()))
-            .with_data_context(Context::MondoLabelOrId);
+            .with_data_context(Context::MondoLabelOrId)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let disease_onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("disease_onset".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_3".to_string()));
 
         TableContext::new(
             "patient_data".to_string(),
@@ -581,6 +587,7 @@ mod tests {
                 runny_nose_sc,
                 runny_nose_onset_sc,
                 diseases_sc,
+                disease_onset_sc,
             ],
         )
     }
@@ -883,6 +890,15 @@ mod tests {
                 AnyValue::String("Spondylocostal Dysostosis"),
             ],
         );
+        let disease_onset_col = Column::new(
+            "disease_onset".into(),
+            [
+                AnyValue::String("P45Y10M05D"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::String("P10Y4M21D"),
+            ],
+        );
         DataFrame::new(vec![
             id_col,
             dob_col,
@@ -895,6 +911,7 @@ mod tests {
             runny_nose_col,
             runny_nose_onset_col,
             disease_col,
+            disease_onset_col,
         ])
         .unwrap()
     }
@@ -1267,9 +1284,36 @@ mod tests {
             ..Default::default()
         };
 
+        let platelet_defect_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P45Y10M05D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
+
+        let dysostosis_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0000359".to_string(),
+                label: "spondylocostal dysostosis".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P10Y4M21D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
+
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
+            diseases: vec![platelet_defect_disease, dysostosis_disease],
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource],
                 ..Default::default()
