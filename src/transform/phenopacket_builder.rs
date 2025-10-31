@@ -253,6 +253,9 @@ impl PhenopacketBuilder {
 
         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
+        let interpretation =
+            self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
+
         interpretation
             .diagnosis
             .get_or_insert_with(|| Diagnosis {
@@ -299,25 +302,20 @@ impl PhenopacketBuilder {
 
         let (disease_term, res_ref) = self.query_disease_identifiers(disease)?;
 
-        let disease = self.get_or_create_disease(phenopacket_id, &disease_term);
+        let mut disease_element = Disease {
+            term: Some(disease_term),
+            ..Default::default()
+        };
 
         if let Some(onset) = onset {
             let onset_te = Self::try_parse_time_element(onset)?;
-            disease.onset = Some(onset_te);
+            disease_element.onset = Some(onset_te);
         }
 
-        self.ensure_resource(phenopacket_id, &res_ref);
-        let interpretation =
-            self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
 
-        interpretation
-            .diagnosis
-            .get_or_insert_with(|| Diagnosis {
-                disease: None,
-                genomic_interpretations: vec![],
-            })
-            .disease = Some(term);
-        interpretation.progress_status = 4; // UNSOLVED
+        pp.diseases.push(disease_element);
+
         self.ensure_resource(phenopacket_id, &res_ref);
 
         Ok(())
@@ -378,30 +376,6 @@ impl PhenopacketBuilder {
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
-            }
-        }
-    }
-
-    fn get_or_create_disease(
-        &mut self,
-        phenopacket_id: &str,
-        disease: &OntologyClass,
-    ) -> &mut Disease {
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
-
-        let disease_index = pp
-            .diseases
-            .iter()
-            .position(|dis| dis.term.as_ref() == Some(disease));
-
-        match disease_index {
-            Some(pos) => &mut pp.diseases[pos],
-            None => {
-                pp.diseases.push(Disease {
-                    term: Some(disease.clone()),
-                    ..Default::default()
-                });
-                pp.diseases.last_mut().unwrap()
             }
         }
     }
@@ -948,7 +922,6 @@ mod tests {
             .insert(phenopacket_id.to_string(), existing_pp.clone());
 
         builder
-            .upsert_interpretation(phenopacket_id, interpretation_id, "inflammatory diarrhea")
             .upsert_interpretation(phenopacket_id, "macular degeneration, age-related, 3")
             .unwrap();
 
@@ -974,13 +947,13 @@ mod tests {
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
         builder
-            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
+            .upsert_interpretation(phenopacket_id, disease_id)
             .unwrap();
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
-                id: interpretation_id.to_string(),
+                id: "pp_001-MONDO:0012145".to_string(),
                 progress_status: 4, // UNSOLVED
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
@@ -1006,26 +979,37 @@ mod tests {
 
     #[rstest]
     fn test_upsert_disease(mondo_resource: Resource) {
-        let mut builder = build_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
-        let interpretation_id = "interpretation_001";
         let disease_id = "MONDO:0012145";
+        let onset_age = "P3Y4M";
+
         builder
-            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
+            .upsert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                Some(onset_age),
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap();
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
-            interpretations: vec![Interpretation {
-                id: interpretation_id.to_string(),
-                progress_status: 4, // UNSOLVED
-                diagnosis: Some(Diagnosis {
-                    disease: Some(OntologyClass {
-                        id: disease_id.to_string(),
-                        label: "macular degeneration, age-related, 3".to_string(),
-                    }),
-                    ..Default::default()
+            diseases: vec![Disease {
+                term: Some(OntologyClass {
+                    id: disease_id.to_string(),
+                    label: "macular degeneration, age-related, 3".to_string(),
+                }),
+                onset: Some(TimeElement {
+                    element: Some(Age(age_struct {
+                        iso8601duration: "P3Y4M".to_string(),
+                    })),
                 }),
                 ..Default::default()
             }],
@@ -1043,31 +1027,54 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_disease_twice(mondo_resource: Resource) {
-        let mut builder = build_phenopacket_builder();
+    fn test_upsert_same_disease_twice(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
-        let interpretation_id = "interpretation_001";
-        let disease_id = "MONDO:0012145";
+        let disease_id = "MONDO:0008258";
+
         builder
-            .upsert_interpretation(phenopacket_id, interpretation_id, disease_id)
-            .upsert_interpretation(phenopacket_id, disease_id)
+            .upsert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap();
+
+        builder
+            .upsert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+        let platelet_defect_disease_no_onset = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        };
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
-            interpretations: vec![Interpretation {
-                id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 4, // UNSOLVED
-                diagnosis: Some(Diagnosis {
-                    disease: Some(OntologyClass {
-                        id: disease_id.to_string(),
-                        label: "macular degeneration, age-related, 3".to_string(),
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }],
+            diseases: vec![
+                platelet_defect_disease_no_onset.clone(),
+                platelet_defect_disease_no_onset.clone(),
+            ],
             meta_data: Some(MetaData {
                 resources: vec![mondo_resource],
                 ..Default::default()

@@ -321,7 +321,6 @@ impl Collector {
                 .map(|col| col.str())
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-            for row_idx in 0..patient_cdf.data().height() {
             let stringified_linked_onset_age_cols =
                 Self::get_stringified_cols_with_data_context_in_bb(
                     patient_cdf,
@@ -340,22 +339,12 @@ impl Collector {
                 None
             };
 
-            let n_rows = patient_cdf.data().height();
-
-            for row_idx in 0..n_rows {
+            for row_idx in 0..patient_cdf.data().height() {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        let (term, _res_ref) = self
-                            .phenopacket_builder
-                            .query_disease_identifiers(disease)?;
-                        let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
-
-                        self.phenopacket_builder.upsert_interpretation(
-                            phenopacket_id,
-                            interpretation_id.as_str(),
-                            disease,
-                        )?;
+                        self.phenopacket_builder
+                            .upsert_interpretation(phenopacket_id, disease)?;
 
                         let disease_onset = if let Some(onset_col) = stringified_linked_onset_col {
                             onset_col.get(row_idx)
@@ -374,8 +363,6 @@ impl Collector {
                             None,
                             None,
                         )?;
-                        self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease)?;
                     }
                 }
             }
@@ -448,8 +435,7 @@ impl Collector {
         context: &'a Context,
     ) -> Result<Vec<&'a StringChunked>, CollectorError> {
         let cols = bb_id.map_or(vec![], |bb_id| {
-            cdf
-                .filter_columns()
+            cdf.filter_columns()
                 .where_building_block(Filter::Is(bb_id))
                 .where_header_context(Filter::IsNone)
                 .where_data_context(Filter::Is(context))
@@ -1305,6 +1291,14 @@ mod tests {
             ..Default::default()
         };
 
+        let platelet_defect_disease_no_onset = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        };
+
         let dysostosis_disease = Disease {
             term: Some(OntologyClass {
                 id: "MONDO:0000359".to_string(),
@@ -1321,7 +1315,11 @@ mod tests {
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
-            diseases: vec![platelet_defect_disease, dysostosis_disease],
+            diseases: vec![
+                platelet_defect_disease,
+                platelet_defect_disease_no_onset,
+                dysostosis_disease,
+            ],
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource],
                 ..Default::default()
