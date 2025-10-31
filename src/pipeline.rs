@@ -9,12 +9,16 @@ use std::collections::HashMap;
 use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::CachedOntologyFactory;
 
-use crate::ontology::resource_references::OntologyRef;
+use crate::config::{ConfigLoader, PhenoXtractorConfig};
+use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::traits::HasPrefixId;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
+use crate::transform::strategies::strategy_factory::StrategyFactory;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::path::PathBuf;
+use std::sync::Arc;
 use validator::Validate;
 
 #[allow(dead_code)]
@@ -80,22 +84,66 @@ impl Pipeline {
             loader_module: Box::new(loader_module),
         }
     }
+}
 
-    #[allow(unused)]
-    #[allow(dead_code)]
-    pub fn try_from_config(config: &PipelineConfig) -> Result<Self, ConstructionError> {
-        let mut factory = CachedOntologyFactory::default();
+impl TryFrom<PipelineConfig> for Pipeline {
+    type Error = ConstructionError;
 
-        let hpo_dict = factory.build_bidict(&OntologyRef::hp(), None)?;
+    fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
+        let mut ontology_factory = CachedOntologyFactory::default();
+        let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
+        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
+        let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
+        let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
+            (hp_dict.ontology.prefix_id().to_string(), hp_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
+        ]);
+        let mut strat_factory = StrategyFactory::new(ontology_factory);
 
-        let builder = PhenopacketBuilder::new(HashMap::default());
+        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts);
+
+        let strategies: Result<Vec<_>, _> = config
+            .transform_strategies
+            .iter()
+            .map(|strat| strat_factory.try_from_config(strat))
+            .collect();
         let tf_module = TransformerModule::new(
-            vec![],
-            Collector::new(builder, config.meta_data.cohort_name.clone()),
+            strategies?,
+            Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),
         );
-        let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
+        let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
 
         Ok(Pipeline::new(tf_module, loader_module))
+    }
+}
+
+impl TryFrom<PhenoXtractorConfig> for Pipeline {
+    type Error = ConstructionError;
+
+    fn try_from(config: PhenoXtractorConfig) -> Result<Self, Self::Error> {
+        Pipeline::try_from(config.pipeline)
+    }
+}
+
+impl TryFrom<PathBuf> for Pipeline {
+    type Error = ConstructionError;
+
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        if !path.exists() {
+            return Err(ConstructionError::NoConfigFileFound(path));
+        }
+        let pheno_config: Result<PhenoXtractorConfig, _> = ConfigLoader::load(path.clone());
+        if let Ok(pheno_config) = pheno_config {
+            return Pipeline::try_from(pheno_config);
+        };
+
+        let pipeline_config: Result<PipelineConfig, _> = ConfigLoader::load(path);
+        if let Ok(pipeline_config) = pipeline_config {
+            return Pipeline::try_from(pipeline_config);
+        };
+
+        Err(ConstructionError::NoPipelineConfigFound)
     }
 }
 
@@ -105,8 +153,8 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_from_pipeline_config() {
+    fn test_try_from_pipeline_config() {
         let config = PipelineConfig::default();
-        let _ = Pipeline::try_from_config(&config);
+        let _ = Pipeline::try(&config);
     }
 }
