@@ -1,8 +1,9 @@
 use crate::ontology::traits::{HasPrefixId, HasVersion};
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct ResourceRef {
     version: String,
     prefix_id: String,
@@ -32,7 +33,7 @@ impl HasPrefixId for ResourceRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct OntologyRef(ResourceRef);
 
 impl OntologyRef {
