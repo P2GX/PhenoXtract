@@ -65,6 +65,7 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
+    use crate::ontology::OntologyRef;
     use pretty_assertions::assert_eq;
     use rstest::*;
     use std::collections::HashMap;
@@ -247,7 +248,9 @@ pipeline:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
-    hpo_version: "0.24.5"
+    hp_ref:
+      version: "2025-09-01"
+      prefix_id: "hp"
     "#;
 
         let file_path = temp_dir.path().join("config.yaml");
@@ -261,9 +264,9 @@ pipeline:
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
-                    Some("0.24.5"),
+                    Some(&OntologyRef::hp_with_version("2025-09-01")),
                     None,
-                    Some("latest"),
+                    Some(&OntologyRef::geno()),
                 ),
                 vec![
                     StrategyConfig::AliasMapping,

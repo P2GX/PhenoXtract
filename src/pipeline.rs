@@ -86,7 +86,7 @@ impl Pipeline {
     pub fn try_from_config(config: &PipelineConfig) -> Result<Self, ConstructionError> {
         let mut factory = CachedOntologyFactory::default();
 
-        let hpo_dict = factory.build_bidict(&OntologyRef::hp(None), None)?;
+        let hpo_dict = factory.build_bidict(&OntologyRef::hp(), None)?;
 
         let builder = PhenopacketBuilder::new(HashMap::default());
         let tf_module = TransformerModule::new(
