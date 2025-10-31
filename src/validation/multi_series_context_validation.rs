@@ -21,8 +21,8 @@ pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use rstest::rstest;
     use super::*;
+    use rstest::rstest;
 
     #[rstest]
     fn test_multi_identifier_regex_delegates() {
