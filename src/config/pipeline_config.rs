@@ -33,5 +33,3 @@ impl PipelineConfig {
         }
     }
 }
-
-// TODO: Add Try_From<PathBuf>
