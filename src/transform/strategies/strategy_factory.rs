@@ -121,13 +121,7 @@ mod tests {
 
         let result = factory.try_from_config(&config);
 
-        match result {
-            Ok(_) => assert!(true, "Successfully created OntologyNormaliserStrategy"),
-            Err(e) => {
-                // If ontology loading fails in test, that's acceptable
-                println!("Expected potential error in test environment: {:?}", e);
-            }
-        }
+        assert!(result.is_ok(), "{:?}", result);
     }
 
     #[rstest]
