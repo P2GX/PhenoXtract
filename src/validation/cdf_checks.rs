@@ -38,23 +38,6 @@ pub(crate) fn check_orphaned_columns(
     Ok(())
 }
 
-/// Validates that a SeriesContext matches at least one column in the dataframe.
-///
-/// Returns an error if the SeriesContext has no matching columns (dangling).
-pub(crate) fn check_dangling_sc(
-    sc: &SeriesContext,
-    cfd: &ContextualizedDataFrame,
-) -> Result<(), PxValidationError> {
-    if cfd.get_columns(sc.get_identifier()).is_empty() {
-        return Err(PxValidationError::DanglingSeriesContext {
-            sc_id: sc.get_identifier().clone(),
-            table_name: cfd.context().name().to_string(),
-        });
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
