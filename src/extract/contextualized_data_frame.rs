@@ -1,7 +1,8 @@
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::StrategyError;
-use crate::validation::cdf_checks::{check_dangling_sc, check_orphaned_columns};
+use crate::validation::cdf_checks::check_orphaned_columns;
+use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::{
     validate_one_context_per_column, validate_single_subject_id_column,
 };
@@ -21,6 +22,7 @@ use validator::Validate;
 #[derive(Clone, Validate, Default, Debug, PartialEq)]
 #[validate(schema(function = "validate_one_context_per_column",))]
 #[validate(schema(function = "validate_single_subject_id_column",))]
+#[validate(schema(function = "validate_dangling_sc",))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -322,7 +324,6 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     }
 
     pub fn add_series_context(self, sc: SeriesContext) -> Result<Self, StrategyError> {
-        check_dangling_sc(&sc, self.cdf)?;
         self.cdf.context.context_mut().push(sc);
 
         Ok(self.mark_dirty())
@@ -467,10 +468,10 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     }
 
     pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
-        self.cdf.validate()?;
         let builder = ManuallyDrop::new(self.mark_clean());
-        let cdf_ref = unsafe { ptr::read(&builder.cdf) };
 
+        let cdf_ref = unsafe { ptr::read(&builder.cdf) };
+        cdf_ref.validate()?;
         Ok(cdf_ref)
     }
 
