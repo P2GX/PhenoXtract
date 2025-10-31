@@ -6,7 +6,6 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::error::PolarsError;
 use polars::prelude::{Column, DataType, Series, StringChunked};
 use std::collections::HashSet;
 
@@ -298,6 +297,7 @@ impl Collector {
     }
 
     /// Finds all diseases associated with a patient and gives them to the phenopacket builder
+    /// as interpretations.
     fn collect_interpretations(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
@@ -342,26 +342,6 @@ impl Collector {
         }
 
         Ok(())
-    }
-
-    fn get_stringified_cols_with_data_context_in_bb<'a>(
-        patient_cdf: &'a ContextualizedDataFrame,
-        bb_id: Option<&'a str>,
-        context: &'a Context,
-    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
-        let cols = bb_id.map_or(vec![], |bb_id| {
-            patient_cdf
-                .filter_columns()
-                .where_building_block(Filter::Is(bb_id))
-                .where_header_context(Filter::IsNone)
-                .where_data_context(Filter::Is(context))
-                .collect()
-        });
-
-        Ok(cols
-            .iter()
-            .map(|col| col.str())
-            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
     }
 
     /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
