@@ -54,9 +54,7 @@ pub(crate) fn validate_single_subject_id_column(
     }
 }
 
-pub(crate) fn validate_dangling_sc(
-    cdf: &ContextualizedDataFrame,
-) -> Result<(), ValidationError> {
+pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), ValidationError> {
     let mut error = ValidationError::new("dangling_series_context");
 
     for sc in cdf.series_contexts() {
