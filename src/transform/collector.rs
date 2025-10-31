@@ -303,6 +303,7 @@ impl Collector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
+
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
@@ -326,7 +327,10 @@ impl Collector {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        let interpretation_id = format!("{phenopacket_id}-{disease}");
+
+                        let (term, _res_ref) = self.phenopacket_builder.query_disease_identifiers(disease)?;
+                        let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
+
                         self.phenopacket_builder.upsert_interpretation(
                             phenopacket_id,
                             interpretation_id.as_str(),
@@ -428,10 +432,7 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
-    use phenopackets::schema::v2::core::{
-        Age as age_struct, Individual, MetaData, OntologyClass, PhenotypicFeature, Resource, Sex,
-        TimeElement, VitalStatus,
-    };
+    use phenopackets::schema::v2::core::{Age as age_struct, Individual, Interpretation, MetaData, OntologyClass, PhenotypicFeature, Resource, Sex, TimeElement, VitalStatus};
     use polars::datatypes::{AnyValue, DataType};
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
@@ -522,6 +523,10 @@ mod tests {
             .with_data_context(Context::OnsetDateTime)
             .with_building_block_id(Some("Block_2".to_string()));
 
+        let diseases_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("diseases".to_string()))
+            .with_data_context(Context::MondoLabelOrId);
+
         TableContext::new(
             "patient_data".to_string(),
             vec![
@@ -535,6 +540,7 @@ mod tests {
                 survival_time_sc,
                 runny_nose_sc,
                 runny_nose_onset_sc,
+                diseases_sc,
             ],
         )
     }
@@ -816,6 +822,15 @@ mod tests {
                 AnyValue::Null,
             ],
         );
+        let disease_col = Column::new(
+            "diseases".into(),
+            [
+                AnyValue::String("Marfan Syndrome"),
+                AnyValue::Null,
+                AnyValue::String("MONDO:0007947"), //also Marfan Syndrome
+                AnyValue::String("melanoma"),
+            ],
+        );
         DataFrame::new(vec![
             id_col,
             dob_col,
@@ -827,6 +842,7 @@ mod tests {
             onset_col,
             runny_nose_col,
             runny_nose_onset_col,
+            disease_col
         ])
         .unwrap()
     }
@@ -1147,6 +1163,43 @@ mod tests {
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             subject: Some(indiv),
+            meta_data: Some(MetaData::default()),
+            ..Default::default()
+        };
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_interpretations(tc: TableContext, df_single_patient: DataFrame) {
+        let mut collector = init_collector();
+
+        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+
+        collector
+            .collect_interpretations(&patient_cdf, &phenopacket_id)
+            .unwrap();
+
+        let mut phenopackets = collector.phenopacket_builder.build();
+
+        let marfan_interpretation = Interpretation {
+            id: "P006-MONDO:0007947".to_string(),
+            progress_status: 4,
+            ..Default::default()
+        };
+
+        let melanoma_interpretation = Interpretation {
+            id: "P006-MONDO:0005105".to_string(),
+            progress_status: 4,
+            ..Default::default()
+        };
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            interpretations: vec![marfan_interpretation,melanoma_interpretation],
             meta_data: Some(MetaData::default()),
             ..Default::default()
         };

@@ -339,7 +339,7 @@ impl PhenopacketBuilder {
         }
     }
 
-    fn query_disease_identifiers(
+    pub fn query_disease_identifiers(
         &self,
         query: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
@@ -347,7 +347,7 @@ impl PhenopacketBuilder {
             // TODO: add 'DatabaseRef::OMIM_PREFIX,', when OMIM is part of the project
             OntologyRef::MONDO_PREFIX,
         ] {
-            let bi_dict = self.ontology_bidicts.get(prefix).unwrap();
+            let bi_dict = self.ontology_bidicts.get(prefix).expect("Disease prefix was missing from Ontology Bidicts.");
             let Some(term) = bi_dict.get(query) else {
                 continue;
             };
@@ -375,7 +375,7 @@ impl PhenopacketBuilder {
         }
 
         Err(PhenopacketBuilderError::ParsingError {
-            what: "agnostic query".to_string(),
+            what: "disease query".to_string(),
             value: query.to_string(),
         })
     }
