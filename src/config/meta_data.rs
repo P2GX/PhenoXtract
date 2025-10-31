@@ -20,10 +20,10 @@ impl MetaData {
     pub fn new(
         created_by: Option<&str>,
         submitted_by: Option<&str>,
-        cohort_name: String,
-        hpo_version: String,
-        mondo_version: String,
-        geno_version: String,
+        cohort_name: &str,
+        hpo_version: Option<&str>,
+        mondo_version: Option<&str>,
+        geno_version: Option<&str>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -34,10 +34,19 @@ impl MetaData {
                 None => default_creator(),
                 Some(s) => s.to_owned(),
             },
-            cohort_name,
-            hpo_version,
-            mondo_version,
-            geno_version,
+            cohort_name: cohort_name.to_owned(),
+            hpo_version: match hpo_version {
+                None => default_ontology_version(),
+                Some(version) => version.to_owned(),
+            },
+            mondo_version: match mondo_version {
+                None => default_ontology_version(),
+                Some(version) => version.to_owned(),
+            },
+            geno_version: match geno_version {
+                None => default_ontology_version(),
+                Some(version) => version.to_owned(),
+            },
         }
     }
 }

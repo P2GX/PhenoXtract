@@ -260,10 +260,10 @@ pipeline:
                 MetaData::new(
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
-                    "Arkham Asylum 2025".to_string(),
-                    "0.24.5".to_string(),
-                    "latest".to_string(),
-                    "latest".to_string(),
+                    "Arkham Asylum 2025",
+                    Some("0.24.5"),
+                    None,
+                    Some("latest"),
                 ),
                 vec![
                     StrategyConfig::AliasMapping,
