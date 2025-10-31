@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{Column, DataType, Series, StringChunked};
+use polars::prelude::{Column, DataType, PolarsError, Series, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -297,8 +297,8 @@ impl Collector {
     }
 
     /// Finds all diseases associated with a patient and gives them to the phenopacket builder
-    /// as interpretations.
-    fn collect_interpretations(
+    /// as diseases and interpretations.
+    fn collect_diseases_and_interpretations(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
@@ -313,12 +313,31 @@ impl Collector {
 
         for disease_sc in disease_in_cells_scs {
             let sc_id = disease_sc.get_identifier();
+            let bb_id = disease_sc.get_building_block_id();
 
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
                 .iter()
                 .map(|col| col.str().unwrap())
                 .collect::<Vec<&StringChunked>>();
+
+            let stringified_linked_onset_age_cols =
+                Self::get_stringified_cols_with_data_context_in_bb(
+                    patient_cdf,
+                    bb_id,
+                    &Context::OnsetAge,
+                )?;
+
+            let stringified_linked_onset_col = if stringified_linked_onset_age_cols.len() == 1 {
+                stringified_linked_onset_age_cols.first()
+            } else if stringified_linked_onset_age_cols.len() > 1 {
+                warn!(
+                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Disease context. This cannot be interpreted and will be ignored."
+                );
+                None
+            } else {
+                None
+            };
 
             let n_rows = patient_cdf.data().height();
 
@@ -337,11 +356,17 @@ impl Collector {
                             disease,
                         )?;
 
+                        let disease_onset = if let Some(onset_col) = stringified_linked_onset_col {
+                            onset_col.get(row_idx)
+                        } else {
+                            None
+                        };
+
                         self.phenopacket_builder.upsert_disease(
                             phenopacket_id,
                             disease,
                             None,
-                            None,
+                            disease_onset,
                             None,
                             None,
                             None,
@@ -407,6 +432,26 @@ impl Collector {
                 None => Ok(None),
             }
         }
+    }
+
+    fn get_stringified_cols_with_data_context_in_bb<'a>(
+        patient_cdf: &'a ContextualizedDataFrame,
+        bb_id: Option<&'a str>,
+        context: &'a Context,
+    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
+        let cols = bb_id.map_or(vec![], |bb_id| {
+            patient_cdf
+                .filter_columns()
+                .where_building_block(Filter::Is(bb_id))
+                .where_header_context(Filter::IsNone)
+                .where_data_context(Filter::Is(context))
+                .collect()
+        });
+
+        Ok(cols
+            .iter()
+            .map(|col| col.str())
+            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
     }
 }
 
@@ -1179,7 +1224,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_interpretations(
+    fn test_collect_diseases_and_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
         mondo_meta_data_resource: Resource,
@@ -1191,7 +1236,7 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
 
         collector
-            .collect_interpretations(&patient_cdf, &phenopacket_id)
+            .collect_diseases_and_interpretations(&patient_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
