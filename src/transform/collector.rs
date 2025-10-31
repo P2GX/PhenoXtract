@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{Column, DataType, Series, StringChunked};
+use polars::prelude::{Column, DataType, PolarsError, Series, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -317,25 +317,15 @@ impl Collector {
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
                 .iter()
-                .map(|col| col.str().unwrap())
-                .collect::<Vec<&StringChunked>>();
+                .map(|col| col.str())
+                .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-            let n_rows = patient_cdf.data().height();
-
-            for row_idx in 0..n_rows {
+            for row_idx in 0..patient_cdf.data().height() {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        let (term, _res_ref) = self
-                            .phenopacket_builder
-                            .query_disease_identifiers(disease)?;
-                        let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
-
-                        self.phenopacket_builder.upsert_interpretation(
-                            phenopacket_id,
-                            interpretation_id.as_str(),
-                            Some(disease),
-                        )?;
+                        self.phenopacket_builder
+                            .upsert_interpretation(phenopacket_id, disease)?;
                     }
                 }
             }
