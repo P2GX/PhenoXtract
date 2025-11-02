@@ -1,12 +1,14 @@
-use crate::validation::linter::linting_report::{LintReport, LintingViolations};
+use crate::validation::linter::linting_report::LintReport;
 use log::debug;
 use ontolius::TermId;
 use ontolius::ontology::HierarchyQueries;
 use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::PhenotypicFeature;
 use phenopackets::schema::v2::core::time_element::Element;
-use phenopackets::schema::v2::core::{PhenotypicFeature, TimeElement};
 
+use crate::validation::linter::enums::LintingViolations;
+use crate::validation::linter::traits::ValidatePhenopacket;
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -19,18 +21,8 @@ pub(crate) struct PhenotypeValidator {
     severity: TermId,
 }
 
-impl PhenotypeValidator {
-    pub fn new(hpo: Arc<FullCsrOntology>) -> Self {
-        PhenotypeValidator {
-            hpo,
-            phenotypic_abnormality: TermId::from_str("HP:0000118").unwrap(),
-            clinical_modifiers: TermId::from_str("HP:0012823").unwrap(),
-            onsets: TermId::from_str("HP:0003674").unwrap(),
-            severity: TermId::from_str("HP:0012824").unwrap(),
-        }
-    }
-
-    pub fn validate(&self, phenopacket: &Phenopacket, lint_report: &mut LintReport) {
+impl ValidatePhenopacket for PhenotypeValidator {
+    fn validate(&self, phenopacket: &Phenopacket, lint_report: &mut LintReport) {
         let duplicates = self.find_duplicate_phenotypic_features(&phenopacket.phenotypic_features);
         let invalid_phenotypic_features =
             self.find_related_phenotypic_features(&phenopacket.phenotypic_features);
@@ -39,73 +31,15 @@ impl PhenotypeValidator {
         self.find_non_severity(&phenopacket.phenotypic_features, lint_report);
         self.find_non_onsets(&phenopacket.phenotypic_features, lint_report);
     }
-    fn find_non_phenotypic_abnormalities(
-        &self,
-        phenotypic_features: &[PhenotypicFeature],
-        report: &mut LintReport,
-    ) {
-        phenotypic_features.iter().for_each(|feature_type| {
-            if let Some(f) = &feature_type.r#type
-                && !self.hpo.is_ancestor_of(
-                    &TermId::from_str(&f.id).unwrap(),
-                    &self.phenotypic_abnormality,
-                )
-            {
-                report.insert_violation(LintingViolations::NonPhenotypicFeature(f.clone()));
-            }
-        })
-    }
-
-    fn find_non_modifiers(
-        &self,
-        phenotypic_features: &[PhenotypicFeature],
-        report: &mut LintReport,
-    ) {
-        phenotypic_features.iter().for_each(|feature_type| {
-            feature_type.modifiers.iter().for_each(|modi| {
-                if !self.hpo.is_ancestor_of(
-                    &TermId::from_str(&modi.id).unwrap(),
-                    &self.clinical_modifiers,
-                ) {
-                    report.insert_violation(LintingViolations::NonModifier(modi.clone()));
-                }
-            })
-        })
-    }
-
-    fn find_non_severity(
-        &self,
-        phenotypic_features: &[PhenotypicFeature],
-        report: &mut LintReport,
-    ) {
-        phenotypic_features.iter().for_each(|feature_type| {
-            if let Some(f) = &feature_type.severity
-                && !self
-                    .hpo
-                    .is_ancestor_of(&TermId::from_str(&f.id).unwrap(), &self.severity)
-            {
-                report.insert_violation(LintingViolations::NonSeverity(f.clone()));
-            }
-        })
-    }
-
-    fn find_non_onsets(&self, phenotypic_features: &[PhenotypicFeature], report: &mut LintReport) {
-        for feature in phenotypic_features {
-            let Some(onset) = &feature.onset else {
-                continue;
-            };
-
-            let Some(Element::OntologyClass(oc)) = &onset.element else {
-                continue;
-            };
-
-            let Ok(term_id) = TermId::from_str(&oc.id) else {
-                continue;
-            };
-
-            if !self.hpo.is_ancestor_of(&term_id, &self.onsets) {
-                report.insert_violation(LintingViolations::NonOnset(oc.clone()));
-            }
+}
+impl PhenotypeValidator {
+    pub fn new(hpo: Arc<FullCsrOntology>) -> Self {
+        PhenotypeValidator {
+            hpo,
+            phenotypic_abnormality: TermId::from_str("HP:0000118").unwrap(),
+            clinical_modifiers: TermId::from_str("HP:0012823").unwrap(),
+            onsets: TermId::from_str("HP:0003674").unwrap(),
+            severity: TermId::from_str("HP:0012824").unwrap(),
         }
     }
 
@@ -278,13 +212,83 @@ impl PhenotypeValidator {
             .cloned()
             .collect()
     }
+
+    fn find_non_phenotypic_abnormalities(
+        &self,
+        phenotypic_features: &[PhenotypicFeature],
+        report: &mut LintReport,
+    ) {
+        phenotypic_features.iter().for_each(|feature_type| {
+            if let Some(f) = &feature_type.r#type
+                && !self.hpo.is_ancestor_of(
+                    &TermId::from_str(&f.id).unwrap(),
+                    &self.phenotypic_abnormality,
+                )
+            {
+                report.push_violation(LintingViolations::NonPhenotypicFeature(f.clone()));
+            }
+        })
+    }
+
+    fn find_non_modifiers(
+        &self,
+        phenotypic_features: &[PhenotypicFeature],
+        report: &mut LintReport,
+    ) {
+        phenotypic_features.iter().for_each(|feature_type| {
+            feature_type.modifiers.iter().for_each(|modi| {
+                if !self.hpo.is_ancestor_of(
+                    &TermId::from_str(&modi.id).unwrap(),
+                    &self.clinical_modifiers,
+                ) {
+                    report.push_violation(LintingViolations::NonModifier(modi.clone()));
+                }
+            })
+        })
+    }
+
+    fn find_non_severity(
+        &self,
+        phenotypic_features: &[PhenotypicFeature],
+        report: &mut LintReport,
+    ) {
+        phenotypic_features.iter().for_each(|feature_type| {
+            if let Some(f) = &feature_type.severity
+                && !self
+                    .hpo
+                    .is_ancestor_of(&TermId::from_str(&f.id).unwrap(), &self.severity)
+            {
+                report.push_violation(LintingViolations::NonSeverity(f.clone()));
+            }
+        })
+    }
+
+    fn find_non_onsets(&self, phenotypic_features: &[PhenotypicFeature], report: &mut LintReport) {
+        for feature in phenotypic_features {
+            let Some(onset) = &feature.onset else {
+                continue;
+            };
+
+            let Some(Element::OntologyClass(oc)) = &onset.element else {
+                continue;
+            };
+
+            let Ok(term_id) = TermId::from_str(&oc.id) else {
+                continue;
+            };
+
+            if !self.hpo.is_ancestor_of(&term_id, &self.onsets) {
+                report.push_violation(LintingViolations::NonOnset(oc.clone()));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_utils::HPO;
-    use phenopackets::schema::v2::core::OntologyClass;
+    use phenopackets::schema::v2::core::{OntologyClass, TimeElement};
     use rstest::{fixture, rstest};
 
     #[fixture]

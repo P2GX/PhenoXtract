@@ -1,19 +1,22 @@
-use crate::validation::linter::linting_report::{LintReport, LintingViolations};
+use crate::validation::linter::enums::{FixAction, LintingViolations};
+use crate::validation::linter::linting_report::{LintReport, LintReportInfo};
+use crate::validation::linter::traits::ValidatePhenopacket;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{Disease, Interpretation, OntologyClass};
 
 #[derive(Default)]
 pub(crate) struct InterpretationValidator;
 
-impl InterpretationValidator {
-    pub(crate) fn validate(phenopacket: &Phenopacket, report: &mut LintReport) {
+impl ValidatePhenopacket for InterpretationValidator {
+    fn validate(&self, phenopacket: &Phenopacket, report: &mut LintReport) {
         Self::check_interpretation_disease_consistency(
             phenopacket.interpretations.as_slice(),
             phenopacket.diseases.as_slice(),
             report,
         )
     }
-
+}
+impl InterpretationValidator {
     fn check_interpretation_disease_consistency(
         interpretations: &[Interpretation],
         diseases: &[Disease],
@@ -30,9 +33,12 @@ impl InterpretationValidator {
             .collect();
         let diseases: Vec<OntologyClass> = diseases.iter().filter_map(|d| d.term.clone()).collect();
 
-        for id in inter_diseases.iter() {
-            if !diseases.contains(id) {
-                report.insert_violation(LintingViolations::DiseaseConsistency(id.clone()))
+        for inter_disease in inter_diseases.iter() {
+            if !diseases.contains(inter_disease) {
+                report.push_info(LintReportInfo::new(
+                    LintingViolations::DiseaseConsistency(inter_disease.clone()),
+                    Some(FixAction::Add),
+                ));
             }
         }
     }
@@ -41,7 +47,7 @@ impl InterpretationValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validation::linter::linting_report::{LintReport, LintingViolations};
+    use crate::validation::linter::linting_report::LintReport;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::{Diagnosis, Disease, Interpretation, OntologyClass};
 
@@ -74,7 +80,7 @@ mod tests {
         let phenopacket = Phenopacket::default();
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -92,7 +98,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -112,7 +118,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
@@ -143,7 +149,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -170,7 +176,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
         assert!(matches!(
@@ -196,7 +202,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -221,7 +227,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -243,7 +249,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
         let violations = report.into_violations();
 
         assert_eq!(violations.len(), 1);
@@ -272,7 +278,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator::default().validate(&phenopacket, &mut report);
 
         assert_eq!(report.into_violations().len(), 2);
     }
@@ -294,7 +300,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::validate(&phenopacket, &mut report);
+        InterpretationValidator.validate(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }

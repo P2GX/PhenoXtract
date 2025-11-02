@@ -1,23 +1,29 @@
+use crate::validation::linter::enums::{FixAction, LintingViolations};
+use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::OntologyClass;
 
 #[derive(Clone, Debug)]
-pub enum LintingViolations {
-    NonModifier(OntologyClass),
-    NonPhenotypicFeature(OntologyClass),
-    NonOnset(OntologyClass),
-    NonSeverity(OntologyClass),
-    NotACurieID(String),
-    DiseaseConsistency(OntologyClass),
+pub(crate) struct LintReportInfo {
+    violation: LintingViolations,
+    fix: Option<FixAction>,
+}
+
+impl LintReportInfo {
+    pub(crate) fn new(violation: LintingViolations, fix: Option<FixAction>) -> Self {
+        Self { violation, fix }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LintReport {
-    report_info: Vec<LintingViolations>,
+    pub fixed_phenopacket: Option<Phenopacket>,
+    pub report_info: Vec<LintReportInfo>,
 }
 
 impl LintReport {
     pub fn new() -> LintReport {
         LintReport {
+            fixed_phenopacket: None,
             report_info: Vec::new(),
         }
     }
@@ -28,10 +34,17 @@ impl LintReport {
 
     pub fn into_violations(self) -> Vec<LintingViolations> {
         self.report_info
+            .iter()
+            .map(|i| i.violation.clone())
+            .collect()
     }
 
-    pub fn insert_violation(&mut self, violation: LintingViolations) {
-        self.report_info.push(violation);
+    pub fn push_violation(&mut self, violation: LintingViolations) {
+        self.report_info.push(LintReportInfo::new(violation, None));
+    }
+
+    pub fn push_info(&mut self, info: LintReportInfo) {
+        self.report_info.push(info);
     }
 
     pub fn has_violations(&self) -> bool {

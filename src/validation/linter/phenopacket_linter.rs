@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused)]
-use crate::validation::linter::curie_validator::CurieValidator;
 use crate::validation::linter::error::LintingError;
-use crate::validation::linter::interpretation_validator::InterpretationValidator;
-use crate::validation::linter::linting_report::{LintReport, LintingViolations};
-use crate::validation::linter::phenotype_validator::PhenotypeValidator;
+use crate::validation::linter::linting_report::LintReport;
+use crate::validation::linter::traits::{Lint, ValidatePhenopacket};
+use crate::validation::linter::validators::curie_validator::CurieValidator;
+use crate::validation::linter::validators::interpretation_validator::InterpretationValidator;
+use crate::validation::linter::validators::phenotype_validator::PhenotypeValidator;
 use log::debug;
 use ontolius::ontology::HierarchyQueries;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -17,6 +18,7 @@ use regex::Regex;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -26,25 +28,46 @@ struct PhenopacketLinter {
     phenotype_validator: PhenotypeValidator,
 }
 
+impl Lint<Phenopacket> for PhenopacketLinter {
+    fn lint(&mut self, phenopacket: Phenopacket, fix: bool) -> LintReport {
+        let mut phenopacket = phenopacket.clone();
+        let mut report = LintReport::new();
+
+        CurieValidator.validate(&phenopacket, &mut report);
+        self.phenotype_validator.validate(&phenopacket, &mut report);
+        InterpretationValidator.validate(&phenopacket, &mut report);
+
+        if fix && report.has_violations() {
+            let fix_res = self.fix(&mut phenopacket, &report);
+            report.fixed_phenopacket = Some(phenopacket)
+        }
+
+        report
+    }
+}
+
+impl Lint<PathBuf> for PhenopacketLinter {
+    fn lint(&mut self, path: PathBuf, fix: bool) -> LintReport {
+        let content = std::fs::read_to_string(path).expect("Failed to read file");
+        let mut phenopacket: Phenopacket =
+            serde_json::from_str(&content).expect("Failed to parse phenopacket");
+        self.lint(phenopacket, fix)
+    }
+}
+
+impl Lint<&[u8]> for PhenopacketLinter {
+    fn lint(&mut self, bytes: &[u8], fix: bool) -> LintReport {
+        let mut phenopacket: Phenopacket =
+            serde_json::from_slice(bytes).expect("Failed to parse phenopacket");
+        self.lint(phenopacket, fix)
+    }
+}
+
 impl PhenopacketLinter {
     pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketLinter {
         PhenopacketLinter {
             phenotype_validator: PhenotypeValidator::new(hpo),
         }
-    }
-
-    pub fn lint(&mut self, phenopacket: &mut Phenopacket, fix: bool) -> LintReport {
-        let mut report = LintReport::new();
-
-        CurieValidator::validate(phenopacket, &mut report);
-        self.phenotype_validator.validate(phenopacket, &mut report);
-        InterpretationValidator::validate(phenopacket, &mut report);
-
-        if fix && report.has_violations() {
-            let fix_res = self.fix(phenopacket, &report);
-        }
-
-        report
     }
 
     fn fix(&self, phenopacket: &mut Phenopacket, report: &LintReport) -> Result<(), LintingError> {
