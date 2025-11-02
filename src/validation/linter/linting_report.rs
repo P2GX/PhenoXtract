@@ -7,6 +7,7 @@ pub enum LintingViolations {
     NonOnset(OntologyClass),
     NonSeverity(OntologyClass),
     NotACurieID(String),
+    MissingDisease(OntologyClass),
 }
 
 #[derive(Clone, Debug)]
