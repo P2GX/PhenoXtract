@@ -66,6 +66,18 @@ pub enum Context {
     #[allow(unused)]
     HpoLabelOrId,
     #[allow(unused)]
+    OmimLabelOrId,
+    #[allow(unused)]
+    OrphanetLabelOrId,
+    #[allow(unused)]
+    MondoLabelOrId,
+    #[allow(unused)]
+    HgncSymbolOrId,
+    #[allow(unused)]
+    GenoLabelOrId,
+    #[allow(unused)]
+    Hgvs,
+    #[allow(unused)]
     OnsetDateTime,
     #[allow(unused)]
     OnsetAge,
@@ -133,9 +145,23 @@ pub enum Identifier {
     Multi(Vec<String>),
 }
 
+impl From<&str> for Identifier {
+    fn from(value: &str) -> Self {
+        Identifier::Regex(value.to_string())
+    }
+}
 impl Default for Identifier {
     fn default() -> Self {
         Identifier::Regex(String::new())
+    }
+}
+
+impl Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Identifier::Regex(regex) => write!(f, "{}", regex),
+            Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+        }
     }
 }
 

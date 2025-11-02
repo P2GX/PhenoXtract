@@ -92,13 +92,9 @@ impl Strategy for AliasMapStrategy {
                 };
 
                 table
-                    .data_mut()
-                    .replace(&col_name, recast_series)
-                    .map_err(|_| StrategyError::TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name: col_name.to_string(),
-                        table_name: table_name.to_string(),
-                    })?;
+                    .builder()
+                    .replace_column(&col_name, recast_series)?
+                    .build()?;
             }
 
             info!("AliasMap strategy successfully applied to table: {table_name}");
@@ -167,7 +163,7 @@ mod tests {
     #[fixture]
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::default()
-            .with_identifier(Identifier::Regex("smokes.".to_string()))
+            .with_identifier(Identifier::Regex("smokes".to_string()))
             .with_data_context(Context::SmokerBool)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("false".to_string(), "true".to_string())]),

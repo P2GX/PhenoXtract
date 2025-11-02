@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
 use polars::io::SerReader;
-use polars::prelude::CsvReadOptions;
+use polars::prelude::{CsvReadOptions, DataFrame};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -42,22 +42,20 @@ impl Validate for DataSource {
 }
 impl DataSource {
     fn conditional_transpose(
-        mut cdf: ContextualizedDataFrame,
+        mut df: DataFrame,
+        table_name: &str,
         patients_are_rows: &bool,
         has_header: &bool,
-    ) -> Result<ContextualizedDataFrame, ExtractionError> {
+    ) -> Result<DataFrame, ExtractionError> {
         if !patients_are_rows {
             let mut column_names = None;
 
             if *has_header {
                 // Assuming, that the headers are in the first column of the dataframe
-                let index_col =
-                    cdf.data()
-                        .get_columns()
-                        .first()
-                        .ok_or(ExtractionError::EmptyTable(
-                            cdf.context().name().to_string(),
-                        ))?;
+                let index_col = df
+                    .get_columns()
+                    .first()
+                    .ok_or(ExtractionError::EmptyTable(table_name.to_string()))?;
 
                 column_names = Some(Either::Right(index_col
                 .str()
@@ -67,14 +65,14 @@ impl DataSource {
                 .collect()));
 
                 let col_name = index_col.name().to_string();
-                cdf.data_mut().drop_in_place(col_name.as_str())?;
+                df.drop_in_place(col_name.as_str())?;
             }
 
-            let transposed = cdf.data_mut().transpose(None, column_names.clone())?;
-            cdf.set_data(transposed);
+            let transposed = df.transpose(None, column_names.clone())?;
+            return Ok(transposed);
         }
 
-        Ok(cdf)
+        Ok(df)
     }
 }
 
@@ -102,17 +100,17 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
-                let mut cdf = DataSource::conditional_transpose(
-                    ContextualizedDataFrame::new(csv_source.context.clone(), csv_data),
+                let mut csv_data = DataSource::conditional_transpose(
+                    csv_data,
+                    csv_source.context.name(),
                     &csv_source.extraction_config.patients_are_rows,
                     &csv_source.extraction_config.has_headers,
                 )?;
 
                 if !csv_source.extraction_config.has_headers {
                     let default_column_names =
-                        generate_default_column_names(cdf.data().width() as i64);
-                    let current_column_names: Vec<String> = cdf
-                        .data()
+                        generate_default_column_names(csv_data.width() as i64);
+                    let current_column_names: Vec<String> = csv_data
                         .get_column_names()
                         .iter()
                         .map(|s| s.to_string())
@@ -121,10 +119,10 @@ impl Extractable for DataSource {
                     for (col_name, new_col_name) in
                         current_column_names.iter().zip(default_column_names)
                     {
-                        cdf.data_mut()
-                            .rename(col_name.as_str(), new_col_name.into())?;
+                        csv_data.rename(col_name.as_str(), new_col_name.into())?;
                     }
                 }
+                let cdf = ContextualizedDataFrame::new(csv_source.context.clone(), csv_data);
 
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
@@ -759,22 +757,25 @@ AGE,18,27,89"#;
     #[rstest]
     fn test_no_transpose_when_patients_are_rows() {
         let cdf = create_test_cdf();
-        let result = DataSource::conditional_transpose(cdf.clone(), &true, &true).unwrap();
+        let table_name = cdf.context().name();
+        let data = cdf.data().clone();
+        let result = DataSource::conditional_transpose(data, table_name, &true, &true).unwrap();
 
-        assert_eq!(result.data().shape(), cdf.data().shape());
+        assert_eq!(result.shape(), cdf.data().shape());
     }
 
     #[rstest]
     fn test_transpose_with_header() {
         let cdf = create_test_cdf();
-        let result = DataSource::conditional_transpose(cdf.clone(), &false, &true).unwrap();
+        let table_name = cdf.context().name();
+        let data = cdf.data().clone();
+        let result = DataSource::conditional_transpose(data, table_name, &false, &true).unwrap();
 
-        assert_eq!(result.data().shape().0, cdf.data().width() - 1);
-        assert_eq!(result.data().shape().1, cdf.data().height());
+        assert_eq!(result.shape().0, cdf.data().width() - 1);
+        assert_eq!(result.shape().1, cdf.data().height());
 
         assert_eq!(
             result
-                .data()
                 .get_column_names()
                 .iter()
                 .map(|s| s.to_string())
