@@ -1,4 +1,4 @@
-use crate::validation::linter::linting_report::LintReport;
+use crate::validation::linter::linting_report::{LintReport, LintReportInfo};
 use log::debug;
 use ontolius::TermId;
 use ontolius::ontology::HierarchyQueries;
@@ -7,9 +7,10 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::PhenotypicFeature;
 use phenopackets::schema::v2::core::time_element::Element;
 
-use crate::validation::linter::enums::LintingViolations;
+use crate::validation::linter::enums::{FixAction, LintingViolations};
 use crate::validation::linter::traits::ValidatePhenopacket;
-use std::collections::HashSet;
+use phenopackets::schema::v2::core::OntologyClass;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -23,13 +24,12 @@ pub(crate) struct PhenotypeValidator {
 
 impl ValidatePhenopacket for PhenotypeValidator {
     fn validate(&self, phenopacket: &Phenopacket, lint_report: &mut LintReport) {
-        let duplicates = self.find_duplicate_phenotypic_features(&phenopacket.phenotypic_features);
-        let invalid_phenotypic_features =
-            self.find_related_phenotypic_features(&phenopacket.phenotypic_features);
-        self.find_non_phenotypic_abnormalities(&phenopacket.phenotypic_features, lint_report);
-        self.find_non_modifiers(&phenopacket.phenotypic_features, lint_report);
-        self.find_non_severity(&phenopacket.phenotypic_features, lint_report);
-        self.find_non_onsets(&phenopacket.phenotypic_features, lint_report);
+        let phenotypic_features = phenopacket.phenotypic_features.as_slice();
+        self.validate_phenotypic_features_family(phenotypic_features, lint_report);
+        self.find_non_phenotypic_abnormalities(phenotypic_features, lint_report);
+        self.find_non_modifiers(phenotypic_features, lint_report);
+        self.find_non_severity(phenotypic_features, lint_report);
+        self.find_non_onsets(phenotypic_features, lint_report);
     }
 }
 impl PhenotypeValidator {
@@ -42,23 +42,67 @@ impl PhenotypeValidator {
             severity: TermId::from_str("HP:0012824").unwrap(),
         }
     }
+    // Duplicates Same level  | Action
+    // Pure duplicates -> Remove
+    // excluded and included -> None
+    // As soon as there is an onset, severity or modifiers phenotypes can not be merged otherwise -> Merge
 
-    fn find_duplicate_phenotypic_features(
+    fn validate_phenotypic_features_family(
         &self,
         phenotypic_features: &[PhenotypicFeature],
-    ) -> HashSet<String> {
-        let mut duplicates: HashSet<String> = HashSet::new();
-        let mut seen: HashSet<String> = HashSet::new();
+        lint_report: &mut LintReport,
+    ) {
+        let duplicate_features = self.filter_by_duplicate_ontology_classes(phenotypic_features);
 
-        for pf in phenotypic_features {
-            if let Some(ref feature_type) = pf.r#type {
-                let pf_id = feature_type.id.clone();
-                if seen.contains(pf_id.as_str()) {
-                    duplicates.insert(pf_id.clone());
+        for mut dup_pfs in duplicate_features.values().cloned() {
+            // Find pure duplicates
+            let mut seen = Vec::new();
+            let mut indices_to_remove = Vec::new();
+
+            for (index, pf) in dup_pfs.iter().enumerate() {
+                if seen.contains(&pf) {
+                    lint_report.push_info(LintReportInfo::new(
+                        LintingViolations::DuplicatePhenotype(Box::new(pf.clone())),
+                        Some(FixAction::Remove),
+                    ));
+                    indices_to_remove.push(index);
+                } else {
+                    seen.push(pf);
                 }
-                seen.insert(pf_id);
+            }
+            for &i in indices_to_remove.iter().rev() {
+                dup_pfs.remove(i);
             }
         }
+    }
+
+    fn is_empty_pf(phenotypic_features: &PhenotypicFeature) -> bool {
+        phenotypic_features.onset.is_none()
+            && phenotypic_features.severity.is_none()
+            && phenotypic_features.modifiers.is_empty()
+            && phenotypic_features.description.is_empty()
+            && phenotypic_features.evidence.is_empty()
+            && phenotypic_features.resolution.is_none()
+    }
+    fn filter_by_duplicate_ontology_classes(
+        &self,
+        phenotypic_features: &[PhenotypicFeature],
+    ) -> HashMap<String, Vec<PhenotypicFeature>> {
+        let mut duplicates: HashMap<String, Vec<PhenotypicFeature>> = HashMap::new();
+        let mut seen: Vec<&OntologyClass> = Vec::new();
+
+        for pf in phenotypic_features {
+            if let Some(ref ont_class) = pf.r#type {
+                if seen.contains(&ont_class) {
+                    duplicates
+                        .entry(ont_class.id.to_string())
+                        .or_default()
+                        .push(pf.clone());
+                }
+                seen.push(ont_class);
+            }
+        }
+
         debug!("Duplicate phenotypic features: {:?}", duplicates);
         duplicates
     }
@@ -213,6 +257,7 @@ impl PhenotypeValidator {
             .collect()
     }
 
+    // TODO: These should add a move operation, if the Ontology class falls into another category.
     fn find_non_phenotypic_abnormalities(
         &self,
         phenotypic_features: &[PhenotypicFeature],
@@ -446,10 +491,22 @@ mod tests {
         ];
 
         let duplicates =
-            validator.find_duplicate_phenotypic_features(phenotypic_features.as_slice());
+            validator.filter_by_duplicate_ontology_classes(phenotypic_features.as_slice());
 
         assert_eq!(duplicates.len(), 1);
-        assert_eq!(duplicates.iter().next().unwrap(), "HP:0001098");
+        assert_eq!(
+            duplicates
+                .values()
+                .next()
+                .unwrap()
+                .first()
+                .unwrap()
+                .r#type
+                .clone()
+                .unwrap()
+                .id,
+            "HP:0001098"
+        );
     }
 
     #[rstest]

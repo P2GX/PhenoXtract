@@ -33,12 +33,14 @@ impl InterpretationValidator {
             .collect();
         let diseases: Vec<OntologyClass> = diseases.iter().filter_map(|d| d.term.clone()).collect();
 
+        let mut seen: Vec<&OntologyClass> = vec![];
         for inter_disease in inter_diseases.iter() {
-            if !diseases.contains(inter_disease) {
+            if !diseases.contains(inter_disease) && !seen.contains(&inter_disease) {
                 report.push_info(LintReportInfo::new(
                     LintingViolations::DiseaseConsistency(inter_disease.clone()),
-                    Some(FixAction::Add),
+                    Some(FixAction::Duplicate),
                 ));
+                seen.push(inter_disease)
             }
         }
     }

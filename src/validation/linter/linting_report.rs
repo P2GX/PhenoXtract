@@ -1,6 +1,5 @@
 use crate::validation::linter::enums::{FixAction, LintingViolations};
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::OntologyClass;
 
 #[derive(Clone, Debug)]
 pub(crate) struct LintReportInfo {
