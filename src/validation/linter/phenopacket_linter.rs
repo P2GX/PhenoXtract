@@ -2,6 +2,7 @@
 #![allow(unused)]
 use crate::validation::linter::curie_validator::CurieValidator;
 use crate::validation::linter::error::LintingError;
+use crate::validation::linter::interpretation_validator::InterpretationValidator;
 use crate::validation::linter::linting_report::{LintReport, LintingViolations};
 use crate::validation::linter::phenotype_validator::PhenotypeValidator;
 use log::debug;
@@ -32,19 +33,18 @@ impl PhenopacketLinter {
         }
     }
 
-    pub fn lint(&mut self, phenopacket: &mut Phenopacket, fix: bool) -> Option<LintReport> {
+    pub fn lint(&mut self, phenopacket: &mut Phenopacket, fix: bool) -> LintReport {
         let mut report = LintReport::new();
-        self.phenotype_validator.validate(phenopacket, &mut report);
+
         CurieValidator::validate(phenopacket, &mut report);
+        self.phenotype_validator.validate(phenopacket, &mut report);
+        InterpretationValidator::validate(phenopacket, &mut report);
 
         if fix && report.has_violations() {
             let fix_res = self.fix(phenopacket, &report);
         }
 
-        match report.has_violations() {
-            true => Some(report),
-            false => None,
-        }
+        report
     }
 
     fn fix(&self, phenopacket: &mut Phenopacket, report: &LintReport) -> Result<(), LintingError> {

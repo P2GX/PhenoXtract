@@ -7,10 +7,10 @@ pub enum LintingViolations {
     NonOnset(OntologyClass),
     NonSeverity(OntologyClass),
     NotACurieID(String),
-    MissingDisease(OntologyClass),
+    DiseaseConsistency(OntologyClass),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct LintReport {
     report_info: Vec<LintingViolations>,
 }
