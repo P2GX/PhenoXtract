@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collector::Collector;
-use crate::transform::error::{StrategyError, TransformError};
+use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
@@ -25,7 +25,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
-            Self::ensure_ints(table);
+            Self::ensure_ints(table)?;
             Self::polars_dataframe_cast_ambivalent(table)?;
         }
 
@@ -47,7 +47,7 @@ impl TransformerModule {
     ///
     /// Scans all Float32 and Float64 columns in the dataframe. If a column contains only
     /// integer values (or nulls), it is cast to Int64 type in-place.
-    fn ensure_ints(cdf: &mut ContextualizedDataFrame) {
+    fn ensure_ints(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
         let float_col_names: Vec<String> = cdf
             .filter_columns()
             .where_dtype(Filter::Is(&DataType::Float64))
@@ -58,57 +58,44 @@ impl TransformerModule {
             .collect();
 
         for col_name in float_col_names {
-            let column = cdf.data().column(&col_name).unwrap();
+            let column = cdf.data().column(&col_name)?;
 
             let is_all_integers = match column.dtype() {
-                DataType::Float64 => {
-                    column
-                        .f64()
-                        .unwrap()
-                        .into_iter()
-                        .all(|val_opt: Option<f64>| {
-                            val_opt.is_none_or(|val| {
-                                val.fract() == 0.0
-                                    && val.is_finite()
-                                    && val >= i64::MIN as f64
-                                    && val <= i64::MAX as f64
-                            })
-                        })
-                }
-                DataType::Float32 => {
-                    column
-                        .f32()
-                        .unwrap()
-                        .into_iter()
-                        .all(|val_opt: Option<f32>| {
-                            val_opt.is_none_or(|val| {
-                                val.fract() == 0.0
-                                    && val.is_finite()
-                                    && val >= i64::MIN as f32
-                                    && val <= i64::MAX as f32
-                            })
-                        })
-                }
+                DataType::Float64 => column.f64()?.into_iter().all(|val_opt: Option<f64>| {
+                    val_opt.is_none_or(|val| {
+                        val.fract() == 0.0
+                            && val.is_finite()
+                            && val >= i64::MIN as f64
+                            && val <= i64::MAX as f64
+                    })
+                }),
+                DataType::Float32 => column.f32()?.into_iter().all(|val_opt: Option<f32>| {
+                    val_opt.is_none_or(|val| {
+                        val.fract() == 0.0
+                            && val.is_finite()
+                            && val >= i64::MIN as f32
+                            && val <= i64::MAX as f32
+                    })
+                }),
                 _ => false,
             };
 
             if is_all_integers {
-                let casted = column.cast(&DataType::Int64).unwrap();
+                let casted = column.cast(&DataType::Int64)?;
                 cdf.builder()
                     .replace_column(
                         casted.name().to_string().as_str(),
                         casted.take_materialized_series(),
-                    )
-                    .unwrap()
-                    .build()
-                    .unwrap();
+                    )?
+                    .build()?;
             }
         }
+        Ok(())
     }
 
     fn polars_dataframe_cast_ambivalent(
         cdf: &mut ContextualizedDataFrame,
-    ) -> Result<(), StrategyError> {
+    ) -> Result<(), DataProcessingError> {
         let col_names: Vec<String> = cdf
             .data()
             .get_column_names()
@@ -206,7 +193,7 @@ mod tests {
             ),
             float32_df,
         );
-        TransformerModule::ensure_ints(&mut cdf);
+        TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         // Verify the column was cast to Int64
         let result_col = cdf.data().column("values").unwrap();
@@ -240,7 +227,7 @@ mod tests {
             ),
             float64_df,
         );
-        TransformerModule::ensure_ints(&mut cdf);
+        TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         let result_col = cdf.data().column("values").unwrap();
         assert_eq!(result_col.dtype(), &DataType::Int64);
@@ -273,7 +260,7 @@ mod tests {
             ),
             float64_df,
         );
-        TransformerModule::ensure_ints(&mut cdf);
+        TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         let result_col = cdf.data().column("values").unwrap();
         assert_eq!(result_col.dtype(), &DataType::Float64);
