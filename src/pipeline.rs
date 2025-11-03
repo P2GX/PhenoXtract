@@ -42,10 +42,15 @@ impl Pipeline {
     ) -> Result<Vec<ContextualizedDataFrame>, PipelineError> {
         info!("Starting extract");
         extractables.validate()?;
+
         let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
-            .flat_map(|ex| ex.extract().unwrap())
+            .map(|ex| ex.extract())
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
+
         info!("Concluded extraction extracted {:?} tables", tables.len());
         Ok(tables)
     }
@@ -83,14 +88,16 @@ impl Pipeline {
 
     #[allow(unused)]
     #[allow(dead_code)]
-    pub fn from_config(value: &PipelineConfig) -> Result<Self, ConstructionError> {
-        // In progress
-        // TOOD: Read hpo version from config later
+    pub fn try_from_config(config: &PipelineConfig) -> Result<Self, ConstructionError> {
         let mut factory = CachedOntologyFactory::default();
-        let hpo_dict = factory.build_bidict(&OntologyRef::hp(None), None).unwrap();
+
+        let hpo_dict = factory.build_bidict(&OntologyRef::hp(), None)?;
+
         let builder = PhenopacketBuilder::new(HashMap::default());
-        let tf_module =
-            TransformerModule::new(vec![], Collector::new(builder, "replace_me".to_owned()));
+        let tf_module = TransformerModule::new(
+            vec![],
+            Collector::new(builder, config.meta_data.cohort_name.clone()),
+        );
         let loader_module = FileSystemLoader::new(PathBuf::from("some/dir/"));
 
         Ok(Pipeline::new(tf_module, loader_module))
@@ -105,6 +112,6 @@ mod tests {
     #[rstest]
     fn test_from_pipeline_config() {
         let config = PipelineConfig::default();
-        let _ = Pipeline::from_config(&config);
+        let _ = Pipeline::try_from_config(&config);
     }
 }

@@ -6,4 +6,6 @@ pub mod ontology_normaliser;
 pub use ontology_normaliser::OntologyNormaliserStrategy;
 
 pub mod multi_hpo_col_expansion;
+pub mod strategy_factory;
+
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;

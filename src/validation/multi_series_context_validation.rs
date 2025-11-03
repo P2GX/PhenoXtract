@@ -22,8 +22,9 @@ pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
-    #[test]
+    #[rstest]
     fn test_multi_identifier_regex_delegates() {
         let id = Identifier::Regex("^[a-z]+$".to_string());
         let sc = SeriesContext::default().with_identifier(id);
@@ -31,7 +32,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[rstest]
     fn test_multi_identifier_multi_empty_vec_errors() {
         let id = Identifier::Multi(vec![]);
         let sc = SeriesContext::default().with_identifier(id);
@@ -43,7 +44,7 @@ mod tests {
         assert!(err.message.unwrap().contains("at least one ID"));
     }
 
-    #[test]
+    #[rstest]
     fn test_multi_identifier_multi_non_empty_vec_ok() {
         let id = Identifier::Multi(vec!["abc".to_string()]);
         let sc = SeriesContext::default().with_identifier(id);

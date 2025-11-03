@@ -202,7 +202,10 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::hp(version);
+        let onto_ref = match version {
+            None => OntologyRef::hp(),
+            Some(v) => OntologyRef::hp_with_version(&v),
+        };
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Human Phenotype Ontology (HPO).
@@ -225,7 +228,11 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::hp(version);
+        let onto_ref = match version {
+            None => OntologyRef::hp(),
+            Some(v) => OntologyRef::hp_with_version(&v),
+        };
+
         self.build_bidict(&onto_ref, None)
     }
     /// Loads the Mondo Disease Ontology (MONDO).
@@ -247,7 +254,10 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::mondo(version);
+        let onto_ref = match version {
+            None => OntologyRef::mondo(),
+            Some(v) => OntologyRef::mondo_with_version(&v),
+        };
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Mondo Disease Ontology (MONDO).
@@ -269,7 +279,10 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::mondo(version);
+        let onto_ref = match version {
+            None => OntologyRef::mondo(),
+            Some(v) => OntologyRef::mondo_with_version(&v),
+        };
         self.build_bidict(&onto_ref, None)
     }
 
@@ -292,7 +305,10 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::geno(version);
+        let onto_ref = match version {
+            None => OntologyRef::geno(),
+            Some(v) => OntologyRef::geno_with_version(&v),
+        };
         self.build_ontology(&onto_ref, None)
     }
 
@@ -315,7 +331,10 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
-        let onto_ref = OntologyRef::geno(version);
+        let onto_ref = match version {
+            None => OntologyRef::geno(),
+            Some(v) => OntologyRef::geno_with_version(&v),
+        };
         self.build_bidict(&onto_ref, None)
     }
 
@@ -344,7 +363,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontology_success() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::geno(Option::from("2025-07-25".to_string()));
+        let ontology = OntologyRef::geno_with_version("2025-07-25");
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_ontology(&ontology, None)?;
@@ -361,7 +380,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::geno(Option::from("2025-07-25".to_string()));
+        let ontology = OntologyRef::geno_with_version("2025-07-25");
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_bidict(&ontology, None)?;

@@ -462,7 +462,10 @@ impl PhenopacketBuilder {
             .unwrap_or(true);
 
         if needs_resource {
-            let resource = self.resource_resolver.resolve(resource_id).unwrap();
+            let resource = self
+                .resource_resolver
+                .resolve(resource_id)
+                .expect("Could not resolve resource");
 
             let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
             phenopacket
@@ -1154,8 +1157,8 @@ mod tests {
         let mut builder = build_test_phenopacket_builder();
         let disease = "a sever disease, you do not want to have".to_string();
         let omim_id = "OMIM:0099";
-        let mondo_ref = OntologyRef::mondo(None);
-        let _omim_ref = DatabaseRef::omim(None);
+        let mondo_ref = OntologyRef::mondo();
+        let _omim_ref = DatabaseRef::omim();
         let label_to_id_mondo =
             HashMap::from_iter([(disease.to_string(), "MONDO:0032".to_string())]);
 
@@ -1165,7 +1168,7 @@ mod tests {
             (
                 mondo_ref.prefix_id().to_string(),
                 Arc::new(OntologyBiDict::new(
-                    OntologyRef::mondo(None),
+                    OntologyRef::mondo(),
                     label_to_id_mondo.clone(),
                     HashMap::from_iter(
                         label_to_id_mondo

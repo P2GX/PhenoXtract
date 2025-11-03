@@ -1,21 +1,18 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CSVDataSource;
-use polars::io::SerReader;
-use polars::prelude::{CsvReadOptions, DataFrame};
-use std::fs::File;
-use std::io::BufReader;
-
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
-use log::{info, warn};
+use log::info;
+use polars::io::SerReader;
+use polars::prelude::{CsvReadOptions, DataFrame};
 use serde::{Deserialize, Serialize};
+use std::fs;
 
-use crate::extract::excel_range_reader::ExcelRangeReader;
 use crate::extract::utils::generate_default_column_names;
-use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 
+use fastexcel::{ExcelReader, IdxOrName, LoadSheetOrTableOptions};
 use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
@@ -47,7 +44,9 @@ impl DataSource {
         patients_are_rows: &bool,
         has_header: &bool,
     ) -> Result<DataFrame, ExtractionError> {
-        if !patients_are_rows {
+        if *patients_are_rows {
+            Ok(df)
+        } else {
             let mut column_names = None;
 
             if *has_header {
@@ -66,13 +65,24 @@ impl DataSource {
 
                 let col_name = index_col.name().to_string();
                 df.drop_in_place(col_name.as_str())?;
+            } else {
+                let default_column_names = generate_default_column_names(df.width() as i64);
+                let current_column_names: Vec<String> = df
+                    .get_column_names()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+
+                for (col_name, new_col_name) in
+                    current_column_names.iter().zip(default_column_names)
+                {
+                    df.rename(col_name.as_str(), new_col_name.into())?;
+                }
             }
 
             let transposed = df.transpose(None, column_names.clone())?;
-            return Ok(transposed);
+            Ok(transposed)
         }
-
-        Ok(df)
     }
 }
 
@@ -100,51 +110,30 @@ impl Extractable for DataSource {
                     .try_into_reader_with_file_path(Some(csv_source.source.clone()))?
                     .finish()?;
 
-                let mut csv_data = DataSource::conditional_transpose(
+                let csv_data = DataSource::conditional_transpose(
                     csv_data,
                     csv_source.context.name(),
                     &csv_source.extraction_config.patients_are_rows,
                     &csv_source.extraction_config.has_headers,
                 )?;
 
-                if !csv_source.extraction_config.has_headers {
-                    let default_column_names =
-                        generate_default_column_names(csv_data.width() as i64);
-                    let current_column_names: Vec<String> = csv_data
-                        .get_column_names()
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect();
-
-                    for (col_name, new_col_name) in
-                        current_column_names.iter().zip(default_column_names)
-                    {
-                        csv_data.rename(col_name.as_str(), new_col_name.into())?;
-                    }
-                }
                 let cdf = ContextualizedDataFrame::new(csv_source.context.clone(), csv_data);
 
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
             }
             DataSource::Excel(excel_source) => {
-                let mut cdf_vec = Vec::new();
+                let mut cdfs = Vec::new();
 
                 info!(
-                    "Attempting to extract Excel data from: {}",
-                    excel_source.source.display()
+                    "Attempting to extract Excel data from: {:?}",
+                    excel_source.source
                 );
-
-                let mut workbook: Xlsx<BufReader<File>> =
-                    open_workbook(excel_source.source.clone())?;
 
                 let extraction_configs = &excel_source.extraction_configs;
 
-                if extraction_configs.len() < workbook.sheet_names().len() {
-                    warn!("Warning: fewer ExtractionConfigs than Excel Worksheets.");
-                } else if extraction_configs.len() > workbook.sheet_names().len() {
-                    warn!("Warning: more ExtractionConfigs than Excel Worksheets.");
-                }
+                let bytes = fs::read(excel_source.source.clone())?;
+                let mut reader = ExcelReader::try_from(bytes.as_slice())?;
 
                 for extraction_config in extraction_configs {
                     let sheet_name = &extraction_config.name;
@@ -156,24 +145,26 @@ impl Extractable for DataSource {
                             sheet_name.to_string(),
                         ))?;
 
-                    let range = match workbook.worksheet_range(sheet_name) {
-                        Ok(r) => r,
-                        Err(_) => {
-                            warn!(
-                                "Could not find Excel Worksheet with the name {sheet_name}! No dataframe extracted."
-                            );
-                            continue;
-                        }
-                    };
+                    let mut options = LoadSheetOrTableOptions::new_for_sheet();
+                    if !extraction_config.patients_are_rows || !extraction_config.has_headers {
+                        options = options.no_header_row();
+                    }
 
-                    let excel_range_reader =
-                        ExcelRangeReader::new(range, extraction_config.clone());
+                    let idx_or_name = IdxOrName::Name(extraction_config.name.clone());
+                    let sheet = reader.load_sheet(idx_or_name, options)?;
 
-                    let sheet_data = excel_range_reader.extract_to_df()?;
+                    let df = sheet.to_polars()?;
 
-                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
+                    let df = DataSource::conditional_transpose(
+                        df,
+                        &extraction_config.name,
+                        &extraction_config.patients_are_rows,
+                        &extraction_config.has_headers,
+                    )?;
 
-                    cdf_vec.push(cdf);
+                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), df);
+
+                    cdfs.push(cdf);
                     info!(
                         "Extracted data from Excel Worksheet {} in Excel Workbook {}",
                         sheet_name,
@@ -181,7 +172,7 @@ impl Extractable for DataSource {
                     );
                 }
 
-                Ok(cdf_vec)
+                Ok(cdfs)
             }
         }
     }
@@ -196,7 +187,8 @@ mod tests {
     use polars::df;
     use polars::prelude::DataFrame;
     use rstest::{fixture, rstest};
-    use rust_xlsxwriter::{ColNum, ExcelDateTime, Format, IntoCustomDateTime, RowNum, Workbook};
+    use rust_xlsxwriter::{ColNum, Format, RowNum, Workbook};
+    use std::collections::HashMap;
     use std::f64;
     use std::fmt::Write;
     use std::fs::File;
@@ -238,24 +230,12 @@ mod tests {
     }
 
     #[fixture]
-    fn times_of_birth() -> [ExcelDateTime; 4] {
+    fn times_of_birth() -> [String; 4] {
         [
-            ExcelDateTime::from_ymd(1960, 1, 25)
-                .unwrap()
-                .and_hms(12, 30, 5)
-                .unwrap(),
-            ExcelDateTime::from_ymd(2020, 4, 28)
-                .unwrap()
-                .and_hms(23, 11, 15)
-                .unwrap(),
-            ExcelDateTime::from_ymd(1928, 11, 9)
-                .unwrap()
-                .and_hms(15, 32, 13)
-                .unwrap(),
-            ExcelDateTime::from_ymd(1998, 10, 4)
-                .unwrap()
-                .and_hms(11, 59, 59)
-                .unwrap(),
+            "1960-01-25 12:30:05".to_string(),
+            "2020-04-28 23:11:15".to_string(),
+            "1928-11-09 15:32:13".to_string(),
+            "1998-10-04 11:59:59".to_string(),
         ]
     }
 
@@ -602,12 +582,11 @@ AGE,18,27,89"#;
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
         row_names: [&'static str; 4],
-        times_of_birth: [ExcelDateTime; 4],
+        times_of_birth: [String; 4],
         ages: [i32; 4],
         weights: [f64; 4],
         smoker_bools: [bool; 4],
     ) {
-        //Write desired data to an Excel file
         let mut workbook = Workbook::new();
 
         workbook.add_worksheet().set_name("first_sheet").unwrap();
@@ -667,79 +646,72 @@ AGE,18,27,89"#;
         let file_path = temp_dir.path().join("test_excel.xlsx");
         workbook.save(file_path.clone()).unwrap();
 
-        //Now we test the extraction
         let data_source = DataSource::Excel(ExcelDatasource::new(
             file_path,
             table_contexts.clone(),
             extraction_configs.clone(),
         ));
 
-        let data_frames = data_source.extract().unwrap();
-        for data_frame in data_frames {
-            let extracted_data = data_frame.data().clone();
+        let mut expected_dfs = HashMap::new();
 
-            if data_frame.context().name() == "first_sheet" {
-                assert_eq!(extracted_data.get_column_names(), column_names);
-            } else if data_frame.context().name() == "second_sheet" {
-                assert_eq!(extracted_data.get_column_names(), row_names);
-            } else {
-                assert_eq!(extracted_data.get_column_names(), ["0", "1", "2", "3"]);
+        expected_dfs.insert(
+            "first_sheet",
+            df! {
+                "patient_id" => &["P001", "P002", "P003", "P004"],
+                "hpo_id" => &["HP:0000054", "HP:0000046", "HP:0000040", "HP:0030265"],
+                "disease_id" => &["MONDO:100100", "MONDO:100200", "MONDO:100300", "MONDO:100400"],
+                "sex" => &["Male", "Female", "Male", "Female"],
             }
+            .unwrap(),
+        );
 
-            let extracted_col0 = extracted_data.select_at_idx(0).unwrap();
-            let extracted_col1 = extracted_data.select_at_idx(1).unwrap();
-            let extracted_col2 = extracted_data.select_at_idx(2).unwrap();
-            let extracted_col3 = extracted_data.select_at_idx(3).unwrap();
-
-            if data_frame.context().name() == "first_sheet"
-                || data_frame.context().name() == "third_sheet"
-            {
-                let extracted_patient_ids: Vec<_> =
-                    extracted_col0.str().unwrap().into_no_null_iter().collect();
-                let extracted_hpo_ids: Vec<_> =
-                    extracted_col1.str().unwrap().into_no_null_iter().collect();
-                let extracted_disease_ids: Vec<_> =
-                    extracted_col2.str().unwrap().into_no_null_iter().collect();
-                let extracted_subject_sexes: Vec<_> =
-                    extracted_col3.str().unwrap().into_no_null_iter().collect();
-                assert_eq!(extracted_patient_ids, patient_ids);
-                assert_eq!(extracted_hpo_ids, hpo_ids);
-                assert_eq!(extracted_disease_ids, disease_ids);
-                assert_eq!(extracted_subject_sexes, subject_sexes);
+        expected_dfs.insert(
+            "second_sheet",
+            df! {
+                "time_of_birth" => &[
+                    "1960-01-25 12:30:05",
+                    "2020-04-28 23:11:15",
+                    "1928-11-09 15:32:13",
+                    "1998-10-04 11:59:59"
+                ],
+                "age" => &["41", "29", "53", "101"],
+                "weight" => &["100.5", "70.3", "95.8", "40.2"],
+                "smokes" => &["false", "true", "false", "true"],
             }
+            .unwrap(),
+        );
 
-            if data_frame.context().name() == "second_sheet"
-                || data_frame.context().name() == "fourth_sheet"
-            {
-                let extracted_times_of_birth = extracted_col0
-                    .datetime()
-                    .unwrap()
-                    .to_string("%Y-%m-%dT%H:%M:%SZ")
-                    .unwrap()
-                    .into_no_null_iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>();
-                let expected_times_of_birth = times_of_birth
-                    .iter()
-                    .map(|dt| dt.utc_datetime())
-                    .collect::<Vec<String>>();
-                assert_eq!(extracted_times_of_birth, expected_times_of_birth);
-
-                let extracted_ages: Vec<_> =
-                    extracted_col1.f64().unwrap().into_no_null_iter().collect();
-                assert_eq!(
-                    extracted_ages,
-                    ages.iter().map(|&v| v as f64).collect::<Vec<f64>>()
-                );
-
-                let extracted_weights: Vec<_> =
-                    extracted_col2.f64().unwrap().into_no_null_iter().collect();
-                assert_eq!(extracted_weights, weights);
-
-                let extracted_smoker_bools: Vec<_> =
-                    extracted_col3.bool().unwrap().into_no_null_iter().collect();
-                assert_eq!(extracted_smoker_bools, smoker_bools);
+        expected_dfs.insert(
+            "third_sheet",
+            df! {
+                "0" => &["P001", "P002", "P003", "P004"],
+                "1" => &["HP:0000054", "HP:0000046", "HP:0000040", "HP:0030265"],
+                "2" => &["MONDO:100100", "MONDO:100200", "MONDO:100300", "MONDO:100400"],
+                "3" => &["Male", "Female", "Male", "Female"],
             }
+            .unwrap(),
+        );
+
+        expected_dfs.insert(
+            "fourth_sheet",
+            df! {
+                "0" => &[
+                    "1960-01-25 12:30:05",
+                    "2020-04-28 23:11:15",
+                    "1928-11-09 15:32:13",
+                    "1998-10-04 11:59:59"
+                ],
+                "1" => &["41", "29", "53", "101"],
+                "2" => &["100.5", "70.3", "95.8", "40.2"],
+                "3" => &["false", "true", "false", "true"],
+            }
+            .unwrap(),
+        );
+
+        let cdfs = data_source.extract().unwrap();
+        for cdf in cdfs {
+            let expected_df = expected_dfs.get(cdf.context().name()).unwrap();
+            assert_eq!(cdf.data(), expected_df);
         }
     }
 

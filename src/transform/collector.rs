@@ -184,7 +184,7 @@ impl Collector {
             }
 
             let onset_col = if valid_onset_linking {
-                linked_onset_cols.first().unwrap()
+                linked_onset_cols.first().expect("No linked onset column")
             } else {
                 null_col
             };
