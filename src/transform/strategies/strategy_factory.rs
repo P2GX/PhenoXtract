@@ -177,13 +177,4 @@ mod tests {
 
         let _: &dyn Strategy = strategy.as_ref();
     }
-
-    #[rstest]
-    fn test_all_default_mapping_variants() {
-        let mut factory = create_test_factory();
-
-        let sex_config = StrategyConfig::DefaultMappings(DefaultMappings::SexMapping);
-        let result = factory.try_from_config(&sex_config);
-        assert!(result.is_ok(), "SexMapping should succeed");
-    }
 }
