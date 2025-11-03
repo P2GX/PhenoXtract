@@ -56,11 +56,11 @@ pub(crate) static MONDO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     ))
 });
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::hp(Some("2025-09-01".to_string())));
+    Lazy::new(|| OntologyRef::hp_with_version("2025-09-01"));
 pub(crate) static GENO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::geno(Some("2025-07-25".to_string())));
+    Lazy::new(|| OntologyRef::geno_with_version("2025-07-25"));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::mondo(Some("2025-10-07".to_string())));
+    Lazy::new(|| OntologyRef::mondo_with_version("2025-10-07"));
 use validator::ValidateRequired;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {

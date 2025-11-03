@@ -1,44 +1,74 @@
+use crate::ontology::OntologyRef;
 use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct MetaData {
-    #[allow(unused)]
-    #[serde(default = "default_creator")]
-    pub created_by: Option<String>,
-    #[allow(unused)]
-    pub submitted_by: String,
     pub cohort_name: String,
-    #[serde(default = "default_ontology_version")]
-    pub hpo_version: String,
-    #[serde(default = "default_ontology_version")]
-    pub mondo_version: String,
-    #[serde(default = "default_ontology_version")]
-    pub geno_version: String,
+    #[serde(default = "default_creator")]
+    pub created_by: String,
+    #[serde(default = "default_creator")]
+    pub submitted_by: String,
+    #[serde(default = "crate::ontology::OntologyRef::hp")]
+    pub hp_ref: OntologyRef,
+    #[serde(default = "crate::ontology::OntologyRef::mondo")]
+    pub mondo_ref: OntologyRef,
+    #[serde(default = "crate::ontology::OntologyRef::geno")]
+    pub geno_ref: OntologyRef,
+}
+impl MetaData {
+    pub fn new(
+        created_by: Option<&str>,
+        submitted_by: Option<&str>,
+        cohort_name: &str,
+        hpo_version: Option<&OntologyRef>,
+        mondo_version: Option<&OntologyRef>,
+        geno_version: Option<&OntologyRef>,
+    ) -> Self {
+        Self {
+            created_by: match created_by {
+                None => default_creator(),
+                Some(s) => s.to_owned(),
+            },
+            submitted_by: match submitted_by {
+                None => default_creator(),
+                Some(s) => s.to_owned(),
+            },
+            cohort_name: cohort_name.to_owned(),
+            hp_ref: match hpo_version {
+                None => OntologyRef::hp(),
+                Some(s) => s.to_owned(),
+            },
+            mondo_ref: match mondo_version {
+                None => OntologyRef::mondo(),
+                Some(s) => s.to_owned(),
+            },
+            geno_ref: match geno_version {
+                None => OntologyRef::geno(),
+                Some(s) => s.to_owned(),
+            },
+        }
+    }
 }
 
 impl Default for MetaData {
     fn default() -> MetaData {
         MetaData {
             created_by: default_creator(),
-            submitted_by: env!("CARGO_PKG_NAME").to_string(),
+            submitted_by: default_creator(),
             cohort_name: "unnamed_cohort".to_string(),
-            hpo_version: default_ontology_version(),
-            mondo_version: default_ontology_version(),
-            geno_version: default_ontology_version(),
+            hp_ref: OntologyRef::hp(),
+            mondo_ref: OntologyRef::mondo(),
+            geno_ref: OntologyRef::geno(),
         }
     }
 }
 
-fn default_creator() -> Option<String> {
+fn default_creator() -> String {
     let version_number = env!("CARGO_PKG_VERSION");
     let package_name = env!("CARGO_PKG_NAME");
 
-    Some(format!("{package_name}-{version_number}"))
-}
-
-fn default_ontology_version() -> String {
-    "latest".to_string()
+    format!("{package_name}-{version_number}")
 }
 
 #[cfg(test)]
@@ -53,42 +83,32 @@ mod tests {
     #[rstest]
     fn test_default_creator() {
         let default_creator = default_creator();
-        assert!(default_creator.is_some());
-        let creator = default_creator.unwrap();
+        let creator = default_creator;
         assert!(creator.contains("phenoxtract"));
-    }
-
-    #[rstest]
-    fn test_default_ontology_version() {
-        let default_creator = default_ontology_version();
-        assert_eq!(default_creator, "latest");
     }
 
     #[rstest]
     fn test_metadata_default_values() {
         let expected_cohort = "unnamed_cohort".to_string();
-        let expected_ontology_version = default_ontology_version();
 
-        let expected_package_name = env!("CARGO_PKG_NAME").to_string();
-        let expected_creator = Some(format!(
-            "{}-{}",
-            env!("CARGO_PKG_NAME"),
-            env!("CARGO_PKG_VERSION")
-        ));
+        let expected_creator = format!("{}-{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
         let metadata = MetaData::default();
 
         assert_eq!(metadata.created_by, expected_creator);
-        assert_eq!(metadata.submitted_by, expected_package_name);
+        assert_eq!(metadata.submitted_by, expected_creator);
         assert_eq!(metadata.cohort_name, expected_cohort);
-        assert_eq!(metadata.hpo_version, expected_ontology_version);
-        assert_eq!(metadata.mondo_version, expected_ontology_version);
-        assert_eq!(metadata.geno_version, expected_ontology_version);
+        assert_eq!(metadata.hp_ref, OntologyRef::hp());
+        assert_eq!(metadata.mondo_ref, OntologyRef::mondo());
+        assert_eq!(metadata.geno_ref, OntologyRef::geno());
     }
 
     const YAML_DATA: &[u8] = br#"
     submitted_by: Magnus Knut Hansen
     cohort_name: arkham 2025
+    hp_ref:
+      version: "2025-09-01"
+      prefix_id: "hp"
     "#;
 
     #[fixture]
@@ -108,13 +128,18 @@ mod tests {
             .unwrap();
         let default_meta_data: MetaData = raw_data.try_deserialize().unwrap();
 
-        assert!(default_meta_data.created_by.is_some());
-        let creator = default_meta_data.created_by.unwrap();
+        let creator = default_meta_data.created_by;
         assert!(creator.contains("phenoxtract"));
-        assert_eq!(default_meta_data.submitted_by, "Magnus Knut Hansen");
+        assert_eq!(
+            default_meta_data.submitted_by,
+            "Magnus Knut Hansen".to_string()
+        );
         assert_eq!(default_meta_data.cohort_name, "arkham 2025");
-        assert_eq!(default_meta_data.hpo_version, default_ontology_version());
-        assert_eq!(default_meta_data.mondo_version, default_ontology_version());
-        assert_eq!(default_meta_data.geno_version, default_ontology_version());
+        assert_eq!(
+            default_meta_data.hp_ref,
+            OntologyRef::hp_with_version("2025-09-01")
+        );
+        assert_eq!(default_meta_data.mondo_ref, OntologyRef::mondo());
+        assert_eq!(default_meta_data.geno_ref, OntologyRef::geno());
     }
 }

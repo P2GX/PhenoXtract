@@ -284,7 +284,7 @@ mod tests {
         assert!(result.iter().all(|s| s.get_building_block_id().is_none()));
     }
 
-    #[test]
+    #[rstest]
     fn test_filter_by_header_context() {
         let ctx1 = Context::SubjectId;
         let ctx2 = Context::HpoLabelOrId;

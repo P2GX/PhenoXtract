@@ -1,4 +1,3 @@
-use crate::config::meta_data::MetaData;
 use crate::config::pipeline_config::PipelineConfig;
 use crate::extract::data_source::DataSource;
 use crate::validation::phenoxtractor_config_validation::validate_unique_data_sources;
@@ -13,8 +12,6 @@ pub struct PhenoXtractorConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     #[allow(unused)]
     data_sources: Vec<DataSource>,
-    #[allow(unused)]
-    meta_data: MetaData,
     #[allow(unused)]
     pipeline: Option<PipelineConfig>,
 }
@@ -53,15 +50,13 @@ impl PhenoXtractorConfig {
     pub fn data_sources(&self) -> Vec<DataSource> {
         self.data_sources.clone()
     }
-    #[allow(dead_code)]
-    pub fn meta_data(&self) -> MetaData {
-        self.meta_data.clone()
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::meta_data::MetaData;
+    use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::{
         AliasMap, CellValue, OutputDataType, SeriesContext, TableContext,
     };
@@ -70,6 +65,8 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
+    use crate::ontology::OntologyRef;
+    use pretty_assertions::assert_eq;
     use rstest::*;
     use std::collections::HashMap;
     use std::fs::File as StdFile;
@@ -88,19 +85,9 @@ mod tests {
             patients_are_rows: true
         context:
           name: "test_table"
-
-
-    meta_data:
-      created_by: Rouven Reuter
-      submitted_by: Magnus Knut Hansen
-      cohort_name: arkham asylum
     "#;
 
     const TOML_DATA: &[u8] = br#"
-    [meta_data]
-    created_by = "Rouven Reuter"
-    submitted_by = "Magnus Knut Hansen"
-    cohort_name = "arkham asylum"
 
     [[data_sources]]
     type = "csv"
@@ -112,11 +99,6 @@ mod tests {
 
     const JSON_DATA: &[u8] = br#"
     {
-      "meta_data": {
-        "created_by": "Rouven Reuter",
-        "submitted_by": "Magnus Knut Hansen",
-        "cohort_name": "arkham asylum"
-      },
       "data_sources": [
         {
           "type": "csv",
@@ -137,11 +119,6 @@ mod tests {
 
     const RON_DATA: &[u8] = br#"
 (
-    meta_data: (
-        created_by: "Rouven Reuter",
-        submitted_by: "Magnus Knut Hansen",
-        cohort_name: "arkham asylum"
-    ),
     data_sources: [
         (
             type: "csv",
@@ -180,7 +157,6 @@ mod tests {
         file.write_all(data).unwrap();
 
         let mut phenoxtractor_config = PhenoXtractorConfig::load(file_path).unwrap();
-        let meta_data = phenoxtractor_config.meta_data;
         let source = phenoxtractor_config.data_sources.pop().unwrap();
 
         match source {
@@ -191,9 +167,6 @@ mod tests {
             }
             _ => panic!("Wrong data source type. Expected Csv."),
         }
-
-        assert_eq!(meta_data.created_by, Some("Rouven Reuter".to_string()));
-        assert_eq!(meta_data.submitted_by, "Magnus Knut Hansen".to_string());
     }
 
     #[rstest]
@@ -269,16 +242,15 @@ data_sources:
 pipeline:
   transform_strategies:
     - "alias_mapping"
-    - "fill_null"
+    - "multi_hpo_column_expansion"
   loader: "file_system"
-
-meta_data:
-  created_by: Rouven Reuter
-  submitted_by: Magnus Knut Hansen
-  cohort_name: "Arkham Asylum 2025"
-  hpo_version: "latest"
-  mondo_version: "latest"
-  geno_version: "latest"
+  meta_data:
+    created_by: Rouven Reuter
+    submitted_by: Magnus Knut Hansen
+    cohort_name: "Arkham Asylum 2025"
+    hp_ref:
+      version: "2025-09-01"
+      prefix_id: "hp"
     "#;
 
         let file_path = temp_dir.path().join("config.yaml");
@@ -287,14 +259,19 @@ meta_data:
         let config = PhenoXtractorConfig::load(file_path).unwrap();
 
         let expected_config = PhenoXtractorConfig {
-            meta_data: MetaData {
-                created_by: Some("Rouven Reuter".to_string()),
-                submitted_by: "Magnus Knut Hansen".to_string(),
-                cohort_name: "Arkham Asylum 2025".to_string(),
-                ..Default::default()
-            },
             pipeline: Some(PipelineConfig::new(
-                vec!["alias_mapping".to_string(), "fill_null".to_string()],
+                MetaData::new(
+                    Some("Rouven Reuter"),
+                    Some("Magnus Knut Hansen"),
+                    "Arkham Asylum 2025",
+                    Some(&OntologyRef::hp_with_version("2025-09-01")),
+                    None,
+                    Some(&OntologyRef::geno()),
+                ),
+                vec![
+                    StrategyConfig::AliasMapping,
+                    StrategyConfig::MultiHPOColumnExpansion,
+                ],
                 "file_system".to_string(),
             )),
             data_sources: vec![

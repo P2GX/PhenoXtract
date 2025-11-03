@@ -69,8 +69,9 @@ impl Default for ObolibraryClient {
 mod tests {
     use super::*;
     use mockito::Server;
+    use rstest::rstest;
 
-    #[test]
+    #[rstest]
     fn test_get_ontology_latest_version() {
         let mut server = Server::new();
         let url = server.url();
@@ -94,7 +95,7 @@ mod tests {
         assert_eq!(response.text().unwrap(), "ontology content");
     }
 
-    #[test]
+    #[rstest]
     fn test_get_ontology_specific_version() {
         let mut server = Server::new();
         let url = server.url();
@@ -118,7 +119,7 @@ mod tests {
         assert_eq!(response.text().unwrap(), "specific version content");
     }
 
-    #[test]
+    #[rstest]
     fn test_get_ontology_request_error() {
         let client = ObolibraryClient {
             base_url: "http://localhost:1".to_string(), // Invalid port

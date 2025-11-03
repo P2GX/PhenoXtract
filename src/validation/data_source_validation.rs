@@ -125,7 +125,7 @@ mod tests {
         TableContext::new(name.to_string(), vec![])
     }
 
-    #[test]
+    #[rstest]
     fn test_unique_ids_success_with_no_duplicates() {
         let configs = vec![
             mock_extraction_config("ConfigA"),
@@ -136,14 +136,14 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[rstest]
     fn test_unique_ids_success_on_empty_list() {
         let configs = vec![];
         let result = validate_extraction_config_unique_ids(&configs);
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[rstest]
     fn test_unique_ids_failure_with_one_duplicate() {
         let configs = vec![
             mock_extraction_config("ConfigA"),
@@ -157,7 +157,7 @@ mod tests {
         assert_eq!(error.code.to_string(), "duplicates");
     }
 
-    #[test]
+    #[rstest]
     fn test_unique_ids_failure_with_multiple_duplicates() {
         let configs = vec![
             mock_extraction_config("ConfigA"),
@@ -196,7 +196,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[rstest]
     fn test_links_success_with_matching_names() {
         let source = ExcelDatasource {
             source: Default::default(),
@@ -210,7 +210,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[rstest]
     fn test_links_success_with_empty_configs() {
         let source = ExcelDatasource {
             source: Default::default(),
@@ -221,7 +221,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[rstest]
     fn test_links_failure_missing_extraction_config() {
         let source = ExcelDatasource {
             source: Default::default(),
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(vec.pop().unwrap().as_str().unwrap(), "Sheet2");
     }
 
-    #[test]
+    #[rstest]
     fn test_links_failure_missing_table_config() {
         let source = ExcelDatasource {
             source: Default::default(),
@@ -270,7 +270,7 @@ mod tests {
         assert_eq!(vec.pop().unwrap().as_str().unwrap(), "Sheet2");
     }
 
-    #[test]
+    #[rstest]
     fn test_links_failure_mismatched_names_same_count() {
         let source = ExcelDatasource {
             source: Default::default(),

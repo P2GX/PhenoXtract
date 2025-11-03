@@ -108,7 +108,7 @@ pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
         return casted;
     }
 
-    if let Ok(casted) = column.strict_cast(&DataType::Int32) {
+    if let Ok(casted) = column.strict_cast(&DataType::Int64) {
         debug!("Casted column: {col_name} to i32.");
         return casted;
     }
@@ -154,12 +154,12 @@ pub fn polars_column_cast_specific(
         OutputDataType::Boolean => cast_to_bool(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to bool.");
         }),
-        OutputDataType::Int32 => column
-            .strict_cast(&DataType::Int32)
+        OutputDataType::Int64 => column
+            .strict_cast(&DataType::Int64)
             .inspect(|_casted| {
-                debug!("Casted column: {col_name} to Int32.");
+                debug!("Casted column: {col_name} to Int64.");
             })
-            .map_err(|_| failed_parse_err(DataType::Int32)),
+            .map_err(|_| failed_parse_err(DataType::Int64)),
         OutputDataType::Float64 => column
             .strict_cast(&DataType::Float64)
             .inspect(|_casted| {
@@ -380,7 +380,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case::int(int_col(), DataType::Int32, casted_int_col())]
+    #[case::int(int_col(), DataType::Int64, casted_int_col())]
     #[case::float(float_col(), DataType::Float64, casted_float_col())]
     #[case::bool(bool_col(), DataType::Boolean, casted_bool_col())]
     #[case::bool_with_nulls(bool_col_with_nulls(), DataType::Boolean, casted_bool_col_with_nulls())]
@@ -416,7 +416,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case::int(int_col(), OutputDataType::Int32, DataType::Int32, casted_int_col())]
+    #[case::int(int_col(), OutputDataType::Int64, DataType::Int64, casted_int_col())]
     #[case::float(
         float_col(),
         OutputDataType::Float64,

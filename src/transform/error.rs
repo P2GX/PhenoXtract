@@ -1,5 +1,5 @@
 use crate::config::table_context::Context;
-use crate::validation::error::ValidationError as PxValidationError;
+use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -81,6 +81,12 @@ pub enum DataProcessingError {
         from: DataType,
         to: DataType,
     },
+    #[error(transparent)]
+    StrategyError(#[from] StrategyError),
+    #[error(transparent)]
+    PolarsError(#[from] PolarsError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
 }
 #[derive(Debug, Error)]
 pub enum TransformError {
@@ -88,11 +94,19 @@ pub enum TransformError {
     StrategyError(#[from] StrategyError),
     #[error(transparent)]
     CollectorError(#[from] Box<CollectorError>),
+    #[error(transparent)]
+    DataProcessingError(#[from] Box<DataProcessingError>),
 }
 
 impl From<CollectorError> for TransformError {
     fn from(err: CollectorError) -> Self {
         TransformError::CollectorError(Box::new(err))
+    }
+}
+
+impl From<DataProcessingError> for TransformError {
+    fn from(err: DataProcessingError) -> Self {
+        TransformError::DataProcessingError(Box::new(err))
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::extract::error::ExtractionError;
-use crate::ontology::error::RegistryError;
+use crate::ontology::error::{OntologyFactoryError, RegistryError};
 use crate::transform::error::TransformError;
 use thiserror::Error;
 
@@ -9,10 +9,12 @@ use validator::ValidationErrors;
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum ConstructionError {
-    #[error("Registry error: {0}")]
+    #[error(transparent)]
     Registry(#[from] RegistryError),
-    #[error("Ontolius error: {0}")]
+    #[error(transparent)]
     Ontolius(#[from] anyhow::Error),
+    #[error(transparent)]
+    OntologyFactoryError(#[from] OntologyFactoryError),
 }
 
 #[derive(Debug, Error)]
