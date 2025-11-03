@@ -274,10 +274,10 @@ impl Collector {
                 )
             }
         } else if seen_pairs.len() > 2 {
-            return Err(CollectorError::ExpectedSingleValue {
+            return Err(CollectorError::ExpectedUniquePhenotypeData {
                 table_name: table_name.to_string(),
                 patient_id: patient_id.to_string(),
-                context: Context::ObservationStatus,
+                phenotype: hpo_id.to_string(),
             });
         }
 

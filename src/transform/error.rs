@@ -205,6 +205,14 @@ pub enum CollectorError {
         patient_id: String,
         context: Context,
     },
+    #[error(
+        "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
+    )]
+    ExpectedUniquePhenotypeData {
+        table_name: String,
+        patient_id: String,
+        phenotype: String,
+    },
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]

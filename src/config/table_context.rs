@@ -78,8 +78,6 @@ pub enum Context {
     #[allow(unused)]
     Hgvs,
     #[allow(unused)]
-    Onset,
-    #[allow(unused)]
     OnsetDateTime,
     #[allow(unused)]
     OnsetAge,
