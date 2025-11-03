@@ -272,7 +272,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
         let violations = report.into_violations();
 
         assert_eq!(violations.len(), 1);
@@ -301,7 +301,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert_eq!(report.into_violations().len(), 2);
     }

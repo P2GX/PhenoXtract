@@ -2,12 +2,10 @@ use crate::validation::linter::enums::{FixAction, LintingViolations};
 use crate::validation::linter::linting_report::{LintReport, LintReportInfo};
 use crate::validation::linter::traits::RuleCheck;
 use log::debug;
-use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{OntologyClass, PhenotypicFeature};
 use std::collections::HashMap;
-use std::sync::Arc;
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Validates that phenotypic features are not duplicated within a phenopacket.
 ///
 /// This rule implements the linting check `PF006`, which identifies duplicate
@@ -29,15 +27,9 @@ use std::sync::Arc;
 /// flagged as a duplicate. However, if the two "Seizure" annotations differ in their
 /// modifiers (e.g., one marked as "Severe" and another as "Mild"), they would not
 /// be considered duplicates.
-pub struct PhenotypeDuplicateRule {
-    hpo: Arc<FullCsrOntology>,
-}
+pub struct PhenotypeDuplicateRule;
 
 impl PhenotypeDuplicateRule {
-    pub fn new(hpo: Arc<FullCsrOntology>) -> Self {
-        Self { hpo }
-    }
-
     fn filter_by_duplicate_ontology_classes(
         &self,
         phenotypic_features: &[PhenotypicFeature],
@@ -101,7 +93,7 @@ mod tests {
 
     #[rstest]
     fn test_find_duplicate_phenotypic_features() {
-        let rule = PhenotypeDuplicateRule::new(HPO.clone());
+        let rule = PhenotypeDuplicateRule;
 
         let phenopacket = Phenopacket {
             phenotypic_features: vec![

@@ -27,10 +27,6 @@ impl LintReport {
         }
     }
 
-    pub fn save() {
-        todo!("Implement saving the report as a json")
-    }
-
     pub fn into_violations(self) -> Vec<LintingViolations> {
         self.report_info
             .iter()

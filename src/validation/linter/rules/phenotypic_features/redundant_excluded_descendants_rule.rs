@@ -56,19 +56,17 @@ impl RuleCheck for RedundantExcludedDescendantsRule {
                     report.push_info(LintReportInfo::new(
                         LintingViolations::ExcludedDescendents {
                             progenitor: utils::term_to_ontology_class(
-                                self.hpo.term_by_id(phenotypic_term).expect(
-                                    format!("Could find term for id: '{}'", phenotypic_term)
-                                        .as_str(),
-                                ),
+                                self.hpo.term_by_id(phenotypic_term).unwrap_or_else(|| {
+                                    panic!("Could find term for id: '{}'", phenotypic_term)
+                                }),
                             ),
                             descendents: child_terms
                                 .iter()
                                 .map(|ancestor| {
                                     utils::term_to_ontology_class(
-                                        self.hpo.term_by_id(ancestor).expect(
-                                            format!("Could find term for id: '{}'", ancestor)
-                                                .as_str(),
-                                        ),
+                                        self.hpo.term_by_id(ancestor).unwrap_or_else(|| {
+                                            panic!("Could find term for id: '{}'", ancestor)
+                                        }),
                                     )
                                 })
                                 .collect(),

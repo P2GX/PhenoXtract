@@ -58,19 +58,17 @@ impl RuleCheck for ObservedAncestorRule {
                     report.push_info(LintReportInfo::new(
                         LintingViolations::ObservedAncestor {
                             scion: utils::term_to_ontology_class(
-                                self.hpo.term_by_id(phenotypic_term).expect(
-                                    format!("Could find term for id: '{}'", phenotypic_term)
-                                        .as_str(),
-                                ),
+                                self.hpo.term_by_id(phenotypic_term).unwrap_or_else(|| {
+                                    panic!("Could find term for id: '{}'", phenotypic_term)
+                                }),
                             ),
                             ancestors: ancestor_terms
                                 .iter()
                                 .map(|ancestor| {
                                     utils::term_to_ontology_class(
-                                        self.hpo.term_by_id(ancestor).expect(
-                                            format!("Could find term for id: '{}'", ancestor)
-                                                .as_str(),
-                                        ),
+                                        self.hpo.term_by_id(ancestor).unwrap_or_else(|| {
+                                            panic!("Could find term for id: '{}'", ancestor)
+                                        }),
                                     )
                                 })
                                 .collect(),

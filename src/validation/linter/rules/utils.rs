@@ -123,18 +123,28 @@ pub(crate) fn partition_phenotypic_features(
     let mut excluded = HashSet::new();
 
     for pf in &phenopacket.phenotypic_features {
-        if let Some(feature_type) = &pf.r#type {
-            if let Ok(term_id) = TermId::from_str(&feature_type.id) {
-                if pf.excluded {
-                    excluded.insert(term_id);
-                } else {
-                    observed.insert(term_id);
-                }
-            }
+        let Some(feature_type) = &pf.r#type else {
+            continue;
+        };
+
+        let Ok(term_id) = TermId::from_str(&feature_type.id) else {
+            continue;
+        };
+
+        if pf.excluded {
+            excluded.insert(term_id);
+        } else {
+            observed.insert(term_id);
         }
     }
 
     (observed, excluded)
+}
+pub(crate) fn term_to_ontology_class(term: &SimpleTerm) -> OntologyClass {
+    OntologyClass {
+        id: term.identifier().to_string(),
+        label: term.name().to_string(),
+    }
 }
 
 // Duplicates Same level  | Action
@@ -180,12 +190,5 @@ mod tests {
         );
 
         assert!(ancestors.contains(&TermId::from_str("HP:0000448").unwrap()));
-    }
-}
-
-pub(crate) fn term_to_ontology_class(term: &SimpleTerm) -> OntologyClass {
-    OntologyClass {
-        id: term.identifier().to_string(),
-        label: term.name().to_string(),
     }
 }
