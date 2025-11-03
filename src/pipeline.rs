@@ -1,22 +1,22 @@
 use crate::config::pipeline_config::PipelineConfig;
+use crate::config::{ConfigLoader, PhenoXtractorConfig};
+use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
-use crate::transform::transform_module::TransformerModule;
-use std::collections::HashMap;
-
-use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::CachedOntologyFactory;
-
-use crate::config::{ConfigLoader, PhenoXtractorConfig};
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
+use crate::transform::transform_module::TransformerModule;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use validator::Validate;
@@ -99,14 +99,14 @@ impl TryFrom<PipelineConfig> for Pipeline {
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ]);
-        let mut strat_factory = StrategyFactory::new(ontology_factory);
+        let mut strategy_factory = StrategyFactory::new(ontology_factory);
 
         let phenopacket_builder = PhenopacketBuilder::new(bi_dicts);
 
         let strategies: Result<Vec<_>, _> = config
             .transform_strategies
             .iter()
-            .map(|strat| strat_factory.try_from_config(strat))
+            .map(|strat| strategy_factory.try_from_config(strat))
             .collect();
         let tf_module = TransformerModule::new(
             strategies?,
@@ -115,6 +115,13 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
 
         Ok(Pipeline::new(tf_module, loader_module))
+    }
+}
+
+impl PartialEq for Pipeline {
+    fn eq(&self, other: &Self) -> bool {
+        self.transformer_module == other.transformer_module
+            && format!("{:?}", self.loader_module) == format!("{:?}", other.loader_module)
     }
 }
 
@@ -133,12 +140,26 @@ impl TryFrom<PathBuf> for Pipeline {
         if !path.exists() {
             return Err(ConstructionError::NoConfigFileFound(path));
         }
-        let pheno_config: Result<PhenoXtractorConfig, _> = ConfigLoader::load(path.clone());
-        if let Ok(pheno_config) = pheno_config {
-            return Pipeline::try_from(pheno_config);
+        let mut file = File::open(path.clone())?;
+        let mut buffer = Vec::new();
+
+        file.read_to_end(&mut buffer)?;
+        Pipeline::try_from(buffer.as_slice())
+    }
+}
+
+impl TryFrom<&[u8]> for Pipeline {
+    type Error = ConstructionError;
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
+        let pheno_config: Result<PhenoXtractorConfig, serde_json::error::Error> =
+            serde_json::from_slice(data);
+
+        if let Ok(conf) = pheno_config {
+            return Pipeline::try_from(conf);
         };
 
-        let pipeline_config: Result<PipelineConfig, _> = ConfigLoader::load(path);
+        let pipeline_config: Result<PipelineConfig, serde_json::error::Error> =
+            serde_json::from_slice(data);
         if let Ok(pipeline_config) = pipeline_config {
             return Pipeline::try_from(pipeline_config);
         };
@@ -150,11 +171,35 @@ impl TryFrom<PathBuf> for Pipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
+    use crate::test_utils::get_full_config_bytes;
+    use rstest::{fixture, rstest};
+    use std::fs::File as StdFile;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
 
     #[rstest]
-    fn test_try_from_pipeline_config() {
-        let config = PipelineConfig::default();
-        let _ = Pipeline::try(&config);
+    fn test_try_from_pipeline_config(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).unwrap();
+        file.write_all(get_full_config_bytes().as_slice()).unwrap();
+        let config: PhenoXtractorConfig = ConfigLoader::load(file_path.clone()).unwrap();
+
+        let configs_from_sources = [
+            Pipeline::try_from(config.clone()).unwrap(),
+            Pipeline::try_from(config.pipeline.clone()).unwrap(),
+            Pipeline::try_from(file_path).unwrap(),
+            Pipeline::try_from(get_full_config_bytes().as_slice()).unwrap(),
+        ];
+
+        let expected_config = configs_from_sources.first().unwrap();
+
+        for config in configs_from_sources.iter() {
+            assert_eq!(config, expected_config);
+        }
     }
 }

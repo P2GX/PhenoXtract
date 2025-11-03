@@ -20,6 +20,8 @@ pub enum ConstructionError {
     NoPipelineConfigFound,
     #[error("Could not find config file at '{0}'")]
     NoConfigFileFound(PathBuf),
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
 }
 
 #[derive(Debug, Error)]
