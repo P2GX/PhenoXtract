@@ -1,6 +1,6 @@
 use crate::validation::linter::enums::LintingViolations;
 use crate::validation::linter::linting_report::LintReport;
-use crate::validation::linter::traits::ValidatePhenopacket;
+use crate::validation::linter::traits::RuleCheck;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::OntologyClass;
 use regex::Regex;
@@ -14,9 +14,9 @@ use serde_json::Value;
 /// letters, numbers, and underscores starting with a letter, and LocalID
 /// consists of alphanumeric characters and underscores.
 #[derive(Debug, Default)]
-pub(crate) struct CurieValidator;
+pub struct CurieFormatRule;
 
-impl ValidatePhenopacket for CurieValidator {
+impl RuleCheck for CurieFormatRule {
     /// Validates that all ontology class identifiers in a phenopacket are valid CURIEs.
     ///
     /// This method serializes the phenopacket to JSON and recursively searches for
@@ -31,13 +31,17 @@ impl ValidatePhenopacket for CurieValidator {
     /// # Panics
     ///
     /// Panics if the phenopacket cannot be serialized to JSON
-    fn validate(&self, phenopacket: &Phenopacket, report: &mut LintReport) {
+    fn check(&self, phenopacket: &Phenopacket, report: &mut LintReport) {
         let value = serde_json::to_value(phenopacket)
             .unwrap_or_else(|_| panic!("Could not serialize phenopacket {}", phenopacket.id));
         Self::inner_validate(value, report);
     }
+
+    fn rule_id(&self) -> &'static str {
+        ""
+    }
 }
-impl CurieValidator {
+impl CurieFormatRule {
     fn inner_validate(value: Value, report: &mut LintReport) {
         if let Some(ont_class) = Self::get_ontology_class_from_value(&value) {
             let regex = Regex::new("^[A-Z][A-Z0-9_]+:[A-Za-z0-9_]+$").unwrap();
@@ -101,7 +105,7 @@ mod tests {
             ..Default::default()
         };
 
-        CurieValidator.validate(&phenopacket, &mut report);
+        CurieFormatRule.check(&phenopacket, &mut report);
         assert!(report.into_violations().is_empty());
     }
 
@@ -123,7 +127,7 @@ mod tests {
             ..Default::default()
         };
 
-        CurieValidator.validate(&phenopacket, &mut report);
+        CurieFormatRule.check(&phenopacket, &mut report);
         assert!(!report.into_violations().is_empty());
     }
 }

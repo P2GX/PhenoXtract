@@ -1,28 +1,16 @@
 use crate::validation::linter::enums::{FixAction, LintingViolations};
 use crate::validation::linter::linting_report::{LintReport, LintReportInfo};
-use crate::validation::linter::traits::ValidatePhenopacket;
+use crate::validation::linter::traits::RuleCheck;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::{Disease, Interpretation, OntologyClass};
+use phenopackets::schema::v2::core::OntologyClass;
 
 #[derive(Default)]
-pub(crate) struct InterpretationValidator;
+struct DiseaseConsistencyRule;
 
-impl ValidatePhenopacket for InterpretationValidator {
-    fn validate(&self, phenopacket: &Phenopacket, report: &mut LintReport) {
-        Self::check_interpretation_disease_consistency(
-            phenopacket.interpretations.as_slice(),
-            phenopacket.diseases.as_slice(),
-            report,
-        )
-    }
-}
-impl InterpretationValidator {
-    fn check_interpretation_disease_consistency(
-        interpretations: &[Interpretation],
-        diseases: &[Disease],
-        report: &mut LintReport,
-    ) {
-        let inter_diseases: Vec<OntologyClass> = interpretations
+impl RuleCheck for DiseaseConsistencyRule {
+    fn check(&self, phenopacket: &Phenopacket, report: &mut LintReport) {
+        let inter_diseases: Vec<OntologyClass> = phenopacket
+            .interpretations
             .iter()
             .filter_map(|inter| {
                 inter
@@ -31,7 +19,11 @@ impl InterpretationValidator {
                     .and_then(|diagnosis| diagnosis.disease.clone())
             })
             .collect();
-        let diseases: Vec<OntologyClass> = diseases.iter().filter_map(|d| d.term.clone()).collect();
+        let diseases: Vec<OntologyClass> = phenopacket
+            .diseases
+            .iter()
+            .filter_map(|d| d.term.clone())
+            .collect();
 
         let mut seen: Vec<&OntologyClass> = vec![];
         for inter_disease in inter_diseases.iter() {
@@ -43,6 +35,10 @@ impl InterpretationValidator {
                 seen.push(inter_disease)
             }
         }
+    }
+
+    fn rule_id(&self) -> &'static str {
+        "INTER001"
     }
 }
 
@@ -82,7 +78,7 @@ mod tests {
         let phenopacket = Phenopacket::default();
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -100,7 +96,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -120,7 +116,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
@@ -151,7 +147,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -178,7 +174,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
         assert!(matches!(
@@ -204,7 +200,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -229,7 +225,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -251,7 +247,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
         let violations = report.into_violations();
 
         assert_eq!(violations.len(), 1);
@@ -280,7 +276,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator::default().validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
 
         assert_eq!(report.into_violations().len(), 2);
     }
@@ -302,30 +298,8 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        InterpretationValidator.validate(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
-    }
-
-    #[test]
-    fn test_check_interpretation_disease_consistency_directly() {
-        let disease_term = create_ontology_class("MONDO:0007254", "Breast Cancer");
-        let mismatch_term = create_ontology_class("MONDO:0005148", "Diabetes");
-
-        let diseases = vec![create_disease(disease_term)];
-        let interpretations = vec![create_interpretation(Some(mismatch_term.clone()))];
-        let mut report = LintReport::default();
-
-        InterpretationValidator::check_interpretation_disease_consistency(
-            &interpretations,
-            &diseases,
-            &mut report,
-        );
-        let violations = report.into_violations();
-        assert_eq!(violations.len(), 1);
-        assert!(matches!(
-            &violations[0],
-            LintingViolations::DiseaseConsistency(term) if term.id == "MONDO:0005148"
-        ));
     }
 }

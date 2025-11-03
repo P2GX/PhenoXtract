@@ -1,9 +1,9 @@
 use crate::validation::linter::linting_report::LintReport;
 use phenopackets::schema::v2::Phenopacket;
-use serde::{Deserialize, Serialize};
 
-pub trait ValidatePhenopacket {
-    fn validate(&self, phenopacket: &Phenopacket, report: &mut LintReport);
+pub trait RuleCheck {
+    fn check(&self, phenopacket: &Phenopacket, report: &mut LintReport);
+    fn rule_id(&self) -> &'static str;
 }
 
 pub(crate) trait Lint<T> {

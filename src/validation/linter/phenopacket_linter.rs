@@ -2,10 +2,9 @@
 #![allow(unused)]
 use crate::validation::linter::error::LintingError;
 use crate::validation::linter::linting_report::LintReport;
-use crate::validation::linter::traits::{Lint, ValidatePhenopacket};
-use crate::validation::linter::validators::curie_validator::CurieValidator;
-use crate::validation::linter::validators::interpretation_validator::InterpretationValidator;
-use crate::validation::linter::validators::phenotype_validator::PhenotypeValidator;
+use crate::validation::linter::rules::curie_format_rule::CurieFormatRule;
+use crate::validation::linter::rules::phenotype_validator::PhenotypeValidator;
+use crate::validation::linter::traits::{Lint, RuleCheck};
 use log::debug;
 use ontolius::ontology::HierarchyQueries;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -25,7 +24,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 struct PhenopacketLinter {
-    phenotype_validator: PhenotypeValidator,
+    rules: Vec<Box<dyn RuleCheck>>,
 }
 
 impl Lint<Phenopacket> for PhenopacketLinter {
@@ -33,9 +32,9 @@ impl Lint<Phenopacket> for PhenopacketLinter {
         let mut phenopacket = phenopacket.clone();
         let mut report = LintReport::new();
 
-        CurieValidator.validate(&phenopacket, &mut report);
-        self.phenotype_validator.validate(&phenopacket, &mut report);
-        InterpretationValidator.validate(&phenopacket, &mut report);
+        for rule in &self.rules {
+            rule.check(&mut phenopacket, &mut report);
+        }
 
         if fix && report.has_violations() {
             let fix_res = self.fix(&mut phenopacket, &report);
@@ -64,10 +63,8 @@ impl Lint<&[u8]> for PhenopacketLinter {
 }
 
 impl PhenopacketLinter {
-    pub fn new(hpo: Arc<FullCsrOntology>) -> PhenopacketLinter {
-        PhenopacketLinter {
-            phenotype_validator: PhenotypeValidator::new(hpo),
-        }
+    pub fn new(rules: Vec<Box<dyn RuleCheck>>) -> PhenopacketLinter {
+        PhenopacketLinter { rules }
     }
 
     fn fix(&self, phenopacket: &mut Phenopacket, report: &LintReport) -> Result<(), LintingError> {
@@ -101,9 +98,5 @@ mod tests {
             "HP:0000366".parse().unwrap(),
             "HP:0000271".parse().unwrap(), // progenitor
         ]
-    }
-
-    fn construct_linter() -> PhenopacketLinter {
-        PhenopacketLinter::new(HPO.clone())
     }
 }
