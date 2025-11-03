@@ -491,8 +491,6 @@ PID_3,56,M,89"#;
         ]
         .unwrap();
 
-        dbg!(&expected_df);
-
         assert_eq!(expected_df, cdf.into_data());
     }
 
