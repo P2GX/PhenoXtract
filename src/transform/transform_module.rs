@@ -241,11 +241,15 @@ mod tests {
         assert_eq!(int_values.get(3), Some(40));
     }
 
-    #[test]
+    #[rstest]
     fn test_ensure_ints_with_actual_floats() {
-        let col_name = "values";
+        let col_name_f64 = "f64";
+        let col_name_f32 = "f32";
+        let col_name_i32 = "i32";
         let float64_df = df!(
-            col_name => &[1.5f64, 2.7f64, 3.2f64],
+            col_name_f64 => &[1.5f64, 2.7f64, 3.2f64],
+            col_name_f32 => &[1.5f32, 2.7f32, 3.2f32],
+            col_name_i32 => &[1i32, 2i32, 3i32],
             "subject_id" => &["a", "b", "c"]
         )
         .unwrap();
@@ -257,14 +261,27 @@ mod tests {
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
                         .with_identifier(Identifier::from("subject")),
-                    SeriesContext::default().with_identifier(Identifier::from(col_name)),
+                    SeriesContext::default().with_identifier(Identifier::from(col_name_f64)),
                 ],
             ),
             float64_df,
         );
         TransformerModule::ensure_ints(&mut cdf).unwrap();
 
-        let result_col = cdf.data().column("values").unwrap();
-        assert_eq!(result_col.dtype(), &DataType::Float64);
+        for (expected_data_type, col_name) in [
+            (DataType::Float32, col_name_f32),
+            (DataType::Float64, col_name_f64),
+            (DataType::Int32, col_name_i32),
+        ] {
+            let result_col = cdf.data().column(col_name).unwrap();
+
+            assert_eq!(
+                result_col.dtype(),
+                &expected_data_type,
+                "Expected {:?}, got {:?}",
+                expected_data_type,
+                result_col.dtype()
+            );
+        }
     }
 }
