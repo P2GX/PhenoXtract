@@ -345,7 +345,7 @@ impl Collector {
                             None
                         };
 
-                        self.phenopacket_builder.upsert_disease(
+                        self.phenopacket_builder.insert_disease(
                             phenopacket_id,
                             disease,
                             None,

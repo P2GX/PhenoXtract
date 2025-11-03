@@ -269,7 +269,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn upsert_disease(
+    pub fn insert_disease(
         &mut self,
         phenopacket_id: &str,
         disease: &str,
@@ -529,7 +529,9 @@ mod tests {
 
     use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
-    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
+    use crate::test_utils::{
+        GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY, assert_phenopackets,
+    };
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
     use pretty_assertions::assert_eq;
@@ -978,7 +980,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_disease(mondo_resource: Resource) {
+    fn test_insert_disease(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
@@ -986,7 +988,7 @@ mod tests {
         let onset_age = "P3Y4M";
 
         builder
-            .upsert_disease(
+            .insert_disease(
                 phenopacket_id,
                 disease_id,
                 None,
@@ -999,7 +1001,7 @@ mod tests {
             )
             .unwrap();
 
-        let expected_pp = Phenopacket {
+        let expected_pp = &mut Phenopacket {
             id: phenopacket_id.to_string(),
             diseases: vec![Disease {
                 term: Some(OntologyClass {
@@ -1020,21 +1022,20 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(
-            &expected_pp,
-            builder.subject_to_phenopacket.values().next().unwrap()
-        );
+        let built_pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_phenopackets(expected_pp, &mut built_pp.clone());
     }
 
     #[rstest]
-    fn test_upsert_same_disease_twice(mondo_resource: Resource) {
+    fn test_insert_same_disease_twice(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0008258";
 
         builder
-            .upsert_disease(
+            .insert_disease(
                 phenopacket_id,
                 disease_id,
                 None,
@@ -1048,7 +1049,7 @@ mod tests {
             .unwrap();
 
         builder
-            .upsert_disease(
+            .insert_disease(
                 phenopacket_id,
                 disease_id,
                 None,
@@ -1069,7 +1070,7 @@ mod tests {
             ..Default::default()
         };
 
-        let expected_pp = Phenopacket {
+        let expected_pp = &mut Phenopacket {
             id: phenopacket_id.to_string(),
             diseases: vec![
                 platelet_defect_disease_no_onset.clone(),
@@ -1082,10 +1083,9 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(
-            &expected_pp,
-            builder.subject_to_phenopacket.values().next().unwrap()
-        );
+        let built_pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_phenopackets(expected_pp, &mut built_pp.clone());
     }
 
     #[rstest]
