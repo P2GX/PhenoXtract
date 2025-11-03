@@ -276,8 +276,8 @@ impl PhenopacketBuilder {
         excluded: Option<bool>,
         onset: Option<&str>,
         resolution: Option<&str>,
-        disease_stage: Option<&str>,
-        clinical_tnm_finding: Option<&str>,
+        disease_stage: Option<&[&str]>,
+        clinical_tnm_finding: Option<&[&str]>,
         primary_site: Option<&str>,
         laterality: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
