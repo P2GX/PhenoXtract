@@ -52,6 +52,7 @@ impl TransformerModule {
             .filter_columns()
             .where_dtype(Filter::Is(&DataType::Float64))
             .where_dtype(Filter::Is(&DataType::Float32))
+            .where_dtype(Filter::Is(&DataType::Int32))
             .collect()
             .iter()
             .map(|col| col.name().to_string())
@@ -77,6 +78,7 @@ impl TransformerModule {
                             && val <= i64::MAX as f32
                     })
                 }),
+                DataType::Int32 => true,
                 _ => false,
             };
 
@@ -149,7 +151,7 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(
             cdf.data().column("int_col").unwrap().dtype(),
-            &DataType::Int32
+            &DataType::Int64
         );
         assert_eq!(
             cdf.data().column("float_col").unwrap().dtype(),

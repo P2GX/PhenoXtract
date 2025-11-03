@@ -140,7 +140,7 @@ mod tests {
             .with_data_context(Context::SubjectAge)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("11".to_string(), "22".to_string())]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
@@ -178,7 +178,7 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("P001".to_string(), "1001".to_string())]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
@@ -194,7 +194,7 @@ mod tests {
                     ("P003".to_string(), "1003".to_string()),
                     ("P004".to_string(), "1004".to_string()),
                 ]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
