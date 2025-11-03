@@ -3,7 +3,9 @@ use phenopackets::schema::v2::Phenopacket;
 
 pub trait RuleCheck {
     fn check(&self, phenopacket: &Phenopacket, report: &mut LintReport);
-    fn rule_id(&self) -> &'static str;
+    fn rule_id() -> &'static str
+    where
+        Self: Sized;
 }
 
 pub(crate) trait Lint<T> {

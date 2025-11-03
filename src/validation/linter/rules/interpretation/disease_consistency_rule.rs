@@ -4,7 +4,29 @@ use crate::validation::linter::traits::RuleCheck;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::OntologyClass;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
+/// Validates that diseases in interpretations are also present in the diseases list.
+///
+/// This rule implements the linting check `INTER001`, which ensures consistency between
+/// the diseases mentioned in interpretations and those listed in the top-level diseases
+/// field of a phenopacket. When a disease is diagnosed in an interpretation, it should
+/// also appear in the phenopacket's diseases list for proper data consistency and
+/// completeness.
+///
+/// # Rule Logic
+///
+/// 1. Extracts all disease terms from interpretation diagnoses
+/// 2. Extracts all disease terms from the top-level diseases field
+/// 3. Identifies diseases that appear in interpretations but not in the diseases list
+/// 4. Reports a `DiseaseConsistency` violation for each missing disease
+/// 5. Suggests a `Duplicate` fix action to copy the disease to the diseases list
+///
+/// # Example
+///
+/// If an interpretation contains a diagnosis of "Marfan syndrome" (OMIM:154700) but
+/// this disease does not appear in the phenopacket's diseases field, the rule will
+/// flag this inconsistency. The disease should be added to both locations to maintain
+/// data integrity across the phenopacket structure.
 struct DiseaseConsistencyRule;
 
 impl RuleCheck for DiseaseConsistencyRule {
@@ -30,14 +52,17 @@ impl RuleCheck for DiseaseConsistencyRule {
             if !diseases.contains(inter_disease) && !seen.contains(&inter_disease) {
                 report.push_info(LintReportInfo::new(
                     LintingViolations::DiseaseConsistency(inter_disease.clone()),
-                    Some(FixAction::Duplicate),
+                    Some(FixAction::Duplicate {
+                        from: "".to_string(),
+                        to: "".to_string(),
+                    }),
                 ));
                 seen.push(inter_disease)
             }
         }
     }
 
-    fn rule_id(&self) -> &'static str {
+    fn rule_id() -> &'static str {
         "INTER001"
     }
 }
@@ -78,7 +103,7 @@ mod tests {
         let phenopacket = Phenopacket::default();
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -96,7 +121,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -116,7 +141,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
@@ -147,7 +172,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -174,7 +199,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
         let violations = report.into_violations();
         assert_eq!(violations.len(), 1);
         assert!(matches!(
@@ -200,7 +225,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }
@@ -225,7 +250,7 @@ mod tests {
         };
         let mut report = LintReport::default();
 
-        DiseaseConsistencyRule::default().check(&phenopacket, &mut report);
+        DiseaseConsistencyRule.check(&phenopacket, &mut report);
 
         assert!(report.into_violations().is_empty());
     }

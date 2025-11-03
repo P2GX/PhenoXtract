@@ -7,7 +7,26 @@ use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
 use std::str::FromStr;
 use std::sync::Arc;
-
+#[derive(Debug)]
+/// Validates that phenotypic feature severity terms are descendants of the Severity term.
+///
+/// This rule implements the linting check `PF004`, which ensures that all severity
+/// annotations for phenotypic features use valid HPO severity terms. According to the
+/// HPO specification, severity terms must be descendants of "Severity" (HP:0012824).
+///
+/// # Rule Logic
+///
+/// For each phenotypic feature in the phenopacket:
+/// 1. Checks if the feature has a severity annotation
+/// 2. Verifies that the term is a descendant of HP:0012824 (Severity)
+/// 3. Reports a `NonSeverity` violation if an invalid term is used for severity
+///
+/// # Example
+///
+/// Using "Seizure" (HP:0001250) as a severity term would be flagged as invalid
+/// because it's a phenotypic abnormality term, not a severity term. Valid severity
+/// terms include "Severe" (HP:0012828), "Moderate" (HP:0012826), "Mild" (HP:0012825),
+/// or "Profound" (HP:0012829), which are all descendants of HP:0012824.
 pub struct SeverityOntologyChildRule {
     hpo: Arc<FullCsrOntology>,
     severity: TermId,
@@ -38,7 +57,7 @@ impl RuleCheck for SeverityOntologyChildRule {
             })
     }
 
-    fn rule_id(&self) -> &'static str {
+    fn rule_id() -> &'static str {
         "PF004"
     }
 }

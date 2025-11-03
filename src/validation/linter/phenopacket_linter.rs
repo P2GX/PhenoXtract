@@ -2,8 +2,6 @@
 #![allow(unused)]
 use crate::validation::linter::error::LintingError;
 use crate::validation::linter::linting_report::LintReport;
-use crate::validation::linter::rules::curie_format_rule::CurieFormatRule;
-use crate::validation::linter::rules::phenotype_validator::PhenotypeValidator;
 use crate::validation::linter::traits::{Lint, RuleCheck};
 use log::debug;
 use ontolius::ontology::HierarchyQueries;
@@ -33,7 +31,7 @@ impl Lint<Phenopacket> for PhenopacketLinter {
         let mut report = LintReport::new();
 
         for rule in &self.rules {
-            rule.check(&mut phenopacket, &mut report);
+            rule.check(&phenopacket, &mut report);
         }
 
         if fix && report.has_violations() {

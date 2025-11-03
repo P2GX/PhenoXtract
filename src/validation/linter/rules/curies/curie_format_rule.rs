@@ -37,8 +37,8 @@ impl RuleCheck for CurieFormatRule {
         Self::inner_validate(value, report);
     }
 
-    fn rule_id(&self) -> &'static str {
-        ""
+    fn rule_id() -> &'static str {
+        "CURIE:001"
     }
 }
 impl CurieFormatRule {

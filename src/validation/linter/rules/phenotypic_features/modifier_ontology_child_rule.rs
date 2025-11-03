@@ -1,15 +1,33 @@
 use crate::validation::linter::enums::LintingViolations;
 use crate::validation::linter::linting_report::LintReport;
-use crate::validation::linter::rules::phenotype_validator::PhenotypeValidator;
 use crate::validation::linter::traits::RuleCheck;
 use ontolius::TermId;
 use ontolius::ontology::HierarchyQueries;
 use ontolius::ontology::csr::FullCsrOntology;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::PhenotypicFeature;
 use std::str::FromStr;
 use std::sync::Arc;
 
+#[derive(Debug)]
+/// Validates that phenotypic feature modifiers are descendants of the Clinical Modifier term.
+///
+/// This rule implements the linting check `PF002`, which ensures that all modifiers
+/// applied to phenotypic features are valid HPO clinical modifiers. According to the
+/// HPO specification, modifiers must be descendants of "Clinical modifier" (HP:0012823).
+///
+/// # Rule Logic
+///
+/// For each phenotypic feature in the phenopacket:
+/// 1. Iterates through all modifiers applied to the feature
+/// 2. Checks if each modifier is a descendant of HP:0012823 (Clinical modifier)
+/// 3. Reports a `NonModifier` violation if an invalid term is used as a modifier
+///
+/// # Example
+///
+/// Using "Generalized-onset seizure" (HP:0002197) as a modifier would be flagged as
+/// invalid because it's a phenotypic abnormality term, not a clinical modifier.
+/// Valid modifiers include terms like "Severe" (HP:0012828) or "Progressive" (HP:0003676),
+/// which are descendants of HP:0012823.
 pub struct ModifierOntologyChildRule {
     hpo: Arc<FullCsrOntology>,
     clinical_modifiers: TermId,
@@ -41,7 +59,7 @@ impl RuleCheck for ModifierOntologyChildRule {
             })
     }
 
-    fn rule_id(&self) -> &'static str {
+    fn rule_id() -> &'static str {
         "PF002"
     }
 }
@@ -50,7 +68,7 @@ impl RuleCheck for ModifierOntologyChildRule {
 mod tests {
     use super::*;
     use crate::test_utils::HPO;
-    use phenopackets::schema::v2::core::OntologyClass;
+    use phenopackets::schema::v2::core::{OntologyClass, PhenotypicFeature};
     use rstest::rstest;
 
     #[rstest]

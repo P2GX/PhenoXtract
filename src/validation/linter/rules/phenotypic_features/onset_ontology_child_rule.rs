@@ -8,7 +8,27 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element;
 use std::str::FromStr;
 use std::sync::Arc;
-
+#[derive(Debug)]
+/// Validates that phenotypic feature onset terms are descendants of the Onset term.
+///
+/// This rule implements the linting check `PF003`, which ensures that all onset
+/// annotations for phenotypic features use valid HPO onset terms. According to the
+/// HPO specification, onset terms must be descendants of "Onset" (HP:0003674).
+///
+/// # Rule Logic
+///
+/// For each phenotypic feature in the phenopacket:
+/// 1. Checks if the feature has an onset annotation
+/// 2. Verifies the onset is specified as an OntologyClass element
+/// 3. Validates that the term is a descendant of HP:0003674 (Onset)
+/// 4. Reports a `NonOnset` violation if an invalid term is used for onset
+///
+/// # Example
+///
+/// Using "Abnormal heart morphology" (HP:0001627) as an onset term would be flagged
+/// as invalid because it's a phenotypic abnormality term, not an onset term.
+/// Valid onset terms include "Congenital onset" (HP:0003577), "Adult onset" (HP:0003581),
+/// or "Childhood onset" (HP:0011463), which are all descendants of HP:0003674.
 pub struct OnsetOntologyChildRule {
     hpo: Arc<FullCsrOntology>,
     onsets: TermId,
@@ -44,7 +64,7 @@ impl RuleCheck for OnsetOntologyChildRule {
         }
     }
 
-    fn rule_id(&self) -> &'static str {
+    fn rule_id() -> &'static str {
         "PF003"
     }
 }
