@@ -1,5 +1,5 @@
+use crate::config::PhenoXtractorConfig;
 use crate::config::pipeline_config::PipelineConfig;
-use crate::config::{ConfigLoader, PhenoXtractorConfig};
 use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
@@ -171,6 +171,7 @@ impl TryFrom<&[u8]> for Pipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ConfigLoader;
     use crate::test_utils::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;

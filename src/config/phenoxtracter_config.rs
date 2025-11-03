@@ -1,9 +1,7 @@
 use crate::config::pipeline_config::PipelineConfig;
 use crate::extract::data_source::DataSource;
 use crate::validation::phenoxtractor_config_validation::validate_unique_data_sources;
-use config::{Config, ConfigError, File, FileFormat};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
