@@ -45,7 +45,7 @@ impl DataSource {
         has_header: &bool,
     ) -> Result<DataFrame, ExtractionError> {
         if *patients_are_rows {
-            return Ok(df);
+            Ok(df)
         } else {
             let mut column_names = None;
 
