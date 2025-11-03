@@ -44,7 +44,9 @@ impl DataSource {
         patients_are_rows: &bool,
         has_header: &bool,
     ) -> Result<DataFrame, ExtractionError> {
-        if !patients_are_rows {
+        if *patients_are_rows {
+            return Ok(df);
+        } else {
             let mut column_names = None;
 
             if *has_header {
@@ -63,26 +65,24 @@ impl DataSource {
 
                 let col_name = index_col.name().to_string();
                 df.drop_in_place(col_name.as_str())?;
+            } else {
+                let default_column_names = generate_default_column_names(df.width() as i64);
+                let current_column_names: Vec<String> = df
+                    .get_column_names()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+
+                for (col_name, new_col_name) in
+                    current_column_names.iter().zip(default_column_names)
+                {
+                    df.rename(col_name.as_str(), new_col_name.into())?;
+                }
             }
 
             let transposed = df.transpose(None, column_names.clone())?;
-            return Ok(transposed);
+            Ok(transposed)
         }
-
-        if !has_header {
-            let default_column_names = generate_default_column_names(df.width() as i64);
-            let current_column_names: Vec<String> = df
-                .get_column_names()
-                .iter()
-                .map(|s| s.to_string())
-                .collect();
-
-            for (col_name, new_col_name) in current_column_names.iter().zip(default_column_names) {
-                df.rename(col_name.as_str(), new_col_name.into())?;
-            }
-        }
-
-        Ok(df)
     }
 }
 
@@ -150,11 +150,7 @@ impl Extractable for DataSource {
                         options = options.no_header_row();
                     }
 
-                    let idx_or_name = match extraction_config.name.parse::<usize>() {
-                        Ok(numeric) => IdxOrName::Idx(numeric),
-                        Err(_) => IdxOrName::Name(extraction_config.name.clone()),
-                    };
-
+                    let idx_or_name = IdxOrName::Name(extraction_config.name.clone());
                     let sheet = reader.load_sheet(idx_or_name, options)?;
 
                     let df = sheet.to_polars()?;
