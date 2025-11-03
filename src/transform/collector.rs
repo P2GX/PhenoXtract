@@ -290,8 +290,8 @@ impl Collector {
     }
 
     /// Finds all diseases associated with a patient and gives them to the phenopacket builder
-    /// as diseases and interpretations.
-    fn collect_diseases_and_interpretations(
+    /// as interpretations.
+    fn collect_interpretations(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
@@ -299,9 +299,43 @@ impl Collector {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context(Filter::Is(&Context::OmimLabelOrId))
-            .where_data_context(Filter::Is(&Context::OrphanetLabelOrId))
-            .where_data_context(Filter::Is(&Context::MondoLabelOrId))
+            .where_data_context_is_disease()
+            .collect();
+
+        for disease_sc in disease_in_cells_scs {
+            let sc_id = disease_sc.get_identifier();
+
+            let stringified_disease_cols = patient_cdf
+                .get_columns(sc_id)
+                .iter()
+                .map(|col| col.str())
+                .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
+
+            for row_idx in 0..patient_cdf.data().height() {
+                for stringified_disease_col in stringified_disease_cols.iter() {
+                    let disease = stringified_disease_col.get(row_idx);
+                    if let Some(disease) = disease {
+                        self.phenopacket_builder
+                            .upsert_interpretation(phenopacket_id, disease)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Finds all diseases associated with a patient and gives them to the phenopacket builder
+    /// as diseases.
+    fn collect_diseases(
+        &mut self,
+        patient_cdf: &ContextualizedDataFrame,
+        phenopacket_id: &str,
+    ) -> Result<(), CollectorError> {
+        let disease_in_cells_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context_is_disease()
             .collect();
 
         for disease_sc in disease_in_cells_scs {
@@ -336,9 +370,6 @@ impl Collector {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease)?;
-
                         let disease_onset = if let Some(onset_col) = stringified_linked_onset_col {
                             onset_col.get(row_idx)
                         } else {
@@ -1228,7 +1259,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_diseases_and_interpretations(
+    fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
         mondo_meta_data_resource: Resource,
@@ -1240,7 +1271,7 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
 
         collector
-            .collect_diseases_and_interpretations(&patient_cdf, &phenopacket_id)
+            .collect_interpretations(&patient_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
@@ -1270,6 +1301,38 @@ mod tests {
             }),
             ..Default::default()
         };
+
+        let mut expected_p006 = Phenopacket {
+            id: "cohort2019-P006".to_string(),
+            interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_meta_data_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(phenopackets.len(), 1);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+    }
+
+    #[rstest]
+    fn test_collect_diseases(
+        tc: TableContext,
+        df_single_patient: DataFrame,
+        mondo_meta_data_resource: Resource,
+    ) {
+        let mut collector = init_test_collector();
+
+        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
+
+        let phenopacket_id = "cohort2019-P006".to_string();
+
+        collector
+            .collect_diseases(&patient_cdf, &phenopacket_id)
+            .unwrap();
+
+        let mut phenopackets = collector.phenopacket_builder.build();
 
         let platelet_defect_disease = Disease {
             term: Some(OntologyClass {
@@ -1307,7 +1370,6 @@ mod tests {
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
-            interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
             diseases: vec![
                 platelet_defect_disease,
                 platelet_defect_disease_no_onset,
