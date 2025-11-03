@@ -6,7 +6,7 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{Column, DataType, PolarsError, Series, StringChunked};
+use polars::prelude::{ChunkUnique, Column, DataType, PolarsError, Series, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -155,56 +155,32 @@ impl Collector {
 
         let hpo_scs = [hpo_terms_in_cells_scs, hpo_term_in_header_scs].concat();
 
-        let null_col = &&Column::from(Series::full_null(
-            "null_col".into(),
-            patient_cdf.data().height(),
-            &DataType::String,
-        ));
-
         for hpo_sc in hpo_scs {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
 
-            let linked_onset_cols = hpo_sc.get_building_block_id().map_or(vec![], |bb_id| {
-                patient_cdf
-                    .filter_columns()
-                    .where_building_block(Filter::Is(bb_id))
-                    .where_header_context(Filter::IsNone)
-                    .where_data_context(Filter::Is(&Context::OnsetAge))
-                    .where_data_context(Filter::Is(&Context::OnsetDateTime))
-                    .collect()
-            });
-
-            let valid_onset_linking = linked_onset_cols.len() == 1;
-
-            if linked_onset_cols.len() > 1 {
-                warn!(
-                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Phenotypic Feature context. This cannot be interpreted and will be ignored."
-                );
-            }
-
-            let onset_col = if valid_onset_linking {
-                linked_onset_cols.first().unwrap()
-            } else {
-                null_col
-            };
-
-            let onset_col_cast_to_string = onset_col.cast(&DataType::String).map_err(|_| {
-                DataProcessingError::CastingError {
-                    col_name: onset_col.name().to_string(),
-                    from: onset_col.dtype().clone(),
-                    to: DataType::String,
-                }
-            })?;
-            let stringified_onset_col = onset_col_cast_to_string.str()?;
+            let stringified_linked_onset_col =
+                Self::get_single_stringified_column_with_data_contexts_in_bb(
+                    patient_cdf,
+                    hpo_sc.get_building_block_id(),
+                    vec![&Context::OnsetAge, &Context::OnsetDateTime],
+                )?;
 
             for hpo_col in hpo_cols {
                 if hpo_sc.get_header_context() == &Context::None
                     && hpo_sc.get_data_context() == &Context::HpoLabelOrId
                 {
-                    self.collect_hpo_in_cells_col(phenopacket_id, hpo_col, stringified_onset_col)?;
+                    self.collect_hpo_in_cells_col(
+                        phenopacket_id,
+                        hpo_col,
+                        stringified_linked_onset_col.as_ref(),
+                    )?;
                 } else {
-                    self.collect_hpo_in_header_col(phenopacket_id, hpo_col, stringified_onset_col)?;
+                    self.collect_hpo_in_header_col(
+                        phenopacket_id,
+                        hpo_col,
+                        stringified_linked_onset_col.as_ref(),
+                    )?;
                 }
             }
         }
@@ -216,32 +192,30 @@ impl Collector {
         &mut self,
         phenopacket_id: &str,
         patient_hpo_col: &Column,
-        stringified_onset_col: &StringChunked,
+        stringified_onset_col: Option<&StringChunked>,
     ) -> Result<(), CollectorError> {
         let stringified_hpo_col = patient_hpo_col.str()?;
 
-        let hpo_onset_pairs = stringified_hpo_col.iter().zip(stringified_onset_col.iter());
-
-        for (hpo, onset) in hpo_onset_pairs {
+        for row_idx in 0..stringified_hpo_col.len() {
+            let hpo = stringified_hpo_col.get(row_idx);
             if let Some(hpo) = hpo {
-                self.phenopacket_builder.upsert_phenotypic_feature(
+                let hpo_onset = if let Some(onset_col) = &stringified_onset_col {
+                    onset_col.get(row_idx)
+                } else {
+                    None
+                };
+
+                self.phenopacket_builder.insert_disease(
                     phenopacket_id,
                     hpo,
                     None,
+                    hpo_onset,
                     None,
                     None,
                     None,
-                    onset,
                     None,
                     None,
                 )?;
-            } else if let Some(onset) = onset {
-                warn!(
-                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
-                    onset,
-                    patient_hpo_col.name(),
-                    phenopacket_id
-                );
             }
         }
         Ok(())
@@ -249,43 +223,78 @@ impl Collector {
 
     fn collect_hpo_in_header_col(
         &mut self,
+        table_name: &str,
+        patient_id: &str,
         phenopacket_id: &str,
         patient_hpo_col: &Column,
-        stringified_onset_col: &StringChunked,
+        stringified_onset_col: Option<&StringChunked>,
     ) -> Result<(), CollectorError> {
         let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
 
         let boolified_hpo_col = patient_hpo_col.bool()?;
+
+        let observation_status =
+            if boolified_hpo_col.num_trues() > 0 && boolified_hpo_col.num_falses() == 0 {
+                Some(true)
+            } else if boolified_hpo_col.num_falses() > 0 && boolified_hpo_col.num_trues() == 0 {
+                Some(false)
+            } else if boolified_hpo_col.num_trues() == 0 && boolified_hpo_col.num_falses() == 0 {
+                None
+            } else {
+                return Err(CollectorError::ExpectedSingleValue {
+                    table_name: table_name.to_string(),
+                    patient_id: patient_id.to_string(),
+                    context: Context::ObservationStatus,
+                });
+            };
+
+        let onset = match stringified_onset_col {
+            None => None,
+            Some(onset_col) => {
+                let unique_non_null_vals = onset_col
+                    .unique()?
+                    .iter()
+                    .filter_map(|opt| opt.map(|s| s.to_string())) // convert &str → String
+                    .collect::<Vec<String>>();
+
+                if unique_non_null_vals.len() == 1 {
+                    Some(unique_non_null_vals.clone().first().unwrap().as_str())
+                } else if unique_non_null_vals.is_empty() {
+                    None
+                } else {
+                    return Err(CollectorError::ExpectedSingleValue {
+                        table_name: table_name.to_string(),
+                        patient_id: patient_id.to_string(),
+                        context: Context::Onset,
+                    });
+                }
+            }
+        };
+
+        //if the observation_status is None, no phenotype is upserted
+        //if the observation_status is true, the phenotype is upserted with excluded = None
+        //if the observation_status is false, the phenotype is upserted with excluded = true
+        if let Some(observation_status) = observation_status {
+            let excluded = if observation_status { None } else { Some(true) };
+
+            self.phenopacket_builder.upsert_phenotypic_feature(
+                phenopacket_id,
+                hpo_id,
+                None,
+                excluded,
+                None,
+                None,
+                onset,
+                None,
+                None,
+            )?;
+        }
 
         let bool_onset_pairs = boolified_hpo_col.iter().zip(stringified_onset_col.iter());
 
         //if the cell bool is null, no phenotype is upserted
         //if the cell bool is true, the phenotype is upserted with excluded = None
         //if the cell bool is false, the phenotype is upserted with excluded = true
-        for (observation_status, onset) in bool_onset_pairs {
-            if let Some(observation_status) = observation_status {
-                let excluded = if observation_status { None } else { Some(true) };
-
-                self.phenopacket_builder.upsert_phenotypic_feature(
-                    phenopacket_id,
-                    hpo_id,
-                    None,
-                    excluded,
-                    None,
-                    None,
-                    onset,
-                    None,
-                    None,
-                )?;
-            } else if let Some(onset) = onset {
-                warn!(
-                    "Non-null Onset {} found for null HPO value in column {} for phenopacket {}",
-                    onset,
-                    patient_hpo_col.name(),
-                    phenopacket_id
-                );
-            }
-        }
         Ok(())
     }
 
@@ -348,29 +357,18 @@ impl Collector {
                 .map(|col| col.str())
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-            let stringified_linked_onset_age_cols =
-                Self::get_stringified_cols_with_data_context_in_bb(
+            let stringified_linked_onset_col =
+                Self::get_single_stringified_column_with_data_contexts_in_bb(
                     patient_cdf,
                     bb_id,
-                    &Context::OnsetAge,
+                    vec![&Context::OnsetAge, &Context::OnsetDateTime],
                 )?;
-
-            let stringified_linked_onset_col = if stringified_linked_onset_age_cols.len() == 1 {
-                stringified_linked_onset_age_cols.first()
-            } else if stringified_linked_onset_age_cols.len() > 1 {
-                warn!(
-                    "Multiple onset columns for Series Context with identifier {sc_id:?} and Disease context. This cannot be interpreted and will be ignored."
-                );
-                None
-            } else {
-                None
-            };
 
             for row_idx in 0..patient_cdf.data().height() {
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        let disease_onset = if let Some(onset_col) = stringified_linked_onset_col {
+                        let disease_onset = if let Some(onset_col) = &stringified_linked_onset_col {
                             onset_col.get(row_idx)
                         } else {
                             None
@@ -445,6 +443,57 @@ impl Collector {
                 Some(unique_val) => Ok(Some(unique_val.clone())),
                 None => Ok(None),
             }
+        }
+    }
+
+    /// ...
+    fn get_single_stringified_column_with_data_contexts_in_bb(
+        patient_cdf: &ContextualizedDataFrame,
+        bb_id: Option<&str>,
+        data_contexts: Vec<&Context>,
+    ) -> Result<Option<StringChunked>, CollectorError> {
+        if let Some(bb_id) = bb_id {
+            let mut linked_cols = vec![];
+
+            for data_context in data_contexts.iter() {
+                linked_cols.extend(
+                    patient_cdf
+                        .filter_columns()
+                        .where_building_block(Filter::Is(bb_id))
+                        .where_header_context(Filter::IsNone)
+                        .where_data_context(Filter::Is(data_context))
+                        .collect(),
+                )
+            }
+
+            let single_linked_col = if linked_cols.len() == 1 {
+                linked_cols.first()
+            } else if linked_cols.len() == 0 {
+                None
+            } else {
+                return Err(CollectorError::ExpectedAtMostOneLinkedColumnWithContexts {
+                    table_name: patient_cdf.context().name().to_string(),
+                    bb_id: bb_id.to_string(),
+                    contexts: data_contexts.into_iter().cloned().collect(),
+                    amount_found: linked_cols.len(),
+                });
+            };
+
+            if let Some(single_linked_col) = single_linked_col {
+                let cast_linked_col = single_linked_col.cast(&DataType::String).map_err(|_| {
+                    DataProcessingError::CastingError {
+                        col_name: single_linked_col.name().to_string(),
+                        from: single_linked_col.dtype().clone(),
+                        to: DataType::String,
+                    }
+                })?;
+
+                Ok(Some(cast_linked_col.str()?.clone()))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
         }
     }
 

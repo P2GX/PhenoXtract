@@ -175,6 +175,15 @@ pub enum CollectorError {
         context: Context,
     },
     #[error(
+        "Expected at most one column with data contexts '{contexts:?}' in the building block '{bb_id}' in table '{table_name}'"
+    )]
+    ExpectedAtMostOneLinkedColumnWithContexts {
+        table_name: String,
+        bb_id: String,
+        contexts: Vec<Context>,
+        amount_found: usize,
+    },
+    #[error(
         "Found multiple values of {context} in table {table_name} for {patient_id} when there should only be one."
     )]
     ExpectedSingleValue {
