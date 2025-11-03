@@ -42,10 +42,15 @@ impl Pipeline {
     ) -> Result<Vec<ContextualizedDataFrame>, PipelineError> {
         info!("Starting extract");
         extractables.validate()?;
+
         let tables: Vec<ContextualizedDataFrame> = extractables
             .iter()
-            .flat_map(|ex| ex.extract().unwrap())
+            .map(|ex| ex.extract())
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
+
         info!("Concluded extraction extracted {:?} tables", tables.len());
         Ok(tables)
     }

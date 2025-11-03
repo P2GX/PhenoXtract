@@ -462,7 +462,10 @@ impl PhenopacketBuilder {
             .unwrap_or(true);
 
         if needs_resource {
-            let resource = self.resource_resolver.resolve(resource_id).unwrap();
+            let resource = self
+                .resource_resolver
+                .resolve(resource_id)
+                .expect("Could not resolve resource");
 
             let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
             phenopacket
