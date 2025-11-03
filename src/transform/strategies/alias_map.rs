@@ -54,7 +54,7 @@ impl Strategy for AliasMapStrategy {
             for (col_name, alias_map) in col_name_alias_pairs {
                 info!("Applying AliasMap strategy to column: {col_name}.");
 
-                let original_column = table.data().column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name)?;
 
                 let stringified_col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column.cast(&DataType::String).map_err(|_| {
@@ -454,7 +454,7 @@ mod tests {
                 .column("patient_id")
                 .unwrap()
                 .dtype(),
-            &DataType::Int32
+            &DataType::Int64
         )
     }
 
