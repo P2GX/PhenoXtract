@@ -4,8 +4,9 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
+use log::warn;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{ChunkUnique, Column, DataType, PolarsError, StringChunked};
+use polars::prelude::{Column, DataType, PolarsError, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -235,61 +236,49 @@ impl Collector {
 
         let boolified_hpo_col = patient_hpo_col.bool()?;
 
-        let observation_status =
-            if boolified_hpo_col.num_trues() > 0 && boolified_hpo_col.num_falses() == 0 {
-                Some(true)
-            } else if boolified_hpo_col.num_falses() > 0 && boolified_hpo_col.num_trues() == 0 {
-                Some(false)
-            } else if boolified_hpo_col.num_trues() == 0 && boolified_hpo_col.num_falses() == 0 {
-                None
+        let mut seen_pairs = HashSet::new();
+
+        for row_idx in 0..boolified_hpo_col.len() {
+            let obs_status = boolified_hpo_col.get(row_idx);
+            let onset = if let Some(onset_col) = &stringified_onset_col {
+                onset_col.get(row_idx)
             } else {
-                return Err(CollectorError::ExpectedSingleValue {
-                    table_name: table_name.to_string(),
-                    patient_id: patient_id.to_string(),
-                    context: Context::ObservationStatus,
-                });
+                None
             };
+            seen_pairs.insert((obs_status, onset));
+        }
 
-        let onset = match stringified_onset_col {
-            None => None,
-            Some(onset_col) => {
-                let unique_non_null_vals = onset_col
-                    .unique()?
-                    .iter()
-                    .filter_map(|opt| opt.map(|s| s.to_string()))
-                    .collect::<Vec<String>>();
+        seen_pairs.remove(&(None, None));
 
-                if unique_non_null_vals.len() == 1 {
-                    Some(unique_non_null_vals.first().unwrap().clone())
-                } else if unique_non_null_vals.is_empty() {
-                    None
-                } else {
-                    return Err(CollectorError::ExpectedSingleValue {
-                        table_name: table_name.to_string(),
-                        patient_id: patient_id.to_string(),
-                        context: Context::Onset,
-                    });
-                }
+        if seen_pairs.len() == 1 {
+            let (obs_status, onset) = seen_pairs.into_iter().next().unwrap();
+            //if the observation_status is None, no phenotype is upserted
+            //if the observation_status is true, the phenotype is upserted with excluded = None
+            //if the observation_status is false, the phenotype is upserted with excluded = true
+            if let Some(obs_status) = obs_status {
+                let excluded = if obs_status { None } else { Some(true) };
+                self.phenopacket_builder.upsert_phenotypic_feature(
+                    phenopacket_id,
+                    hpo_id,
+                    None,
+                    excluded,
+                    None,
+                    None,
+                    onset,
+                    None,
+                    None,
+                )?;
+            } else if let Some(onset) = onset {
+                warn!(
+                    "Non-null onset {onset} found for null observation status for patient {patient_id}."
+                )
             }
-        };
-
-        //if the observation_status is None, no phenotype is upserted
-        //if the observation_status is true, the phenotype is upserted with excluded = None
-        //if the observation_status is false, the phenotype is upserted with excluded = true
-        if let Some(observation_status) = observation_status {
-            let excluded = if observation_status { None } else { Some(true) };
-
-            self.phenopacket_builder.upsert_phenotypic_feature(
-                phenopacket_id,
-                hpo_id,
-                None,
-                excluded,
-                None,
-                None,
-                onset.as_deref(),
-                None,
-                None,
-            )?;
+        } else if seen_pairs.len() > 2 {
+            return Err(CollectorError::ExpectedSingleValue {
+                table_name: table_name.to_string(),
+                patient_id: patient_id.to_string(),
+                context: Context::ObservationStatus,
+            });
         }
 
         Ok(())
