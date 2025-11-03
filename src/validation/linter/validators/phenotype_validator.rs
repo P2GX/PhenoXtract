@@ -76,6 +76,12 @@ impl PhenotypeValidator {
         }
     }
 
+    fn is_mergable_pf(phenotypic_features: &PhenotypicFeature) -> bool {
+        phenotypic_features.onset.is_some()
+            || phenotypic_features.modifiers.is_empty()
+            || phenotypic_features.severity.is_none()
+    }
+
     fn is_empty_pf(phenotypic_features: &PhenotypicFeature) -> bool {
         phenotypic_features.onset.is_none()
             && phenotypic_features.severity.is_none()
@@ -84,6 +90,7 @@ impl PhenotypeValidator {
             && phenotypic_features.evidence.is_empty()
             && phenotypic_features.resolution.is_none()
     }
+
     fn filter_by_duplicate_ontology_classes(
         &self,
         phenotypic_features: &[PhenotypicFeature],
