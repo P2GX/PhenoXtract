@@ -579,6 +579,21 @@ impl PhenopacketBuilder {
                 .push(resource);
         }
     }
+
+    fn gather_data_from_hgnc(
+        &self,
+        genes: &Vec<&str>,
+    ) -> Result<Vec<(String, String)>, PhenopacketBuilderError> {
+        let mut symbol_id_pairs = vec![];
+        for gene in genes {
+            //todo self.ensure_resource(phenopacket_id, &hgnc_ref);
+            let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
+            let symbol_id_pairs_for_gene = hgnc_response.symbol_id_pair();
+            let (gene_symbol, hgnc_id) = symbol_id_pairs_for_gene.first().unwrap();
+            symbol_id_pairs.push((gene_symbol.to_string(), hgnc_id.to_string()));
+        }
+        Ok(symbol_id_pairs)
+    }
 }
 
 #[cfg(test)]
