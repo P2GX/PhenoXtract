@@ -13,14 +13,13 @@ use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
-use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Disease, Individual, Interpretation, OntologyClass,
-    PhenotypicFeature, Sex, TimeElement, VitalStatus,
-};
+use phenopackets::schema::v2::core::{Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus};
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
+use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -244,6 +243,36 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    // There are three allowable configurations of a disease alongside genes, variants and allelic states (a.k.a. genos)
+    // ========================= VALID CONFIGURATIONS =========================
+    //
+    // 1. There are no linked genes, variants or allelic states.
+    //    → `ProgressStatus` = *UNSOLVED*.
+    //
+    // 2. There is one or more gene, with no variants and no allelic states.
+    //    → `ProgressStatus` = *SOLVED*.
+    //
+    //    - If there are two HGNC genes linked to a subject, these will be
+    //      added as separate *CONTRIBUTORY* `GenomicInterpretations`.
+    //    - If there is a single HGNC linked to a patient, it will be added as a
+    //      *CAUSATIVE* `GenomicInterpretation`.
+    //
+    // 3. There is one or more variants, with at most one gene and at most one allelic state.
+    //    → `ProgressStatus` = *SOLVED*.
+    //
+    //    - If there are multiple HGVS variants linked to a subject, these will be
+    //      added as separate *CONTRIBUTORY* `VariantInterpretations`.
+    //    - If there is a single HGVS linked to a patient, it will be added as a
+    //      *CAUSATIVE* `VariantInterpretation`.
+    //    - If there is a gene, the genes will be added as the
+    //      `gene_context` to the VariantInterpretation.
+    //    - If there is a single geno (i.e. allelic state), the genotype will be added to the
+    //      `allelic_state` field of all variants.
+    //
+    // ========================= INVALID CONFIGURATIONS =========================
+    //
+    // All other arrangements are invalid.
+    //
     pub fn upsert_interpretation(
         &mut self,
         phenopacket_id: &str,
@@ -252,21 +281,45 @@ impl PhenopacketBuilder {
         variants: &Vec<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
+        self.ensure_resource(phenopacket_id, &res_ref);
 
         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
         let interpretation =
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
 
-        interpretation
-            .diagnosis
-            .get_or_insert_with(|| Diagnosis {
-                disease: None,
-                genomic_interpretations: vec![],
-            })
-            .disease = Some(term);
-        interpretation.progress_status = 4; // UNSOLVED
-        self.ensure_resource(phenopacket_id, &res_ref);
+        interpretation.progress_status = 0; //UNKNOWN_PROGRESS
+
+        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+
+        if !variants.is_empty() {
+
+        } else if !genes.is_empty() {
+
+            let gene_info = self.gather_data_from_hgnc(genes)?;
+
+            for (symbol,id) in gene_info {
+
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    interpretation_status: 4, //CAUSATIVE
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: id,
+                        symbol,
+                        ..Default::default()
+                    })),
+                };
+
+                genomic_interpretations.push(gi);
+
+            }
+
+        }
+
+        interpretation.diagnosis.get_or_insert(Diagnosis {
+            disease: Some(term),
+            genomic_interpretations,
+        });
 
         Ok(())
     }
