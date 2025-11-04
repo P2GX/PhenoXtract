@@ -1129,24 +1129,16 @@ mod tests {
         assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
 
-    #[rstest]
-    fn test_upsert_interpretation_no_variants_no_genes(mondo_resource: Resource) {
-        let mut builder = build_test_phenopacket_builder();
-
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
-        builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec![], &vec![])
-            .unwrap();
-
-        let expected_pp = Phenopacket {
-            id: phenopacket_id.to_string(),
+    #[fixture]
+    fn basic_pp_with_disease_info(mondo_resource: Resource) -> Phenopacket {
+        Phenopacket {
+            id: "pp_001".to_string(),
             interpretations: vec![Interpretation {
                 id: "pp_001-MONDO:0012145".to_string(),
                 progress_status: 0, // UNKNOWN_PROGRESS
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
-                        id: disease_id.to_string(),
+                        id: "MONDO:0012145".to_string(),
                         label: "macular degeneration, age-related, 3".to_string(),
                     }),
                     ..Default::default()
@@ -1158,16 +1150,63 @@ mod tests {
                 ..Default::default()
             }),
             ..Default::default()
-        };
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_no_variants_no_genes(basic_pp_with_disease_info: Phenopacket) {
+        let mut builder = build_test_phenopacket_builder();
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+
+        builder
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec![], &vec![])
+            .unwrap();
 
         assert_eq!(
-            &expected_pp,
+            &basic_pp_with_disease_info,
             builder.subject_to_phenopacket.values().next().unwrap()
         );
     }
 
     #[rstest]
-    fn test_upsert_interpretation_homozygous_variant(mondo_resource: Resource) {
+    fn test_upsert_interpretation_homozygous_variant(basic_pp_with_disease_info: Phenopacket) {
+        let mut builder = build_test_phenopacket_builder();
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &vec!["CLOCK"],
+                &vec!["NM_001173464.1:c.2860C>T", "NM_001173464.1:c.2860C>T"],
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(pp_interpretation.clone().diagnosis.unwrap().genomic_interpretations.len(), 1);
+
+        let pp_gi = &pp_interpretation.clone().diagnosis.unwrap().genomic_interpretations[0];
+
+
+
+        assert_eq!(
+            &basic_pp_with_disease_info,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_heterozygous_variant_pair(
+        basic_pp_with_disease_info: Phenopacket,
+    ) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
@@ -1177,40 +1216,19 @@ mod tests {
                 "P006",
                 phenopacket_id,
                 disease_id,
-                &vec!["ACE"],
-                &vec!["NM_001173464.1:c.2860C>T", "NM_001173464.1:c.2860C>T"],
+                &vec!["CLOCK"],
+                &vec!["NM_001173464.1:c.2860C>T", "NM_001110792.2:c.844delC"],
             )
             .unwrap();
 
-        let expected_pp = Phenopacket {
-            id: phenopacket_id.to_string(),
-            interpretations: vec![Interpretation {
-                id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 0, // UNKNOWN_PROGRESS
-                diagnosis: Some(Diagnosis {
-                    disease: Some(OntologyClass {
-                        id: disease_id.to_string(),
-                        label: "macular degeneration, age-related, 3".to_string(),
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }],
-            meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
         assert_eq!(
-            &expected_pp,
+            &basic_pp_with_disease_info,
             builder.subject_to_phenopacket.values().next().unwrap()
         );
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_variant_pair(mondo_resource: Resource) {
+    fn test_upsert_interpretation_heterozygous_variant(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
@@ -1308,6 +1326,43 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_single_gene(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec!["CLOCK"], &vec![])
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: "pp_001-MONDO:0012145".to_string(),
+                progress_status: 0, // UNKNOWN_PROGRESS
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_invalid_configuration_err(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
