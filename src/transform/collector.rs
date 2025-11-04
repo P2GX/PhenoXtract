@@ -318,11 +318,6 @@ impl Collector {
                 bb_id,
                 &Context::Hgvs,
             )?;
-            let stringified_linked_geno_cols = Self::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::GenoLabelOrId,
-            )?;
 
             for row_idx in 0..patient_cdf.data().height() {
                 let genes = stringified_linked_hgnc_cols
@@ -332,10 +327,6 @@ impl Collector {
                 let variants = stringified_linked_hgvs_cols
                     .iter()
                     .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-                let allelic_states = stringified_linked_geno_cols
-                    .iter()
-                    .filter_map(|geno_col| geno_col.get(row_idx))
                     .collect::<Vec<&str>>();
 
                 for stringified_disease_col in stringified_disease_cols.iter() {
@@ -347,7 +338,6 @@ impl Collector {
                             disease,
                             &genes,
                             &variants,
-                            &allelic_states,
                         )?;
                     }
                 }

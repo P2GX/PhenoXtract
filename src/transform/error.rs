@@ -244,7 +244,7 @@ pub enum PhenopacketBuilderError {
     #[error(
         "Could not interpret gene and variant configuration for disease {disease}: {invalid_configuration}"
     )]
-    InvalidGeneVariantAllelicStateConfiguration {
+    InvalidGeneVariantConfiguration {
         disease: String,
         invalid_configuration: String,
     },
