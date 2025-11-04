@@ -459,20 +459,10 @@ impl Collector {
                 )
             }
 
-            let single_linked_col = if linked_cols.len() == 1 {
-                linked_cols.first()
-            } else if linked_cols.is_empty() {
-                None
-            } else {
-                return Err(CollectorError::ExpectedAtMostOneLinkedColumnWithContexts {
-                    table_name: patient_cdf.context().name().to_string(),
-                    bb_id: bb_id.to_string(),
-                    contexts: data_contexts.into_iter().cloned().collect(),
-                    amount_found: linked_cols.len(),
-                });
-            };
-
-            if let Some(single_linked_col) = single_linked_col {
+            if linked_cols.len() == 1 {
+                let single_linked_col = linked_cols
+                    .first()
+                    .expect("Column empty despite len check.");
                 let cast_linked_col = single_linked_col.cast(&DataType::String).map_err(|_| {
                     DataProcessingError::CastingError {
                         col_name: single_linked_col.name().to_string(),
@@ -480,38 +470,20 @@ impl Collector {
                         to: DataType::String,
                     }
                 })?;
-
                 Ok(Some(cast_linked_col.str()?.clone()))
-            } else {
+            } else if linked_cols.is_empty() {
                 Ok(None)
+            } else {
+                Err(CollectorError::ExpectedAtMostOneLinkedColumnWithContexts {
+                    table_name: patient_cdf.context().name().to_string(),
+                    bb_id: bb_id.to_string(),
+                    contexts: data_contexts.into_iter().cloned().collect(),
+                    amount_found: linked_cols.len(),
+                })
             }
         } else {
             Ok(None)
         }
-    }
-
-    /// Extracts the columns from the cdf which have
-    /// Building Block ID = bb_id
-    /// data_context = context
-    /// header_context = None
-    /// and converts them to StringChunked
-    fn get_stringified_cols_with_data_context_in_bb<'a>(
-        cdf: &'a ContextualizedDataFrame,
-        bb_id: Option<&'a str>,
-        context: &'a Context,
-    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
-        let cols = bb_id.map_or(vec![], |bb_id| {
-            cdf.filter_columns()
-                .where_building_block(Filter::Is(bb_id))
-                .where_header_context(Filter::IsNone)
-                .where_data_context(Filter::Is(context))
-                .collect()
-        });
-
-        Ok(cols
-            .iter()
-            .map(|col| col.str())
-            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
     }
 }
 
@@ -1506,72 +1478,6 @@ mod tests {
             "P006",
         );
         assert!(sme.is_err());
-    }
-
-    #[rstest]
-    fn test_get_stringified_cols_with_data_context_in_bb(
-        tc: TableContext,
-        df_single_patient: DataFrame,
-    ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let extracted_stringified_cols = Collector::get_stringified_cols_with_data_context_in_bb(
-            &patient_cdf,
-            Some("Block_1"),
-            &Context::HpoLabelOrId,
-        )
-        .unwrap();
-
-        assert_eq!(extracted_stringified_cols.len(), 1);
-
-        let extracted_hpo_col = extracted_stringified_cols.first().unwrap();
-
-        let expected_col = Column::new(
-            "phenotypic_features".into(),
-            [
-                AnyValue::String("Pneumonia"),
-                AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
-            ],
-        );
-
-        let stringified_expected_col = expected_col.str().unwrap();
-
-        for (idx, cell) in extracted_hpo_col.iter().enumerate() {
-            assert_eq!(stringified_expected_col.get(idx), cell);
-        }
-    }
-
-    #[rstest]
-    fn test_get_stringified_cols_with_data_context_in_bb_no_bbid(
-        tc: TableContext,
-        df_single_patient: DataFrame,
-    ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let extracted_cols = Collector::get_stringified_cols_with_data_context_in_bb(
-            &patient_cdf,
-            None,
-            &Context::HpoLabelOrId,
-        )
-        .unwrap();
-
-        assert!(extracted_cols.is_empty());
-    }
-
-    #[rstest]
-    fn test_get_stringified_cols_with_data_context_in_bb_no_match(
-        tc: TableContext,
-        df_single_patient: DataFrame,
-    ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let extracted_cols = Collector::get_stringified_cols_with_data_context_in_bb(
-            &patient_cdf,
-            Some("Block_1"),
-            &Context::MondoLabelOrId,
-        )
-        .unwrap();
-
-        assert!(extracted_cols.is_empty());
     }
 
     #[rstest]
