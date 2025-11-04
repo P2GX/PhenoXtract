@@ -261,11 +261,12 @@ impl Default for HGNCClient {
 
         let cache_dir = Self::default_cache_dir().expect("Could not find default cache dir.");
         info!("HGNC client cache dir: {:?}", cache_dir);
-        HGNCClient {
+        HGNCClient::new(
             rate_limiter,
-            cache_file_path: cache_dir,
-            api_url: "https://rest.genenames.org/".to_string(),
-        }
+            cache_dir,
+            "https://rest.genenames.org/".to_string(),
+        )
+        .expect("Failure when creating HGNC client.")
     }
 }
 

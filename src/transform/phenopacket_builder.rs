@@ -9,16 +9,15 @@ use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
-use ga4ghphetools::variant::validate_one_hgvs_variant;
 use log::warn;
-use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
+use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VariationDescriptor};
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
     Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
-    OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    OntologyClass, PhenotypicFeature, Sex, TimeElement, VariantInterpretation, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -258,6 +257,7 @@ impl PhenopacketBuilder {
         disease: &str,
         genes: &[&str],
         variants: &[&str],
+        allelic_states: &[&str],
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
         self.ensure_resource(phenopacket_id, &res_ref);
@@ -265,27 +265,67 @@ impl PhenopacketBuilder {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
         if !variants.is_empty() {
+            //TEMPORARY
+
+            let gene_context = if genes.len() == 1 {
+                let (gene_symbol, gene_id) =
+                    self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
+                let gene_descriptor = GeneDescriptor {
+                    value_id: gene_id,
+                    symbol: gene_symbol,
+                    ..Default::default()
+                };
+                Some(gene_descriptor)
+            } else if genes.is_empty() {
+                None
+            } else {
+                return Err(PhenopacketBuilderError::InvalidGeneVariantAllelicStateConfiguration {disease: disease.to_string(), invalid_configuration: "Multiple genes alongside variants. Only a unique gene can be interpreted as a gene_context for each variant".to_string()});
+            };
+
+            let allelic_state = if allelic_states.len() == 1 {
+                Some(self.query_geno(allelic_states[0])?)
+            } else if allelic_states.is_empty() {
+                None
+            } else {
+                return Err(PhenopacketBuilderError::InvalidGeneVariantAllelicStateConfiguration {disease: disease.to_string(), invalid_configuration: "Multiple allelic states alongside variants. Only a unique allelic state can be interpreted for each variant".to_string()});
+            };
+
             for variant in variants {
-                let split_var = variant.split(':').collect::<Vec<&str>>();
-                let transcript = split_var[0];
-                let allele = split_var[1];
-                let hgvs = validate_one_hgvs_variant("", "", transcript, allele)
-                    .map_err(|err| PhenopacketBuilderError::VariantValidation(err))?;
+                let syntax = VariantParser::try_parse_syntax(variant)?;
 
-
-            }
-        } else if !genes.is_empty() {
-            let gene_info = self.gather_data_from_hgnc(genes)?;
-
-            for (symbol, id) in gene_info {
                 let gi = GenomicInterpretation {
                     subject_or_biosample_id: patient_id.to_string(),
-                    interpretation_status: 0, //UNKNOWN_STATUS
-                    call: Some(Call::Gene(GeneDescriptor {
-                        value_id: id,
-                        symbol,
+                    call: Some(Call::VariantInterpretation(VariantInterpretation {
+                        variation_descriptor: Some(VariationDescriptor {
+                            id: variant.to_string(),
+                            expressions: vec![Expression {
+                                syntax: syntax.to_string(),
+                                value: variant.to_string(),
+                                ..Default::default()
+                            }],
+                            gene_context: gene_context.clone(),
+                            allelic_state: allelic_state.clone(),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     })),
+                    ..Default::default()
+                };
+
+                genomic_interpretations.push(gi);
+            }
+        } else if !genes.is_empty() {
+            let gene_info = self.get_multi_gene_data_from_hgnc(phenopacket_id, genes)?;
+
+            for (gene_symbol, gene_id) in gene_info {
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: gene_id,
+                        symbol: gene_symbol,
+                        ..Default::default()
+                    })),
+                    ..Default::default()
                 };
 
                 genomic_interpretations.push(gi);
@@ -299,7 +339,7 @@ impl PhenopacketBuilder {
 
         interpretation.progress_status = 0; //UNKNOWN_PROGRESS
 
-        interpretation.diagnosis.get_or_insert(Diagnosis {
+        interpretation.diagnosis = Some(Diagnosis {
             disease: Some(term),
             genomic_interpretations,
         });
@@ -491,6 +531,33 @@ impl PhenopacketBuilder {
             })?
     }
 
+    fn query_geno(&self, geno_query: &str) -> Result<OntologyClass, PhenopacketBuilderError> {
+        let geno_dict = self
+            .ontology_bidicts
+            .get(OntologyRef::GENO_PREFIX)
+            .ok_or_else(|| {
+                PhenopacketBuilderError::MissingBiDict(OntologyRef::GENO_PREFIX.to_string())
+            })?;
+
+        geno_dict
+            .get(geno_query)
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "geno query".to_string(),
+                value: geno_query.to_string(),
+            })
+            .map(|found| {
+                let corresponding_label_or_id = geno_dict
+                    .get(found)
+                    .unwrap_or_else(|| panic!("Could not find geno label or id from {}", found));
+                let (label, id) = if geno_dict.is_primary_label(found) {
+                    (found.to_string(), corresponding_label_or_id.to_string())
+                } else {
+                    (corresponding_label_or_id.to_string(), found.to_string())
+                };
+                Ok(OntologyClass { id, label })
+            })?
+    }
+
     fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
         //try to parse the string as a datetime
         if let Ok(ts) = Self::try_parse_timestamp(te_string) {
@@ -563,17 +630,34 @@ impl PhenopacketBuilder {
         }
     }
 
-    fn gather_data_from_hgnc(
-        &self,
+    fn get_gene_data_from_hgnc(
+        &mut self,
+        phenopacket_id: &str,
+        gene: &str,
+    ) -> Result<(String, String), PhenopacketBuilderError> {
+        self.ensure_resource(
+            phenopacket_id,
+            &ResourceRef::new("hgnc".to_string(), "".to_string()),
+        );
+        let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
+        let returned_symbol_id_pairs = hgnc_response.symbol_id_pair();
+        let (symbol_ref, id_ref) = returned_symbol_id_pairs.first().ok_or_else(|| {
+            PhenopacketBuilderError::HgncGenePair(format!(
+                "No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}."
+            ))
+        })?;
+
+        Ok((symbol_ref.to_string(), id_ref.to_string()))
+    }
+
+    fn get_multi_gene_data_from_hgnc(
+        &mut self,
+        phenopacket_id: &str,
         genes: &[&str],
     ) -> Result<Vec<(String, String)>, PhenopacketBuilderError> {
         let mut symbol_id_pairs = vec![];
         for gene in genes {
-            //todo self.ensure_resource(phenopacket_id, &hgnc_ref);
-            let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
-            let symbol_id_pairs_for_gene = hgnc_response.symbol_id_pair();
-            let (gene_symbol, hgnc_id) = symbol_id_pairs_for_gene.first().unwrap();
-            symbol_id_pairs.push((gene_symbol.to_string(), hgnc_id.to_string()));
+            symbol_id_pairs.push(self.get_gene_data_from_hgnc(phenopacket_id, gene)?)
         }
         Ok(symbol_id_pairs)
     }
@@ -949,7 +1033,97 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_update_with_genomic_interpretation(mondo_resource: Resource) {
+    fn test_upsert_interpretation_no_variants_no_genes_no_genos(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &vec![],
+                &vec![],
+                &vec![],
+            )
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: "pp_001-MONDO:0012145".to_string(),
+                progress_status: 0, // UNKNOWN_PROGRESS
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_variants_and_genes_and_genos(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &vec!["CLOCK"],
+                &vec!["NM_001173464.1:c.2860C>T", "NM_001110792.2:c.844delC"],
+                &vec!["Homozygous"],
+            )
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: "pp_001-MONDO:0012145".to_string(),
+                progress_status: 0, // UNKNOWN_PROGRESS
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_update_with_variants_and_genes_and_genos(
+        mondo_resource: Resource,
+    ) {
         let mut builder = build_test_phenopacket_builder();
         let phenopacket_id = "pp_001";
 
@@ -957,7 +1131,7 @@ mod tests {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 4, // UNSOLVED
+                progress_status: 0, // UNKNOWN_PROGRESS
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: "MONDO:0012145".to_string(),
@@ -983,7 +1157,8 @@ mod tests {
                 phenopacket_id,
                 "macular degeneration, age-related, 3",
                 &vec!["ACE", "CLOCK"],
-                &vec![],
+                &vec!["NM_001173464.1:c.2860C>T", "NM_001110792.2:c.844delC"],
+                &vec!["Hemizygous"],
             )
             .unwrap();
 
@@ -1003,20 +1178,71 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_no_variants_no_genes(mondo_resource: Resource) {
+    fn test_upsert_interpretation_only_genes(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec![], &vec![])
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &vec!["ACE", "CLOCK"],
+                &vec![],
+                &vec![],
+            )
             .unwrap();
 
         let expected_pp = Phenopacket {
             id: phenopacket_id.to_string(),
             interpretations: vec![Interpretation {
                 id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 4, // UNSOLVED
+                progress_status: 0, // UNKNOWN_PROGRESS
+                diagnosis: Some(Diagnosis {
+                    disease: Some(OntologyClass {
+                        id: disease_id.to_string(),
+                        label: "macular degeneration, age-related, 3".to_string(),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            &expected_pp,
+            builder.subject_to_phenopacket.values().next().unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_only_variants(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &vec![],
+                &vec!["NM_001173464.1:c.2860C>T", "NM_001110792.2:c.844delC"],
+                &vec![],
+            )
+            .unwrap();
+
+        let expected_pp = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: "pp_001-MONDO:0012145".to_string(),
+                progress_status: 0, // UNKNOWN_PROGRESS
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: disease_id.to_string(),
