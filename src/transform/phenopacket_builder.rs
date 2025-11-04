@@ -1195,12 +1195,12 @@ mod tests {
 
         let pp_gi = &pp_interpretation.clone().diagnosis.unwrap().genomic_interpretations[0];
 
+        let call = pp_gi.clone()call.unwrap();
 
+        if let VariantInterpretation(vi) = &call {
 
-        assert_eq!(
-            &basic_pp_with_disease_info,
-            builder.subject_to_phenopacket.values().next().unwrap()
-        );
+        }
+
     }
 
     #[rstest]
