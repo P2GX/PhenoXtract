@@ -299,6 +299,8 @@ impl Collector {
 
         for disease_sc in disease_in_cells_scs {
             let sc_id = disease_sc.get_identifier();
+            let bb_id = disease_sc.get_building_block_id();
+
 
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
@@ -306,12 +308,33 @@ impl Collector {
                 .map(|col| col.str())
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
+            let stringified_linked_hgnc_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::HgncSymbolOrId,
+            )?;
+            let stringified_linked_hgvs_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::Hgvs,
+            )?;
+
             for row_idx in 0..patient_cdf.data().height() {
+
+                let genes = stringified_linked_hgnc_cols
+                    .iter()
+                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let variants = stringified_linked_hgvs_cols
+                    .iter()
+                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
                         self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease)?;
+                            .upsert_interpretation(phenopacket_id, disease, &genes, &variants)?;
                     }
                 }
             }

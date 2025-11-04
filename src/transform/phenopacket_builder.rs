@@ -248,6 +248,8 @@ impl PhenopacketBuilder {
         &mut self,
         phenopacket_id: &str,
         disease: &str,
+        genes: &Vec<&str>,
+        variants: &Vec<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
 
