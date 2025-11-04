@@ -232,9 +232,14 @@ impl From<DataProcessingError> for CollectorError {
 #[derive(Debug, Error)]
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
-    ParsingError { what: String, value: String },
+    ParsingError {
+        what: String,
+        value: String,
+    },
     #[error("Missing BiDict for {0}")]
     MissingBiDict(String),
     #[error(transparent)]
     HgncClient(#[from] ClientError),
+    #[error("Error validating HGVS variant: {0}")]
+    VariantValidation(String),
 }

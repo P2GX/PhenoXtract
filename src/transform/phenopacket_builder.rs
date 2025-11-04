@@ -9,6 +9,7 @@ use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
+use ga4ghphetools::variant::validate_one_hgvs_variant;
 use log::warn;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
@@ -264,6 +265,15 @@ impl PhenopacketBuilder {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
         if !variants.is_empty() {
+            for variant in variants {
+                let split_var = variant.split(':').collect::<Vec<&str>>();
+                let transcript = split_var[0];
+                let allele = split_var[1];
+                let hgvs = validate_one_hgvs_variant("", "", transcript, allele)
+                    .map_err(|err| PhenopacketBuilderError::VariantValidation(err))?;
+
+
+            }
         } else if !genes.is_empty() {
             let gene_info = self.gather_data_from_hgnc(genes)?;
 

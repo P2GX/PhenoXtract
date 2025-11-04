@@ -29,6 +29,7 @@ redb = "3.1.0"
 hgvs = "0.19.1"
 thiserror = "2.0.17"
 fastexcel = { version = "0.16.0", features = ["polars"] }
+ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.131' }
 
 [dev-dependencies]
 rstest = "0.26.1"
