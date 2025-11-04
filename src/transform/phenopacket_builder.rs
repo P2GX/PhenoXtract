@@ -276,7 +276,6 @@ impl PhenopacketBuilder {
                         symbol,
                         ..Default::default()
                     })),
-                    mt,
                 };
 
                 genomic_interpretations.push(gi);
