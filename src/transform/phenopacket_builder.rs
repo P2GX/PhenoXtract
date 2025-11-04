@@ -324,7 +324,7 @@ impl PhenopacketBuilder {
                     gene_symbol.as_str(),
                     hgnc_id.as_str(),
                     2,
-                );
+                )?;
                 genomic_interpretations.push(gi);
             }
 
@@ -336,7 +336,7 @@ impl PhenopacketBuilder {
                         gene_symbol.as_str(),
                         hgnc_id.as_str(),
                         1,
-                    );
+                    )?;
                     genomic_interpretations.push(gi);
                 }
             }
@@ -349,7 +349,7 @@ impl PhenopacketBuilder {
                     gene_symbol.as_str(),
                     hgnc_id.as_str(),
                     1,
-                );
+                )?;
                 genomic_interpretations.push(gi);
             }
         }
@@ -741,22 +741,22 @@ impl PhenopacketBuilder {
         gene_symbol: &str,
         hgnc_id: &str,
         allele_count: usize,
-    ) -> GenomicInterpretation {
+    ) -> Result<GenomicInterpretation, PhenopacketBuilderError> {
         let split_var = variant.split(':').collect::<Vec<&str>>();
         let transcript = split_var[0];
         let allele = split_var[1];
 
-        let hgvs_variant =
-            validate_one_hgvs_variant(gene_symbol, hgnc_id, transcript, allele).unwrap();
+        let hgvs_variant = validate_one_hgvs_variant(gene_symbol, hgnc_id, transcript, allele)
+            .map_err(PhenopacketBuilderError::VariantValidation)?;
 
         let variant_interpretation =
             Self::get_hgvs_variant_interpretation(&hgvs_variant, allele_count);
 
-        GenomicInterpretation {
+        Ok(GenomicInterpretation {
             subject_or_biosample_id: patient_id.to_string(),
             call: Some(Call::VariantInterpretation(variant_interpretation)),
             ..Default::default()
-        }
+        })
     }
 }
 
