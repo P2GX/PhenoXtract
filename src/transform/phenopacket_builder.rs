@@ -14,8 +14,8 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Individual, Interpretation, OntologyClass, PhenotypicFeature,
-    Sex, TimeElement, VitalStatus,
+    Age as IndividualAge, Diagnosis, Disease, Individual, Interpretation, OntologyClass,
+    PhenotypicFeature, Sex, TimeElement, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -208,9 +208,6 @@ impl PhenopacketBuilder {
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
         }
-        if onset.is_some() {
-            warn!("onset phenotypic feature is not fully implemented yet");
-        }
         if resolution.is_some() {
             warn!("resolution phenotypic feature not implemented yet");
         }
@@ -267,6 +264,58 @@ impl PhenopacketBuilder {
             })
             .disease = Some(term);
         interpretation.progress_status = 4; // UNSOLVED
+        self.ensure_resource(phenopacket_id, &res_ref);
+
+        Ok(())
+    }
+
+    pub fn insert_disease(
+        &mut self,
+        phenopacket_id: &str,
+        disease: &str,
+        excluded: Option<bool>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        disease_stage: Option<&[&str]>,
+        clinical_tnm_finding: Option<&[&str]>,
+        primary_site: Option<&str>,
+        laterality: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        if excluded.is_some() {
+            warn!("excluded disease not implemented yet");
+        }
+        if resolution.is_some() {
+            warn!("resolution disease not implemented yet");
+        }
+        if disease_stage.is_some() {
+            warn!("disease stage of disease not implemented yet");
+        }
+        if clinical_tnm_finding.is_some() {
+            warn!("clinical_tnm_finding disease not implemented yet");
+        }
+        if primary_site.is_some() {
+            warn!("primary_site disease not implemented yet");
+        }
+        if laterality.is_some() {
+            warn!("laterality disease not implemented yet");
+        }
+
+        let (disease_term, res_ref) = self.query_disease_identifiers(disease)?;
+
+        let mut disease_element = Disease {
+            term: Some(disease_term),
+            ..Default::default()
+        };
+
+        if let Some(onset) = onset {
+            let onset_te = Self::try_parse_time_element(onset)?;
+            disease_element.onset = Some(onset_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.diseases.push(disease_element);
+
         self.ensure_resource(phenopacket_id, &res_ref);
 
         Ok(())
@@ -483,7 +532,9 @@ mod tests {
 
     use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
-    use crate::test_utils::{GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY};
+    use crate::test_utils::{
+        GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY, assert_phenopackets,
+    };
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
     use pretty_assertions::assert_eq;
@@ -929,6 +980,115 @@ mod tests {
             &expected_pp,
             builder.subject_to_phenopacket.values().next().unwrap()
         );
+    }
+
+    #[rstest]
+    fn test_insert_disease(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+        let onset_age = "P3Y4M";
+
+        builder
+            .insert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                Some(onset_age),
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+        let expected_pp = &mut Phenopacket {
+            id: phenopacket_id.to_string(),
+            diseases: vec![Disease {
+                term: Some(OntologyClass {
+                    id: disease_id.to_string(),
+                    label: "macular degeneration, age-related, 3".to_string(),
+                }),
+                onset: Some(TimeElement {
+                    element: Some(Age(age_struct {
+                        iso8601duration: "P3Y4M".to_string(),
+                    })),
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let built_pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_phenopackets(expected_pp, &mut built_pp.clone());
+    }
+
+    #[rstest]
+    fn test_insert_same_disease_twice(mondo_resource: Resource) {
+        let mut builder = build_test_phenopacket_builder();
+
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0008258";
+
+        builder
+            .insert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+        builder
+            .insert_disease(
+                phenopacket_id,
+                disease_id,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+        let platelet_defect_disease_no_onset = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        let expected_pp = &mut Phenopacket {
+            id: phenopacket_id.to_string(),
+            diseases: vec![
+                platelet_defect_disease_no_onset.clone(),
+                platelet_defect_disease_no_onset.clone(),
+            ],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_resource],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let built_pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_phenopackets(expected_pp, &mut built_pp.clone());
     }
 
     #[rstest]
