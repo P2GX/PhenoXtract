@@ -288,6 +288,7 @@ impl Collector {
     /// as interpretations.
     fn collect_interpretations(
         &mut self,
+        patient_id: &str,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
@@ -300,7 +301,6 @@ impl Collector {
         for disease_sc in disease_in_cells_scs {
             let sc_id = disease_sc.get_identifier();
             let bb_id = disease_sc.get_building_block_id();
-
 
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
@@ -320,7 +320,6 @@ impl Collector {
             )?;
 
             for row_idx in 0..patient_cdf.data().height() {
-
                 let genes = stringified_linked_hgnc_cols
                     .iter()
                     .filter_map(|hgnc_col| hgnc_col.get(row_idx))
@@ -329,12 +328,17 @@ impl Collector {
                     .iter()
                     .filter_map(|hgvs_col| hgvs_col.get(row_idx))
                     .collect::<Vec<&str>>();
-                
+
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease, &genes, &variants)?;
+                        self.phenopacket_builder.upsert_interpretation(
+                            patient_id,
+                            phenopacket_id,
+                            disease,
+                            &genes,
+                            &variants,
+                        )?;
                     }
                 }
             }
@@ -1319,7 +1323,7 @@ mod tests {
         let phenopacket_id = "cohort2019-P006".to_string();
 
         collector
-            .collect_interpretations(&patient_cdf, &phenopacket_id)
+            .collect_interpretations("P006", &patient_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();

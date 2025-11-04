@@ -10,16 +10,19 @@ use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use log::warn;
+use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
-use phenopackets::schema::v2::core::{Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus};
+use phenopackets::schema::v2::core::{
+    Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
+    OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+};
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
-use phenopackets::schema::v2::core::genomic_interpretation::Call;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -243,45 +246,42 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    // There are three allowable configurations of a disease alongside genes, variants and allelic states (a.k.a. genos)
-    // ========================= VALID CONFIGURATIONS =========================
-    //
-    // 1. There are no linked genes, variants or allelic states.
-    //    → `ProgressStatus` = *UNSOLVED*.
-    //
-    // 2. There is one or more gene, with no variants and no allelic states.
-    //    → `ProgressStatus` = *SOLVED*.
-    //
-    //    - If there are two HGNC genes linked to a subject, these will be
-    //      added as separate *CONTRIBUTORY* `GenomicInterpretations`.
-    //    - If there is a single HGNC linked to a patient, it will be added as a
-    //      *CAUSATIVE* `GenomicInterpretation`.
-    //
-    // 3. There is one or more variants, with at most one gene and at most one allelic state.
-    //    → `ProgressStatus` = *SOLVED*.
-    //
-    //    - If there are multiple HGVS variants linked to a subject, these will be
-    //      added as separate *CONTRIBUTORY* `VariantInterpretations`.
-    //    - If there is a single HGVS linked to a patient, it will be added as a
-    //      *CAUSATIVE* `VariantInterpretation`.
-    //    - If there is a gene, the genes will be added as the
-    //      `gene_context` to the VariantInterpretation.
-    //    - If there is a single geno (i.e. allelic state), the genotype will be added to the
-    //      `allelic_state` field of all variants.
-    //
-    // ========================= INVALID CONFIGURATIONS =========================
-    //
-    // All other arrangements are invalid.
-    //
+    /// - If there are variants, these will be added as GenomicInterpretations
+    /// - If there are genes and variants, the genes will be ignored, as they will be assumed to be
+    ///   the location of the variants.
+    /// - If there are genes but no variants, these will be added as genomic interpretations.
     pub fn upsert_interpretation(
         &mut self,
+        patient_id: &str,
         phenopacket_id: &str,
         disease: &str,
-        genes: &Vec<&str>,
-        variants: &Vec<&str>,
+        genes: &[&str],
+        variants: &[&str],
     ) -> Result<(), PhenopacketBuilderError> {
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
         self.ensure_resource(phenopacket_id, &res_ref);
+
+        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+
+        if !variants.is_empty() {
+        } else if !genes.is_empty() {
+            let gene_info = self.gather_data_from_hgnc(genes)?;
+
+            for (symbol, id) in gene_info {
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    interpretation_status: 0, //UNKNOWN_STATUS
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: id,
+                        symbol,
+                        ..Default::default()
+                    })),
+                    mt,
+                };
+
+                genomic_interpretations.push(gi);
+            }
+        }
 
         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
@@ -289,32 +289,6 @@ impl PhenopacketBuilder {
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
 
         interpretation.progress_status = 0; //UNKNOWN_PROGRESS
-
-        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
-
-        if !variants.is_empty() {
-
-        } else if !genes.is_empty() {
-
-            let gene_info = self.gather_data_from_hgnc(genes)?;
-
-            for (symbol,id) in gene_info {
-
-                let gi = GenomicInterpretation {
-                    subject_or_biosample_id: patient_id.to_string(),
-                    interpretation_status: 4, //CAUSATIVE
-                    call: Some(Call::Gene(GeneDescriptor {
-                        value_id: id,
-                        symbol,
-                        ..Default::default()
-                    })),
-                };
-
-                genomic_interpretations.push(gi);
-
-            }
-
-        }
 
         interpretation.diagnosis.get_or_insert(Diagnosis {
             disease: Some(term),
@@ -582,7 +556,7 @@ impl PhenopacketBuilder {
 
     fn gather_data_from_hgnc(
         &self,
-        genes: &Vec<&str>,
+        genes: &[&str],
     ) -> Result<Vec<(String, String)>, PhenopacketBuilderError> {
         let mut symbol_id_pairs = vec![];
         for gene in genes {
@@ -965,10 +939,8 @@ mod tests {
         assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
 
-    // todo this test currently doesn't really do anything
-    //  because we don't have a way to truly update an intepretation yet. COMING SOON!
     #[rstest]
-    fn test_upsert_interpretation_update(mondo_resource: Resource) {
+    fn test_upsert_interpretation_update_with_genomic_interpretation(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
         let phenopacket_id = "pp_001";
 
@@ -997,7 +969,13 @@ mod tests {
             .insert(phenopacket_id.to_string(), existing_pp.clone());
 
         builder
-            .upsert_interpretation(phenopacket_id, "macular degeneration, age-related, 3")
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                "macular degeneration, age-related, 3",
+                &vec!["ACE", "CLOCK"],
+                &vec![],
+            )
             .unwrap();
 
         let mut expected_pp = existing_pp.clone();
@@ -1016,13 +994,13 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation(mondo_resource: Resource) {
+    fn test_upsert_interpretation_no_variants_no_genes(mondo_resource: Resource) {
         let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
         builder
-            .upsert_interpretation(phenopacket_id, disease_id)
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec![], &vec![])
             .unwrap();
 
         let expected_pp = Phenopacket {
