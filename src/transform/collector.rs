@@ -1314,7 +1314,7 @@ mod tests {
 
         let platelet_defect_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0008258".to_string(),
-            progress_status: 4,
+            progress_status: 0, //UNKNOWN_PROGRESS
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0008258".to_string(),
@@ -1327,7 +1327,7 @@ mod tests {
 
         let dysostosis_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0000359".to_string(),
-            progress_status: 4,
+            progress_status: 0, //UNKNOWN_PROGRESS
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0000359".to_string(),
