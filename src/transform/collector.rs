@@ -940,6 +940,49 @@ mod tests {
     }
 
     #[fixture]
+    fn platelet_defect_disease() -> Disease {
+        Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P45Y10M05D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn platelet_defect_disease_no_onset() -> Disease {
+        Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
+    fn dysostosis_disease() -> Disease {
+        Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0000359".to_string(),
+                label: "spondylocostal dysostosis".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P10Y4M21D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[fixture]
     fn df_single_patient() -> DataFrame {
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
         let dob_col = Column::new(
@@ -1028,7 +1071,7 @@ mod tests {
             [
                 AnyValue::String("platelet signal processing defect"),
                 AnyValue::Null,
-                AnyValue::Null,
+                AnyValue::String("MONDO:0008258"), // also platelet signal processing defect but with no onset this time
                 AnyValue::String("Spondylocostal Dysostosis"),
             ],
         );
@@ -1046,7 +1089,7 @@ mod tests {
             [
                 AnyValue::String("KIF21A"),
                 AnyValue::Null,
-                AnyValue::Null,
+                AnyValue::String("KIF21A"),
                 AnyValue::String("ALMS1"),
             ],
         );
@@ -1480,40 +1523,6 @@ mod tests {
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
-
-        let platelet_defect_disease = Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Age(age_struct {
-                    iso8601duration: "P45Y10M05D".to_string(),
-                })),
-            }),
-            ..Default::default()
-        };
-
-        let platelet_defect_disease_no_onset = Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            ..Default::default()
-        };
-
-        let dysostosis_disease = Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0000359".to_string(),
-                label: "spondylocostal dysostosis".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Age(age_struct {
-                    iso8601duration: "P10Y4M21D".to_string(),
-                })),
-            }),
-            ..Default::default()
-        };
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
