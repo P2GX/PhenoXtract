@@ -11,7 +11,6 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 use std::fmt::{Debug, Formatter};
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;

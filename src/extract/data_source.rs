@@ -3,14 +3,13 @@ use crate::extract::csv_data_source::CSVDataSource;
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
+use crate::extract::utils::generate_default_column_names;
+use either::Either;
 use log::info;
 use polars::io::SerReader;
 use polars::prelude::{CsvReadOptions, DataFrame};
 use serde::{Deserialize, Serialize};
 use std::fs;
-
-use crate::extract::utils::generate_default_column_names;
-use either::Either;
 
 use fastexcel::{ExcelReader, IdxOrName, LoadSheetOrTableOptions};
 use std::sync::Arc;
