@@ -6,7 +6,6 @@ use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::ontology::{HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
-use crate::transform::variant_syntax_parser::VariantParser;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use ga4ghphetools::dto::hgvs_variant::HgvsVariant;
@@ -36,7 +35,6 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: HGNCClient,
     resource_resolver: CachedResourceResolver,
-    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {
