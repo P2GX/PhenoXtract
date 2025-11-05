@@ -10,18 +10,20 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::error::PipelineError;
+use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
+use ratelimit::Ratelimiter;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tempfile::TempDir;
-use phenoxtract::ontology::traits::HasPrefixId;
 
 #[fixture]
 fn temp_dir() -> TempDir {
@@ -42,13 +44,13 @@ fn csv_context() -> TableContext {
         "CSV_Table".to_string(),
         vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("0".to_string()))
+                .with_identifier(Identifier::Regex("column_1".to_string()))
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("1".to_string()))
+                .with_identifier(Identifier::Regex("column_2".to_string()))
                 .with_data_context(Context::HpoLabelOrId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("2".to_string()))
+                .with_identifier(Identifier::Regex("column_3".to_string()))
                 .with_data_context(Context::HpoLabelOrId),
         ],
     )
@@ -191,6 +193,20 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
+fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
+    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
+        .max_tokens(10)
+        .build()
+        .expect("Building rate limiter failed");
+
+    HGNCClient::new(
+        rate_limiter,
+        temp_dir.to_path_buf().join("hgnc_test_cache"),
+        "https://rest.genenames.org/".to_string(),
+    )
+    .unwrap()
+}
+
 #[rstest]
 fn test_pipeline_integration(
     csv_context: TableContext,
@@ -198,6 +214,7 @@ fn test_pipeline_integration(
     csv_context_3: TableContext,
     csv_context_4: TableContext,
     excel_context: Vec<TableContext>,
+    temp_dir: TempDir,
 ) -> Result<(), PipelineError> {
     //Set-up
     let cohort_name = "my_cohort";
@@ -267,11 +284,16 @@ fn test_pipeline_integration(
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
-    let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([(hpo_dict.ontology.prefix_id().to_string(), hpo_dict), (mondo_dict.ontology.prefix_id().to_string(), mondo_dict)]),
-        HGNCClient::default(),
-    );
     //Create the pipeline
+
+    let phenopacket_builder = PhenopacketBuilder::new(
+        HashMap::from_iter([
+            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+        ]),
+        build_hgnc_test_client(temp_dir.path()),
+    );
+
     let transformer_module = TransformerModule::new(
         strategies,
         Collector::new(phenopacket_builder, cohort_name.to_owned()),
@@ -286,12 +308,7 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    let res = pipeline.run(&mut data_sources);
-
-    if let Err(e) = res {
-        eprintln!("Error: {}", e);
-        println!("Integration test failed!");
-    }
+    pipeline.run(&mut data_sources)?;
 
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
