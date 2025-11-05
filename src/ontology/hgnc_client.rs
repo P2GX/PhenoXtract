@@ -255,7 +255,6 @@ impl HGNCClient {
 
 impl Default for HGNCClient {
     fn default() -> Self {
-        println!("Calling HGNC client default.");
         let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
             .max_tokens(10)
             .build()
