@@ -372,6 +372,127 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    /// Valid configurations of genes and variants:
+    ///
+    /// - **No genes or variants.**
+    ///
+    /// - **A single gene with no variants.**
+    ///   The gene will be added as a `GenomicInterpretation`.
+    ///
+    /// - **A single gene with a pair of identical, homozygous variants.**
+    ///   This will be added as a single *homozygous* `GenomicInterpretation`.
+    ///
+    /// - **A single gene with a pair of distinct, heterozygous variants.**
+    ///   These will be added as separate *heterozygous* `GenomicInterpretation`s.
+    ///
+    /// - **A single gene with a single heterozygous variant.**
+    ///   This will be added as a single *heterozygous* `GenomicInterpretation`.
+    ///
+    /// All other configurations are invalid.
+    pub fn upsert_omim_interpretation(
+        &mut self,
+        patient_id: &str,
+        phenopacket_id: &str,
+        omim_id: &str,
+        omim_label: &str,
+        genes: &[&str],
+        variants: &[&str],
+    ) -> Result<(), PhenopacketBuilderError> {
+        let omim_term = OntologyClass {
+            id: omim_id.to_string(),
+            label: omim_label.to_string(),
+        };
+
+        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+
+        let no_gene_variant_info = variants.is_empty() && genes.is_empty();
+        let valid_only_gene_info = variants.is_empty() && genes.len() == 1;
+        let valid_homozygous_variant =
+            variants.len() == 2 && variants[0] == variants[1] && genes.len() == 1;
+        let valid_heterozygous_variant_pair =
+            variants.len() == 2 && variants[0] != variants[1] && genes.len() == 1;
+        let valid_heterozygous_variant = variants.len() == 1 && genes.len() == 1;
+        let valid_configuration = no_gene_variant_info
+            || valid_only_gene_info
+            || valid_homozygous_variant
+            || valid_heterozygous_variant_pair
+            || valid_heterozygous_variant;
+
+        if !valid_configuration {
+            return Err(PhenopacketBuilderError::InvalidGeneVariantConfiguration { disease: omim_id.to_string(), invalid_configuration: "There can be only between 1 and 2 variants. If there are variants, a gene must be specified.".to_string() });
+        }
+
+        if !no_gene_variant_info {
+            let (gene_symbol, hgnc_id) = self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
+
+            if valid_only_gene_info {
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: hgnc_id.clone(),
+                        symbol: gene_symbol.clone(),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                };
+                genomic_interpretations.push(gi);
+            }
+
+            if valid_homozygous_variant {
+                let (gene_symbol, hgnc_id) =
+                    self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
+                let variant = variants[0];
+                let gi = Self::get_genomic_interpretation_from_data(
+                    patient_id,
+                    variant,
+                    gene_symbol.as_str(),
+                    hgnc_id.as_str(),
+                    2,
+                )?;
+                genomic_interpretations.push(gi);
+            }
+
+            if valid_heterozygous_variant_pair {
+                for variant in variants {
+                    let gi = Self::get_genomic_interpretation_from_data(
+                        patient_id,
+                        variant,
+                        gene_symbol.as_str(),
+                        hgnc_id.as_str(),
+                        1,
+                    )?;
+                    genomic_interpretations.push(gi);
+                }
+            }
+
+            if valid_heterozygous_variant {
+                let variant = variants[0];
+                let gi = Self::get_genomic_interpretation_from_data(
+                    patient_id,
+                    variant,
+                    gene_symbol.as_str(),
+                    hgnc_id.as_str(),
+                    1,
+                )?;
+                genomic_interpretations.push(gi);
+            }
+        }
+
+        let interpretation_id = format!("{}-{}", phenopacket_id, omim_term.id);
+
+        let interpretation =
+            self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
+
+        interpretation.progress_status = 0; //UNKNOWN_PROGRESS
+
+        interpretation.diagnosis = Some(Diagnosis {
+            disease: Some(omim_term),
+            genomic_interpretations,
+        });
+
+        Ok(())
+    }
+
     pub fn insert_disease(
         &mut self,
         phenopacket_id: &str,
@@ -420,6 +541,60 @@ impl PhenopacketBuilder {
         pp.diseases.push(disease_element);
 
         self.ensure_resource(phenopacket_id, &res_ref);
+
+        Ok(())
+    }
+
+    pub fn insert_omim_disease(
+        &mut self,
+        phenopacket_id: &str,
+        omim_id: &str,
+        omim_label: &str,
+        excluded: Option<bool>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        disease_stage: Option<&[&str]>,
+        clinical_tnm_finding: Option<&[&str]>,
+        primary_site: Option<&str>,
+        laterality: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        if excluded.is_some() {
+            warn!("excluded disease not implemented yet");
+        }
+        if resolution.is_some() {
+            warn!("resolution disease not implemented yet");
+        }
+        if disease_stage.is_some() {
+            warn!("disease stage of disease not implemented yet");
+        }
+        if clinical_tnm_finding.is_some() {
+            warn!("clinical_tnm_finding disease not implemented yet");
+        }
+        if primary_site.is_some() {
+            warn!("primary_site disease not implemented yet");
+        }
+        if laterality.is_some() {
+            warn!("laterality disease not implemented yet");
+        }
+
+        let omim_term = OntologyClass {
+            id: omim_id.to_string(),
+            label: omim_label.to_string(),
+        };
+
+        let mut disease_element = Disease {
+            term: Some(omim_term),
+            ..Default::default()
+        };
+
+        if let Some(onset) = onset {
+            let onset_te = Self::try_parse_time_element(onset)?;
+            disease_element.onset = Some(onset_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.diseases.push(disease_element);
 
         Ok(())
     }

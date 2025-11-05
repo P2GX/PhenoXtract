@@ -321,26 +321,63 @@ impl Collector {
                 &Context::Hgvs,
             )?;
 
-            for row_idx in 0..patient_cdf.data().height() {
-                let genes = stringified_linked_hgnc_cols
-                    .iter()
-                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-                let variants = stringified_linked_hgvs_cols
-                    .iter()
-                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                    .collect::<Vec<&str>>();
+            if disease_sc.get_data_context() == &Context::OmimId {
+                let omim_id_col = stringified_disease_cols[0];
 
-                for stringified_disease_col in stringified_disease_cols.iter() {
-                    let disease = stringified_disease_col.get(row_idx);
-                    if let Some(disease) = disease {
-                        self.phenopacket_builder.upsert_interpretation(
+                let stringified_omim_label_col =
+                    Self::get_single_stringified_column_with_data_contexts_in_bb(
+                        patient_cdf,
+                        bb_id,
+                        vec![&Context::OmimLabel],
+                    )?
+                    .unwrap();
+
+                for row_idx in 0..patient_cdf.data().height() {
+                    let genes = stringified_linked_hgnc_cols
+                        .iter()
+                        .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                        .collect::<Vec<&str>>();
+                    let variants = stringified_linked_hgvs_cols
+                        .iter()
+                        .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                        .collect::<Vec<&str>>();
+
+                    let omim_id = omim_id_col.get(row_idx);
+                    if let Some(omim_id) = omim_id {
+                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap();
+
+                        self.phenopacket_builder.upsert_omim_interpretation(
                             patient_id,
                             phenopacket_id,
-                            disease,
+                            omim_id,
+                            omim_label,
                             &genes,
                             &variants,
                         )?;
+                    }
+                }
+            } else {
+                for row_idx in 0..patient_cdf.data().height() {
+                    let genes = stringified_linked_hgnc_cols
+                        .iter()
+                        .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                        .collect::<Vec<&str>>();
+                    let variants = stringified_linked_hgvs_cols
+                        .iter()
+                        .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                        .collect::<Vec<&str>>();
+
+                    for stringified_disease_col in stringified_disease_cols.iter() {
+                        let disease = stringified_disease_col.get(row_idx);
+                        if let Some(disease) = disease {
+                            self.phenopacket_builder.upsert_interpretation(
+                                patient_id,
+                                phenopacket_id,
+                                disease,
+                                &genes,
+                                &variants,
+                            )?;
+                        }
                     }
                 }
             }
@@ -379,19 +416,31 @@ impl Collector {
                     vec![&Context::OnsetAge, &Context::OnsetDateTime],
                 )?;
 
-            for row_idx in 0..patient_cdf.data().height() {
-                for stringified_disease_col in stringified_disease_cols.iter() {
-                    let disease = stringified_disease_col.get(row_idx);
-                    if let Some(disease) = disease {
+            if disease_sc.get_data_context() == &Context::OmimId {
+                let omim_id_col = stringified_disease_cols[0];
+
+                let stringified_omim_label_col =
+                    Self::get_single_stringified_column_with_data_contexts_in_bb(
+                        patient_cdf,
+                        bb_id,
+                        vec![&Context::OmimLabel],
+                    )?
+                    .unwrap();
+                for row_idx in 0..patient_cdf.data().height() {
+                    let omim_id = omim_id_col.get(row_idx);
+                    if let Some(omim_id) = omim_id {
+                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap();
+
                         let disease_onset = if let Some(onset_col) = &stringified_linked_onset_col {
                             onset_col.get(row_idx)
                         } else {
                             None
                         };
 
-                        self.phenopacket_builder.insert_disease(
+                        self.phenopacket_builder.insert_omim_disease(
                             phenopacket_id,
-                            disease,
+                            omim_id,
+                            omim_label,
                             None,
                             disease_onset,
                             None,
@@ -400,6 +449,32 @@ impl Collector {
                             None,
                             None,
                         )?;
+                    }
+                }
+            } else {
+                for row_idx in 0..patient_cdf.data().height() {
+                    for stringified_disease_col in stringified_disease_cols.iter() {
+                        let disease = stringified_disease_col.get(row_idx);
+                        if let Some(disease) = disease {
+                            let disease_onset =
+                                if let Some(onset_col) = &stringified_linked_onset_col {
+                                    onset_col.get(row_idx)
+                                } else {
+                                    None
+                                };
+
+                            self.phenopacket_builder.insert_disease(
+                                phenopacket_id,
+                                disease,
+                                None,
+                                disease_onset,
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                            )?;
+                        }
                     }
                 }
             }

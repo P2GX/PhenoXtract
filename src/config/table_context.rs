@@ -66,7 +66,9 @@ pub enum Context {
     #[allow(unused)]
     HpoLabelOrId,
     #[allow(unused)]
-    OmimLabelOrId,
+    OmimId,
+    #[allow(unused)]
+    OmimLabel,
     #[allow(unused)]
     OrphanetLabelOrId,
     #[allow(unused)]
