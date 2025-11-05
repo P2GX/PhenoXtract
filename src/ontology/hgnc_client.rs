@@ -201,11 +201,6 @@ impl HGNCClient {
     }
 
     fn init_cache(cache_dir: &Path) -> Result<(), ClientError> {
-        if !cache_dir.exists() {
-            let parent = cache_dir.parent().unwrap();
-            fs::create_dir_all(parent).unwrap();
-        }
-
         let cache = RedbDatabase::create(cache_dir)?;
         let write_txn = cache.begin_write()?;
         {
