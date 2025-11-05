@@ -1160,7 +1160,7 @@ mod tests {
         let disease_id = "MONDO:0012145";
 
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec![], &vec![])
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &[], &[])
             .unwrap();
 
         assert_eq!(
@@ -1180,8 +1180,8 @@ mod tests {
                 "P006",
                 phenopacket_id,
                 disease_id,
-                &vec!["KIF21A"],
-                &vec!["NM_001173464.1:c.2860C>T", "NM_001173464.1:c.2860C>T"],
+                &["KIF21A"],
+                &["NM_001173464.1:c.2860C>T", "NM_001173464.1:c.2860C>T"],
             )
             .unwrap();
 
@@ -1237,8 +1237,8 @@ mod tests {
                 "P006",
                 phenopacket_id,
                 disease_id,
-                &vec!["ALMS1"],
-                &vec![
+                &["ALMS1"],
+                &[
                     "NM_015120.4:c.6960_6963delACAG",
                     "NM_015120.4:c.11031_11032delGA",
                 ],
@@ -1298,8 +1298,8 @@ mod tests {
                 "P006",
                 phenopacket_id,
                 disease_id,
-                &vec!["KIF21A"],
-                &vec!["NM_001173464.1:c.2860C>T"],
+                &["KIF21A"],
+                &["NM_001173464.1:c.2860C>T"],
             )
             .unwrap();
 
@@ -1359,8 +1359,8 @@ mod tests {
                 "P006",
                 phenopacket_id,
                 "macular degeneration, age-related, 3",
-                &vec!["KIF21A"],
-                &vec!["NM_001173464.1:c.2860C>T"],
+                &["KIF21A"],
+                &["NM_001173464.1:c.2860C>T"],
             )
             .unwrap();
 
@@ -1386,7 +1386,7 @@ mod tests {
         let disease_id = "MONDO:0012145";
 
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &vec!["KIF21A"], &vec![])
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &["KIF21A"], &[])
             .unwrap();
 
         let pp = builder.subject_to_phenopacket.values().next().unwrap();
@@ -1434,8 +1434,8 @@ mod tests {
                     "P006",
                     phenopacket_id,
                     disease_id,
-                    &vec!["KIF21A", "CLOCK"],
-                    &vec!["NM_001173464.1:c.2860C>T"]
+                    &["KIF21A", "CLOCK"],
+                    &["NM_001173464.1:c.2860C>T"]
                 )
                 .is_err()
         );
@@ -1446,8 +1446,8 @@ mod tests {
                     "P006",
                     phenopacket_id,
                     disease_id,
-                    &vec!["KIF21A"],
-                    &vec![
+                    &["KIF21A"],
+                    &[
                         "NM_001173464.1:c.2860C>T",
                         "NM_001173464.1:c.2860C>T",
                         "NM_001173464.1:c.2860C>T"
@@ -1462,8 +1462,8 @@ mod tests {
                     "P006",
                     phenopacket_id,
                     disease_id,
-                    &vec![],
-                    &vec!["NM_001173464.1:c.2860C>T"]
+                    &[],
+                    &["NM_001173464.1:c.2860C>T"]
                 )
                 .is_err()
         );
@@ -1796,6 +1796,46 @@ mod tests {
             iri_prefix: "https://omim.org/MIM:$1".to_string(),
         };
         assert_eq!(omim_resrouce, &expected_resource);
+    }
+
+    #[rstest]
+    fn test_get_gene_data_from_hgnc() {
+        let mut builder = build_test_phenopacket_builder();
+        let pp_id = "test_id";
+
+        let hgnc_data = builder.get_gene_data_from_hgnc(pp_id, "CLOCK").unwrap();
+
+        assert_eq!(hgnc_data, ("CLOCK".to_string(), "HGNC:2082".to_string()));
+    }
+
+    #[rstest]
+    fn test_get_genomic_interpretation_from_data() {
+        let pp_gi = PhenopacketBuilder::get_genomic_interpretation_from_data(
+            "P006",
+            "NM_001173464.1:c.2860C>T",
+            "KIF21A",
+            "HGNC:19349",
+            2,
+        )
+        .unwrap();
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "homozygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "KIF21A");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_001173464.1:c.2860C>T");
+            }
+        }
     }
 
     #[rstest]
