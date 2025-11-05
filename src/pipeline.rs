@@ -7,7 +7,7 @@ use crate::transform::transform_module::TransformerModule;
 use std::collections::HashMap;
 
 use crate::error::{ConstructionError, PipelineError};
-use crate::ontology::CachedOntologyFactory;
+use crate::ontology::{CachedOntologyFactory, HGNCClient};
 
 use crate::ontology::resource_references::OntologyRef;
 use crate::transform::Collector;
@@ -93,7 +93,7 @@ impl Pipeline {
 
         let hpo_dict = factory.build_bidict(&OntologyRef::hp(), None)?;
 
-        let builder = PhenopacketBuilder::new(HashMap::default());
+        let builder = PhenopacketBuilder::new(HashMap::default(), HGNCClient::default());
         let tf_module = TransformerModule::new(
             vec![],
             Collector::new(builder, config.meta_data.cohort_name.clone()),

@@ -10,18 +10,25 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::error::PipelineError;
-use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
+use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
-use pretty_assertions::assert_eq;
+use ratelimit::Ratelimiter;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use tempfile::TempDir;
+
+#[fixture]
+fn temp_dir() -> TempDir {
+    tempfile::tempdir().expect("Failed to create temporary directory")
+}
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
@@ -37,13 +44,13 @@ fn csv_context() -> TableContext {
         "CSV_Table".to_string(),
         vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("0".to_string()))
+                .with_identifier(Identifier::Regex("column_1".to_string()))
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("1".to_string()))
+                .with_identifier(Identifier::Regex("column_2".to_string()))
                 .with_data_context(Context::HpoLabelOrId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("2".to_string()))
+                .with_identifier(Identifier::Regex("column_3".to_string()))
                 .with_data_context(Context::HpoLabelOrId),
         ],
     )
@@ -91,6 +98,38 @@ fn csv_context_3() -> TableContext {
                 .with_identifier(Identifier::Regex("Date of onset".to_string()))
                 .with_data_context(Context::OnsetDateTime)
                 .with_building_block_id(Some("B".to_string())),
+        ],
+    )
+}
+
+#[fixture]
+fn csv_context_4() -> TableContext {
+    TableContext::new(
+        "CSV_Table_4".to_string(),
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("diseases".to_string()))
+                .with_data_context(Context::MondoLabelOrId)
+                .with_building_block_id(Some("C".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("disease_onset".to_string()))
+                .with_data_context(Context::OnsetDateTime)
+                .with_building_block_id(Some("C".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("gene".to_string()))
+                .with_data_context(Context::HgncSymbolOrId)
+                .with_building_block_id(Some("C".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("hgvs1".to_string()))
+                .with_data_context(Context::Hgvs)
+                .with_building_block_id(Some("C".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("hgvs2".to_string()))
+                .with_data_context(Context::Hgvs)
+                .with_building_block_id(Some("C".to_string())),
         ],
     )
 }
@@ -154,12 +193,28 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
+fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
+    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
+        .max_tokens(10)
+        .build()
+        .expect("Building rate limiter failed");
+
+    HGNCClient::new(
+        rate_limiter,
+        temp_dir.to_path_buf().join("hgnc_test_cache"),
+        "https://rest.genenames.org/".to_string(),
+    )
+    .unwrap()
+}
+
 #[rstest]
 fn test_pipeline_integration(
     csv_context: TableContext,
     csv_context_2: TableContext,
     csv_context_3: TableContext,
+    csv_context_4: TableContext,
     excel_context: Vec<TableContext>,
+    temp_dir: TempDir,
 ) -> Result<(), PipelineError> {
     //Set-up
     let cohort_name = "my_cohort";
@@ -169,6 +224,9 @@ fn test_pipeline_integration(
     let hpo_dict = onto_factory
         .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
         .unwrap();
+    let mondo_dict = onto_factory
+        .build_bidict(&OntologyRef::mondo(), None)
+        .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -176,6 +234,7 @@ fn test_pipeline_integration(
     let csv_path = assets_path.clone().join("csv_data.csv");
     let csv_path_2 = assets_path.clone().join("csv_data_2.csv");
     let csv_path_3 = assets_path.clone().join("csv_data_3.csv");
+    let csv_path_4 = assets_path.clone().join("csv_data_4.csv");
     let excel_path = assets_path.clone().join("excel_data.xlsx");
 
     let mut data_sources = [
@@ -196,6 +255,12 @@ fn test_pipeline_integration(
             None,
             csv_context_3,
             ExtractionConfig::new("CSV_Table_3".to_string(), true, false),
+        )),
+        DataSource::Csv(CSVDataSource::new(
+            csv_path_4,
+            None,
+            csv_context_4,
+            ExtractionConfig::new("CSV_Table_4".to_string(), true, true),
         )),
         DataSource::Excel(ExcelDatasource::new(
             excel_path,
@@ -219,11 +284,16 @@ fn test_pipeline_integration(
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
-    let phenopacket_builder = PhenopacketBuilder::new(HashMap::from_iter([(
-        hpo_dict.ontology.prefix_id().to_string(),
-        hpo_dict,
-    )]));
     //Create the pipeline
+
+    let phenopacket_builder = PhenopacketBuilder::new(
+        HashMap::from_iter([
+            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+        ]),
+        build_hgnc_test_client(temp_dir.path()),
+    );
+
     let transformer_module = TransformerModule::new(
         strategies,
         Collector::new(phenopacket_builder, cohort_name.to_owned()),
@@ -238,12 +308,7 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    let res = pipeline.run(&mut data_sources);
-
-    if let Err(e) = res {
-        eprintln!("Error: {}", e);
-        println!("Integration test failed!");
-    }
+    pipeline.run(&mut data_sources)?;
 
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
@@ -258,7 +323,7 @@ fn test_pipeline_integration(
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
         let data = fs::read_to_string(extracted_pp_file.unwrap().path()).unwrap();
         let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-        let mut extracted_pp_id = expected_phenopackets
+        let mut expected_pp = expected_phenopackets
             .get(&extracted_pp.id.clone())
             .unwrap()
             .clone();
@@ -266,11 +331,11 @@ fn test_pipeline_integration(
         if let Some(meta) = &mut extracted_pp.meta_data {
             meta.created = None;
         }
-        if let Some(meta) = &mut extracted_pp_id.meta_data {
+        if let Some(meta) = &mut expected_pp.meta_data {
             meta.created = None;
         }
 
-        assert_eq!(extracted_pp, extracted_pp_id);
+        assert_eq!(extracted_pp, expected_pp);
     }
     Ok(())
 }

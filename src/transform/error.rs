@@ -1,4 +1,5 @@
 use crate::config::table_context::Context;
+use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
@@ -234,4 +235,17 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("Missing BiDict for {0}")]
     MissingBiDict(String),
+    #[error(transparent)]
+    HgncClient(#[from] ClientError),
+    #[error("Error validating HGVS variant: {0}")]
+    VariantValidation(String),
+    #[error("Error fetching gene symbol-id pair: {0}")]
+    HgncGenePair(String),
+    #[error(
+        "Could not interpret gene and variant configuration for disease {disease}: {invalid_configuration}"
+    )]
+    InvalidGeneVariantConfiguration {
+        disease: String,
+        invalid_configuration: String,
+    },
 }
