@@ -60,6 +60,8 @@ impl Collector {
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
                 self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &patient_id, &phenopacket_id)?;
+                self.collect_diseases(&patient_cdf, &phenopacket_id)?;
+                self.collect_interpretations(&patient_id, &patient_cdf, &phenopacket_id)?;
             }
         }
 
@@ -660,6 +662,21 @@ mod tests {
             .with_data_context(Context::OnsetAge)
             .with_building_block_id(Some("Block_3".to_string()));
 
+        let genes_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("genes".to_string()))
+            .with_data_context(Context::HgncSymbolOrId)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let hgvs_sc1 = SeriesContext::default()
+            .with_identifier(Identifier::Regex("hgvs1".to_string()))
+            .with_data_context(Context::Hgvs)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let hgvs_sc2 = SeriesContext::default()
+            .with_identifier(Identifier::Regex("hgvs2".to_string()))
+            .with_data_context(Context::Hgvs)
+            .with_building_block_id(Some("Block_3".to_string()));
+
         TableContext::new(
             "patient_data".to_string(),
             vec![
@@ -675,6 +692,9 @@ mod tests {
                 runny_nose_onset_sc,
                 diseases_sc,
                 disease_onset_sc,
+                genes_sc,
+                hgvs_sc1,
+                hgvs_sc2,
             ],
         )
     }
@@ -850,6 +870,61 @@ mod tests {
                 AnyValue::String("DECEASED"),
             ],
         );
+        let disease_col = Column::new(
+            "diseases".into(),
+            [
+                AnyValue::String("platelet signal processing defect"),
+                AnyValue::Null,
+                AnyValue::String("Spondylocostal Dysostosis"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let disease_onset_col = Column::new(
+            "disease_onset".into(),
+            [
+                AnyValue::String("P45Y10M05D"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let gene_col = Column::new(
+            "genes".into(),
+            [
+                AnyValue::String("KIF21A"),
+                AnyValue::Null,
+                AnyValue::String("ALMS1"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let hgvs_col1 = Column::new(
+            "hgvs1".into(),
+            [
+                AnyValue::String("NM_001173464.1:c.2860C>T"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let hgvs_col2 = Column::new(
+            "hgvs2".into(),
+            [
+                AnyValue::String("NM_001173464.1:c.2860C>T"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
 
         DataFrame::new(vec![
             id_col,
@@ -857,6 +932,11 @@ mod tests {
             onset_col,
             subject_sex_col,
             vital_status_col,
+            disease_col,
+            disease_onset_col,
+            gene_col,
+            hgvs_col1,
+            hgvs_col2,
         ])
         .unwrap()
     }
@@ -973,7 +1053,7 @@ mod tests {
             [
                 AnyValue::String("platelet signal processing defect"),
                 AnyValue::Null,
-                AnyValue::String("MONDO:0008258"), //also platelet signal processing defect
+                AnyValue::Null,
                 AnyValue::String("Spondylocostal Dysostosis"),
             ],
         );
@@ -984,6 +1064,33 @@ mod tests {
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::String("P10Y4M21D"),
+            ],
+        );
+        let gene_col = Column::new(
+            "genes".into(),
+            [
+                AnyValue::String("KIF21A"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::String("ALMS1"),
+            ],
+        );
+        let hgvs_col1 = Column::new(
+            "hgvs1".into(),
+            [
+                AnyValue::String("NM_001173464.1:c.2860C>T"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
+            ],
+        );
+        let hgvs_col2 = Column::new(
+            "hgvs2".into(),
+            [
+                AnyValue::String("NM_001173464.1:c.2860C>T"),
+                AnyValue::Null,
+                AnyValue::Null,
+                AnyValue::Null,
             ],
         );
         DataFrame::new(vec![
@@ -999,6 +1106,9 @@ mod tests {
             runny_nose_onset_col,
             disease_col,
             disease_onset_col,
+            gene_col,
+            hgvs_col1,
+            hgvs_col2,
         ])
         .unwrap()
     }
