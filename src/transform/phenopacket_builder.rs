@@ -1345,9 +1345,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_update(
-        basic_pp_with_disease_info: Phenopacket,
-    ) {
+    fn test_upsert_interpretation_update(basic_pp_with_disease_info: Phenopacket) {
         let mut builder = build_test_phenopacket_builder();
         let phenopacket_id = "pp_001";
 
