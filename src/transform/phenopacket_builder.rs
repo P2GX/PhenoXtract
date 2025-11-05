@@ -38,10 +38,15 @@ pub struct PhenopacketBuilder {
 }
 
 impl PhenopacketBuilder {
-    pub fn new(ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>) -> PhenopacketBuilder {
+    pub fn new(
+        ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
+        hgnc_client: HGNCClient,
+    ) -> PhenopacketBuilder {
         PhenopacketBuilder {
+            subject_to_phenopacket: Default::default(),
             ontology_bidicts,
-            ..Default::default()
+            hgnc_client,
+            resource_resolver: Default::default(),
         }
     }
 
@@ -293,7 +298,7 @@ impl PhenopacketBuilder {
             || valid_heterozygous_variant;
 
         if !valid_configuration {
-            return Err(PhenopacketBuilderError::InvalidGeneVariantConfiguration {disease: disease.to_string(), invalid_configuration: "There can be only between 1 and 2 variants. If there are variants, a gene must be specified.".to_string()});
+            return Err(PhenopacketBuilderError::InvalidGeneVariantConfiguration { disease: disease.to_string(), invalid_configuration: "There can be only between 1 and 2 variants. If there are variants, a gene must be specified.".to_string() });
         }
 
         if !no_gene_variant_info {
@@ -764,13 +769,12 @@ mod tests {
 
     use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
-    use crate::test_utils::{
-        GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY, assert_phenopackets,
-    };
+    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
+    use tempfile::TempDir;
 
     #[fixture]
     fn phenopacket_id() -> String {
@@ -826,37 +830,14 @@ mod tests {
         })
     }
 
-    fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
-        let hpo_dict = ONTOLOGY_FACTORY
-            .lock()
-            .unwrap()
-            .build_bidict(&HPO_REF.clone(), None)
-            .unwrap();
-
-        let geno_dict = ONTOLOGY_FACTORY
-            .lock()
-            .unwrap()
-            .build_bidict(&GENO_REF.clone(), None)
-            .unwrap();
-
-        HashMap::from_iter(vec![
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (
-                MONDO_BIDICT.ontology.prefix_id().to_string(),
-                MONDO_BIDICT.clone(),
-            ),
-            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
-        ])
-    }
-    fn build_test_phenopacket_builder() -> PhenopacketBuilder {
-        PhenopacketBuilder::new(build_test_dicts())
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[rstest]
-    fn test_build(phenopacket_id: String) {
-        use phenopackets::schema::v2::Phenopacket;
-
-        let mut builder = build_test_phenopacket_builder();
+    fn test_build(phenopacket_id: String, temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
             subject: Some(Individual {
@@ -894,8 +875,9 @@ mod tests {
         valid_phenotype: String,
         onset_age: Option<&str>,
         onset_age_te: Option<TimeElement>,
+        temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         builder
             .upsert_phenotypic_feature(
                 phenopacket_id.as_str(),
@@ -928,8 +910,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String, temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let result = builder.upsert_phenotypic_feature(
             phenopacket_id.as_str(),
@@ -951,8 +933,9 @@ mod tests {
         phenopacket_id: String,
         valid_phenotype: String,
         another_phenotype: String,
+        temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         builder
             .upsert_phenotypic_feature(
@@ -987,8 +970,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_different_phenopacket_ids(valid_phenotype: String) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_different_phenopacket_ids(valid_phenotype: String, temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let id1 = "pp_001".to_string();
         let id2 = "pp_002".to_string();
@@ -1027,8 +1010,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_phenotypic_features(phenopacket_id: String, valid_phenotype: String) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_update_phenotypic_features(
+        phenopacket_id: String,
+        valid_phenotype: String,
+        temp_dir: TempDir,
+    ) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let existing_phenopacket = Phenopacket {
             id: phenopacket_id.clone(),
@@ -1084,8 +1071,9 @@ mod tests {
         onset_timestamp: Option<&str>,
         onset_timestamp_te: Option<TimeElement>,
         valid_phenotype: String,
+        temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder();
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         builder
             .upsert_phenotypic_feature(
@@ -1152,8 +1140,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_no_variants_no_genes(basic_pp_with_disease_info: Phenopacket) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_no_variants_no_genes(
+        basic_pp_with_disease_info: Phenopacket,
+        temp_dir: TempDir,
+    ) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
 
@@ -1168,8 +1159,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_homozygous_variant() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
 
@@ -1225,8 +1216,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_variant_pair() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
 
@@ -1286,8 +1277,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_variant() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
 
@@ -1343,8 +1334,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_update(basic_pp_with_disease_info: Phenopacket) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_update(
+        basic_pp_with_disease_info: Phenopacket,
+        temp_dir: TempDir,
+    ) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
 
         let existing_pp = basic_pp_with_disease_info;
@@ -1378,8 +1372,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_single_gene() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_single_gene(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
 
@@ -1420,8 +1414,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_invalid_configuration_err() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_interpretation_invalid_configuration_err(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
@@ -1468,8 +1462,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_disease(mondo_resource: Resource) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_insert_disease(mondo_resource: Resource, temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
@@ -1516,8 +1510,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_same_disease_twice(mondo_resource: Resource) {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_insert_same_disease_twice(mondo_resource: Resource, temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0008258";
@@ -1577,8 +1571,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_individual() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_individual(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
         let individual_id = "individual_001";
@@ -1633,8 +1627,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_vital_status() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_upsert_vital_status(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
 
@@ -1661,8 +1655,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_hpo_identifiers_with_valid_label() {
-        let builder = build_test_phenopacket_builder();
+    fn test_query_hpo_identifiers_with_valid_label(temp_dir: TempDir) {
+        let builder = build_test_phenopacket_builder(temp_dir.path());
 
         // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
         let result = builder.query_hpo_identifiers("Seizure").unwrap();
@@ -1672,8 +1666,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_hpo_identifiers_with_valid_id() {
-        let builder = build_test_phenopacket_builder();
+    fn test_query_hpo_identifiers_with_valid_id(temp_dir: TempDir) {
+        let builder = build_test_phenopacket_builder(temp_dir.path());
 
         let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
 
@@ -1682,8 +1676,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_hpo_identifiers_invalid_query() {
-        let builder = build_test_phenopacket_builder();
+    fn test_query_hpo_identifiers_invalid_query(temp_dir: TempDir) {
+        let builder = build_test_phenopacket_builder(temp_dir.path());
 
         let result = builder.query_hpo_identifiers("NonexistentTerm");
 
@@ -1763,8 +1757,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_or_create_phenopacket() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_get_or_create_phenopacket(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         builder.get_or_create_phenopacket(phenopacket_id);
         let pp = builder.get_or_create_phenopacket(phenopacket_id);
@@ -1773,8 +1767,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_ensure_resource() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_ensure_resource(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id".to_string();
 
         builder.ensure_resource(
@@ -1797,8 +1791,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_gene_data_from_hgnc() {
-        let mut builder = build_test_phenopacket_builder();
+    fn test_get_gene_data_from_hgnc(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id";
 
         let hgnc_data = builder.get_gene_data_from_hgnc(pp_id, "CLOCK").unwrap();
@@ -1837,9 +1831,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_disease_query_priority() {
-        // TODO: Finish once omim is part of the project.
-        let mut builder = build_test_phenopacket_builder();
+    fn test_disease_query_priority(temp_dir: TempDir) {
+        //TDOD: Finish when omim is implemented
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let disease = "a sever disease, you do not want to have".to_string();
         let omim_id = "OMIM:0099";
         let mondo_ref = OntologyRef::mondo();

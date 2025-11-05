@@ -10,8 +10,8 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::error::PipelineError;
-use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
+use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
@@ -219,10 +219,10 @@ fn test_pipeline_integration(
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
-    let phenopacket_builder = PhenopacketBuilder::new(HashMap::from_iter([(
-        hpo_dict.ontology.prefix_id().to_string(),
-        hpo_dict,
-    )]));
+    let phenopacket_builder = PhenopacketBuilder::new(
+        HashMap::from_iter([(hpo_dict.ontology.prefix_id().to_string(), hpo_dict)]),
+        HGNCClient::default(),
+    );
     //Create the pipeline
     let transformer_module = TransformerModule::new(
         strategies,
