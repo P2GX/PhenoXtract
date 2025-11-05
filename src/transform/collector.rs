@@ -1593,26 +1593,26 @@ mod tests {
         hgnc_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        fn update_subject_id(
+        fn update_ids(
             interpretation: &mut Interpretation,
             new_subject_id: &str,
             new_interpretation_id: &str,
         ) {
             interpretation.id = new_interpretation_id.to_string();
 
-            if let Some(diagnosis) = &mut interpretation.diagnosis {
-                if let Some(genomic_interpretation) = diagnosis.genomic_interpretations.get_mut(0) {
-                    genomic_interpretation.subject_or_biosample_id = new_subject_id.to_string();
-                }
+            if let Some(diagnosis) = &mut interpretation.diagnosis
+                && let Some(genomic_interpretation) = diagnosis.genomic_interpretations.get_mut(0)
+            {
+                genomic_interpretation.subject_or_biosample_id = new_subject_id.to_string();
             }
         }
 
-        update_subject_id(
+        update_ids(
             &mut platelet_defect_interpretation,
             "P006",
             "cohort2019-P006-MONDO:0008258",
         );
-        update_subject_id(
+        update_ids(
             &mut dysostosis_interpretation,
             "P006",
             "cohort2019-P006-MONDO:0000359",

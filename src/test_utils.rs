@@ -101,7 +101,7 @@ macro_rules! skip_in_ci {
     };
 }
 
-pub(crate) fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
+pub fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
     if let Some(meta) = &mut actual.meta_data {
         meta.created = None;
     }
@@ -148,7 +148,7 @@ pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
     .unwrap()
 }
 
-pub(crate) fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
+pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
     PhenopacketBuilder::new(build_test_dicts(), hgnc_client)
 }
