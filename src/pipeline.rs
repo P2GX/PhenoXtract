@@ -1,5 +1,5 @@
-use crate::config::PhenoXtractorConfig;
 use crate::config::pipeline_config::PipelineConfig;
+use crate::config::{ConfigLoader, PhenoXtractorConfig};
 use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
@@ -15,8 +15,6 @@ use crate::transform::transform_module::TransformerModule;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use validator::Validate;
@@ -92,11 +90,11 @@ impl TryFrom<PipelineConfig> for Pipeline {
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
         let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
-        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
+        //let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
         let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
         let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
             (hp_dict.ontology.prefix_id().to_string(), hp_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            //(mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ]);
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
@@ -140,31 +138,9 @@ impl TryFrom<PathBuf> for Pipeline {
         if !path.exists() {
             return Err(ConstructionError::NoConfigFileFound(path));
         }
-        let mut file = File::open(path.clone())?;
-        let mut buffer = Vec::new();
+        let config: PhenoXtractorConfig = ConfigLoader::load(path.clone()).unwrap();
 
-        file.read_to_end(&mut buffer)?;
-        Pipeline::try_from(buffer.as_slice())
-    }
-}
-
-impl TryFrom<&[u8]> for Pipeline {
-    type Error = ConstructionError;
-    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        let pheno_config: Result<PhenoXtractorConfig, serde_json::error::Error> =
-            serde_json::from_slice(data);
-
-        if let Ok(conf) = pheno_config {
-            return Pipeline::try_from(conf);
-        };
-
-        let pipeline_config: Result<PipelineConfig, serde_json::error::Error> =
-            serde_json::from_slice(data);
-        if let Ok(pipeline_config) = pipeline_config {
-            return Pipeline::try_from(pipeline_config);
-        };
-
-        Err(ConstructionError::NoPipelineConfigFound)
+        Pipeline::try_from(config)
     }
 }
 
@@ -194,7 +170,6 @@ mod tests {
             Pipeline::try_from(config.clone()).unwrap(),
             Pipeline::try_from(config.pipeline.clone()).unwrap(),
             Pipeline::try_from(file_path).unwrap(),
-            Pipeline::try_from(get_full_config_bytes().as_slice()).unwrap(),
         ];
 
         let expected_config = configs_from_sources.first().unwrap();
