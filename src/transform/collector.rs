@@ -459,6 +459,30 @@ impl Collector {
         }
     }
 
+    /// Extracts the columns from the cdf which have
+    /// Building Block ID = bb_id
+    /// data_context = context
+    /// header_context = None
+    /// and converts them to StringChunked
+    fn get_stringified_cols_with_data_context_in_bb<'a>(
+        cdf: &'a ContextualizedDataFrame,
+        bb_id: Option<&'a str>,
+        context: &'a Context,
+    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
+        let cols = bb_id.map_or(vec![], |bb_id| {
+            cdf.filter_columns()
+                .where_building_block(Filter::Is(bb_id))
+                .where_header_context(Filter::IsNone)
+                .where_data_context(Filter::Is(context))
+                .collect()
+        });
+
+        Ok(cols
+            .iter()
+            .map(|col| col.str())
+            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
+    }
+
     /// Given a CDF, building block ID and data contexts
     /// this function will find all columns
     /// - within that building block
@@ -515,30 +539,6 @@ impl Collector {
         } else {
             Ok(None)
         }
-    }
-
-    /// Extracts the columns from the cdf which have
-    /// Building Block ID = bb_id
-    /// data_context = context
-    /// header_context = None
-    /// and converts them to StringChunked
-    fn get_stringified_cols_with_data_context_in_bb<'a>(
-        cdf: &'a ContextualizedDataFrame,
-        bb_id: Option<&'a str>,
-        context: &'a Context,
-    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
-        let cols = bb_id.map_or(vec![], |bb_id| {
-            cdf.filter_columns()
-                .where_building_block(Filter::Is(bb_id))
-                .where_header_context(Filter::IsNone)
-                .where_data_context(Filter::Is(context))
-                .collect()
-        });
-
-        Ok(cols
-            .iter()
-            .map(|col| col.str())
-            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
     }
 }
 
