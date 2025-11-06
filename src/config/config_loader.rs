@@ -18,10 +18,10 @@ impl ConfigLoader {
                 ))),
             }?;
 
-            let settings = Config::builder()
+            let config = Config::builder()
                 .add_source(File::new(file_path.to_str().unwrap(), file_format))
                 .build()?;
-            let settings_struct: T = settings.try_deserialize()?;
+            let settings_struct: T = config.try_deserialize()?;
             Ok(settings_struct)
         } else {
             Err(ConfigError::NotFound(format!(
