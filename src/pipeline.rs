@@ -11,6 +11,7 @@ use crate::ontology::traits::HasPrefixId;
 use crate::transform::Collector;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
+use crate::transform::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
@@ -101,13 +102,14 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let phenopacket_builder = PhenopacketBuilder::new(bi_dicts);
 
-        let strategies: Result<Vec<_>, _> = config
+        let strategies: Vec<Box<dyn Strategy>> = config
             .transform_strategies
             .iter()
             .map(|strat| strategy_factory.try_from_config(strat))
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
+
         let tf_module = TransformerModule::new(
-            strategies?,
+            strategies,
             Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),
         );
         let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
