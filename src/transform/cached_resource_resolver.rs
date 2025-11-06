@@ -9,7 +9,7 @@ use std::collections::HashMap;
 /// This resolver fetches resource metadata from the BioRegistry API and caches
 /// the results to avoid repeated network requests. It maintains a cache of resolved
 /// resources and allows specifying known versions for resources before resolution.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 #[allow(dead_code)]
 pub struct CachedResourceResolver {
     cache: HashMap<String, Resource>,

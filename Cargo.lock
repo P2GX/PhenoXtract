@@ -2634,9 +2634,9 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "ontolius"
-version = "0.5.5"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2db13cb829ec5d8091064ccb7ecc71f01519407aff9b0c62e8f6f867a983fd0"
+checksum = "254eaacefd537954427383820361e153a89e1667c401314dc02c354670176b62"
 dependencies = [
  "anyhow",
  "curieosa",
