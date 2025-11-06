@@ -5,14 +5,9 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
-use crate::transform::transform_module::TransformerModule;
-use std::collections::HashMap;
 
-use crate::error::{ConstructionError, PipelineError};
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
 
-use crate::ontology::resource_references::OntologyRef;
-use crate::ontology::CachedOntologyFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::transform::Collector;
@@ -111,8 +106,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ]);
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
-
-        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts);
+        let client = HGNCClient::default();
+        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, client);
 
         let strategies: Vec<Box<dyn Strategy>> = config
             .transform_strategies
