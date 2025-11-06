@@ -111,7 +111,6 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(MultiHPOColExpansionStrategy),
         Box::new(HgvsCorrectionStrategy),
-        //adjust HGVS strat
     ];
 
     //Create the pipeline
