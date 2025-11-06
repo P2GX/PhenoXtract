@@ -117,6 +117,18 @@ impl TransformerModule {
     }
 }
 
+impl PartialEq for TransformerModule {
+    fn eq(&self, other: &Self) -> bool {
+        self.collector == other.collector
+            && self.strategies.len() == other.strategies.len()
+            && self
+                .strategies
+                .iter()
+                .zip(other.strategies.iter())
+                .all(|(a, b)| format!("{:?}", a) == format!("{:?}", b))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
