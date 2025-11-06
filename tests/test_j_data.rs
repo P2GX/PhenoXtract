@@ -13,8 +13,7 @@ use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::strategies::MappingStrategy;
-use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
-use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
+use phenoxtract::transform::strategies::{HgvsCorrectionStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
@@ -111,6 +110,7 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(MultiHPOColExpansionStrategy),
+        Box::new(HgvsCorrectionStrategy),
         //adjust HGVS strat
     ];
 
