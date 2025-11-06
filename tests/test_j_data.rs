@@ -1,19 +1,16 @@
-use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
-use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
-};
+use phenoxtract::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use phenoxtract::extract::DataSource;
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
-use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::strategies::{HgvsCorrectionStrategy, MappingStrategy};
 use phenoxtract::transform::strategies::MultiHPOColExpansionStrategy;
+use phenoxtract::transform::strategies::{HgvsCorrectionStrategy, MappingStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;

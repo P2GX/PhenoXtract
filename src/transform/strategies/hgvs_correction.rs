@@ -1,8 +1,6 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::{
-    DataProcessingError, StrategyError,
-};
+use crate::transform::error::{DataProcessingError, StrategyError};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
@@ -55,9 +53,9 @@ impl Strategy for HgvsCorrectionStrategy {
             for hgvs_col_name in hgvs_col_names {
                 let hgvs_col = table.data().column(&hgvs_col_name)?;
 
-                let corrected_hgvs_col = hgvs_col.str()?.apply(|hgvs|{
+                let corrected_hgvs_col = hgvs_col.str()?.apply(|hgvs| {
                     if let Some(hgvs) = hgvs {
-                        let corrected_hgvs = hgvs.replace('*',":");
+                        let corrected_hgvs = hgvs.replace('*', ":");
                         Some(Cow::Owned(corrected_hgvs))
                     } else {
                         None

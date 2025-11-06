@@ -344,7 +344,7 @@ impl Collector {
 
                     let omim_id = omim_id_col.get(row_idx);
                     if let Some(omim_id) = omim_id {
-                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap();
+                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap().trim();
 
                         self.phenopacket_builder.upsert_omim_interpretation(
                             patient_id,
@@ -429,7 +429,7 @@ impl Collector {
                 for row_idx in 0..patient_cdf.data().height() {
                     let omim_id = omim_id_col.get(row_idx);
                     if let Some(omim_id) = omim_id {
-                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap();
+                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap().trim();
 
                         let disease_onset = if let Some(onset_col) = &stringified_linked_onset_col {
                             onset_col.get(row_idx)
