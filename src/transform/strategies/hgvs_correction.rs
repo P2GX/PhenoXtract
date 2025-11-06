@@ -10,7 +10,7 @@ use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
-use polars::prelude::{ChunkCast, Column};
+use polars::prelude::{ChunkCast, Column, IntoSeries, StringNameSpaceImpl};
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 use std::borrow::Cow;
@@ -60,12 +60,9 @@ impl Strategy for HgvsCorrectionStrategy {
             for hgvs_col_name in hgvs_col_names {
                 let hgvs_col = table.data().column(&hgvs_col_name)?;
 
-                let corrected_hgvs_col = hgvs_col.str()?.apply_mut(|old_hgvs| {
-                    if old_hgvs.is_empty() {
-                        return old_hgvs;
-                    }
-                    old_hgvs.replace('*', ":")
-                });
+                let corrected_hgvs_col = hgvs_col.str()?
+                    .replace_literal_all("*", ":")?
+                    .into_series();
                 table
                     .builder()
                     .replace_column(
