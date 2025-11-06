@@ -1,20 +1,15 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{
-    DataProcessingError, MappingErrorInfo, MappingSuggestion, StrategyError,
+    DataProcessingError, StrategyError,
 };
 
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::strategies::MappingStrategy;
 use crate::transform::traits::Strategy;
-use log::{debug, info, warn};
-use phenopackets::schema::v2::core::Sex;
+use log::info;
 use polars::datatypes::DataType;
-use polars::prelude::{ChunkCast, Column, IntoSeries, StringNameSpaceImpl};
-use serde::{Deserialize, Serialize};
-use std::any::type_name;
+use polars::prelude::{ChunkApply, ChunkCast};
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 #[derive(Debug)]
@@ -60,9 +55,15 @@ impl Strategy for HgvsCorrectionStrategy {
             for hgvs_col_name in hgvs_col_names {
                 let hgvs_col = table.data().column(&hgvs_col_name)?;
 
-                let corrected_hgvs_col = hgvs_col.str()?
-                    .replace_literal_all("*", ":")?
-                    .into_series();
+                let corrected_hgvs_col = hgvs_col.str()?.apply(|hgvs|{
+                    if let Some(hgvs) = hgvs {
+                        let corrected_hgvs = hgvs.replace('*',":");
+                        Some(Cow::Owned(corrected_hgvs))
+                    } else {
+                        None
+                    }
+                });
+
                 table
                     .builder()
                     .replace_column(

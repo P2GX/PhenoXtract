@@ -12,9 +12,8 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::strategies::MappingStrategy;
-use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
-use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
+use phenoxtract::transform::strategies::{HgvsCorrectionStrategy, MappingStrategy};
+use phenoxtract::transform::strategies::MultiHPOColExpansionStrategy;
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
@@ -99,7 +98,7 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
     //Configure data source and context
-    let excel_path = PathBuf::from("/Users/patrick/Downloads/TestData_20250716.xlsx");
+    let excel_path = PathBuf::from("/Users/patrick/Downloads/PhenoXtract/ExampleDataJapan.xlsx");
 
     let mut data_sources = [DataSource::Excel(ExcelDatasource::new(
         excel_path,
@@ -111,7 +110,7 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(MultiHPOColExpansionStrategy),
-        //adjust HGVS strat
+        Box::new(HgvsCorrectionStrategy),
     ];
 
     //Create the pipeline

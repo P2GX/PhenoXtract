@@ -5,7 +5,8 @@ pub use mapping::MappingStrategy;
 pub mod ontology_normaliser;
 pub use ontology_normaliser::OntologyNormaliserStrategy;
 
-mod hgvs_correction;
+pub mod hgvs_correction;
+pub use hgvs_correction::HgvsCorrectionStrategy;
 pub mod multi_hpo_col_expansion;
 pub mod strategy_factory;
 
