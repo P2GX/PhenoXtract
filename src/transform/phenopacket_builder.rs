@@ -16,6 +16,7 @@ use phenopackets::ga4gh::vrsatile::v1::{
 };
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
@@ -27,7 +28,6 @@ use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -280,7 +280,6 @@ impl PhenopacketBuilder {
         genes: &[&str],
         variants: &[&str],
     ) -> Result<(), PhenopacketBuilderError> {
-
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
         let no_gene_variant_info = variants.is_empty() && genes.is_empty();
