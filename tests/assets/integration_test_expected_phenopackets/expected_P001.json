@@ -61,8 +61,82 @@
       }
     }
   ],
+  "interpretations": [
+    {
+      "id": "my_cohort-P001-MONDO:0008258",
+      "progressStatus": "UNKNOWN_PROGRESS",
+      "diagnosis": {
+        "disease": {
+          "id": "MONDO:0008258",
+          "label": "platelet signal processing defect"
+        },
+        "genomicInterpretations": [
+          {
+            "subjectOrBiosampleId": "P001",
+            "interpretationStatus": "UNKNOWN_STATUS",
+            "variantInterpretation": {
+              "acmgPathogenicityClassification": "PATHOGENIC",
+              "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
+              "variationDescriptor": {
+                "id": "c2860CtoT_KIF21A_NM_001173464v1",
+                "geneContext": {
+                  "valueId": "HGNC:19349",
+                  "symbol": "KIF21A"
+                },
+                "expressions": [
+                  {
+                    "syntax": "hgvs.c",
+                    "value": "NM_001173464.1:c.2860C>T"
+                  },
+                  {
+                    "syntax": "hgvs.g",
+                    "value": "NC_000012.12:g.39332405G>A"
+                  },
+                  {
+                    "syntax": "hgvs.p",
+                    "value": "NP_001166935.1:p.(Arg954Trp)"
+                  }
+                ],
+                "vcfRecord": {
+                  "genomeAssembly": "hg38",
+                  "chrom": "chr12",
+                  "pos": 39332405,
+                  "ref": "G",
+                  "alt": "A"
+                },
+                "moleculeContext": "genomic",
+                "allelicState": {
+                  "id": "GENO:0000136",
+                  "label": "homozygous"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "diseases": [
+    {
+      "term": {
+        "id": "MONDO:0008258",
+        "label": "platelet signal processing defect"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P45Y10M05D"
+        }
+      }
+    },
+    {
+      "term": {
+        "id": "MONDO:0008258",
+        "label": "platelet signal processing defect"
+      }
+    }
+  ],
   "metaData": {
-    "created": "2025-10-25T08:37:24.388592Z",
+    "created": "2025-11-05T16:15:26.923186Z",
     "resources": [
       {
         "id": "hp",
@@ -71,6 +145,21 @@
         "version": "2025-09-01",
         "namespacePrefix": "HP",
         "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      },
+      {
+        "id": "mondo",
+        "name": "Mondo Disease Ontology",
+        "url": "http://purl.obolibrary.org/obo/mondo.json",
+        "version": "2025-10-07",
+        "namespacePrefix": "MONDO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/MONDO_$1"
+      },
+      {
+        "id": "hgnc",
+        "name": "HUGO Gene Nomenclature Committee",
+        "url": "http://aber-owl.net/media/ontologies/HGNC/5/hgnc.owl",
+        "namespacePrefix": "hgnc",
+        "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
       }
     ]
   }

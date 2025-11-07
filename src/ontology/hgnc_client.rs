@@ -177,7 +177,7 @@ pub struct HGNCClient {
 }
 
 impl HGNCClient {
-    pub(crate) fn new(
+    pub fn new(
         rate_limiter: Ratelimiter,
         cache_file_path: PathBuf,
         api_url: String,

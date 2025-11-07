@@ -15,7 +15,7 @@ pub struct OntologyBiDict {
 }
 
 impl OntologyBiDict {
-    pub(crate) fn new(
+    pub fn new(
         ontology: OntologyRef,
         label_to_id: HashMap<String, String>,
         synonym_to_id: HashMap<String, String>,

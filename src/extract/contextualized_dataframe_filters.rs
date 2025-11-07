@@ -56,7 +56,7 @@ impl<'a> SeriesContextFilter<'a> {
     pub fn where_data_context_is_disease(mut self) -> Self {
         self.data_context.extend(vec![
             Filter::Is(&Context::MondoLabelOrId),
-            Filter::Is(&Context::OmimLabelOrId),
+            Filter::Is(&Context::OmimId),
             Filter::Is(&Context::OrphanetLabelOrId),
         ]);
         self
@@ -161,7 +161,7 @@ impl<'a> ColumnFilter<'a> {
     pub fn where_data_context_is_disease(mut self) -> Self {
         self.series_filter.data_context.extend(vec![
             Filter::Is(&Context::MondoLabelOrId),
-            Filter::Is(&Context::OmimLabelOrId),
+            Filter::Is(&Context::OmimId),
             Filter::Is(&Context::OrphanetLabelOrId),
         ]);
         self
@@ -337,7 +337,7 @@ mod tests {
     #[rstest]
     fn test_filter_data_context_by_disease() {
         let ctx1 = Context::SubjectId;
-        let ctx2 = Context::OmimLabelOrId;
+        let ctx2 = Context::OmimId;
         let ctx3 = Context::OrphanetLabelOrId;
 
         let series = vec![

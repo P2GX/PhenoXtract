@@ -3,7 +3,7 @@ pub mod error;
 pub(crate) use bio_registry_client::BioRegistryClient;
 pub(crate) mod obolibrary_client;
 pub(crate) mod obolibrary_ontology_registry;
-pub(crate) mod ontology_bidict;
+pub mod ontology_bidict;
 pub(crate) use obolibrary_ontology_registry::ObolibraryOntologyRegistry;
 mod hgnc_client;
 pub use hgnc_client::HGNCClient;
