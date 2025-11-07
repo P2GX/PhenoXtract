@@ -32,8 +32,9 @@ pub fn try_parse_string_datetime(date_str: &str) -> Option<NaiveDateTime> {
 mod tests {
     use super::*;
     use chrono::NaiveDate;
+    use rstest::rstest;
 
-    #[test]
+    #[rstest]
     fn test_try_parse_date_success() {
         let date = try_parse_string_date("2025-09-04");
         assert_eq!(date, Some(NaiveDate::from_ymd_opt(2025, 9, 4).unwrap()));
@@ -51,7 +52,7 @@ mod tests {
         assert_eq!(date, Some(NaiveDate::from_ymd_opt(2025, 9, 4).unwrap()));
     }
 
-    #[test]
+    #[rstest]
     fn test_try_parse_date_failure() {
         let date = try_parse_string_date("invalid-date");
         assert_eq!(date, None);
@@ -60,7 +61,7 @@ mod tests {
         assert_eq!(date, None);
     }
 
-    #[test]
+    #[rstest]
     fn test_try_parse_datetime_success() {
         let datetime = try_parse_string_datetime("2025-09-04 11:00:59");
         assert_eq!(
@@ -111,7 +112,7 @@ mod tests {
         assert!(datetime.is_some());
     }
 
-    #[test]
+    #[rstest]
     fn test_try_parse_datetime_failure() {
         let datetime = try_parse_string_datetime("not-a-datetime");
         assert_eq!(datetime, None);

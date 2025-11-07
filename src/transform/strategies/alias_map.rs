@@ -54,7 +54,7 @@ impl Strategy for AliasMapStrategy {
             for (col_name, alias_map) in col_name_alias_pairs {
                 info!("Applying AliasMap strategy to column: {col_name}.");
 
-                let original_column = table.data().column(&col_name).unwrap();
+                let original_column = table.data().column(&col_name)?;
 
                 let stringified_col: Cow<Column> = if original_column.dtype() != &DataType::String {
                     let casted_col = original_column.cast(&DataType::String).map_err(|_| {
@@ -140,7 +140,7 @@ mod tests {
             .with_data_context(Context::SubjectAge)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("11".to_string(), "22".to_string())]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
@@ -163,7 +163,7 @@ mod tests {
     #[fixture]
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::default()
-            .with_identifier(Identifier::Regex("smokes.".to_string()))
+            .with_identifier(Identifier::Regex("smokes".to_string()))
             .with_data_context(Context::SmokerBool)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("false".to_string(), "true".to_string())]),
@@ -178,7 +178,7 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("P001".to_string(), "1001".to_string())]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
@@ -194,7 +194,7 @@ mod tests {
                     ("P003".to_string(), "1003".to_string()),
                     ("P004".to_string(), "1004".to_string()),
                 ]),
-                OutputDataType::Int32,
+                OutputDataType::Int64,
             )))
     }
 
@@ -454,7 +454,7 @@ mod tests {
                 .column("patient_id")
                 .unwrap()
                 .dtype(),
-            &DataType::Int32
+            &DataType::Int64
         )
     }
 

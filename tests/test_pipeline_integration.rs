@@ -167,7 +167,7 @@ fn test_pipeline_integration(
     let mut onto_factory = CachedOntologyFactory::default();
 
     let hpo_dict = onto_factory
-        .build_bidict(&OntologyRef::hp(Some("2025-09-01".to_string())), None)
+        .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
         .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));

@@ -123,7 +123,7 @@ impl GeneResponse {
         type_name::<GeneResponse>()
             .split("::")
             .last()
-            .unwrap()
+            .expect("Could not get Struct name")
             .to_string()
     }
 
@@ -155,7 +155,7 @@ impl Value for GeneResponse {
     where
         Self: 'a,
     {
-        Self::from_bytes(data).unwrap()
+        Self::from_bytes(data).expect("Could not convert to bytes.")
     }
 
     fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
@@ -259,7 +259,7 @@ impl Default for HGNCClient {
             .build()
             .expect("Building rate limiter failed");
 
-        let cache_dir = Self::default_cache_dir().unwrap();
+        let cache_dir = Self::default_cache_dir().expect("Could not find default cache dir.");
         info!("HGNC client cache dir: {:?}", cache_dir);
         HGNCClient {
             rate_limiter,

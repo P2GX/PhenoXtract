@@ -10,10 +10,17 @@ use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
 use polars::datatypes::DataType;
 use polars::prelude::{ChunkCast, Column};
+use serde::{Deserialize, Serialize};
 use std::any::type_name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::string::ToString;
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DefaultMappings {
+    SexMapping,
+}
 
 /// A strategy for mapping string values to standardized terms using a synonym dictionary.
 ///

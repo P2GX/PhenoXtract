@@ -9,4 +9,6 @@ pub mod fenominal;
 pub use fenominal::FenominalStrategy;
 pub mod multi_hpo_col_expansion;
 
+pub mod strategy_factory;
+
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;

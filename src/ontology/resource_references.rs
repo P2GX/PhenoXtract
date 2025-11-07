@@ -1,8 +1,9 @@
 use crate::ontology::traits::{HasPrefixId, HasVersion};
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct ResourceRef {
     version: String,
     prefix_id: String,
@@ -11,6 +12,12 @@ pub struct ResourceRef {
 impl ResourceRef {
     pub fn new(prefix_id: String, version: String) -> Self {
         Self { version, prefix_id }
+    }
+}
+
+impl Display for ResourceRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.prefix_id, self.version)
     }
 }
 
@@ -26,7 +33,7 @@ impl HasPrefixId for ResourceRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct OntologyRef(ResourceRef);
 
 impl OntologyRef {
@@ -51,16 +58,29 @@ impl OntologyRef {
         self
     }
 
-    pub fn hp(version: Option<String>) -> Self {
-        Self::new(Self::HPO_PREFIX.to_string(), version)
+    pub fn into_inner(self) -> ResourceRef {
+        self.0
+    }
+    pub fn hp() -> Self {
+        Self::new(Self::HPO_PREFIX.to_string(), None)
+    }
+    pub fn hp_with_version(version: &str) -> Self {
+        Self::new(Self::HPO_PREFIX.to_string(), Some(version.to_string()))
     }
 
-    pub fn mondo(version: Option<String>) -> Self {
-        Self::new(Self::MONDO_PREFIX.to_string(), version)
+    pub fn mondo() -> Self {
+        Self::new(Self::MONDO_PREFIX.to_string(), None)
     }
 
-    pub fn geno(version: Option<String>) -> Self {
-        Self::new(Self::GENO_PREFIX.to_string(), version)
+    pub fn mondo_with_version(version: &str) -> Self {
+        Self::new(Self::MONDO_PREFIX.to_string(), Some(version.to_string()))
+    }
+
+    pub fn geno() -> Self {
+        Self::new(Self::GENO_PREFIX.to_string(), None)
+    }
+    pub fn geno_with_version(version: &str) -> Self {
+        Self::new(Self::GENO_PREFIX.to_string(), Some(version.to_string()))
     }
 }
 
@@ -126,13 +146,17 @@ impl DatabaseRef {
         self.0.version = version.to_string();
         self
     }
-
-    pub fn omim(version: Option<String>) -> Self {
-        Self::new(Self::OMIM_PREFIX.to_string(), version)
+    pub fn omim() -> Self {
+        Self::new(Self::OMIM_PREFIX.to_string(), None)
     }
-
-    pub fn hgnc(version: Option<String>) -> Self {
-        Self::new(Self::HGNC_PREFIX.to_string(), version)
+    pub fn omim_with_version(version: &str) -> Self {
+        Self::new(Self::OMIM_PREFIX.to_string(), Some(version.to_string()))
+    }
+    pub fn hgnc() -> Self {
+        Self::new(Self::HGNC_PREFIX.to_string(), None)
+    }
+    pub fn hgnc_with_version(version: &str) -> Self {
+        Self::new(Self::HGNC_PREFIX.to_string(), Some(version.to_string()))
     }
 }
 

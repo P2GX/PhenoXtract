@@ -6,7 +6,7 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct OntologyBiDict {
     pub ontology: OntologyRef,
     label_to_id: HashMap<String, String>,
@@ -21,11 +21,26 @@ impl OntologyBiDict {
         synonym_to_id: HashMap<String, String>,
         id_to_label: HashMap<String, String>,
     ) -> OntologyBiDict {
+        let label_to_id_lower: HashMap<String, String> = label_to_id
+            .into_iter()
+            .map(|(key, value)| (key.to_lowercase(), value))
+            .collect();
+
+        let synonym_to_id_lower: HashMap<String, String> = synonym_to_id
+            .into_iter()
+            .map(|(key, value)| (key.to_lowercase(), value))
+            .collect();
+
+        let id_to_label_lower: HashMap<String, String> = id_to_label
+            .into_iter()
+            .map(|(key, value)| (key.to_lowercase(), value))
+            .collect();
+
         OntologyBiDict {
             ontology,
-            label_to_id,
-            synonym_to_id,
-            id_to_label,
+            label_to_id: label_to_id_lower,
+            synonym_to_id: synonym_to_id_lower,
+            id_to_label: id_to_label_lower,
         }
     }
 

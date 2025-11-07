@@ -4,7 +4,7 @@ use hgvs::parser::HgvsVariant;
 use std::str::FromStr;
 
 #[allow(unused)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct VariantParser;
 
 impl VariantParser {
