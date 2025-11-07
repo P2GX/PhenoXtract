@@ -10,7 +10,7 @@ use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::strategies::MultiHPOColExpansionStrategy;
-use phenoxtract::transform::strategies::{HgvsCorrectionStrategy, MappingStrategy};
+use phenoxtract::transform::strategies::{MappingStrategy, StringCorrectionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
@@ -91,11 +91,12 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
     let mondo_dict = onto_factory
         .build_bidict(&OntologyRef::mondo(), None)
         .unwrap();
+
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
     //Configure data source and context
-    let excel_path = PathBuf::from("/Users/patrick/Downloads/PhenoXtract/ExampleDataJapan.xlsx");
+    let excel_path = PathBuf::from("/Users/patrick/Downloads/PhenoXtract/Example_J_Data.xlsx");
 
     let mut data_sources = [DataSource::Excel(ExcelDatasource::new(
         excel_path,
@@ -106,12 +107,22 @@ fn test_j_data(excel_context: TableContext, temp_dir: TempDir) -> Result<(), Pip
     //Configure strategies (a.k.a. transformations)
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
+        Box::new(StringCorrectionStrategy::new(
+            Context::None,
+            Context::Hgvs,
+            "*".to_string(),
+            ":".to_string(),
+        )),
+        Box::new(StringCorrectionStrategy::new(
+            Context::None,
+            Context::MultiHpoId,
+            "HPO".to_string(),
+            "HP".to_string(),
+        )),
         Box::new(MultiHPOColExpansionStrategy),
-        Box::new(HgvsCorrectionStrategy),
     ];
 
     //Create the pipeline
-
     let phenopacket_builder = PhenopacketBuilder::new(
         HashMap::from_iter([
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),

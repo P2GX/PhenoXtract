@@ -11,15 +11,36 @@ use std::borrow::Cow;
 use std::string::ToString;
 
 #[derive(Debug)]
-pub struct HgvsCorrectionStrategy;
+pub struct StringCorrectionStrategy {
+    header_context: Context,
+    data_context: Context,
+    chars_to_replace: String,
+    new_chars: String,
+}
 
-impl Strategy for HgvsCorrectionStrategy {
+impl StringCorrectionStrategy {
+    pub fn new(
+        header_context: Context,
+        data_context: Context,
+        chars_to_replace: String,
+        new_chars: String,
+    ) -> Self {
+        Self {
+            header_context,
+            data_context,
+            chars_to_replace,
+            new_chars,
+        }
+    }
+}
+
+impl Strategy for StringCorrectionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::Hgvs))
+                .where_data_context(Filter::Is(&self.data_context))
                 .where_dtype(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
@@ -30,33 +51,31 @@ impl Strategy for HgvsCorrectionStrategy {
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), StrategyError> {
-        info!("Applying HgvsCorrection strategy to data.");
-        info!(
-            "Asterixes will be replaced by colons: NM_001173464.1*c.2860C>T -> NM_001173464.1:c.2860C>T."
-        );
+        info!("Applying StringCorrection strategy to data.");
 
         for table in tables.iter_mut() {
             info!(
-                "Applying HgvsCorrection strategy to table: {}",
+                "Applying StringCorrection strategy to table: {}",
                 table.context().name()
             );
 
-            let hgvs_col_names: Vec<String> = table
+            let col_names: Vec<String> = table
                 .filter_columns()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::Hgvs))
+                .where_header_context(Filter::Is(&self.header_context))
+                .where_data_context(Filter::Is(&self.data_context))
                 .collect()
                 .iter()
                 .map(|col| col.name().to_string())
                 .collect();
 
-            for hgvs_col_name in hgvs_col_names {
-                let hgvs_col = table.data().column(&hgvs_col_name)?;
+            for col_name in col_names {
+                let col = table.data().column(&col_name)?;
 
-                let corrected_hgvs_col = hgvs_col.str()?.apply(|hgvs| {
-                    if let Some(hgvs) = hgvs {
-                        let corrected_hgvs = hgvs.replace('*', ":");
-                        Some(Cow::Owned(corrected_hgvs))
+                let corrected_col = col.str()?.apply(|cell_value| {
+                    if let Some(cell_value) = cell_value {
+                        let corrected_value = cell_value
+                            .replace(self.chars_to_replace.as_str(), self.new_chars.as_str());
+                        Some(Cow::Owned(corrected_value))
                     } else {
                         None
                     }
@@ -65,11 +84,11 @@ impl Strategy for HgvsCorrectionStrategy {
                 table
                     .builder()
                     .replace_column(
-                        &hgvs_col_name,
-                        corrected_hgvs_col.cast(&DataType::String).map_err(|_| {
+                        &col_name,
+                        corrected_col.cast(&DataType::String).map_err(|_| {
                             DataProcessingError::CastingError {
-                                col_name: hgvs_col_name.to_string(),
-                                from: corrected_hgvs_col.dtype().clone(),
+                                col_name: col_name.to_string(),
+                                from: corrected_col.dtype().clone(),
                                 to: DataType::String,
                             }
                         })?,
