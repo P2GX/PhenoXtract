@@ -1,15 +1,13 @@
-use fastexcel::FastExcelError;
+use calamine::XlsxError;
 use polars::prelude::PolarsError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ExtractionError {
-    #[error(transparent)]
+    #[error("Polars error: {0}")]
     Polars(#[from] PolarsError),
-    #[error(transparent)]
-    FastExcel(#[from] FastExcelError),
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
+    #[error("XlsxError error: {0}")]
+    Calamine(#[from] XlsxError),
     #[error("Out of bounds index when loading vector {0} in {1}.")]
     ExcelIndexing(usize, String),
     #[error("Attempt to access vector at {0}. On Vector with len {1}")]
