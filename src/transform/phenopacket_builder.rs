@@ -950,7 +950,6 @@ impl PartialEq for PhenopacketBuilder {
                     .unwrap_or(false)
             })
             && self.resource_resolver == other.resource_resolver
-            && self.variant_parser == other.variant_parser
     }
 }
 
