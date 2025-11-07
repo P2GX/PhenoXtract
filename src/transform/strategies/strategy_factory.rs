@@ -12,6 +12,9 @@ pub struct StrategyFactory {
 }
 
 impl StrategyFactory {
+    pub fn new(ontology_factory: CachedOntologyFactory) -> Self {
+        StrategyFactory { ontology_factory }
+    }
     #[allow(dead_code)]
     pub fn try_from_configs(
         &mut self,
