@@ -6,7 +6,7 @@ use ontolius::term::{MinimalTerm, Synonymous};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct OntologyBiDict {
     pub ontology: OntologyRef,
     label_to_id: HashMap<String, String>,

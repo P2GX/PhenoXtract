@@ -1,6 +1,8 @@
 use crate::extract::error::ExtractionError;
 use crate::ontology::error::{OntologyFactoryError, RegistryError};
 use crate::transform::error::TransformError;
+use config::ConfigError;
+use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::load::error::LoadError;
@@ -15,6 +17,14 @@ pub enum ConstructionError {
     Ontolius(#[from] anyhow::Error),
     #[error(transparent)]
     OntologyFactoryError(#[from] OntologyFactoryError),
+    #[error("No Pipeline Config found.")]
+    NoPipelineConfigFound,
+    #[error("Could not find config file at '{0}'")]
+    NoConfigFileFound(PathBuf),
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+    #[error(transparent)]
+    ConfigError(#[from] ConfigError),
 }
 
 #[derive(Debug, Error)]

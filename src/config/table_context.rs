@@ -208,8 +208,10 @@ pub struct SeriesContext {
     identifier: Identifier,
 
     /// The semantic context found in the header(s) of the series.
+    #[serde(default = "crate::config::table_context::Context::default")]
     header_context: Context,
     /// The context that applies to every cell within this series.
+    #[serde(default = "crate::config::table_context::Context::default")]
     data_context: Context,
 
     /// A default value to replace empty fields in a cell

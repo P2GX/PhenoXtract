@@ -16,7 +16,7 @@ pub struct BioRegistryResource {
     pub preferred_prefix: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BioRegistryClient {
     api_url: String,
 }
