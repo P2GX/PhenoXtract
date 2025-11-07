@@ -3,7 +3,7 @@ use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
-use crate::ontology::{HGNCClient, OntologyRef};
+use crate::ontology::{DatabaseRef, HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
@@ -422,6 +422,8 @@ impl PhenopacketBuilder {
             return Err(PhenopacketBuilderError::InvalidGeneVariantConfiguration { disease: omim_id.to_string(), invalid_configuration: "There can be only between 1 and 2 variants. If there are variants, a gene must be specified.".to_string() });
         }
 
+        self.ensure_resource(phenopacket_id, &DatabaseRef::omim());
+
         if !no_gene_variant_info {
             let (gene_symbol, hgnc_id) = self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
 
@@ -576,6 +578,8 @@ impl PhenopacketBuilder {
         if laterality.is_some() {
             warn!("laterality disease not implemented yet");
         }
+
+        self.ensure_resource(phenopacket_id, &DatabaseRef::omim());
 
         let omim_term = OntologyClass {
             id: omim_id.to_string(),
@@ -818,8 +822,7 @@ impl PhenopacketBuilder {
 
         self.ensure_resource(
             phenopacket_id,
-            &ResourceRef::new("hgnc".to_string(), "".to_string()),
-        );
+            &DatabaseRef::hgnc());
 
         Ok((symbol_ref.to_string(), id_ref.to_string()))
     }
@@ -950,7 +953,6 @@ impl PartialEq for PhenopacketBuilder {
                     .unwrap_or(false)
             })
             && self.resource_resolver == other.resource_resolver
-            && self.variant_parser == other.variant_parser
     }
 }
 

@@ -60,8 +60,6 @@ impl Collector {
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
                 self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &patient_id, &phenopacket_id)?;
-                self.collect_diseases(&patient_cdf, &phenopacket_id)?;
-                self.collect_interpretations(&patient_id, &patient_cdf, &phenopacket_id)?;
             }
         }
 
@@ -321,63 +319,26 @@ impl Collector {
                 &Context::Hgvs,
             )?;
 
-            if disease_sc.get_data_context() == &Context::OmimId {
-                let omim_id_col = stringified_disease_cols[0];
+            for row_idx in 0..patient_cdf.data().height() {
+                let genes = stringified_linked_hgnc_cols
+                    .iter()
+                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let variants = stringified_linked_hgvs_cols
+                    .iter()
+                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                    .collect::<Vec<&str>>();
 
-                let stringified_omim_label_col =
-                    Self::get_single_stringified_column_with_data_contexts_in_bb(
-                        patient_cdf,
-                        bb_id,
-                        vec![&Context::OmimLabel],
-                    )?
-                    .unwrap();
-
-                for row_idx in 0..patient_cdf.data().height() {
-                    let genes = stringified_linked_hgnc_cols
-                        .iter()
-                        .filter_map(|hgnc_col| hgnc_col.get(row_idx))
-                        .collect::<Vec<&str>>();
-                    let variants = stringified_linked_hgvs_cols
-                        .iter()
-                        .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                        .collect::<Vec<&str>>();
-
-                    let omim_id = omim_id_col.get(row_idx);
-                    if let Some(omim_id) = omim_id {
-                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap().trim();
-
-                        self.phenopacket_builder.upsert_omim_interpretation(
+                for stringified_disease_col in stringified_disease_cols.iter() {
+                    let disease = stringified_disease_col.get(row_idx);
+                    if let Some(disease) = disease {
+                        self.phenopacket_builder.upsert_interpretation(
                             patient_id,
                             phenopacket_id,
-                            omim_id,
-                            omim_label,
+                            disease,
                             &genes,
                             &variants,
                         )?;
-                    }
-                }
-            } else {
-                for row_idx in 0..patient_cdf.data().height() {
-                    let genes = stringified_linked_hgnc_cols
-                        .iter()
-                        .filter_map(|hgnc_col| hgnc_col.get(row_idx))
-                        .collect::<Vec<&str>>();
-                    let variants = stringified_linked_hgvs_cols
-                        .iter()
-                        .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                        .collect::<Vec<&str>>();
-
-                    for stringified_disease_col in stringified_disease_cols.iter() {
-                        let disease = stringified_disease_col.get(row_idx);
-                        if let Some(disease) = disease {
-                            self.phenopacket_builder.upsert_interpretation(
-                                patient_id,
-                                phenopacket_id,
-                                disease,
-                                &genes,
-                                &variants,
-                            )?;
-                        }
                     }
                 }
             }
@@ -416,31 +377,19 @@ impl Collector {
                     vec![&Context::OnsetAge, &Context::OnsetDateTime],
                 )?;
 
-            if disease_sc.get_data_context() == &Context::OmimId {
-                let omim_id_col = stringified_disease_cols[0];
-
-                let stringified_omim_label_col =
-                    Self::get_single_stringified_column_with_data_contexts_in_bb(
-                        patient_cdf,
-                        bb_id,
-                        vec![&Context::OmimLabel],
-                    )?
-                    .unwrap();
-                for row_idx in 0..patient_cdf.data().height() {
-                    let omim_id = omim_id_col.get(row_idx);
-                    if let Some(omim_id) = omim_id {
-                        let omim_label = stringified_omim_label_col.get(row_idx).unwrap().trim();
-
+            for row_idx in 0..patient_cdf.data().height() {
+                for stringified_disease_col in stringified_disease_cols.iter() {
+                    let disease = stringified_disease_col.get(row_idx);
+                    if let Some(disease) = disease {
                         let disease_onset = if let Some(onset_col) = &stringified_linked_onset_col {
                             onset_col.get(row_idx)
                         } else {
                             None
                         };
 
-                        self.phenopacket_builder.insert_omim_disease(
+                        self.phenopacket_builder.insert_disease(
                             phenopacket_id,
-                            omim_id,
-                            omim_label,
+                            disease,
                             None,
                             disease_onset,
                             None,
@@ -449,32 +398,6 @@ impl Collector {
                             None,
                             None,
                         )?;
-                    }
-                }
-            } else {
-                for row_idx in 0..patient_cdf.data().height() {
-                    for stringified_disease_col in stringified_disease_cols.iter() {
-                        let disease = stringified_disease_col.get(row_idx);
-                        if let Some(disease) = disease {
-                            let disease_onset =
-                                if let Some(onset_col) = &stringified_linked_onset_col {
-                                    onset_col.get(row_idx)
-                                } else {
-                                    None
-                                };
-
-                            self.phenopacket_builder.insert_disease(
-                                phenopacket_id,
-                                disease,
-                                None,
-                                disease_onset,
-                                None,
-                                None,
-                                None,
-                                None,
-                                None,
-                            )?;
-                        }
                     }
                 }
             }
@@ -619,20 +542,16 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+    use std::path::Path;
+
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
-    use phenopackets::ga4gh::vrsatile::v1::{
-        Expression, GeneDescriptor, VariationDescriptor, VcfRecord,
-    };
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::genomic_interpretation::Call;
-    use phenopackets::schema::v2::core::genomic_interpretation::Call::Gene;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
-        Age as age_struct, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
-        MetaData, OntologyClass, PhenotypicFeature, Resource, Sex, TimeElement,
-        VariantInterpretation, VitalStatus,
+        Age as age_struct, Diagnosis, Disease, Individual, Interpretation, MetaData, OntologyClass,
+        PhenotypicFeature, Resource, Sex, TimeElement, VitalStatus,
     };
     use polars::datatypes::{AnyValue, DataType};
     use polars::frame::DataFrame;
@@ -640,7 +559,6 @@ mod tests {
     use pretty_assertions::assert_eq;
     use prost_types::Timestamp as TimestampProtobuf;
     use rstest::{fixture, rstest};
-    use std::path::Path;
     use tempfile::TempDir;
 
     #[fixture]
@@ -654,6 +572,82 @@ mod tests {
             phenopacket_builder,
             cohort_name: "cohort2019".to_string(),
         }
+    }
+
+    #[fixture]
+    fn tc() -> TableContext {
+        let id_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("subject_id".to_string()))
+            .with_data_context(Context::SubjectId);
+
+        let pf_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_data_context(Context::HpoLabelOrId)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("onset_age".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_1".to_string()));
+
+        let dob_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("dob".to_string()))
+            .with_data_context(Context::DateOfBirth);
+
+        let sex_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("sex".to_string()))
+            .with_data_context(Context::SubjectSex);
+
+        let vital_status_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("vital_status".to_string()))
+            .with_data_context(Context::VitalStatus);
+
+        let time_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_of_death".to_string()))
+            .with_data_context(Context::TimeOfDeath);
+
+        let survival_time_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("survival_time".to_string()))
+            .with_data_context(Context::SurvivalTimeDays);
+
+        let runny_nose_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("HP:0031417".to_string()))
+            .with_header_context(Context::HpoLabelOrId)
+            .with_data_context(Context::ObservationStatus)
+            .with_building_block_id(Some("Block_2".to_string()));
+
+        let runny_nose_onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("runny_nose_onset".to_string()))
+            .with_data_context(Context::OnsetDateTime)
+            .with_building_block_id(Some("Block_2".to_string()));
+
+        let diseases_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("diseases".to_string()))
+            .with_data_context(Context::MondoLabelOrId)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let disease_onset_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("disease_onset".to_string()))
+            .with_data_context(Context::OnsetAge)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        TableContext::new(
+            "patient_data".to_string(),
+            vec![
+                id_sc,
+                pf_sc,
+                onset_sc,
+                dob_sc,
+                sex_sc,
+                vital_status_sc,
+                time_of_death_sc,
+                survival_time_sc,
+                runny_nose_sc,
+                runny_nose_onset_sc,
+                diseases_sc,
+                disease_onset_sc,
+            ],
+        )
     }
 
     #[fixture]
@@ -778,282 +772,6 @@ mod tests {
     }
 
     #[fixture]
-    fn hp_meta_data_resource() -> Resource {
-        Resource {
-            id: "hp".to_string(),
-            name: "Human Phenotype Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/hp.json".to_string(),
-            version: "2025-09-01".to_string(),
-            namespace_prefix: "HP".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/HP_$1".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn mondo_meta_data_resource() -> Resource {
-        Resource {
-            id: "mondo".to_string(),
-            name: "Mondo Disease Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
-            version: "2025-10-07".to_string(),
-            namespace_prefix: "MONDO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn hgnc_meta_data_resource() -> Resource {
-        Resource {
-            id: "hgnc".to_string(),
-            name: "HUGO Gene Nomenclature Committee".to_string(),
-            url: "http://aber-owl.net/media/ontologies/HGNC/5/hgnc.owl".to_string(),
-            version: "".to_string(),
-            namespace_prefix: "hgnc".to_string(),
-            iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
-                .to_string(),
-        }
-    }
-
-    #[fixture]
-    fn platelet_defect_disease() -> Disease {
-        Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Age(age_struct {
-                    iso8601duration: "P45Y10M05D".to_string(),
-                })),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn platelet_defect_disease_no_onset() -> Disease {
-        Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn dysostosis_disease() -> Disease {
-        Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0000359".to_string(),
-                label: "spondylocostal dysostosis".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Age(age_struct {
-                    iso8601duration: "P10Y4M21D".to_string(),
-                })),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn platelet_defect_interpretation() -> Interpretation {
-        Interpretation {
-            id: "cohort2019-P001-MONDO:0008258".to_string(),
-            progress_status: 0,
-            diagnosis: Some(Diagnosis {
-                disease: Some(OntologyClass {
-                    id: "MONDO:0008258".to_string(),
-                    label: "platelet signal processing defect".to_string(),
-                }),
-                genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: "P001".to_string(),
-                    interpretation_status: 0,
-                    call: Some(Call::VariantInterpretation(VariantInterpretation {
-                        acmg_pathogenicity_classification: 5,
-                        therapeutic_actionability: 0,
-                        variation_descriptor: Some(VariationDescriptor {
-                            id: "c2860CtoT_KIF21A_NM_001173464v1".to_string(),
-                            variation: None,
-                            label: "".to_string(),
-                            description: "".to_string(),
-                            gene_context: Some(GeneDescriptor {
-                                value_id: "HGNC:19349".to_string(),
-                                symbol: "KIF21A".to_string(),
-                                description: "".to_string(),
-                                alternate_ids: vec![],
-                                alternate_symbols: vec![],
-                                xrefs: vec![],
-                            }),
-                            expressions: vec![
-                                Expression {
-                                    syntax: "hgvs.c".to_string(),
-                                    value: "NM_001173464.1:c.2860C>T".to_string(),
-                                    version: "".to_string(),
-                                },
-                                Expression {
-                                    syntax: "hgvs.g".to_string(),
-                                    value: "NC_000012.12:g.39332405G>A".to_string(),
-                                    version: "".to_string(),
-                                },
-                                Expression {
-                                    syntax: "hgvs.p".to_string(),
-                                    value: "NP_001166935.1:p.(Arg954Trp)".to_string(),
-                                    version: "".to_string(),
-                                },
-                            ],
-                            vcf_record: Some(VcfRecord {
-                                genome_assembly: "hg38".to_string(),
-                                chrom: "chr12".to_string(),
-                                pos: 39332405,
-                                id: "".to_string(),
-                                r#ref: "G".to_string(),
-                                alt: "A".to_string(),
-                                qual: "".to_string(),
-                                filter: "".to_string(),
-                                info: "".to_string(),
-                            }),
-                            xrefs: vec![],
-                            alternate_labels: vec![],
-                            extensions: vec![],
-                            molecule_context: 1,
-                            structural_type: None,
-                            vrs_ref_allele_seq: "".to_string(),
-                            allelic_state: Some(OntologyClass {
-                                id: "GENO:0000136".to_string(),
-                                label: "homozygous".to_string(),
-                            }),
-                        }),
-                    })),
-                }],
-            }),
-            summary: "".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn dysostosis_interpretation() -> Interpretation {
-        Interpretation {
-            id: "cohort2019-P002-MONDO:0000359".to_string(),
-            progress_status: 0,
-            diagnosis: Some(Diagnosis {
-                disease: Some(OntologyClass {
-                    id: "MONDO:0000359".to_string(),
-                    label: "spondylocostal dysostosis".to_string(),
-                }),
-                genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: "P002".to_string(),
-                    interpretation_status: 0,
-                    call: Some(Gene(GeneDescriptor {
-                        value_id: "HGNC:428".to_string(),
-                        symbol: "ALMS1".to_string(),
-                        description: "".to_string(),
-                        alternate_ids: vec![],
-                        alternate_symbols: vec![],
-                        xrefs: vec![],
-                    })),
-                }],
-            }),
-            summary: "".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn tc() -> TableContext {
-        let id_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("subject_id".to_string()))
-            .with_data_context(Context::SubjectId);
-
-        let pf_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
-            .with_data_context(Context::HpoLabelOrId)
-            .with_building_block_id(Some("Block_1".to_string()));
-
-        let onset_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("onset_age".to_string()))
-            .with_data_context(Context::OnsetAge)
-            .with_building_block_id(Some("Block_1".to_string()));
-
-        let dob_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("dob".to_string()))
-            .with_data_context(Context::DateOfBirth);
-
-        let sex_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("sex".to_string()))
-            .with_data_context(Context::SubjectSex);
-
-        let vital_status_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("vital_status".to_string()))
-            .with_data_context(Context::VitalStatus);
-
-        let time_of_death_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("time_of_death".to_string()))
-            .with_data_context(Context::TimeOfDeath);
-
-        let survival_time_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("survival_time".to_string()))
-            .with_data_context(Context::SurvivalTimeDays);
-
-        let runny_nose_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("HP:0031417".to_string()))
-            .with_header_context(Context::HpoLabelOrId)
-            .with_data_context(Context::ObservationStatus)
-            .with_building_block_id(Some("Block_2".to_string()));
-
-        let runny_nose_onset_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("runny_nose_onset".to_string()))
-            .with_data_context(Context::OnsetDateTime)
-            .with_building_block_id(Some("Block_2".to_string()));
-
-        let diseases_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("diseases".to_string()))
-            .with_data_context(Context::MondoLabelOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
-
-        let disease_onset_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("disease_onset".to_string()))
-            .with_data_context(Context::OnsetAge)
-            .with_building_block_id(Some("Block_3".to_string()));
-
-        let genes_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("genes".to_string()))
-            .with_data_context(Context::HgncSymbolOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
-
-        let hgvs_sc1 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs1".to_string()))
-            .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
-
-        let hgvs_sc2 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs2".to_string()))
-            .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
-
-        TableContext::new(
-            "patient_data".to_string(),
-            vec![
-                id_sc,
-                pf_sc,
-                onset_sc,
-                dob_sc,
-                sex_sc,
-                vital_status_sc,
-                time_of_death_sc,
-                survival_time_sc,
-                runny_nose_sc,
-                runny_nose_onset_sc,
-                diseases_sc,
-                disease_onset_sc,
-                genes_sc,
-                hgvs_sc1,
-                hgvs_sc2,
-            ],
-        )
-    }
-
-    #[fixture]
     fn df_multi_patient() -> DataFrame {
         let id_col = Column::new(
             "subject_id".into(),
@@ -1103,61 +821,6 @@ mod tests {
                 AnyValue::String("DECEASED"),
             ],
         );
-        let disease_col = Column::new(
-            "diseases".into(),
-            [
-                AnyValue::String("platelet signal processing defect"),
-                AnyValue::String("MONDO:0008258"), // also platelet signal processing defect but with no onset this time
-                AnyValue::String("Spondylocostal Dysostosis"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let disease_onset_col = Column::new(
-            "disease_onset".into(),
-            [
-                AnyValue::String("P45Y10M05D"),
-                AnyValue::Null,
-                AnyValue::String("P10Y4M21D"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let gene_col = Column::new(
-            "genes".into(),
-            [
-                AnyValue::String("KIF21A"),
-                AnyValue::String("KIF21A"),
-                AnyValue::String("ALMS1"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let hgvs_col1 = Column::new(
-            "hgvs1".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let hgvs_col2 = Column::new(
-            "hgvs2".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
 
         DataFrame::new(vec![
             id_col,
@@ -1165,13 +828,31 @@ mod tests {
             onset_col,
             subject_sex_col,
             vital_status_col,
-            disease_col,
-            disease_onset_col,
-            gene_col,
-            hgvs_col1,
-            hgvs_col2,
         ])
         .unwrap()
+    }
+    #[fixture]
+    fn hp_meta_data_resource() -> Resource {
+        Resource {
+            id: "hp".to_string(),
+            name: "Human Phenotype Ontology".to_string(),
+            url: "http://purl.obolibrary.org/obo/hp.json".to_string(),
+            version: "2025-09-01".to_string(),
+            namespace_prefix: "HP".to_string(),
+            iri_prefix: "http://purl.obolibrary.org/obo/HP_$1".to_string(),
+        }
+    }
+
+    #[fixture]
+    fn mondo_meta_data_resource() -> Resource {
+        Resource {
+            id: "mondo".to_string(),
+            name: "Mondo Disease Ontology".to_string(),
+            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
+            version: "2025-10-07".to_string(),
+            namespace_prefix: "MONDO".to_string(),
+            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
+        }
     }
 
     #[fixture]
@@ -1263,7 +944,7 @@ mod tests {
             [
                 AnyValue::String("platelet signal processing defect"),
                 AnyValue::Null,
-                AnyValue::String("MONDO:0008258"), // also platelet signal processing defect but with no onset this time
+                AnyValue::String("MONDO:0008258"), //also platelet signal processing defect
                 AnyValue::String("Spondylocostal Dysostosis"),
             ],
         );
@@ -1274,33 +955,6 @@ mod tests {
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::String("P10Y4M21D"),
-            ],
-        );
-        let gene_col = Column::new(
-            "genes".into(),
-            [
-                AnyValue::String("KIF21A"),
-                AnyValue::Null,
-                AnyValue::String("KIF21A"),
-                AnyValue::String("ALMS1"),
-            ],
-        );
-        let hgvs_col1 = Column::new(
-            "hgvs1".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-            ],
-        );
-        let hgvs_col2 = Column::new(
-            "hgvs2".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
             ],
         );
         DataFrame::new(vec![
@@ -1316,9 +970,6 @@ mod tests {
             runny_nose_onset_col,
             disease_col,
             disease_onset_col,
-            gene_col,
-            hgvs_col1,
-            hgvs_col2,
         ])
         .unwrap()
     }
@@ -1332,23 +983,20 @@ mod tests {
         pf_asthma: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
         pf_macrocephaly: PhenotypicFeature,
-        platelet_defect_disease: Disease,
-        platelet_defect_disease_no_onset: Disease,
-        dysostosis_disease: Disease,
-        platelet_defect_interpretation: Interpretation,
-        dysostosis_interpretation: Interpretation,
         hp_meta_data_resource: Resource,
-        mondo_meta_data_resource: Resource,
-        hgnc_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         let mut collector = init_test_collector(temp_dir.path());
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
-        let phenopackets = collector.collect(vec![cdf]).unwrap();
-
-        let expected_p001 = Phenopacket {
+        let collect_result = collector.collect(vec![cdf]);
+        let phenopackets = collect_result.unwrap();
+        let meta_data = Some(MetaData {
+            resources: vec![hp_meta_data_resource.clone()],
+            ..Default::default()
+        });
+        let mut expected_p001 = Phenopacket {
             id: "cohort2019-P001".to_string(),
             subject: Some(Individual {
                 id: "P001".to_string(),
@@ -1359,20 +1007,10 @@ mod tests {
                 }),
                 ..Default::default()
             }),
-            phenotypic_features: vec![pf_pneumonia],
-            diseases: vec![platelet_defect_disease, platelet_defect_disease_no_onset],
-            interpretations: vec![platelet_defect_interpretation],
-            meta_data: Some(MetaData {
-                resources: vec![
-                    hp_meta_data_resource.clone(),
-                    mondo_meta_data_resource.clone(),
-                    hgnc_meta_data_resource.clone(),
-                ],
-                ..Default::default()
-            }),
+            meta_data: meta_data.clone(),
             ..Default::default()
         };
-        let expected_p002 = Phenopacket {
+        let mut expected_p002 = Phenopacket {
             id: "cohort2019-P002".to_string(),
             subject: Some(Individual {
                 id: "P002".to_string(),
@@ -1383,17 +1021,7 @@ mod tests {
                 }),
                 ..Default::default()
             }),
-            phenotypic_features: vec![pf_asthma, pf_nail_psoriasis, pf_macrocephaly],
-            diseases: vec![dysostosis_disease],
-            interpretations: vec![dysostosis_interpretation],
-            meta_data: Some(MetaData {
-                resources: vec![
-                    hp_meta_data_resource.clone(),
-                    mondo_meta_data_resource.clone(),
-                    hgnc_meta_data_resource.clone(),
-                ],
-                ..Default::default()
-            }),
+            meta_data: meta_data.clone(),
             ..Default::default()
         };
         let expected_p003 = Phenopacket {
@@ -1404,11 +1032,17 @@ mod tests {
                     status: Status::Deceased as i32,
                     ..Default::default()
                 }),
+
                 ..Default::default()
             }),
             meta_data: Some(MetaData::default()),
             ..Default::default()
         };
+
+        expected_p001.phenotypic_features.push(pf_pneumonia);
+        expected_p002.phenotypic_features.push(pf_asthma);
+        expected_p002.phenotypic_features.push(pf_nail_psoriasis);
+        expected_p002.phenotypic_features.push(pf_macrocephaly);
 
         assert_eq!(phenopackets.len(), 3);
         for mut phenopacket in phenopackets {
@@ -1658,37 +1292,9 @@ mod tests {
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
-        mut platelet_defect_interpretation: Interpretation,
-        mut dysostosis_interpretation: Interpretation,
         mondo_meta_data_resource: Resource,
-        hgnc_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        fn update_ids(
-            interpretation: &mut Interpretation,
-            new_subject_id: &str,
-            new_interpretation_id: &str,
-        ) {
-            interpretation.id = new_interpretation_id.to_string();
-
-            if let Some(diagnosis) = &mut interpretation.diagnosis
-                && let Some(genomic_interpretation) = diagnosis.genomic_interpretations.get_mut(0)
-            {
-                genomic_interpretation.subject_or_biosample_id = new_subject_id.to_string();
-            }
-        }
-
-        update_ids(
-            &mut platelet_defect_interpretation,
-            "P006",
-            "cohort2019-P006-MONDO:0008258",
-        );
-        update_ids(
-            &mut dysostosis_interpretation,
-            "P006",
-            "cohort2019-P006-MONDO:0000359",
-        );
-
         let mut collector = init_test_collector(temp_dir.path());
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
@@ -1701,11 +1307,37 @@ mod tests {
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
+        let platelet_defect_interpretation = Interpretation {
+            id: "cohort2019-P006-MONDO:0008258".to_string(),
+            progress_status: 0, //UNKNOWN_PROGRESS
+            diagnosis: Some(Diagnosis {
+                disease: Some(OntologyClass {
+                    id: "MONDO:0008258".to_string(),
+                    label: "platelet signal processing defect".to_string(),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let dysostosis_interpretation = Interpretation {
+            id: "cohort2019-P006-MONDO:0000359".to_string(),
+            progress_status: 0, //UNKNOWN_PROGRESS
+            diagnosis: Some(Diagnosis {
+                disease: Some(OntologyClass {
+                    id: "MONDO:0000359".to_string(),
+                    label: "spondylocostal dysostosis".to_string(),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
             interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
             meta_data: Some(MetaData {
-                resources: vec![mondo_meta_data_resource, hgnc_meta_data_resource],
+                resources: vec![mondo_meta_data_resource],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1719,9 +1351,6 @@ mod tests {
     fn test_collect_diseases(
         tc: TableContext,
         df_single_patient: DataFrame,
-        platelet_defect_disease: Disease,
-        platelet_defect_disease_no_onset: Disease,
-        dysostosis_disease: Disease,
         mondo_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
@@ -1736,6 +1365,40 @@ mod tests {
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
+
+        let platelet_defect_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P45Y10M05D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
+
+        let platelet_defect_disease_no_onset = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        let dysostosis_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0000359".to_string(),
+                label: "spondylocostal dysostosis".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Age(age_struct {
+                    iso8601duration: "P10Y4M21D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),

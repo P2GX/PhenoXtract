@@ -14,4 +14,10 @@ pub enum StrategyConfig {
         ontology_prefix: OntologyRef,
         data_context: Context,
     },
+    StringCorrectionStrategy {
+        header_context: Context,
+        data_context: Context,
+        chars_to_replace: String,
+        new_chars: String,
+    },
 }
