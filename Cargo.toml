@@ -28,7 +28,7 @@ ratelimit = "0.10.0"
 redb = "3.1.0"
 thiserror = "2.0.17"
 fastexcel = { version = "0.16.0", features = ["polars"] }
-ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.131' }
+ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.132' }
 
 [dev-dependencies]
 rstest = "0.26.1"
