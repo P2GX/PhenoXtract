@@ -170,7 +170,7 @@ pub enum OutputDataType {
     Boolean,
     String,
     Float64,
-    Int32,
+    Int64,
     Date,
     Datetime,
 }

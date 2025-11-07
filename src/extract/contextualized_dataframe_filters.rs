@@ -52,6 +52,16 @@ impl<'a> SeriesContextFilter<'a> {
         self.data_context.push(data_context);
         self
     }
+
+    pub fn where_data_context_is_disease(mut self) -> Self {
+        self.data_context.extend(vec![
+            Filter::Is(&Context::MondoLabelOrId),
+            Filter::Is(&Context::OmimLabelOrId),
+            Filter::Is(&Context::OrphanetLabelOrId),
+        ]);
+        self
+    }
+
     #[allow(dead_code)]
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.fill_missing.push(fill_missing);
@@ -147,6 +157,16 @@ impl<'a> ColumnFilter<'a> {
         self.series_filter.data_context.push(data_context);
         self
     }
+
+    pub fn where_data_context_is_disease(mut self) -> Self {
+        self.series_filter.data_context.extend(vec![
+            Filter::Is(&Context::MondoLabelOrId),
+            Filter::Is(&Context::OmimLabelOrId),
+            Filter::Is(&Context::OrphanetLabelOrId),
+        ]);
+        self
+    }
+
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.series_filter.fill_missing.push(fill_missing);
         self
@@ -264,7 +284,7 @@ mod tests {
         assert!(result.iter().all(|s| s.get_building_block_id().is_none()));
     }
 
-    #[test]
+    #[rstest]
     fn test_filter_by_header_context() {
         let ctx1 = Context::SubjectId;
         let ctx2 = Context::HpoLabelOrId;
@@ -312,6 +332,39 @@ mod tests {
 
         assert_eq!(result.len(), 2);
         assert!(result.iter().all(|s| s.get_data_context() == &ctx1));
+    }
+
+    #[rstest]
+    fn test_filter_data_context_by_disease() {
+        let ctx1 = Context::SubjectId;
+        let ctx2 = Context::OmimLabelOrId;
+        let ctx3 = Context::OrphanetLabelOrId;
+
+        let series = vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_data_context(ctx1.clone()),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id2".to_string()))
+                .with_data_context(ctx2.clone()),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id3".to_string()))
+                .with_data_context(ctx3.clone()),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id4".to_string()))
+                .with_data_context(ctx3.clone()),
+        ];
+
+        let result = SeriesContextFilter::new(&series)
+            .where_data_context_is_disease()
+            .collect();
+
+        assert_eq!(result.len(), 3);
+        assert!(
+            result
+                .iter()
+                .all(|s| s.get_data_context() == &ctx2 || s.get_data_context() == &ctx3)
+        );
     }
 
     #[rstest]

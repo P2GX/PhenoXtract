@@ -1,6 +1,7 @@
 use crate::extract::error::ExtractionError;
-use crate::ontology::error::RegistryError;
+use crate::ontology::error::{OntologyFactoryError, RegistryError};
 use crate::transform::error::TransformError;
+use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::load::error::LoadError;
@@ -9,10 +10,18 @@ use validator::ValidationErrors;
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum ConstructionError {
-    #[error("Registry error: {0}")]
+    #[error(transparent)]
     Registry(#[from] RegistryError),
-    #[error("Ontolius error: {0}")]
+    #[error(transparent)]
     Ontolius(#[from] anyhow::Error),
+    #[error(transparent)]
+    OntologyFactoryError(#[from] OntologyFactoryError),
+    #[error("No Pipeline Config found.")]
+    NoPipelineConfigFound,
+    #[error("Could not find config file at '{0}'")]
+    NoConfigFileFound(PathBuf),
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
 }
 
 #[derive(Debug, Error)]
