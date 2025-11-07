@@ -330,7 +330,7 @@ impl Collector {
                         bb_id,
                         vec![&Context::OmimLabel],
                     )?
-                        .unwrap();
+                    .unwrap();
 
                 for row_idx in 0..patient_cdf.data().height() {
                     let genes = stringified_linked_hgnc_cols
@@ -425,7 +425,7 @@ impl Collector {
                         bb_id,
                         vec![&Context::OmimLabel],
                     )?
-                        .unwrap();
+                    .unwrap();
                 for row_idx in 0..patient_cdf.data().height() {
                     let omim_id = omim_id_col.get(row_idx);
                     if let Some(omim_id) = omim_id {
