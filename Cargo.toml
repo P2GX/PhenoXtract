@@ -9,7 +9,7 @@ version = "0.1.0"
 
 [dependencies]
 config = "0.15.18"
-polars = { version = "0.51.0", features = ["lazy"] }
+polars = { version = "0.51.0", features = ["lazy", "strings"] }
 serde = "1.0.228"
 anyhow = "1.0.100"
 phenopackets = { version = "0.2.2-post1", features = ["serde"] }

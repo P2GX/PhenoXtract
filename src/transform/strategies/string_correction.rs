@@ -6,8 +6,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
 use log::info;
 use polars::datatypes::DataType;
-use polars::prelude::{ChunkApply, ChunkCast};
-use std::borrow::Cow;
+use polars::prelude::{ChunkCast, StringNameSpaceImpl};
 use std::string::ToString;
 
 #[derive(Debug)]
@@ -71,15 +70,9 @@ impl Strategy for StringCorrectionStrategy {
             for col_name in col_names {
                 let col = table.data().column(&col_name)?;
 
-                let corrected_col = col.str()?.apply(|cell_value| {
-                    if let Some(cell_value) = cell_value {
-                        let corrected_value = cell_value
-                            .replace(self.chars_to_replace.as_str(), self.new_chars.as_str());
-                        Some(Cow::Owned(corrected_value))
-                    } else {
-                        None
-                    }
-                });
+                let corrected_col = col
+                    .str()?
+                    .replace_literal_all(self.chars_to_replace.as_str(), self.new_chars.as_str())?;
 
                 table
                     .builder()
