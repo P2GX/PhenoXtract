@@ -17,6 +17,8 @@ use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
+use phenoxtract::config::PhenoXtractorConfig;
 
 #[fixture]
 fn excel_context() -> TableContext {
@@ -58,72 +60,10 @@ fn excel_context() -> TableContext {
 
 #[rstest]
 fn test_j_data(excel_context: TableContext) -> Result<(), PipelineError> {
-    //Set-up
-    let cohort_name = "j_test_cohort";
-
-    let mut onto_factory = CachedOntologyFactory::default();
-
-    let hpo_dict = onto_factory
-        .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
-        .unwrap();
-    let mondo_dict = onto_factory
-        .build_bidict(&OntologyRef::mondo(), None)
-        .unwrap();
-
-    let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
-
-    //Configure data source and context
-    let excel_path = PathBuf::from("/Users/patrick/Downloads/PhenoXtract/Example_J_Data.xlsx");
-
-    let mut data_sources = [DataSource::Excel(ExcelDatasource::new(
-        excel_path,
-        vec![excel_context],
-        vec![ExtractionConfig::new("TestData".to_string(), true, true)],
-    ))];
-
-    //Configure strategies (a.k.a. transformations)
-    let strategies: Vec<Box<dyn Strategy>> = vec![
-        Box::new(MappingStrategy::default_sex_mapping_strategy()),
-        Box::new(StringCorrectionStrategy::new(
-            Context::None,
-            Context::Hgvs,
-            "*".to_string(),
-            ":".to_string(),
-        )),
-        Box::new(StringCorrectionStrategy::new(
-            Context::None,
-            Context::MultiHpoId,
-            "HPO".to_string(),
-            "HP".to_string(),
-        )),
-        Box::new(MultiHPOColExpansionStrategy),
-    ];
-
-    //Create the pipeline
-    let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-        ]),
-        HGNCClient::default(),
-    );
-
-    let transformer_module = TransformerModule::new(
-        strategies,
-        Collector::new(phenopacket_builder, cohort_name.to_owned()),
-    );
-
-    let output_dir = assets_path.join("test_j_data_do_not_push");
-    if !output_dir.exists() {
-        fs::create_dir_all(&output_dir).unwrap();
-    }
-    let loader = FileSystemLoader::new(output_dir.clone());
-
-    let mut pipeline = Pipeline::new(transformer_module, loader);
-
-    //Run the pipeline on the data source
-    pipeline.run(&mut data_sources)?;
+    
+    let mut config = PhenoXtractorConfig::try_from(PathBuf::from_str("./assets/configs/j_data_config.yaml")).unwrap();
+    let mut pipeline = Pipeline::try_from(config.pipeline).unwrap();
+    pipeline.run(config.data_sources.as_mut_slice())?;
 
     Ok(())
 }

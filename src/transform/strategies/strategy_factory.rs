@@ -4,6 +4,7 @@ use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::mapping::DefaultMappings;
 use crate::transform::strategies::{
     AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
+    StringCorrectionStrategy,
 };
 use crate::transform::traits::Strategy;
 
@@ -56,6 +57,17 @@ impl StrategyFactory {
                     data_context.clone(),
                 )))
             }
+            StrategyConfig::StringCorrectionStrategy {
+                header_context,
+                data_context,
+                chars_to_replace,
+                new_chars,
+            } => Ok(Box::new(StringCorrectionStrategy::new(
+                header_context.clone(),
+                data_context.clone(),
+                chars_to_replace.clone(),
+                new_chars.clone(),
+            ))),
         }
     }
 }
