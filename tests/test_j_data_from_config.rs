@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 #[rstest]
-fn test_j_data() -> Result<(), PipelineError> {
+fn test_j_data_from_config() -> Result<(), PipelineError> {
     let mut config = PhenoXtractorConfig::try_from(
         PathBuf::from_str("/Users/patrick/RustroverProjects/PhenoXtrackt/tests/assets/configs/j_data_config.yaml").unwrap(),
     )
