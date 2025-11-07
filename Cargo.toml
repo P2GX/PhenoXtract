@@ -14,6 +14,7 @@ serde = "1.0.228"
 anyhow = "1.0.100"
 phenopackets = { version = "0.2.2-post1", features = ["serde"] }
 validator = { version = "0.20.0", features = ["derive"] }
+calamine = { version = "0.31.0", features = ["dates"] }
 regex = "1.12.2"
 log = "0.4.28"
 reqwest = { version = "0.12.24", features = ["blocking", "json"] }
