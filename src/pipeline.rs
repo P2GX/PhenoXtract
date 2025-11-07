@@ -106,8 +106,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ]);
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
-        let client = HGNCClient::default();
-        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, client);
+        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, HGNCClient::default());
 
         let strategies: Vec<Box<dyn Strategy>> = config
             .transform_strategies
@@ -115,7 +114,6 @@ impl TryFrom<PipelineConfig> for Pipeline {
             .map(|strat| strategy_factory.try_from_config(strat))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let builder = PhenopacketBuilder::new(HashMap::default(), HGNCClient::default());
         let tf_module = TransformerModule::new(
             strategies,
             Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),

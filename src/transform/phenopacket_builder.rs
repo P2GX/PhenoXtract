@@ -27,6 +27,7 @@ use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
+use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -279,8 +280,6 @@ impl PhenopacketBuilder {
         genes: &[&str],
         variants: &[&str],
     ) -> Result<(), PhenopacketBuilderError> {
-        let (term, res_ref) = self.query_disease_identifiers(disease)?;
-        self.ensure_resource(phenopacket_id, &res_ref);
 
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
@@ -301,6 +300,9 @@ impl PhenopacketBuilder {
             return Err(PhenopacketBuilderError::InvalidGeneVariantConfiguration { disease: disease.to_string(), invalid_configuration: "There can be only between 1 and 2 variants. If there are variants, a gene must be specified.".to_string() });
         }
 
+        let (term, res_ref) = self.query_disease_identifiers(disease)?;
+        self.ensure_resource(phenopacket_id, &res_ref);
+
         if !no_gene_variant_info {
             let (gene_symbol, hgnc_id) = self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
 
@@ -318,8 +320,6 @@ impl PhenopacketBuilder {
             }
 
             if valid_homozygous_variant {
-                let (gene_symbol, hgnc_id) =
-                    self.get_gene_data_from_hgnc(phenopacket_id, genes[0])?;
                 let variant = variants[0];
                 let gi = Self::get_genomic_interpretation_from_data(
                     patient_id,
@@ -362,7 +362,7 @@ impl PhenopacketBuilder {
         let interpretation =
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
 
-        interpretation.progress_status = 0; //UNKNOWN_PROGRESS
+        interpretation.progress_status = ProgressStatus::UnknownProgress.into();
 
         interpretation.diagnosis = Some(Diagnosis {
             disease: Some(term),
@@ -475,7 +475,7 @@ impl PhenopacketBuilder {
             None => {
                 pp.interpretations.push(Interpretation {
                     id: interpretation_id.to_string(),
-                    progress_status: 1, // IN_PROGRESS
+                    progress_status: ProgressStatus::InProgress.into(),
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
@@ -1136,7 +1136,7 @@ mod tests {
             id: "pp_001".to_string(),
             interpretations: vec![Interpretation {
                 id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 0, // UNKNOWN_PROGRESS
+                progress_status: ProgressStatus::UnknownProgress.into(),
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: "MONDO:0012145".to_string(),

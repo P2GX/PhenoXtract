@@ -986,7 +986,6 @@ mod tests {
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        println!("temp_dir {:?}", temp_dir);
         let mut collector = init_test_collector(temp_dir.path());
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
