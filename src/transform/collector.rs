@@ -10,7 +10,7 @@ use polars::prelude::{Column, DataType, PolarsError, StringChunked};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Collector {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,

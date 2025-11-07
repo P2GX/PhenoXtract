@@ -938,6 +938,22 @@ impl PhenopacketBuilder {
     }
 }
 
+impl PartialEq for PhenopacketBuilder {
+    fn eq(&self, other: &Self) -> bool {
+        self.subject_to_phenopacket == other.subject_to_phenopacket
+            && self.ontology_bidicts.len() == other.ontology_bidicts.len()
+            && self.ontology_bidicts.iter().all(|(key, value)| {
+                other
+                    .ontology_bidicts
+                    .get(key)
+                    .map(|other_value| Arc::ptr_eq(value, other_value) || **value == **other_value)
+                    .unwrap_or(false)
+            })
+            && self.resource_resolver == other.resource_resolver
+            && self.variant_parser == other.variant_parser
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

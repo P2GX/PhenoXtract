@@ -6,5 +6,8 @@ pub mod pipeline_config;
 pub use self::pipeline_config::PipelineConfig;
 pub mod strategy_config;
 pub use self::strategy_config::StrategyConfig;
+mod config_loader;
+pub use self::config_loader::ConfigLoader;
 pub mod table_context;
+
 pub use self::table_context::TableContext;
