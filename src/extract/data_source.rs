@@ -9,12 +9,10 @@ use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use crate::extract::utils::generate_default_column_names;
-use either::Either;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
-use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
 

@@ -820,9 +820,7 @@ impl PhenopacketBuilder {
             ))
         })?;
 
-        self.ensure_resource(
-            phenopacket_id,
-            &DatabaseRef::hgnc());
+        self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
 
         Ok((symbol_ref.to_string(), id_ref.to_string()))
     }

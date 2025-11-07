@@ -5,26 +5,26 @@ data_sources:
       - name: "TestData"
         context:
           - identifier: "patient_id"
-            data_context: subject_id
+            data_context: "subject_id"
           - identifier: "sex"
-            data_context: subject_sex
+            data_context: "subject_sex"
           - identifier: "gene_symbol"
-            data_context: hgnc_symbol_or_id
+            data_context: "hgnc_symbol_or_id"
             building_block_id: "A"
           - identifier: "disease"
-            data_context: omim_label
+            data_context: "omim_label"
             building_block_id: "A"
           - identifier: "dissease_OMIM_id"
-            data_context: omim_id
+            data_context: "omim_id"
             building_block_id: "A"
           - identifier: "HGVS_1"
-            data_context: hgvs
+            data_context: "hgvs"
             building_block_id: "A"
           - identifier: "HGVS_2"
-            data_context: hgvs
+            data_context: "hgvs"
             building_block_id: "A"
           - identifier: "HPO"
-            data_context: multi_hpo_id
+            data_context: "multi_hpo_id"
     extraction_configs:
       - name: "TestData"
         has_headers: true
@@ -32,19 +32,19 @@ data_sources:
 
 pipeline:
   transform_strategies:
-    - "sex_mappings"
+    - default_mappings: "sex_mapping"
     - string_correction_strategy:
-        - header_context: "none"
+          header_context: "none"
           data_context: "hgvs"
           chars_to_replace: "*"
           new_chars: ':'
     - string_correction_strategy:
-        - header_context: "none"
+          header_context: "none"
           data_context: "multi_hpo_id"
           chars_to_replace: "HPO"
           new_chars: "HP"
     - "multi_hpo_column_expansion"
-  loader: "./assets/test_j_data_do_not_push"
+  loader: "/Users/patrick/RustroverProjects/PhenoXtrackt/tests/assets/test_j_data_do_not_push"
   meta_data:
     created_by: RR and PSN
     submitted_by: RR and PSN
