@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ## Check for Cygwin, use grep for a case-insensitive search
 IS_CYGWIN="FALSE"

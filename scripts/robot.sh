@@ -64,3 +64,4 @@ echo "PATH updated: $INSTALL_DIR"
 
 
 sh ./scripts/mini_mondo.sh
+sh ./scripts/mini_hp.sh
