@@ -5,7 +5,6 @@ pub mod phenopacket_builder;
 pub use phenopacket_builder::PhenopacketBuilder;
 pub(crate) mod cached_resource_resolver;
 
-mod phenopacket_linter;
 pub mod strategies;
 pub mod traits;
 pub mod transform_module;
