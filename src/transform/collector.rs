@@ -2,6 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
+use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
@@ -329,6 +330,10 @@ impl Collector {
                     .filter_map(|hgvs_col| hgvs_col.get(row_idx))
                     .collect::<Vec<&str>>();
 
+                let gene_variant_data =
+                    PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
+                        .map_err(CollectorError::GeneVariantData)?;
+
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
@@ -336,8 +341,7 @@ impl Collector {
                             patient_id,
                             phenopacket_id,
                             disease,
-                            &genes,
-                            &variants,
+                            &gene_variant_data,
                         )?;
                     }
                 }
@@ -547,6 +551,7 @@ mod tests {
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::interpretation::ProgressStatus;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
@@ -1309,7 +1314,7 @@ mod tests {
 
         let platelet_defect_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0008258".to_string(),
-            progress_status: 0, //UNKNOWN_PROGRESS
+            progress_status: ProgressStatus::UnknownProgress.into(),
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0008258".to_string(),
@@ -1322,7 +1327,7 @@ mod tests {
 
         let dysostosis_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0000359".to_string(),
-            progress_status: 0, //UNKNOWN_PROGRESS
+            progress_status: ProgressStatus::UnknownProgress.into(), //UNKNOWN_PROGRESS
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0000359".to_string(),

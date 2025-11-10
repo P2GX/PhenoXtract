@@ -222,6 +222,8 @@ pub enum CollectorError {
     ParseFloatError(#[from] ParseFloatError),
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantData(String),
 }
 
 impl From<DataProcessingError> for CollectorError {
@@ -248,4 +250,8 @@ pub enum PhenopacketBuilderError {
         disease: String,
         invalid_configuration: String,
     },
+    #[error(
+        "The HGVS variant {variant} for patient {patient} did not have the correct reference:transcript format."
+    )]
+    HgvsFormat { patient: String, variant: String },
 }
