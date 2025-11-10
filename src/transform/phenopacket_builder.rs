@@ -760,6 +760,11 @@ mod tests {
     }
 
     #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    #[fixture]
     fn valid_phenotype() -> String {
         "HP:0001166".to_string()
     }
@@ -806,11 +811,6 @@ mod tests {
                 nanos: 0,
             })),
         })
-    }
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[rstest]

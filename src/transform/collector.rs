@@ -549,6 +549,7 @@ mod tests {
     use std::path::Path;
 
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
+    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::interpretation::ProgressStatus;
@@ -570,6 +571,7 @@ mod tests {
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
+
     fn init_test_collector(temp_dir: &Path) -> Collector {
         let phenopacket_builder = build_test_phenopacket_builder(temp_dir);
 
@@ -979,6 +981,7 @@ mod tests {
         .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     #[allow(clippy::too_many_arguments)]
     fn test_collect(
@@ -1063,6 +1066,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     #[allow(clippy::too_many_arguments)]
     fn test_collect_phenotypic_features(
