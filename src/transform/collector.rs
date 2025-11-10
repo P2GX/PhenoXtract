@@ -491,13 +491,8 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::ontology::ontology_bidict::OntologyBiDict;
-    use crate::ontology::traits::HasPrefixId;
-    use crate::test_utils::{
-        GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY, assert_phenopackets,
-    };
+    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
-    use crate::transform::phenopacket_builder::PhenopacketBuilder;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
@@ -511,36 +506,15 @@ mod tests {
     use pretty_assertions::assert_eq;
     use prost_types::Timestamp as TimestampProtobuf;
     use rstest::{fixture, rstest};
-    use std::collections::HashMap;
-    use std::sync::Arc;
+    use tempfile::TempDir;
 
-    fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
-        let hpo_dict = ONTOLOGY_FACTORY
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .build_bidict(&HPO_REF.clone(), None)
-            .unwrap();
-
-        let geno_dict = ONTOLOGY_FACTORY
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .build_bidict(&GENO_REF.clone(), None)
-            .unwrap();
-
-        HashMap::from_iter(vec![
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (
-                MONDO_BIDICT.ontology.prefix_id().to_string(),
-                MONDO_BIDICT.clone(),
-            ),
-            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
-        ])
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
     }
-    fn build_test_phenopacket_builder() -> PhenopacketBuilder {
-        PhenopacketBuilder::new(build_test_dicts())
-    }
-    fn init_test_collector() -> Collector {
-        let phenopacket_builder = build_test_phenopacket_builder();
+
+    fn init_test_collector(tmp_dir: TempDir) -> Collector {
+        let phenopacket_builder = build_test_phenopacket_builder(tmp_dir.path());
 
         Collector {
             phenopacket_builder,
@@ -948,6 +922,7 @@ mod tests {
         .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_collect(
         df_multi_patient: DataFrame,
@@ -957,8 +932,9 @@ mod tests {
         pf_nail_psoriasis: PhenotypicFeature,
         pf_macrocephaly: PhenotypicFeature,
         hp_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
@@ -1030,6 +1006,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
@@ -1039,8 +1016,9 @@ mod tests {
         pf_runny_nose: PhenotypicFeature,
         df_single_patient: DataFrame,
         hp_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1071,8 +1049,9 @@ mod tests {
     fn test_collect_phenotypic_features_invalid_linking(
         tc: TableContext,
         mut df_single_patient: DataFrame,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let onset_dt_col = Column::new(
             "onset_date".into(),
@@ -1111,8 +1090,9 @@ mod tests {
         pf_asthma_no_onset: PhenotypicFeature,
         pf_nail_psoriasis: PhenotypicFeature,
         hp_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_hpo_col = Column::new(
             "phenotypic_features".into(),
@@ -1165,8 +1145,9 @@ mod tests {
     fn test_collect_hpo_in_header_col(
         pf_runny_nose_excluded: PhenotypicFeature,
         hp_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_hpo_col = Column::new(
             "HP:0031417#(block foo)".into(),
@@ -1209,8 +1190,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame) {
-        let mut collector = init_test_collector();
+    fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame, temp_dir: TempDir) {
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1260,8 +1241,9 @@ mod tests {
         tc: TableContext,
         df_single_patient: DataFrame,
         mondo_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1318,8 +1300,9 @@ mod tests {
         tc: TableContext,
         df_single_patient: DataFrame,
         mondo_meta_data_resource: Resource,
+        temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector();
+        let mut collector = init_test_collector(temp_dir);
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
