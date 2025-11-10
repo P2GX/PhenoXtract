@@ -8,8 +8,6 @@ use std::io::BufReader;
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
-use crate::extract::utils::generate_default_column_names;
-use either::Either;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 

@@ -549,7 +549,6 @@ mod tests {
     use std::path::Path;
 
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
-    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::interpretation::ProgressStatus;

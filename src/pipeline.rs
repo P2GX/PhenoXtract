@@ -6,8 +6,6 @@ use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 
-use crate::ontology::{CachedOntologyFactory, HGNCClient};
-
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
