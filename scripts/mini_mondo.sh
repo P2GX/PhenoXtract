@@ -26,6 +26,18 @@ for obofile in *.out.mondo.obo; do
   INPUTS="--input ${obofile} ${INPUTS}"
 done
 echo input argument "$INPUTS"
-java -jar ./scripts/robot/robot.jar merge ${INPUTS} --output tests/assets/ontologies/mondo.toy.json 2>&1 | grep -v "WARNING:"
+java -jar ./scripts/robot/robot.jar merge ${INPUTS} --output tests/assets/ontologies/2025-11-04_mondo.json 2>&1 | grep -v "WARNING:"
 
 rm *.obo
+
+
+ontology=$(cat tests/assets/ontologies/2025-11-04_mondo.json)
+
+version_url="http://purl.obolibrary.org/obo/mondo/releases/2025-11-04/mondo.json"
+
+ontology=$(jq --arg version "$version_url" '
+  .graphs[0].meta.version = $version
+' <<<"$ontology")
+
+
+echo "$ontology" > tests/assets/ontologies/2025-11-04_mondo.json

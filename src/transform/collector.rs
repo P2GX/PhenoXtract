@@ -494,7 +494,7 @@ mod tests {
     use crate::ontology::ontology_bidict::OntologyBiDict;
     use crate::ontology::traits::HasPrefixId;
     use crate::test_utils::{
-        GENO_REF, HPO_REF, MONDO_BIDICT, ONTOLOGY_FACTORY, assert_phenopackets,
+        GENO_REF, HPO_REF, MONDO_BIDICT, MONDO_REF, ONTOLOGY_FACTORY, assert_phenopackets,
     };
     use crate::transform::collector::Collector;
     use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -527,12 +527,15 @@ mod tests {
             .build_bidict(&GENO_REF.clone(), None)
             .unwrap();
 
+        let mondo_dict = ONTOLOGY_FACTORY
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .build_bidict(&MONDO_REF.clone(), None)
+            .unwrap();
+
         HashMap::from_iter(vec![
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (
-                MONDO_BIDICT.ontology.prefix_id().to_string(),
-                MONDO_BIDICT.clone(),
-            ),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ])
     }

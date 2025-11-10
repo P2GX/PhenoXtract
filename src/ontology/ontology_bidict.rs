@@ -110,7 +110,7 @@ impl OntologyBiDict {
                 );
             }
         }
-
+        println!("{ontology_prefix}");
         let ont_ref = OntologyRef::from(ontology_prefix).with_version(ontology.version());
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
