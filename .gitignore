@@ -21,3 +21,5 @@ tests/assets/do_not_push/*
 ~$*
 
 Cargo.lock
+
+*.jar
