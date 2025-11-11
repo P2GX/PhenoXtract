@@ -982,7 +982,6 @@ mod tests {
 
     #[allow(clippy::too_many_arguments)]
     #[rstest]
-    #[allow(clippy::too_many_arguments)]
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
@@ -1067,7 +1066,6 @@ mod tests {
 
     #[allow(clippy::too_many_arguments)]
     #[rstest]
-    #[allow(clippy::too_many_arguments)]
     fn test_collect_phenotypic_features(
         tc: TableContext,
         pf_pneumonia: PhenotypicFeature,
