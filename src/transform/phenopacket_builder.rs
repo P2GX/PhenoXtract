@@ -52,7 +52,7 @@ impl PhenopacketBuilder {
         }
     }
 
-    pub fn build(&self) -> Vec<Phenopacket> {
+    pub(crate) fn build(&self) -> Vec<Phenopacket> {
         let mut phenopackets: Vec<Phenopacket> =
             self.subject_to_phenopacket.values().cloned().collect();
         let now = Utc::now().to_string();
@@ -68,11 +68,11 @@ impl PhenopacketBuilder {
         phenopackets
     }
     #[allow(dead_code)]
-    pub fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
+    pub(crate) fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
         self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
-    pub fn upsert_individual(
+    pub(crate) fn upsert_individual(
         &mut self,
         phenopacket_id: &str,
         individual_id: &str,
@@ -120,7 +120,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn upsert_vital_status(
+    pub(crate) fn upsert_vital_status(
         &mut self,
         phenopacket_id: &str,
         status: &str,
@@ -202,7 +202,7 @@ impl PhenopacketBuilder {
     /// }
     /// ```
     #[allow(dead_code)]
-    pub fn upsert_phenotypic_feature(
+    pub(crate) fn upsert_phenotypic_feature(
         &mut self,
         phenopacket_id: &str,
         phenotype: &str,
@@ -256,7 +256,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn upsert_interpretation(
+    pub(crate) fn upsert_interpretation(
         &mut self,
         patient_id: &str,
         phenopacket_id: &str,
@@ -317,7 +317,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn insert_disease(
+    pub(crate) fn insert_disease(
         &mut self,
         phenopacket_id: &str,
         disease: &str,
@@ -428,7 +428,7 @@ impl PhenopacketBuilder {
         }
     }
 
-    pub fn query_disease_identifiers(
+    pub(crate) fn query_disease_identifiers(
         &self,
         query: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
@@ -581,9 +581,9 @@ impl PhenopacketBuilder {
         let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
         let returned_symbol_id_pairs = hgnc_response.symbol_id_pair();
         let (symbol_ref, id_ref) = returned_symbol_id_pairs.first().ok_or_else(|| {
-            PhenopacketBuilderError::HgncGenePair(format!(
-                "No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}."
-            ))
+            PhenopacketBuilderError::HgncGeneInfoRequest {
+                gene: gene.to_string(),
+            }
         })?;
 
         self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());

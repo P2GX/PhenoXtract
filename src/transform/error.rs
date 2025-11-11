@@ -241,15 +241,8 @@ pub enum PhenopacketBuilderError {
     HgncClient(#[from] ClientError),
     #[error("Error validating HGVS variant: {0}")]
     VariantValidation(String),
-    #[error("Error fetching gene symbol-id pair: {0}")]
-    HgncGenePair(String),
-    #[error(
-        "Could not interpret gene and variant configuration for disease {disease}: {invalid_configuration}"
-    )]
-    InvalidGeneVariantConfiguration {
-        disease: String,
-        invalid_configuration: String,
-    },
+    #[error("No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}.")]
+    HgncGeneInfoRequest { gene: String },
     #[error(
         "The HGVS variant {variant} for patient {patient} did not have the correct reference:transcript format."
     )]

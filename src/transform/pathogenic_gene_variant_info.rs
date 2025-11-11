@@ -2,7 +2,7 @@
 /// The collector should collect gene and variant data which can be interpreted
 /// as one of the enum's branches.
 #[derive(PartialEq, Debug)]
-pub enum PathogenicGeneVariantData {
+pub(crate) enum PathogenicGeneVariantData {
     None,
     CausativeGene(String),
     HeterozygousVariant {
@@ -82,7 +82,7 @@ impl PathogenicGeneVariantData {
         }
     }
 
-    pub fn get_gene(&self) -> Option<&String> {
+    pub fn get_gene(&self) -> Option<&str> {
         match self {
             PathogenicGeneVariantData::None => None,
             PathogenicGeneVariantData::CausativeGene(gene)
@@ -92,7 +92,7 @@ impl PathogenicGeneVariantData {
         }
     }
 
-    pub fn get_vars(&self) -> Vec<&String> {
+    pub fn get_vars(&self) -> Vec<&str> {
         match self {
             PathogenicGeneVariantData::None | PathogenicGeneVariantData::CausativeGene(_) => vec![],
             PathogenicGeneVariantData::HomozygousVariant { var, .. }
