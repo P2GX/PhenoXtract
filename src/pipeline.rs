@@ -96,13 +96,15 @@ impl TryFrom<PipelineConfig> for Pipeline {
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
         let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
-        //let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
+        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
         let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
+
         let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
             (hp_dict.ontology.prefix_id().to_string(), hp_dict),
-            //(mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
+            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
             (geno_dict.ontology.prefix_id().to_string(), geno_dict),
         ]);
+
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
 
         let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, HGNCClient::default());
