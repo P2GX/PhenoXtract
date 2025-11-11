@@ -1599,6 +1599,7 @@ mod tests {
     }
 
     #[rstest]
+    #[allow(clippy::too_many_arguments)]
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
