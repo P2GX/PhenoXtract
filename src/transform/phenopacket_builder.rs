@@ -198,7 +198,7 @@ impl PhenopacketBuilder {
     ///     None, None, None, None, None, None, None
     /// ) {
     ///     Ok(()) => println!("Successfully upserted the phenotypic feature."),
-    ///     Err(e) => eprintln!("Error upserting feature: {}", e),
+    ///     Err(e) => eprintln!("Error upserting feature: {}", e)
     /// }
     /// ```
     #[allow(dead_code)]
