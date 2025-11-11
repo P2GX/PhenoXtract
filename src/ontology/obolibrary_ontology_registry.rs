@@ -5,10 +5,10 @@ use crate::ontology::error::RegistryError;
 
 use crate::ontology::BioRegistryClient;
 use crate::ontology::obolibrary_client::ObolibraryClient;
-use directories::ProjectDirs;
+
 use log::{debug, info};
 use std::env;
-use std::env::home_dir;
+
 use std::fs::{File, remove_file};
 use std::io::copy;
 use std::path::PathBuf;
@@ -57,6 +57,8 @@ impl ObolibraryOntologyRegistry {
 
     #[cfg(not(test))]
     pub fn default_registry_path(ontology_prefix: &str) -> Result<PathBuf, RegistryError> {
+        use directories::ProjectDirs;
+        use std::env::home_dir;
         let pkg_name = env!("CARGO_PKG_NAME");
         ProjectDirs::from("", "", pkg_name)
             .map(|proj| proj.cache_dir().join(ontology_prefix))
@@ -67,7 +69,7 @@ impl ObolibraryOntologyRegistry {
     }
 
     #[cfg(test)]
-    pub fn default_registry_path(ontology_prefix: &str) -> Result<PathBuf, RegistryError> {
+    pub fn default_registry_path(_: &str) -> Result<PathBuf, RegistryError> {
         let mut mock_registry_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         mock_registry_dir = mock_registry_dir
             .join("tests")
