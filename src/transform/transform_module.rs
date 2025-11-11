@@ -15,7 +15,20 @@ pub struct TransformerModule {
 }
 
 impl TransformerModule {
-    #[allow(dead_code)]
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
+        TransformerModule {
+            strategies,
+            collector,
+        }
+    }
+
+    pub fn add_strategy(&mut self, strategy: Box<dyn Strategy>) {
+        self.strategies.push(strategy);
+    }
+    pub fn insert_strategy(&mut self, idx: usize, strategy: Box<dyn Strategy>) {
+        self.strategies.insert(idx, strategy);
+    }
+
     pub fn run(
         &mut self,
         mut data: Vec<ContextualizedDataFrame>,
@@ -34,13 +47,6 @@ impl TransformerModule {
         }
 
         Ok(self.collector.collect(data)?)
-    }
-
-    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
-        TransformerModule {
-            strategies,
-            collector,
-        }
     }
 
     /// Converts float columns to Int64 if all values are whole numbers within i64 range.

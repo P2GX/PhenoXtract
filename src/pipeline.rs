@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use validator::Validate;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Pipeline {
     transformer_module: TransformerModule,
@@ -29,7 +28,23 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    #[allow(dead_code)]
+    pub fn new(
+        transformer_module: TransformerModule,
+        loader_module: impl Loadable + 'static,
+    ) -> Pipeline {
+        Pipeline {
+            transformer_module,
+            loader_module: Box::new(loader_module),
+        }
+    }
+
+    pub fn add_strategy(&mut self, strategy: Box<dyn Strategy>) {
+        self.transformer_module.add_strategy(strategy);
+    }
+    pub fn insert_strategy(&mut self, idx: usize, strategy: Box<dyn Strategy>) {
+        self.transformer_module.insert_strategy(idx, strategy);
+    }
+
     pub fn run(
         &mut self,
         extractables: &mut [impl Extractable + Validate],
@@ -79,15 +94,6 @@ impl Pipeline {
 
         info!("Concluded Loading");
         Ok(())
-    }
-    pub fn new(
-        transformer_module: TransformerModule,
-        loader_module: impl Loadable + 'static,
-    ) -> Pipeline {
-        Pipeline {
-            transformer_module,
-            loader_module: Box::new(loader_module),
-        }
     }
 }
 
