@@ -294,19 +294,6 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    fn build_client(cache_file_path: PathBuf) -> HGNCClient {
-        let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
-            .max_tokens(10)
-            .build()
-            .expect("Building rate limiter failed");
-        HGNCClient::new(
-            rate_limiter,
-            cache_file_path,
-            "https://rest.genenames.org/".to_string(),
-        )
-        .unwrap()
-    }
-
     fn clear_cache(cache_dir: &PathBuf) {
         let cache = RedbDatabase::create(cache_dir).unwrap();
         let write_txn = cache.begin_write().unwrap();
