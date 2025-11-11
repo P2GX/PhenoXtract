@@ -602,7 +602,7 @@
             "subsets": [
               "http://purl.obolibrary.org/obo/hp.obo#hposlim_core"
             ],
-            "synonyms": [
+            "Involuntary, rapid, rhythmic eye movements": [
               {
                 "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
                 "pred": "hasExactSynonym",

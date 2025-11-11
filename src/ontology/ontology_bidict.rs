@@ -139,13 +139,13 @@ mod tests {
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
-        assert_eq!(hpo_dict.get("Rhythmic"), Some("HP:0000639"));
+        assert_eq!(hpo_dict.get("contact with nickel"), Some("HP:4000120"));
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
-        let hpo_id = hpo_dict.get("rhythmic eye movements");
-        assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Nystagmus"));
+        let hpo_id = hpo_dict.get("contact with nickel");
+        assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Triggered by nickel"));
     }
 }
