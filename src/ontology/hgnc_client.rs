@@ -200,7 +200,6 @@ impl HGNCClient {
     }
 
     fn init_cache(cache_dir: &Path) -> Result<(), ClientError> {
-        println!("Initializing HGNC cache at {}", cache_dir.display());
         let cache = RedbDatabase::create(cache_dir)?;
         let write_txn = cache.begin_write()?;
         {

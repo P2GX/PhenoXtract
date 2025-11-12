@@ -679,11 +679,11 @@ mod tests {
     }
 
     #[fixture]
-    fn pf_bronchocentric_with_onset() -> PhenotypicFeature {
+    fn pf_spasmus_nutans_with_onset() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
-                id: "HP:0033815".to_string(),
-                label: "Bronchocentric".to_string(),
+                id: "HP:0010533".to_string(),
+                label: "Spasmus nutans".to_string(),
             }),
             onset: Some(TimeElement {
                 element: Some(Element::Age(age_struct {
@@ -714,7 +714,7 @@ mod tests {
     fn df_multi_patient(
         pf_seizure_cluster_with_onset: PhenotypicFeature,
         pf_fractured_nose: PhenotypicFeature,
-        pf_bronchocentric_with_onset: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
     ) -> DataFrame {
         let seizure_onset = match pf_seizure_cluster_with_onset
             .onset
@@ -722,15 +722,15 @@ mod tests {
             .element
             .unwrap()
         {
-            Element::Age(oc) => oc,
+            Element::Age(age) => age,
             _ => panic!("Should not happen"),
         };
 
-        let bronchocentric_onet = match pf_bronchocentric_with_onset.onset.unwrap().element.unwrap()
-        {
-            Element::Age(oc) => oc,
-            _ => panic!("Should not happen"),
-        };
+        let bronchocentric_onset =
+            match pf_spasmus_nutans_with_onset.onset.unwrap().element.unwrap() {
+                Element::Age(age) => age,
+                _ => panic!("Should not happen"),
+            };
         let id_col = Column::new(
             "subject_id".into(),
             ["P001", "P001", "P002", "P002", "P002", "P003"],
@@ -740,7 +740,7 @@ mod tests {
             [
                 AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().id),
                 AnyValue::Null,
-                AnyValue::String(&pf_bronchocentric_with_onset.r#type.unwrap().label),
+                AnyValue::String(&pf_spasmus_nutans_with_onset.r#type.unwrap().label),
                 AnyValue::String(&pf_seizure_cluster_with_onset.r#type.unwrap().label),
                 AnyValue::String(&pf_fractured_nose.r#type.unwrap().id),
                 AnyValue::Null,
@@ -751,7 +751,7 @@ mod tests {
             [
                 AnyValue::String(&seizure_onset.iso8601duration),
                 AnyValue::Null,
-                AnyValue::String(&bronchocentric_onet.iso8601duration),
+                AnyValue::String(&bronchocentric_onset.iso8601duration),
                 AnyValue::String(&seizure_onset.iso8601duration),
                 AnyValue::Null,
                 AnyValue::Null,
@@ -951,7 +951,7 @@ mod tests {
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
-        pf_bronchocentric_with_onset: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
         pf_seizure_cluster_with_onset: PhenotypicFeature,
         pf_fractured_nose: PhenotypicFeature,
         hp_meta_data_resource: Resource,
@@ -1010,17 +1010,13 @@ mod tests {
             ..Default::default()
         };
 
-        expected_p001
-            .phenotypic_features
-            .push(pf_seizure_cluster_with_onset.clone());
+        expected_p001.phenotypic_features = vec![pf_seizure_cluster_with_onset.clone()];
 
-        expected_p002
-            .phenotypic_features
-            .push(pf_bronchocentric_with_onset);
-        expected_p002
-            .phenotypic_features
-            .push(pf_seizure_cluster_with_onset);
-        expected_p002.phenotypic_features.push(pf_fractured_nose);
+        expected_p002.phenotypic_features = vec![
+            pf_spasmus_nutans_with_onset.clone(),
+            pf_seizure_cluster_with_onset,
+            pf_fractured_nose,
+        ];
 
         assert_eq!(phenopackets.len(), 3);
         for mut phenopacket in phenopackets {
@@ -1077,7 +1073,7 @@ mod tests {
     fn test_collect_hpo_in_cells_col(
         pf_fractured_nose: PhenotypicFeature,
         pf_seizure_cluster_with_onset: PhenotypicFeature,
-        pf_bronchocentric_with_onset: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
@@ -1092,7 +1088,7 @@ mod tests {
             _ => panic!("Should be an age element"),
         };
 
-        let pf_bronchocentric_onset = match pf_bronchocentric_with_onset
+        let pf_bronchocentric_onset = match pf_spasmus_nutans_with_onset
             .onset
             .clone()
             .unwrap()
@@ -1111,7 +1107,7 @@ mod tests {
                 AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().label),
                 AnyValue::Null,
                 AnyValue::String(&pf_fractured_nose.r#type.clone().unwrap().label),
-                AnyValue::String(&pf_bronchocentric_with_onset.r#type.clone().unwrap().label),
+                AnyValue::String(&pf_spasmus_nutans_with_onset.r#type.clone().unwrap().label),
             ],
         );
         let patient_onset_col = Column::new(
@@ -1152,7 +1148,7 @@ mod tests {
             .push(pf_fractured_nose.clone());
         expected_p006
             .phenotypic_features
-            .push(pf_bronchocentric_with_onset.clone());
+            .push(pf_spasmus_nutans_with_onset.clone());
 
         assert_eq!(phenopackets.len(), 1);
         assert_phenopackets(&mut phenopackets[0], &mut expected_p006);

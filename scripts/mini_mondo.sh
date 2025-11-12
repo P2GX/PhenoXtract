@@ -4,11 +4,11 @@ OBO=https://github.com/monarch-initiative/mondo/releases/download/v2025-11-04/mo
 module load robot/1.8.3
 
 TARGET_TERMS=(
-'MONDO:0008258' #
-'MONDO:0008917' #
-'MONDO:0012145' #
-'MONDO:0000359' #
-'MONDO:0000252' #
+'MONDO:0008258' # platelet signal processing defect
+'MONDO:0008917' # heart defects-limb shortening syndrome
+'MONDO:0012145' # macular degeneration, age-related, 3
+'MONDO:0000359' # spondylocostal dysostosis
+'MONDO:0000252' # inflammatory diarrhea
 )
 
 wget $OBO
