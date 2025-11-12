@@ -559,7 +559,7 @@ mod tests {
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
-        Age as age_struct, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
+        Age, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
         MetaData, OntologyClass, PhenotypicFeature, Resource, Sex, TimeElement,
         VariantInterpretation, VitalStatus,
     };
@@ -597,7 +597,7 @@ mod tests {
         }
     }
 
-    #[fixture]
+/*    #[fixture]
     fn pf_seizure_cluster() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -606,7 +606,7 @@ mod tests {
             }),
             ..Default::default()
         }
-    }
+    }*/
 
     #[fixture]
     fn pf_spasmus_nutans_with_onset() -> PhenotypicFeature {
@@ -616,7 +616,7 @@ mod tests {
                 label: "Spasmus nutans".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Element::Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P12Y5M028D".to_string(),
                 })),
             }),
@@ -624,7 +624,7 @@ mod tests {
         }
     }
 
-    #[fixture]
+/*    #[fixture]
     fn pf_seizure_cluster_with_onset() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
@@ -632,41 +632,13 @@ mod tests {
                 label: "Seizure cluster".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Element::Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P48Y4M21D".to_string(),
                 })),
             }),
             ..Default::default()
         }
-    }
-
-    #[fixture]
-    fn df_multi_patient(
-        pf_seizure_cluster_with_onset: PhenotypicFeature,
-        pf_fractured_nose: PhenotypicFeature,
-        pf_spasmus_nutans_with_onset: PhenotypicFeature,
-    ) -> DataFrame {
-        let seizure_onset = match pf_seizure_cluster_with_onset
-            .onset
-            .unwrap()
-            .element
-            .unwrap()
-        {
-            Element::Age(age) => age,
-            _ => panic!("Should not happen"),
-        };
-
-    #[fixture]
-    fn pf_runny_nose_excluded() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0031417".to_string(),
-                label: "Rhinorrhea".to_string(),
-            }),
-            excluded: true,
-            ..Default::default()
-        }
-    }
+    }*/
 
     #[fixture]
     fn platelet_defect_disease() -> Disease {
@@ -676,7 +648,7 @@ mod tests {
                 label: "platelet signal processing defect".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P45Y10M05D".to_string(),
                 })),
             }),
@@ -703,7 +675,7 @@ mod tests {
                 label: "spondylocostal dysostosis".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P10Y4M21D".to_string(),
                 })),
             }),
@@ -1093,7 +1065,7 @@ mod tests {
             .element
             .unwrap()
         {
-            Element::Age(a) => a,
+            Element::Age(age) => age,
             _ => {
                 panic!("Should have been there")
             }
@@ -1171,15 +1143,6 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let runny_nose_onset_col = Column::new(
-            "runny_nose_onset".into(),
-            [
-                AnyValue::String("1965-02-05"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
         let disease_col = Column::new(
             "diseases".into(),
             [
@@ -1235,7 +1198,6 @@ mod tests {
             pf_col,
             onset_col,
             bronchocentric_col,
-            runny_nose_onset_col,
             disease_col,
             disease_onset_col,
             gene_col,
@@ -1671,7 +1633,7 @@ mod tests {
                 label: "platelet signal processing defect".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Element::Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P45Y10M05D".to_string(),
                 })),
             }),
@@ -1692,7 +1654,7 @@ mod tests {
                 label: "spondylocostal dysostosis".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Element::Age(age_struct {
+                element: Some(Element::Age(Age {
                     iso8601duration: "P10Y4M21D".to_string(),
                 })),
             }),

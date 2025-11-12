@@ -10,6 +10,7 @@ TARGET_TERMS=(
 'HP:0012773|BOT' #|Reduced upper to lower segment ratio
 'HP:0041249|BOT' #|Fractured nose
 'HP:0010533|BOT' #|Spasmus nutans
+'HP:0002090|BOT' #|Pneumonia
 'HP:0003674|TOP' #|onset
 )
 
