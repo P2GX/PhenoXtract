@@ -287,7 +287,12 @@ impl PhenopacketBuilder {
                 genomic_interpretations.push(gi);
             }
 
-            if !gene_variant_data.get_vars().is_empty() {
+            if matches!(
+                gene_variant_data,
+                PathogenicGeneVariantData::HeterozygousVariant { .. }
+                    | PathogenicGeneVariantData::HomozygousVariant { .. }
+                    | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { .. }
+            ) {
                 for var in gene_variant_data.get_vars() {
                     let gi = self.get_genomic_interpretation_from_data(
                         phenopacket_id,
