@@ -5,6 +5,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
+
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
@@ -112,7 +113,6 @@ impl TryFrom<PipelineConfig> for Pipeline {
         ]);
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
-
         let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, HGNCClient::default());
 
         let strategies: Vec<Box<dyn Strategy>> = config

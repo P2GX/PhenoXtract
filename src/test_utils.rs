@@ -15,9 +15,10 @@ use prost_types::Timestamp;
 use ratelimit::Ratelimiter;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tempfile::TempDir;
 
 pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> =
     Lazy::new(|| Arc::new(Mutex::new(CachedOntologyFactory::default())));
