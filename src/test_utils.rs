@@ -221,6 +221,7 @@ fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
 }
 
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
+    println!("Building HGNC test client at {}", temp_dir.display());
     let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
         .max_tokens(10)
         .build()

@@ -267,7 +267,7 @@ impl Default for HGNCClient {
             cache_dir,
             "https://rest.genenames.org/".to_string(),
         )
-            .expect("Failure when creating HGNC client.")
+        .expect("Failure when creating HGNC client.")
     }
 }
 
