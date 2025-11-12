@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-sudo chmod u+x scripts/robot/robot.sh
-
 # Download latest release asset from GitHub
 
 # --- CONFIGURATION ---
