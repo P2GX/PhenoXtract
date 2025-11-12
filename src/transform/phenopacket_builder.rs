@@ -771,12 +771,12 @@ mod tests {
 
     #[fixture]
     fn valid_phenotype() -> String {
-        "HP:0001166".to_string()
+        "HP:0041249".to_string()
     }
 
     #[fixture]
     fn another_phenotype() -> String {
-        "Microcephaly".to_string()
+        "Seizure cluster".to_string()
     }
 
     #[fixture]
@@ -884,8 +884,8 @@ mod tests {
         assert!(feature.r#type.is_some());
 
         let ontology_class = feature.r#type.as_ref().unwrap();
-        assert_eq!(ontology_class.id, "HP:0001166");
-        assert_eq!(ontology_class.label, "Arachnodactyly");
+        assert_eq!(ontology_class.id, valid_phenotype);
+        assert_eq!(ontology_class.label, "Fractured nose");
 
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
@@ -1606,20 +1606,20 @@ mod tests {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
         // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
-        let result = builder.query_hpo_identifiers("Seizure").unwrap();
+        let result = builder.query_hpo_identifiers("Fractured nose").unwrap();
 
-        assert_eq!(result.label, "Seizure");
-        assert_eq!(result.id, "HP:0001250");
+        assert_eq!(result.label, "Fractured nose");
+        assert_eq!(result.id, "HP:0041249");
     }
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_id(temp_dir: TempDir) {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let result = builder.query_hpo_identifiers("HP:0001250").unwrap();
+        let result = builder.query_hpo_identifiers("HP:0041249").unwrap();
 
-        assert_eq!(result.label, "Seizure");
-        assert_eq!(result.id, "HP:0001250");
+        assert_eq!(result.label, "Fractured nose");
+        assert_eq!(result.id, "HP:0041249");
     }
 
     #[rstest]

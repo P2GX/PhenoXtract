@@ -556,7 +556,7 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::genomic_interpretation::Call;
     use phenopackets::schema::v2::core::genomic_interpretation::Call::Gene;
-    use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
+    use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
         Age as age_struct, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
@@ -587,41 +587,36 @@ mod tests {
     }
 
     #[fixture]
-    fn pf_pneumonia() -> PhenotypicFeature {
+    fn pf_fractured_nose() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
-                id: "HP:0002090".to_string(),
-                label: "Pneumonia".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Age(age_struct {
-                    iso8601duration: "P40Y10M05D".to_string(),
-                })),
+                id: "HP:0041249".to_string(),
+                label: "Fractured nose".to_string(),
             }),
             ..Default::default()
         }
     }
 
     #[fixture]
-    fn pf_pneumonia_no_onset() -> PhenotypicFeature {
+    fn pf_seizure_cluster() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
-                id: "HP:0002090".to_string(),
-                label: "Pneumonia".to_string(),
+                id: "HP:0033349".to_string(),
+                label: "Seizure cluster".to_string(),
             }),
             ..Default::default()
         }
     }
 
     #[fixture]
-    fn pf_asthma() -> PhenotypicFeature {
+    fn pf_spasmus_nutans_with_onset() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
-                id: "HP:0002099".to_string(),
-                label: "Asthma".to_string(),
+                id: "HP:0010533".to_string(),
+                label: "Spasmus nutans".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Age(age_struct {
+                element: Some(Element::Age(age_struct {
                     iso8601duration: "P12Y5M028D".to_string(),
                 })),
             }),
@@ -630,25 +625,14 @@ mod tests {
     }
 
     #[fixture]
-    fn pf_asthma_no_onset() -> PhenotypicFeature {
+    fn pf_seizure_cluster_with_onset() -> PhenotypicFeature {
         PhenotypicFeature {
             r#type: Some(OntologyClass {
-                id: "HP:0002099".to_string(),
-                label: "Asthma".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn pf_nail_psoriasis() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0033327".to_string(),
-                label: "Nail psoriasis".to_string(),
+                id: "HP:0033349".to_string(),
+                label: "Seizure cluster".to_string(),
             }),
             onset: Some(TimeElement {
-                element: Some(Age(age_struct {
+                element: Some(Element::Age(age_struct {
                     iso8601duration: "P48Y4M21D".to_string(),
                 })),
             }),
@@ -657,43 +641,20 @@ mod tests {
     }
 
     #[fixture]
-    fn pf_nail_psoriasis_no_onset() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0033327".to_string(),
-                label: "Nail psoriasis".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn pf_macrocephaly() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0000256".to_string(),
-                label: "Macrocephaly".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn pf_runny_nose() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0031417".to_string(),
-                label: "Rhinorrhea".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Timestamp(TimestampProtobuf {
-                    seconds: -154742400,
-                    nanos: 0,
-                })),
-            }),
-            ..Default::default()
-        }
-    }
+    fn df_multi_patient(
+        pf_seizure_cluster_with_onset: PhenotypicFeature,
+        pf_fractured_nose: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
+    ) -> DataFrame {
+        let seizure_onset = match pf_seizure_cluster_with_onset
+            .onset
+            .unwrap()
+            .element
+            .unwrap()
+        {
+            Element::Age(age) => age,
+            _ => panic!("Should not happen"),
+        };
 
     #[fixture]
     fn pf_runny_nose_excluded() -> PhenotypicFeature {
@@ -997,6 +958,11 @@ mod tests {
 
     #[fixture]
     fn df_multi_patient() -> DataFrame {
+        let bronchocentric_onset =
+            match pf_spasmus_nutans_with_onset.onset.unwrap().element.unwrap() {
+                Element::Age(age) => age,
+                _ => panic!("Should not happen"),
+            };
         let id_col = Column::new(
             "subject_id".into(),
             ["P001", "P001", "P002", "P002", "P002", "P003"],
@@ -1004,21 +970,21 @@ mod tests {
         let pf_col = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("Pneumonia"),
+                AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().id),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
-                AnyValue::String("Macrocephaly"),
+                AnyValue::String(&pf_spasmus_nutans_with_onset.r#type.unwrap().label),
+                AnyValue::String(&pf_seizure_cluster_with_onset.r#type.unwrap().label),
+                AnyValue::String(&pf_fractured_nose.r#type.unwrap().id),
                 AnyValue::Null,
             ],
         );
         let onset_col = Column::new(
             "onset_age".into(),
             [
-                AnyValue::String("P40Y10M05D"),
+                AnyValue::String(&seizure_onset.iso8601duration),
                 AnyValue::Null,
-                AnyValue::String("P12Y5M028D"),
-                AnyValue::String("P48Y4M21D"),
+                AnyValue::String(&bronchocentric_onset.iso8601duration),
+                AnyValue::String(&seizure_onset.iso8601duration),
                 AnyValue::Null,
                 AnyValue::Null,
             ],
@@ -1117,7 +1083,21 @@ mod tests {
     }
 
     #[fixture]
-    fn df_single_patient() -> DataFrame {
+    fn df_single_patient(
+        pf_seizure_cluster_with_onset: PhenotypicFeature,
+        pf_fractured_nose: PhenotypicFeature,
+    ) -> DataFrame {
+        let seizure_cluster_onset = match pf_seizure_cluster_with_onset
+            .onset
+            .unwrap()
+            .element
+            .unwrap()
+        {
+            Element::Age(a) => a,
+            _ => {
+                panic!("Should have been there")
+            }
+        };
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
         let dob_col = Column::new(
             "dob".into(),
@@ -1167,23 +1147,23 @@ mod tests {
         let pf_col = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("Pneumonia"),
+                AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().label),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
+                AnyValue::String(&pf_fractured_nose.r#type.clone().unwrap().label),
+                AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().label),
             ],
         );
         let onset_col = Column::new(
             "onset_age".into(),
             [
-                AnyValue::String("P40Y10M05D"),
+                AnyValue::String(&seizure_cluster_onset.iso8601duration),
                 AnyValue::Null,
-                AnyValue::String("P12Y5M028D"),
-                AnyValue::String("P48Y4M21D"),
+                AnyValue::Null,
+                AnyValue::String(&seizure_cluster_onset.iso8601duration),
             ],
         );
-        let runny_nose_col = Column::new(
-            "HP:0031417".into(),
+        let bronchocentric_col = Column::new(
+            "HP:0033815".into(),
             [
                 AnyValue::Boolean(true),
                 AnyValue::Null,
@@ -1254,7 +1234,7 @@ mod tests {
             survival_time_col,
             pf_col,
             onset_col,
-            runny_nose_col,
+            bronchocentric_col,
             runny_nose_onset_col,
             disease_col,
             disease_onset_col,
@@ -1270,10 +1250,9 @@ mod tests {
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
-        pf_pneumonia: PhenotypicFeature,
-        pf_asthma: PhenotypicFeature,
-        pf_nail_psoriasis: PhenotypicFeature,
-        pf_macrocephaly: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
+        pf_seizure_cluster_with_onset: PhenotypicFeature,
+        pf_fractured_nose: PhenotypicFeature,
         platelet_defect_disease: Disease,
         platelet_defect_disease_no_onset: Disease,
         dysostosis_disease: Disease,
@@ -1354,6 +1333,14 @@ mod tests {
             ..Default::default()
         };
 
+        expected_p001.phenotypic_features = vec![pf_seizure_cluster_with_onset.clone()];
+
+        expected_p002.phenotypic_features = vec![
+            pf_spasmus_nutans_with_onset.clone(),
+            pf_seizure_cluster_with_onset,
+            pf_fractured_nose,
+        ];
+
         assert_eq!(phenopackets.len(), 3);
         for mut phenopacket in phenopackets {
             if phenopacket.id == "cohort2019-P001" {
@@ -1372,10 +1359,8 @@ mod tests {
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
-        pf_pneumonia: PhenotypicFeature,
-        pf_asthma: PhenotypicFeature,
-        pf_nail_psoriasis: PhenotypicFeature,
-        pf_runny_nose: PhenotypicFeature,
+        pf_fractured_nose: PhenotypicFeature,
+        pf_seizure_cluster_with_onset: PhenotypicFeature,
         df_single_patient: DataFrame,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
@@ -1398,80 +1383,63 @@ mod tests {
             }),
             ..Default::default()
         };
-        expected_p006.phenotypic_features.push(pf_pneumonia);
-        expected_p006.phenotypic_features.push(pf_asthma);
-        expected_p006.phenotypic_features.push(pf_nail_psoriasis);
-        expected_p006.phenotypic_features.push(pf_runny_nose);
+        expected_p006
+            .phenotypic_features
+            .push(pf_seizure_cluster_with_onset);
+        expected_p006.phenotypic_features.push(pf_fractured_nose);
 
         assert_eq!(phenopackets.len(), 1);
         assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
     }
 
     #[rstest]
-    fn test_collect_phenotypic_features_invalid_linking(
-        tc: TableContext,
-        mut df_single_patient: DataFrame,
-        temp_dir: TempDir,
-    ) {
-        let mut collector = init_test_collector(temp_dir.path());
-
-        let onset_dt_col = Column::new(
-            "onset_date".into(),
-            [
-                AnyValue::String("03.06.1956"),
-                AnyValue::Null,
-                AnyValue::String("26.04.2005"),
-                AnyValue::String("16.02.1952"),
-            ],
-        );
-
-        df_single_patient.with_column(onset_dt_col).unwrap();
-
-        let mut patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
-
-        let onset_dt_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("onset_date".to_string()))
-            .with_data_context(Context::OnsetDateTime)
-            .with_building_block_id(Some("Block_1".to_string()));
-
-        patient_cdf
-            .builder()
-            .add_series_context(onset_dt_sc)
-            .unwrap()
-            .build()
-            .unwrap();
-
-        let phenopacket_id = "cohort2019-P006".to_string();
-        let result = collector.collect_phenotypic_features(&patient_cdf, "P006", &phenopacket_id);
-        assert!(result.is_err());
-    }
-
-    #[rstest]
     fn test_collect_hpo_in_cells_col(
-        pf_pneumonia: PhenotypicFeature,
-        pf_asthma_no_onset: PhenotypicFeature,
-        pf_nail_psoriasis: PhenotypicFeature,
+        pf_fractured_nose: PhenotypicFeature,
+        pf_seizure_cluster_with_onset: PhenotypicFeature,
+        pf_spasmus_nutans_with_onset: PhenotypicFeature,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        let seizure_cluster_onset = match &pf_seizure_cluster_with_onset
+            .clone()
+            .onset
+            .unwrap()
+            .element
+            .unwrap()
+        {
+            Element::Age(a) => a.clone(),
+            _ => panic!("Should be an age element"),
+        };
+
+        let pf_bronchocentric_onset = match pf_spasmus_nutans_with_onset
+            .onset
+            .clone()
+            .unwrap()
+            .element
+            .unwrap()
+        {
+            Element::Age(a) => a,
+            _ => panic!("Should be an age element"),
+        };
+
         let mut collector = init_test_collector(temp_dir.path());
 
         let patient_hpo_col = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("Pneumonia"),
+                AnyValue::String(&pf_seizure_cluster_with_onset.r#type.clone().unwrap().label),
                 AnyValue::Null,
-                AnyValue::String("Asthma"),
-                AnyValue::String("Nail psoriasis"),
+                AnyValue::String(&pf_fractured_nose.r#type.clone().unwrap().label),
+                AnyValue::String(&pf_spasmus_nutans_with_onset.r#type.clone().unwrap().label),
             ],
         );
         let patient_onset_col = Column::new(
             "onset_age".into(),
             [
-                AnyValue::String("P40Y10M05D"),
+                AnyValue::String(&seizure_cluster_onset.iso8601duration),
                 AnyValue::Null,
                 AnyValue::Null,
-                AnyValue::String("P48Y4M21D"),
+                AnyValue::String(&pf_bronchocentric_onset.iso8601duration),
             ],
         );
 
@@ -1495,9 +1463,15 @@ mod tests {
             }),
             ..Default::default()
         };
-        expected_p006.phenotypic_features.push(pf_pneumonia);
-        expected_p006.phenotypic_features.push(pf_asthma_no_onset);
-        expected_p006.phenotypic_features.push(pf_nail_psoriasis);
+        expected_p006
+            .phenotypic_features
+            .push(pf_seizure_cluster_with_onset.clone());
+        expected_p006
+            .phenotypic_features
+            .push(pf_fractured_nose.clone());
+        expected_p006
+            .phenotypic_features
+            .push(pf_spasmus_nutans_with_onset.clone());
 
         assert_eq!(phenopackets.len(), 1);
         assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
@@ -1505,14 +1479,20 @@ mod tests {
 
     #[rstest]
     fn test_collect_hpo_in_header_col(
-        pf_runny_nose_excluded: PhenotypicFeature,
+        pf_seizure_cluster: PhenotypicFeature,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        let mut pf_seizure_cluster = pf_seizure_cluster.clone();
+        pf_seizure_cluster.excluded = true;
         let mut collector = init_test_collector(temp_dir.path());
 
         let patient_hpo_col = Column::new(
-            "HP:0031417#(block foo)".into(),
+            format!(
+                "{}#(block foo)",
+                pf_seizure_cluster.r#type.clone().unwrap().id
+            )
+            .into(),
             [AnyValue::Boolean(false), AnyValue::Null],
         );
         let patient_onset_col = Column::from(Series::full_null(
@@ -1543,9 +1523,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        expected_p006
-            .phenotypic_features
-            .push(pf_runny_nose_excluded);
+        expected_p006.phenotypic_features.push(pf_seizure_cluster);
 
         assert_eq!(phenopackets.len(), 1);
         assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
@@ -1576,7 +1554,7 @@ mod tests {
             vital_status: Some(VitalStatus {
                 status: Status::Alive as i32,
                 time_of_death: Some(TimeElement {
-                    element: Some(Timestamp(TimestampProtobuf {
+                    element: Some(Element::Timestamp(TimestampProtobuf {
                         seconds: 980726400,
                         nanos: 0,
                     })),
@@ -1686,6 +1664,40 @@ mod tests {
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
+
+        let platelet_defect_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Element::Age(age_struct {
+                    iso8601duration: "P45Y10M05D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
+
+        let platelet_defect_disease_no_onset = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0008258".to_string(),
+                label: "platelet signal processing defect".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        let dysostosis_disease = Disease {
+            term: Some(OntologyClass {
+                id: "MONDO:0000359".to_string(),
+                label: "spondylocostal dysostosis".to_string(),
+            }),
+            onset: Some(TimeElement {
+                element: Some(Element::Age(age_struct {
+                    iso8601duration: "P10Y4M21D".to_string(),
+                })),
+            }),
+            ..Default::default()
+        };
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),

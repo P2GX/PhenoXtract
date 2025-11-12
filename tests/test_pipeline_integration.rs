@@ -20,6 +20,7 @@ use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -321,12 +322,15 @@ fn test_pipeline_integration(
     }
 
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
-        let data = fs::read_to_string(extracted_pp_file.unwrap().path()).unwrap();
-        let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-        let mut expected_pp = expected_phenopackets
-            .get(&extracted_pp.id.clone())
-            .unwrap()
-            .clone();
+        if let Ok(extracted_pp_file) = extracted_pp_file
+            && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
+        {
+            let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
+            let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
+            let mut extracted_pp_id = expected_phenopackets
+                .get(&extracted_pp.id.clone())
+                .unwrap()
+                .clone();
 
         if let Some(meta) = &mut extracted_pp.meta_data {
             meta.created = None;
