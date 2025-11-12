@@ -31,13 +31,10 @@ java -jar ./scripts/robot/robot.jar merge ${INPUTS} --output tests/assets/ontolo
 rm *.obo
 
 
-ontology=$(cat tests/assets/ontologies/2025-11-04_mondo.json)
-
 version_url="http://purl.obolibrary.org/obo/mondo/releases/2025-11-04/mondo.json"
 
-ontology=$(jq --arg version "$version_url" '
+jq --arg version "$version_url" '
   .graphs[0].meta.version = $version
-' <<<"$ontology")
+' tests/assets/ontologies/2025-11-04_mondo.json > tmp.$$.json && mv tmp.$$.json tests/assets/ontologies/2025-11-04_mondo.json
 
 
-echo "$ontology" > tests/assets/ontologies/2025-11-04_mondo.json
