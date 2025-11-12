@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use crate::ontology::error::ClientError;
-use directories::ProjectDirs;
+use crate::ontology::error::{ClientError, RegistryError};
+use crate::ontology::utils::get_cache_dir;
 use log::{debug, info};
 use ratelimit::Ratelimiter;
 use redb::{
@@ -210,10 +210,10 @@ impl HGNCClient {
         Ok(())
     }
     pub fn default_cache_dir() -> Option<PathBuf> {
-        let pkg_name = env!("CARGO_PKG_NAME");
-
-        ProjectDirs::from("", "", pkg_name)
-            .map(|project_dirs| project_dirs.cache_dir().join("hgnc_cache"))
+        match get_cache_dir() {
+            Ok(cache_dir) => Some(cache_dir.join("hgnc_cache")),
+            Err(_) => None,
+        }
     }
 
     pub fn fetch_gene_data(&self, symbol: &str) -> Result<GeneResponse, ClientError> {

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
+
 use crate::ontology::traits::OntologyRegistry;
+use std::fs;
 
 use crate::ontology::error::RegistryError;
 
@@ -7,7 +9,6 @@ use crate::ontology::BioRegistryClient;
 use crate::ontology::obolibrary_client::ObolibraryClient;
 
 use log::{debug, info};
-use std::env;
 
 use std::fs::{File, remove_file};
 use std::io::copy;
@@ -57,15 +58,15 @@ impl ObolibraryOntologyRegistry {
 
     #[cfg(not(test))]
     pub fn default_registry_path(ontology_prefix: &str) -> Result<PathBuf, RegistryError> {
-        use directories::ProjectDirs;
-        use std::env::home_dir;
-        let pkg_name = env!("CARGO_PKG_NAME");
-        ProjectDirs::from("", "", pkg_name)
-            .map(|proj| proj.cache_dir().join(ontology_prefix))
-            .or_else(|| {
-                home_dir().map(|dir| dir.join(format!(".{pkg_name}")).join(ontology_prefix))
-            })
-            .ok_or_else(|| RegistryError::CantEstablishRegistryDir)
+        use crate::ontology::utils::get_cache_dir;
+
+        let cache_dir = get_cache_dir()?;
+        let registry_dir = cache_dir.join(ontology_prefix);
+
+        if !registry_dir.exists() {
+            fs::create_dir_all(&registry_dir)?;
+        }
+        Ok(registry_dir)
     }
 
     #[cfg(test)]
