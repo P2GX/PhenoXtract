@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::ontology::traits::OntologyRegistry;
-use std::fs;
 
 use crate::ontology::error::RegistryError;
 
@@ -59,6 +58,7 @@ impl ObolibraryOntologyRegistry {
     #[cfg(not(test))]
     pub fn default_registry_path(ontology_prefix: &str) -> Result<PathBuf, RegistryError> {
         use crate::ontology::utils::get_cache_dir;
+        use std::fs;
 
         let cache_dir = get_cache_dir()?;
         let registry_dir = cache_dir.join(ontology_prefix);
