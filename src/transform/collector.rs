@@ -2,6 +2,7 @@ use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
+use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
@@ -288,6 +289,7 @@ impl Collector {
     /// as interpretations.
     fn collect_interpretations(
         &mut self,
+        patient_id: &str,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
@@ -299,6 +301,7 @@ impl Collector {
 
         for disease_sc in disease_in_cells_scs {
             let sc_id = disease_sc.get_identifier();
+            let bb_id = disease_sc.get_building_block_id();
 
             let stringified_disease_cols = patient_cdf
                 .get_columns(sc_id)
@@ -306,12 +309,40 @@ impl Collector {
                 .map(|col| col.str())
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
+            let stringified_linked_hgnc_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::HgncSymbolOrId,
+            )?;
+            let stringified_linked_hgvs_cols = Self::get_stringified_cols_with_data_context_in_bb(
+                patient_cdf,
+                bb_id,
+                &Context::Hgvs,
+            )?;
+
             for row_idx in 0..patient_cdf.data().height() {
+                let genes = stringified_linked_hgnc_cols
+                    .iter()
+                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+                let variants = stringified_linked_hgvs_cols
+                    .iter()
+                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                    .collect::<Vec<&str>>();
+
+                let gene_variant_data =
+                    PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
+                        .map_err(CollectorError::GeneVariantData)?;
+
                 for stringified_disease_col in stringified_disease_cols.iter() {
                     let disease = stringified_disease_col.get(row_idx);
                     if let Some(disease) = disease {
-                        self.phenopacket_builder
-                            .upsert_interpretation(phenopacket_id, disease)?;
+                        self.phenopacket_builder.upsert_interpretation(
+                            patient_id,
+                            phenopacket_id,
+                            disease,
+                            &gene_variant_data,
+                        )?;
                     }
                 }
             }
@@ -432,6 +463,30 @@ impl Collector {
         }
     }
 
+    /// Extracts the columns from the cdf which have
+    /// Building Block ID = bb_id
+    /// data_context = context
+    /// header_context = None
+    /// and converts them to StringChunked
+    fn get_stringified_cols_with_data_context_in_bb<'a>(
+        cdf: &'a ContextualizedDataFrame,
+        bb_id: Option<&'a str>,
+        context: &'a Context,
+    ) -> Result<Vec<&'a StringChunked>, CollectorError> {
+        let cols = bb_id.map_or(vec![], |bb_id| {
+            cdf.filter_columns()
+                .where_building_block(Filter::Is(bb_id))
+                .where_header_context(Filter::IsNone)
+                .where_data_context(Filter::Is(context))
+                .collect()
+        });
+
+        Ok(cols
+            .iter()
+            .map(|col| col.str())
+            .collect::<Result<Vec<&'a StringChunked>, PolarsError>>()?)
+    }
+
     /// Given a CDF, building block ID and data contexts
     /// this function will find all columns
     /// - within that building block
@@ -491,9 +546,12 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+    use std::path::Path;
+
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::interpretation::ProgressStatus;
     use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{
@@ -513,8 +571,8 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    fn init_test_collector(tmp_dir: TempDir) -> Collector {
-        let phenopacket_builder = build_test_phenopacket_builder(tmp_dir.path());
+    fn init_test_collector(temp_dir: &Path) -> Collector {
+        let phenopacket_builder = build_test_phenopacket_builder(temp_dir);
 
         Collector {
             phenopacket_builder,
@@ -934,7 +992,7 @@ mod tests {
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
 
@@ -1018,7 +1076,7 @@ mod tests {
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1051,7 +1109,7 @@ mod tests {
         mut df_single_patient: DataFrame,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let onset_dt_col = Column::new(
             "onset_date".into(),
@@ -1092,7 +1150,7 @@ mod tests {
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_hpo_col = Column::new(
             "phenotypic_features".into(),
@@ -1147,7 +1205,7 @@ mod tests {
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_hpo_col = Column::new(
             "HP:0031417#(block foo)".into(),
@@ -1191,7 +1249,7 @@ mod tests {
 
     #[rstest]
     fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame, temp_dir: TempDir) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
@@ -1243,21 +1301,21 @@ mod tests {
         mondo_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 
         let phenopacket_id = "cohort2019-P006".to_string();
 
         collector
-            .collect_interpretations(&patient_cdf, &phenopacket_id)
+            .collect_interpretations("P006", &patient_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
         let platelet_defect_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0008258".to_string(),
-            progress_status: 4,
+            progress_status: ProgressStatus::UnknownProgress.into(),
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0008258".to_string(),
@@ -1270,7 +1328,7 @@ mod tests {
 
         let dysostosis_interpretation = Interpretation {
             id: "cohort2019-P006-MONDO:0000359".to_string(),
-            progress_status: 4,
+            progress_status: ProgressStatus::UnknownProgress.into(), //UNKNOWN_PROGRESS
             diagnosis: Some(Diagnosis {
                 disease: Some(OntologyClass {
                     id: "MONDO:0000359".to_string(),
@@ -1302,7 +1360,7 @@ mod tests {
         mondo_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut collector = init_test_collector(temp_dir);
+        let mut collector = init_test_collector(temp_dir.path());
 
         let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
 

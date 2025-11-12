@@ -3,19 +3,27 @@ use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
-use crate::ontology::{HGNCClient, OntologyRef};
+use crate::ontology::{DatabaseRef, HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
-use crate::transform::variant_syntax_parser::VariantParser;
+use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
+use ga4ghphetools::dto::hgvs_variant::HgvsVariant;
+use ga4ghphetools::variant::validate_one_hgvs_variant;
 use log::warn;
+use phenopackets::ga4gh::vrsatile::v1::{
+    Expression, GeneDescriptor, MoleculeContext, VariationDescriptor, VcfRecord,
+};
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Disease, Individual, Interpretation, OntologyClass,
-    PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    AcmgPathogenicityClassification, Age as IndividualAge, Diagnosis, Disease,
+    GenomicInterpretation, Individual, Interpretation, OntologyClass, PhenotypicFeature, Sex,
+    TherapeuticActionability, TimeElement, VariantInterpretation, VitalStatus,
 };
 use prost_types::Timestamp as TimestampProtobuf;
 use regex::Regex;
@@ -29,7 +37,6 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: HGNCClient,
     resource_resolver: CachedResourceResolver,
-    variant_parser: VariantParser,
 }
 
 impl PhenopacketBuilder {
@@ -37,16 +44,15 @@ impl PhenopacketBuilder {
         ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
         hgnc_client: HGNCClient,
     ) -> PhenopacketBuilder {
-        Self {
+        PhenopacketBuilder {
             subject_to_phenopacket: Default::default(),
             ontology_bidicts,
             hgnc_client,
             resource_resolver: Default::default(),
-            variant_parser: VariantParser,
         }
     }
 
-    pub fn build(&self) -> Vec<Phenopacket> {
+    pub(crate) fn build(&self) -> Vec<Phenopacket> {
         let mut phenopackets: Vec<Phenopacket> =
             self.subject_to_phenopacket.values().cloned().collect();
         let now = Utc::now().to_string();
@@ -62,11 +68,11 @@ impl PhenopacketBuilder {
         phenopackets
     }
     #[allow(dead_code)]
-    pub fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
+    pub(crate) fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
         self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
-    pub fn upsert_individual(
+    pub(crate) fn upsert_individual(
         &mut self,
         phenopacket_id: &str,
         individual_id: &str,
@@ -114,7 +120,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn upsert_vital_status(
+    pub(crate) fn upsert_vital_status(
         &mut self,
         phenopacket_id: &str,
         status: &str,
@@ -192,11 +198,11 @@ impl PhenopacketBuilder {
     ///     None, None, None, None, None, None, None
     /// ) {
     ///     Ok(()) => println!("Successfully upserted the phenotypic feature."),
-    ///     Err(e) => eprintln!("Error upserting feature: {}", e),
+    ///     Err(e) => eprintln!("Error upserting feature: {}", e)
     /// }
     /// ```
     #[allow(dead_code)]
-    pub fn upsert_phenotypic_feature(
+    pub(crate) fn upsert_phenotypic_feature(
         &mut self,
         phenopacket_id: &str,
         phenotype: &str,
@@ -250,32 +256,73 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    pub fn upsert_interpretation(
+    pub(crate) fn upsert_interpretation(
         &mut self,
+        patient_id: &str,
         phenopacket_id: &str,
         disease: &str,
+        gene_variant_data: &PathogenicGeneVariantData,
     ) -> Result<(), PhenopacketBuilderError> {
+        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+
         let (term, res_ref) = self.query_disease_identifiers(disease)?;
+        self.ensure_resource(phenopacket_id, &res_ref);
+
+        if let Some(gene) = gene_variant_data.get_gene() {
+            let (gene_symbol, hgnc_id) = self.get_gene_data_from_hgnc(phenopacket_id, gene)?;
+
+            if matches!(
+                gene_variant_data,
+                &PathogenicGeneVariantData::CausativeGene(..)
+            ) {
+                let gi = GenomicInterpretation {
+                    subject_or_biosample_id: patient_id.to_string(),
+                    call: Some(Call::Gene(GeneDescriptor {
+                        value_id: hgnc_id.clone(),
+                        symbol: gene_symbol.clone(),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                };
+                genomic_interpretations.push(gi);
+            }
+
+            if matches!(
+                gene_variant_data,
+                PathogenicGeneVariantData::HeterozygousVariant { .. }
+                    | PathogenicGeneVariantData::HomozygousVariant { .. }
+                    | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { .. }
+            ) {
+                for var in gene_variant_data.get_vars() {
+                    let gi = self.get_genomic_interpretation_from_data(
+                        phenopacket_id,
+                        patient_id,
+                        var,
+                        gene_symbol.as_str(),
+                        hgnc_id.as_str(),
+                        gene_variant_data.get_allelic_count(),
+                    )?;
+                    genomic_interpretations.push(gi);
+                }
+            }
+        }
 
         let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
 
         let interpretation =
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
 
-        interpretation
-            .diagnosis
-            .get_or_insert_with(|| Diagnosis {
-                disease: None,
-                genomic_interpretations: vec![],
-            })
-            .disease = Some(term);
-        interpretation.progress_status = 4; // UNSOLVED
-        self.ensure_resource(phenopacket_id, &res_ref);
+        interpretation.progress_status = ProgressStatus::UnknownProgress.into();
+
+        interpretation.diagnosis = Some(Diagnosis {
+            disease: Some(term),
+            genomic_interpretations,
+        });
 
         Ok(())
     }
 
-    pub fn insert_disease(
+    pub(crate) fn insert_disease(
         &mut self,
         phenopacket_id: &str,
         disease: &str,
@@ -378,7 +425,7 @@ impl PhenopacketBuilder {
             None => {
                 pp.interpretations.push(Interpretation {
                     id: interpretation_id.to_string(),
-                    progress_status: 1, // IN_PROGRESS
+                    progress_status: ProgressStatus::InProgress.into(),
                     ..Default::default()
                 });
                 pp.interpretations.last_mut().unwrap()
@@ -386,7 +433,7 @@ impl PhenopacketBuilder {
         }
     }
 
-    pub fn query_disease_identifiers(
+    pub(crate) fn query_disease_identifiers(
         &self,
         query: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
@@ -530,6 +577,158 @@ impl PhenopacketBuilder {
                 .push(resource);
         }
     }
+
+    fn get_gene_data_from_hgnc(
+        &mut self,
+        phenopacket_id: &str,
+        gene: &str,
+    ) -> Result<(String, String), PhenopacketBuilderError> {
+        let hgnc_response = self.hgnc_client.fetch_gene_data(gene)?;
+        let returned_symbol_id_pairs = hgnc_response.symbol_id_pair();
+        let (symbol_ref, id_ref) = returned_symbol_id_pairs.first().ok_or_else(|| {
+            PhenopacketBuilderError::HgncGeneInfoRequest {
+                gene: gene.to_string(),
+            }
+        })?;
+
+        self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
+
+        Ok((symbol_ref.to_string(), id_ref.to_string()))
+    }
+
+    //Mostly taken from ga4ghphetools
+    fn get_hgvs_variant_interpretation(
+        &mut self,
+        phenopacket_id: &str,
+        hgvs: &HgvsVariant,
+        allele_count: usize,
+    ) -> VariantInterpretation {
+        let gene_ctxt = GeneDescriptor {
+            value_id: hgvs.hgnc_id().to_string(),
+            symbol: hgvs.symbol().to_string(),
+            description: String::default(),
+            alternate_ids: vec![],
+            alternate_symbols: vec![],
+            xrefs: vec![],
+        };
+        let vcf_record = VcfRecord {
+            genome_assembly: hgvs.assembly().to_string(),
+            chrom: hgvs.chr().to_string(),
+            pos: hgvs.position() as u64,
+            id: String::default(),
+            r#ref: hgvs.ref_allele().to_string(),
+            alt: hgvs.alt_allele().to_string(),
+            qual: String::default(),
+            filter: String::default(),
+            info: String::default(),
+        };
+
+        let hgvs_c = Expression {
+            syntax: "hgvs.c".to_string(),
+            value: format!("{}:{}", hgvs.transcript(), hgvs.hgvs()),
+            version: String::default(),
+        };
+        let mut expression_list = vec![hgvs_c];
+        let hgvs_g = Expression {
+            syntax: "hgvs.g".to_string(),
+            value: hgvs.g_hgvs().to_string(),
+            version: String::default(),
+        };
+        expression_list.push(hgvs_g);
+        if let Some(hgsvp) = hgvs.p_hgvs() {
+            let hgvs_p = Expression {
+                syntax: "hgvs.p".to_string(),
+                value: hgsvp,
+                version: String::default(),
+            };
+            expression_list.push(hgvs_p);
+        };
+        let allelic_state =
+            self.get_allele_term(phenopacket_id, allele_count, hgvs.is_x_chromosomal());
+        let vdesc = VariationDescriptor {
+            id: hgvs.variant_key().to_string(),
+            variation: None,
+            label: String::default(),
+            description: String::default(),
+            gene_context: Some(gene_ctxt),
+            expressions: expression_list,
+            vcf_record: Some(vcf_record),
+            xrefs: vec![],
+            alternate_labels: vec![],
+            extensions: vec![],
+            molecule_context: MoleculeContext::Genomic.into(),
+            structural_type: None,
+            vrs_ref_allele_seq: String::default(),
+            allelic_state: Some(allelic_state),
+        };
+        VariantInterpretation {
+            acmg_pathogenicity_classification: AcmgPathogenicityClassification::Pathogenic.into(),
+            therapeutic_actionability: TherapeuticActionability::UnknownActionability.into(),
+            variation_descriptor: Some(vdesc),
+        }
+    }
+
+    //Mostly taken from ga4ghphetools
+    fn get_allele_term(
+        &mut self,
+        phenopacket_id: &str,
+        allele_count: usize,
+        is_x: bool,
+    ) -> OntologyClass {
+        self.ensure_resource(
+            phenopacket_id,
+            &OntologyRef::geno_with_version("2025-07-25"),
+        );
+        if allele_count == 2 {
+            OntologyClass {
+                id: "GENO:0000136".to_string(),
+                label: "homozygous".to_string(),
+            }
+        } else if is_x {
+            OntologyClass {
+                id: "GENO:0000134".to_string(),
+                label: "hemizygous".to_string(),
+            }
+        } else {
+            OntologyClass {
+                id: "GENO:0000135".to_string(),
+                label: "heterozygous".to_string(),
+            }
+        }
+    }
+
+    fn get_genomic_interpretation_from_data(
+        &mut self,
+        phenopacket_id: &str,
+        patient_id: &str,
+        variant: &str,
+        gene_symbol: &str,
+        hgnc_id: &str,
+        allele_count: usize,
+    ) -> Result<GenomicInterpretation, PhenopacketBuilderError> {
+        let split_var = variant.split(':').collect::<Vec<&str>>();
+        let transcript = split_var.first();
+        let allele = split_var.get(1);
+
+        if let (Some(transcript), Some(allele)) = (transcript, allele) {
+            let hgvs_variant = validate_one_hgvs_variant(gene_symbol, hgnc_id, transcript, allele)
+                .map_err(PhenopacketBuilderError::VariantValidation)?;
+
+            let variant_interpretation =
+                self.get_hgvs_variant_interpretation(phenopacket_id, &hgvs_variant, allele_count);
+
+            Ok(GenomicInterpretation {
+                subject_or_biosample_id: patient_id.to_string(),
+                call: Some(Call::VariantInterpretation(variant_interpretation)),
+                ..Default::default()
+            })
+        } else {
+            Err(PhenopacketBuilderError::HgvsFormat {
+                patient: patient_id.to_string(),
+                variant: variant.to_string(),
+            })
+        }
+    }
 }
 
 impl PartialEq for PhenopacketBuilder {
@@ -544,7 +743,6 @@ impl PartialEq for PhenopacketBuilder {
                     .unwrap_or(false)
             })
             && self.resource_resolver == other.resource_resolver
-            && self.variant_parser == other.variant_parser
     }
 }
 
@@ -900,18 +1098,13 @@ mod tests {
         assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
     }
 
-    // todo this test currently doesn't really do anything
-    //  because we don't have a way to truly update an intepretation yet. COMING SOON!
-    #[rstest]
-    fn test_upsert_interpretation_update(mondo_resource: Resource, temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-
-        let existing_pp = Phenopacket {
-            id: phenopacket_id.to_string(),
+    #[fixture]
+    fn basic_pp_with_disease_info(mondo_resource: Resource) -> Phenopacket {
+        Phenopacket {
+            id: "pp_001".to_string(),
             interpretations: vec![Interpretation {
                 id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 4, // UNSOLVED
+                progress_status: ProgressStatus::UnknownProgress.into(),
                 diagnosis: Some(Diagnosis {
                     disease: Some(OntologyClass {
                         id: "MONDO:0012145".to_string(),
@@ -926,65 +1119,293 @@ mod tests {
                 ..Default::default()
             }),
             ..Default::default()
-        };
-        builder
-            .subject_to_phenopacket
-            .insert(phenopacket_id.to_string(), existing_pp.clone());
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_no_variants_no_genes(
+        basic_pp_with_disease_info: Phenopacket,
+        temp_dir: TempDir,
+    ) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
 
         builder
-            .upsert_interpretation(phenopacket_id, "macular degeneration, age-related, 3")
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &PathogenicGeneVariantData::None,
+            )
             .unwrap();
 
-        let mut expected_pp = existing_pp.clone();
-        expected_pp.interpretations.first_mut().unwrap().diagnosis = Some(Diagnosis {
-            disease: Some(OntologyClass {
-                id: "MONDO:0012145".to_string(),
-                label: "macular degeneration, age-related, 3".to_string(),
-            }),
-            genomic_interpretations: vec![],
-        });
-
         assert_eq!(
-            &expected_pp,
+            &basic_pp_with_disease_info,
             builder.subject_to_phenopacket.values().next().unwrap()
         );
     }
 
     #[rstest]
-    fn test_upsert_interpretation(mondo_resource: Resource, temp_dir: TempDir) {
+    fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
-        builder
-            .upsert_interpretation(phenopacket_id, disease_id)
-            .unwrap();
 
-        let expected_pp = Phenopacket {
-            id: phenopacket_id.to_string(),
-            interpretations: vec![Interpretation {
-                id: "pp_001-MONDO:0012145".to_string(),
-                progress_status: 4, // UNSOLVED
-                diagnosis: Some(Diagnosis {
-                    disease: Some(OntologyClass {
-                        id: disease_id.to_string(),
-                        label: "macular degeneration, age-related, 3".to_string(),
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }],
-            meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
-                ..Default::default()
-            }),
-            ..Default::default()
+        let homozygous_variant = PathogenicGeneVariantData::HomozygousVariant {
+            gene: "KIF21A".to_string(),
+            var: "NM_001173464.1:c.2860C>T".to_string(),
         };
 
+        builder
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &homozygous_variant)
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
         assert_eq!(
-            &expected_pp,
-            builder.subject_to_phenopacket.values().next().unwrap()
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
         );
+
+        let pp_gi = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations[0];
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "homozygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "KIF21A");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_001173464.1:c.2860C>T");
+            }
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+
+        let compound_heterozygous_pair =
+            PathogenicGeneVariantData::CompoundHeterozygousVariantPair {
+                gene: "ALMS1".to_string(),
+                var1: "NM_015120.4:c.6960_6963delACAG".to_string(),
+                var2: "NM_015120.4:c.11031_11032delGA".to_string(),
+            };
+
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                disease_id,
+                &compound_heterozygous_pair,
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            2
+        );
+
+        let pp_gis = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations;
+
+        for pp_gi in pp_gis {
+            match pp_gi.clone().call.unwrap() {
+                Call::Gene(_) => {
+                    panic!("Call should be a VariantInterpretation!")
+                }
+                Call::VariantInterpretation(vi) => {
+                    let vd = vi.variation_descriptor.unwrap();
+                    assert_eq!(vd.allelic_state.unwrap().label, "heterozygous");
+                    assert_eq!(vd.gene_context.unwrap().symbol, "ALMS1");
+                    let coding_expressions = vd
+                        .expressions
+                        .iter()
+                        .filter(|exp| exp.syntax == "hgvs.c")
+                        .collect::<Vec<&Expression>>();
+                    assert_eq!(coding_expressions.len(), 1);
+                }
+            }
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+
+        let heterozygous_variant = PathogenicGeneVariantData::HeterozygousVariant {
+            gene: "KIF21A".to_string(),
+            var: "NM_001173464.1:c.2860C>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &heterozygous_variant)
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
+        );
+
+        let pp_gi = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations[0];
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "heterozygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "KIF21A");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_001173464.1:c.2860C>T");
+            }
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_update(
+        basic_pp_with_disease_info: Phenopacket,
+        temp_dir: TempDir,
+    ) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = "pp_001";
+
+        let existing_pp = basic_pp_with_disease_info;
+        builder
+            .subject_to_phenopacket
+            .insert(phenopacket_id.to_string(), existing_pp.clone());
+
+        let heterozygous_variant = PathogenicGeneVariantData::HeterozygousVariant {
+            gene: "KIF21A".to_string(),
+            var: "NM_001173464.1:c.2860C>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation(
+                "P006",
+                phenopacket_id,
+                "macular degeneration, age-related, 3",
+                &heterozygous_variant,
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        assert_eq!(
+            pp.interpretations[0]
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_single_gene(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = "pp_001";
+        let disease_id = "MONDO:0012145";
+
+        let gene_data = PathogenicGeneVariantData::CausativeGene("KIF21A".to_string());
+
+        builder
+            .upsert_interpretation("P006", phenopacket_id, disease_id, &gene_data)
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
+        );
+
+        let pp_gi = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations[0];
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(gd) => {
+                assert_eq!(gd.symbol.clone(), "KIF21A");
+            }
+            Call::VariantInterpretation(_) => {
+                panic!("Call should be a GeneDescriptor!")
+            }
+        }
     }
 
     #[rstest]
@@ -1168,7 +1589,7 @@ mod tests {
         assert_eq!(
             individual.vital_status,
             Some(VitalStatus {
-                status: 1,
+                status: Status::Alive.into(),
                 time_of_death: Some(TimeElement {
                     element: Some(Age(IndividualAge {
                         iso8601duration: "P81Y5M13D".to_string()
@@ -1317,8 +1738,51 @@ mod tests {
     }
 
     #[rstest]
+    fn test_get_gene_data_from_hgnc(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = "test_id";
+
+        let hgnc_data = builder.get_gene_data_from_hgnc(pp_id, "CLOCK").unwrap();
+
+        assert_eq!(hgnc_data, ("CLOCK".to_string(), "HGNC:2082".to_string()));
+    }
+
+    #[rstest]
+    fn test_get_genomic_interpretation_from_data(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_gi = builder
+            .get_genomic_interpretation_from_data(
+                "test_cohort-P006",
+                "P006",
+                "NM_001173464.1:c.2860C>T",
+                "KIF21A",
+                "HGNC:19349",
+                2,
+            )
+            .unwrap();
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "homozygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "KIF21A");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_001173464.1:c.2860C>T");
+            }
+        }
+    }
+
+    #[rstest]
     fn test_disease_query_priority(temp_dir: TempDir) {
-        // TODO: Finish once omim is part of the project.
+        //TDOD: Finish when omim is implemented
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let disease = "a sever disease, you do not want to have".to_string();
         let omim_id = "OMIM:0099";

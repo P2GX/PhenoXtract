@@ -1,4 +1,5 @@
 use crate::config::table_context::Context;
+use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
@@ -221,6 +222,8 @@ pub enum CollectorError {
     ParseFloatError(#[from] ParseFloatError),
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantData(String),
 }
 
 impl From<DataProcessingError> for CollectorError {
@@ -234,4 +237,14 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("Missing BiDict for {0}")]
     MissingBiDict(String),
+    #[error(transparent)]
+    HgncClient(#[from] ClientError),
+    #[error("Error validating HGVS variant: {0}")]
+    VariantValidation(String),
+    #[error("No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}.")]
+    HgncGeneInfoRequest { gene: String },
+    #[error(
+        "The HGVS variant {variant} for patient {patient} did not have the correct reference:transcript format."
+    )]
+    HgvsFormat { patient: String, variant: String },
 }
