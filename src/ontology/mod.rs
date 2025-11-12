@@ -13,3 +13,4 @@ pub use ontology_factory::CachedOntologyFactory;
 pub use resource_references::DatabaseRef;
 pub use resource_references::OntologyRef;
 pub mod traits;
+mod utils;

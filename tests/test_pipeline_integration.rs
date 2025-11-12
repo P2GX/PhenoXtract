@@ -20,6 +20,7 @@ use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 
@@ -257,7 +258,7 @@ fn test_pipeline_integration(
 
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
         if let Ok(extracted_pp_file) = extracted_pp_file
-            && extracted_pp_file.path().ends_with(".json")
+            && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
         {
             let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
             let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
