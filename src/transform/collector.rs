@@ -1405,7 +1405,7 @@ mod tests {
         collector
             .collect_hpo_in_cells_col(
                 &phenopacket_id,
-                &patient_hpo_col,
+                patient_hpo_col,
                 Some(stringified_onset_col),
             )
             .unwrap();
