@@ -1368,7 +1368,11 @@ mod tests {
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
-            phenotypic_features: vec![pneumonia_pf_with_onset, fractured_nose_pf, spasmus_nutans_pf_with_onset],
+            phenotypic_features: vec![
+                pneumonia_pf_with_onset,
+                fractured_nose_pf,
+                spasmus_nutans_pf_with_onset,
+            ],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource],
                 ..Default::default()
@@ -1409,10 +1413,7 @@ mod tests {
 
         let mut expected_p006 = Phenopacket {
             id: "cohort2019-P006".to_string(),
-            phenotypic_features: vec![
-                pneumonia_pf_with_onset,
-                fractured_nose_pf,
-            ],
+            phenotypic_features: vec![pneumonia_pf_with_onset, fractured_nose_pf],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource],
                 ..Default::default()

@@ -216,7 +216,7 @@ mod tests {
         "column" => &["Alice", "Bob", "Charlie"],
         "column_mc_colface" => &["Al", "Bobby", "Chaz"],
         )
-            .unwrap()
+        .unwrap()
     }
 
     #[fixture]
