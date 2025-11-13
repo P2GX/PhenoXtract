@@ -788,6 +788,212 @@
           }
         },
         {
+          "id": "http://purl.obolibrary.org/obo/HP_0002086",
+          "lbl": "Abnormality of the respiratory system",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "An abnormality of the respiratory system, which include the airways, lungs, and the respiratory muscles.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "synonyms": [
+              {
+                "pred": "hasExactSynonym",
+                "val": "Respiratory abnormality"
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "UMLS:C4018871"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0002088",
+          "lbl": "Abnormal lung morphology",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "Any structural anomaly of the lung.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "synonyms": [
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Abnormality of lung structure"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Abnormality of the lungs"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Abnormally shaped lung"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Unusual lung shape"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasRelatedSynonym",
+                "val": "Lung disease"
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "SNOMEDCT_US:19829001"
+              },
+              {
+                "val": "UMLS:C0024115"
+              },
+              {
+                "val": "UMLS:C4021760"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0002090",
+          "lbl": "Pneumonia",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "Inflammation of any part of the lung parenchyma.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "synonyms": [
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Pneumonia"
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "SNOMEDCT_US:233604007"
+              },
+              {
+                "val": "UMLS:C0032285"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0002715",
+          "lbl": "Abnormality of the immune system",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "An abnormality of the immune system.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "comments": [
+              "The immune system is composed of organs and interdependent cell types that collectively protect the body from infections and from the growth of tumor cells. The organs of the immune system comprise the bone marrow, the spleen, the thymus,the lymph nodes, and the cell types comprise B cells, T cells, natural killer cells, granulocytes,dendritic cells, and macrophages."
+            ],
+            "synonyms": [
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Abnormality of the immune system"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Immunological abnormality"
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "UMLS:C4021753"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasAlternativeId",
+                "val": "HP:0003257"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasAlternativeId",
+                "val": "HP:0003346"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasAlternativeId",
+                "val": "HP:0010986"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0003257",
+          "type": "CLASS",
+          "meta": {
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0000231",
+                "val": "http://purl.obolibrary.org/obo/IAO_0000227"
+              },
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0100001",
+                "val": "http://purl.obolibrary.org/obo/HP_0002715"
+              }
+            ],
+            "deprecated": true
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0003346",
+          "type": "CLASS",
+          "meta": {
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0000231",
+                "val": "http://purl.obolibrary.org/obo/IAO_0000227"
+              },
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0100001",
+                "val": "http://purl.obolibrary.org/obo/HP_0002715"
+              }
+            ],
+            "deprecated": true
+          }
+        },
+        {
           "id": "http://purl.obolibrary.org/obo/HP_0003576",
           "type": "CLASS",
           "meta": {
@@ -3156,6 +3362,56 @@
           }
         },
         {
+          "id": "http://purl.obolibrary.org/obo/HP_0010978",
+          "lbl": "Abnormality of immune system physiology",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "A functional abnormality of the immune system.",
+              "xrefs": [
+                "MP:0001790",
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "xrefs": [
+              {
+                "val": "UMLS:C4023616"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.org/dc/terms/creator",
+                "val": "https://orcid.org/0000-0002-0736-9199"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
+                "val": "2011-02-07T04:28:55Z"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0010986",
+          "type": "CLASS",
+          "meta": {
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0000231",
+                "val": "http://purl.obolibrary.org/obo/IAO_0000227"
+              },
+              {
+                "pred": "http://purl.obolibrary.org/obo/IAO_0100001",
+                "val": "http://purl.obolibrary.org/obo/HP_0002715"
+              }
+            ],
+            "deprecated": true
+          }
+        },
+        {
           "id": "http://purl.obolibrary.org/obo/HP_0011007",
           "type": "CLASS",
           "meta": {
@@ -3563,6 +3819,61 @@
           }
         },
         {
+          "id": "http://purl.obolibrary.org/obo/HP_0011947",
+          "lbl": "Respiratory tract infection",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "An infection of the upper or lower respiratory tract.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "synonyms": [
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Respiratory infection"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Respiratory tract infection"
+              },
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasRelatedSynonym",
+                "val": "Respiratory infections",
+                "xrefs": [
+                  "https://orcid.org/0000-0002-5316-1399"
+                ]
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "SNOMEDCT_US:275498002"
+              },
+              {
+                "val": "UMLS:C0035243"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.org/dc/terms/creator",
+                "val": "https://orcid.org/0000-0002-0736-9199"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
+                "val": "2012-06-21T08:26:36Z"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
           "id": "http://purl.obolibrary.org/obo/HP_0012043",
           "lbl": "Pendular nystagmus",
           "type": "CLASS",
@@ -3608,6 +3919,41 @@
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
                 "val": "2012-08-01T12:04:00Z"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0012252",
+          "lbl": "Abnormal respiratory system morphology",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "A structural anomaly of the respiratory system.",
+              "xrefs": [
+                "https://orcid.org/0000-0002-0736-9199"
+              ]
+            },
+            "xrefs": [
+              {
+                "val": "Fyler:4235"
+              },
+              {
+                "val": "UMLS:C4022992"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.org/dc/terms/creator",
+                "val": "https://orcid.org/0000-0002-0736-9199"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
+                "val": "2013-04-07T09:11:09Z"
               },
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
@@ -3683,6 +4029,77 @@
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
                 "val": "2013-12-21T10:37:42Z"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0012647",
+          "lbl": "Abnormal inflammatory response",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "Any anomaly of the inflammatory response, a response to injury or infection characterized by local vasodilation, extravasation of plasma into intercellular spaces and accumulation of white blood cells and macrophages.",
+              "xrefs": [
+                "https://orcid.org/0000-0001-9114-8737"
+              ]
+            },
+            "synonyms": [
+              {
+                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
+                "pred": "hasExactSynonym",
+                "val": "Abnormal inflammatory response"
+              }
+            ],
+            "xrefs": [
+              {
+                "val": "UMLS:C4022805"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.org/dc/terms/creator",
+                "val": "https://orcid.org/0000-0002-0736-9199"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
+                "val": "2014-02-01T01:25:42Z"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
+                "val": "human_phenotype"
+              }
+            ]
+          }
+        },
+        {
+          "id": "http://purl.obolibrary.org/obo/HP_0012649",
+          "lbl": "Increased inflammatory response",
+          "type": "CLASS",
+          "meta": {
+            "definition": {
+              "val": "A abnormal increase in the inflammatory response to injury or infection.",
+              "xrefs": [
+                "https://orcid.org/0000-0001-9114-8737"
+              ]
+            },
+            "xrefs": [
+              {
+                "val": "UMLS:C4022803"
+              }
+            ],
+            "basicPropertyValues": [
+              {
+                "pred": "http://purl.org/dc/terms/creator",
+                "val": "https://orcid.org/0000-0002-0736-9199"
+              },
+              {
+                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
+                "val": "2014-02-01T01:29:58Z"
               },
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
@@ -13075,6 +13492,31 @@
           "obj": "http://purl.obolibrary.org/obo/HP_0011420"
         },
         {
+          "sub": "http://purl.obolibrary.org/obo/HP_0002086",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0000118"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0002088",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0012252"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0002090",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0011947"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0002090",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0012649"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0002715",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0000118"
+        },
+        {
           "sub": "http://purl.obolibrary.org/obo/HP_0003577",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0003674"
@@ -13190,6 +13632,11 @@
           "obj": "http://purl.obolibrary.org/obo/HP_0012043"
         },
         {
+          "sub": "http://purl.obolibrary.org/obo/HP_0010978",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0002715"
+        },
+        {
           "sub": "http://purl.obolibrary.org/obo/HP_0011008",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0031797"
@@ -13240,9 +13687,19 @@
           "obj": "http://purl.obolibrary.org/obo/HP_0410280"
         },
         {
+          "sub": "http://purl.obolibrary.org/obo/HP_0011947",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0002088"
+        },
+        {
           "sub": "http://purl.obolibrary.org/obo/HP_0012043",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0000639"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0012252",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0002086"
         },
         {
           "sub": "http://purl.obolibrary.org/obo/HP_0012373",
@@ -13253,6 +13710,16 @@
           "sub": "http://purl.obolibrary.org/obo/HP_0012547",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0000496"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0012647",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0010978"
+        },
+        {
+          "sub": "http://purl.obolibrary.org/obo/HP_0012649",
+          "pred": "is_a",
+          "obj": "http://purl.obolibrary.org/obo/HP_0012647"
         },
         {
           "sub": "http://purl.obolibrary.org/obo/HP_0012772",

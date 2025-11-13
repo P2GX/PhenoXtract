@@ -311,35 +311,40 @@ fn test_pipeline_integration(
     //Run the pipeline on the data sources
     pipeline.run(&mut data_sources)?;
 
+    //create a phenopacket_ID -> expected phenopacket HashMap
+    //and for each expected Phenopacket set the meta_data.created to None
     let expected_phenopackets_files =
         fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
 
     let mut expected_phenopackets: HashMap<String, Phenopacket> = HashMap::new();
     for expected_pp_file in expected_phenopackets_files {
         let data = fs::read_to_string(expected_pp_file.unwrap().path()).unwrap();
-        let expected_pp: Phenopacket = serde_json::from_str(&data).unwrap();
+        let mut expected_pp: Phenopacket = serde_json::from_str(&data).unwrap();
+
+        if let Some(meta) = &mut expected_pp.meta_data {
+            meta.created = None;
+        }
+
         expected_phenopackets.insert(expected_pp.id.clone(), expected_pp);
     }
 
+    //go through the extracted phenopackets, set the meta_data.created to None
+    //and assert equality with the corresponding expected phenopacket
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
         if let Ok(extracted_pp_file) = extracted_pp_file
             && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
         {
             let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
             let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-            let mut extracted_pp_id = expected_phenopackets
-                .get(&extracted_pp.id.clone())
-                .unwrap()
-                .clone();
 
-        if let Some(meta) = &mut extracted_pp.meta_data {
-            meta.created = None;
-        }
-        if let Some(meta) = &mut expected_pp.meta_data {
-            meta.created = None;
-        }
+            let expected_pp = expected_phenopackets.get(&extracted_pp.id).unwrap();
 
-        assert_eq!(extracted_pp, expected_pp);
+            if let Some(meta) = &mut extracted_pp.meta_data {
+                meta.created = None;
+            }
+
+            assert_eq!(&extracted_pp, expected_pp);
+        }
     }
     Ok(())
 }

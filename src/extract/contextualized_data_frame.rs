@@ -208,6 +208,33 @@ mod tests {
         )
     }
 
+    #[fixture]
+    fn df_bug() -> DataFrame {
+        df!(
+        "column" => &["Alice", "Bob", "Charlie"],
+        "column_mc_colface" => &["Al", "Bobby", "Chaz"],
+        )
+            .unwrap()
+    }
+
+    #[fixture]
+    fn ctx_bug() -> TableContext {
+        TableContext::default()
+    }
+
+    #[rstest]
+    fn test_get_column_bug() {
+        let df = df_bug();
+        let ctx = ctx_bug();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+
+        let id = Identifier::Regex("column".to_string());
+        let cols = cdf.get_columns(&id);
+
+        let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
+        assert_eq!(col_names, vec!["column", "column_mc_colface"]);
+    }
+
     #[rstest]
     fn test_regex_match_column_found() {
         let df = sample_df();
