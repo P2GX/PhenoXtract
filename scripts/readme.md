@@ -1,9 +1,11 @@
 ### Getting Test Ontologies
 
+You need [wget](https://formulae.brew.sh/formula/wget)
+and [java](https://www.java.com/en/download/help/mac_install.html) installed for this script.
+
 Run:
 
 ```
-cmod u+x scripts/robot.sh
 sh scripts/robot.sh
 ```
 
