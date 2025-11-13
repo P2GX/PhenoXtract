@@ -60,6 +60,7 @@ export PATH="$SCRIPT_PATH:$PATH"
 echo "✅ Installed robot to $INSTALL_DIR"
 echo "PATH updated: $INSTALL_DIR"
 
+sh ./scripts/robot/robot.sh
 
 sh ./scripts/mini_mondo.sh
 sh ./scripts/mini_hp.sh
