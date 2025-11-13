@@ -140,7 +140,10 @@ mod tests {
     #[fixture]
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_identifier(Identifier::Multi(vec![
+                "phenotypic_features".to_string(),
+                "more_phenotypic_features".to_string(),
+            ]))
             .with_data_context(Context::HpoLabelOrId);
         let sc_pid = SeriesContext::default()
             .with_identifier(Identifier::from("subject_ids"))
