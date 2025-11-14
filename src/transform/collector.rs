@@ -963,6 +963,7 @@ mod tests {
     }
 
     #[fixture]
+    #[allow(clippy::too_many_arguments)]
     fn df_multi_patient(
         spasmus_nutans_onset_age: Age,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
@@ -1094,13 +1095,13 @@ mod tests {
     }
 
     #[fixture]
+    #[allow(clippy::too_many_arguments)]
     fn df_single_patient(
         pneumonia_onset_age: Age,
         pneumonia_pf_with_onset: PhenotypicFeature,
         fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         spasmus_nutans_onset_age: Age,
-        platelet_defect_disease: Disease,
         platelet_defect_disease_with_onset: Disease,
         dysostosis_disease_with_onset: Disease,
     ) -> DataFrame {
