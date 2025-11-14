@@ -651,6 +651,14 @@ mod tests {
     }
 
     #[fixture]
+    fn platelet_defect_term() -> OntologyClass {
+        OntologyClass {
+            id: "MONDO:0008258".to_string(),
+            label: "platelet signal processing defect".to_string(),
+        }
+    }
+
+    #[fixture]
     fn platelet_defect_disease() -> Disease {
         Disease {
             term: Some(OntologyClass {
@@ -683,6 +691,14 @@ mod tests {
     }
 
     #[fixture]
+    fn dysostosis_term() -> OntologyClass {
+        OntologyClass {
+            id: "MONDO:0000359".to_string(),
+            label: "spondylocostal dysostosis".to_string(),
+        }
+    }
+
+    #[fixture]
     fn dysostosis_onset_age() -> Age {
         Age {
             iso8601duration: "P10Y4M21D".to_string(),
@@ -690,12 +706,12 @@ mod tests {
     }
 
     #[fixture]
-    fn dysostosis_disease_with_onset(dysostosis_onset_age: Age) -> Disease {
+    fn dysostosis_disease_with_onset(
+        dysostosis_term: OntologyClass,
+        dysostosis_onset_age: Age,
+    ) -> Disease {
         Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0000359".to_string(),
-                label: "spondylocostal dysostosis".to_string(),
-            }),
+            term: Some(dysostosis_term),
             onset: Some(TimeElement {
                 element: Some(Element::Age(dysostosis_onset_age)),
             }),
@@ -704,15 +720,12 @@ mod tests {
     }
 
     #[fixture]
-    fn platelet_defect_interpretation() -> Interpretation {
+    fn platelet_defect_interpretation(platelet_defect_term: OntologyClass) -> Interpretation {
         Interpretation {
             id: "cohort2019-P001-MONDO:0008258".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
-                disease: Some(OntologyClass {
-                    id: "MONDO:0008258".to_string(),
-                    label: "platelet signal processing defect".to_string(),
-                }),
+                disease: Some(platelet_defect_term),
                 genomic_interpretations: vec![GenomicInterpretation {
                     subject_or_biosample_id: "P001".to_string(),
                     interpretation_status: 0,
@@ -779,15 +792,12 @@ mod tests {
     }
 
     #[fixture]
-    fn dysostosis_interpretation() -> Interpretation {
+    fn dysostosis_interpretation(dysostosis_term: OntologyClass) -> Interpretation {
         Interpretation {
             id: "cohort2019-P002-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
-                disease: Some(OntologyClass {
-                    id: "MONDO:0000359".to_string(),
-                    label: "spondylocostal dysostosis".to_string(),
-                }),
+                disease: Some(dysostosis_term),
                 genomic_interpretations: vec![GenomicInterpretation {
                     subject_or_biosample_id: "P002".to_string(),
                     interpretation_status: 0,
@@ -959,6 +969,10 @@ mod tests {
         pneumonia_onset_age: Age,
         pneumonia_pf_with_onset: PhenotypicFeature,
         fractured_nose_pf: PhenotypicFeature,
+        platelet_defect_term: OntologyClass,
+        dysostosis_term: OntologyClass,
+        platelet_defect_onset_age: Age,
+        dysostosis_onset_age: Age,
     ) -> DataFrame {
         let id_col = Column::new(
             "subject_id".into(),
@@ -967,11 +981,11 @@ mod tests {
         let pf_col = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String(&pneumonia_pf_with_onset.r#type.clone().unwrap().id),
+                AnyValue::String(pneumonia_pf_with_onset.r#type.clone().unwrap().id.as_str()),
                 AnyValue::Null,
-                AnyValue::String(&spasmus_nutans_pf_with_onset.r#type.unwrap().label),
-                AnyValue::String(&pneumonia_pf_with_onset.r#type.unwrap().label),
-                AnyValue::String(&fractured_nose_pf.r#type.unwrap().id),
+                AnyValue::String(spasmus_nutans_pf_with_onset.r#type.unwrap().label.as_str()),
+                AnyValue::String(pneumonia_pf_with_onset.r#type.unwrap().label.as_str()),
+                AnyValue::String(fractured_nose_pf.r#type.unwrap().id.as_str()),
                 AnyValue::Null,
             ],
         );
@@ -1011,9 +1025,9 @@ mod tests {
         let disease_col = Column::new(
             "diseases".into(),
             [
-                AnyValue::String("platelet signal processing defect"),
-                AnyValue::String("MONDO:0008258"), // also platelet signal processing defect but with no onset this time
-                AnyValue::String("Spondylocostal Dysostosis"),
+                AnyValue::String(platelet_defect_term.label.as_str()),
+                AnyValue::String(platelet_defect_term.id.as_str()), // with no onset this time
+                AnyValue::String(dysostosis_term.label.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -1022,9 +1036,9 @@ mod tests {
         let disease_onset_col = Column::new(
             "disease_onset".into(),
             [
-                AnyValue::String("P45Y10M05D"),
+                AnyValue::String(platelet_defect_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
-                AnyValue::String("P10Y4M21D"),
+                AnyValue::String(dysostosis_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -1086,6 +1100,9 @@ mod tests {
         fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         spasmus_nutans_onset_age: Age,
+        platelet_defect_disease: Disease,
+        platelet_defect_disease_with_onset: Disease,
+        dysostosis_disease_with_onset: Disease,
     ) -> DataFrame {
         let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
         let dob_col = Column::new(
@@ -1136,19 +1153,33 @@ mod tests {
         let pf_col = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String(&pneumonia_pf_with_onset.r#type.clone().unwrap().label),
+                AnyValue::String(
+                    pneumonia_pf_with_onset
+                        .r#type
+                        .clone()
+                        .unwrap()
+                        .label
+                        .as_str(),
+                ),
                 AnyValue::Null,
-                AnyValue::String(&fractured_nose_pf.r#type.clone().unwrap().label),
-                AnyValue::String(&pneumonia_pf_with_onset.r#type.clone().unwrap().label),
+                AnyValue::String(fractured_nose_pf.r#type.clone().unwrap().label.as_str()),
+                AnyValue::String(
+                    pneumonia_pf_with_onset
+                        .r#type
+                        .clone()
+                        .unwrap()
+                        .label
+                        .as_str(),
+                ),
             ],
         );
         let pf_onset_col = Column::new(
             "phenotypic_features_onset_age".into(),
             [
-                AnyValue::String(&pneumonia_onset_age.iso8601duration),
+                AnyValue::String(pneumonia_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
-                AnyValue::String(&pneumonia_onset_age.iso8601duration),
+                AnyValue::String(pneumonia_onset_age.iso8601duration.as_str()),
             ],
         );
         let spasmus_nutans_col = Column::new(
@@ -1168,7 +1199,7 @@ mod tests {
         let spasmus_nutans_onset_col = Column::new(
             "spasmus_nutans_onset_age".into(),
             [
-                AnyValue::String(&spasmus_nutans_onset_age.iso8601duration),
+                AnyValue::String(spasmus_nutans_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -1177,10 +1208,17 @@ mod tests {
         let disease_col = Column::new(
             "diseases".into(),
             [
-                AnyValue::String("platelet signal processing defect"),
+                AnyValue::String(
+                    platelet_defect_disease_with_onset
+                        .term
+                        .clone()
+                        .unwrap()
+                        .label
+                        .as_str(),
+                ),
                 AnyValue::Null,
-                AnyValue::String("MONDO:0008258"), // also platelet signal processing defect but with no onset this time
-                AnyValue::String("Spondylocostal Dysostosis"),
+                AnyValue::String(platelet_defect_disease_with_onset.term.unwrap().id.as_str()), // no onset this time
+                AnyValue::String(dysostosis_disease_with_onset.term.unwrap().label.as_str()),
             ],
         );
         let disease_onset_col = Column::new(
