@@ -12,7 +12,7 @@ config = "0.15.18"
 polars = { version = "0.51.0", features = ["lazy"] }
 serde = "1.0.228"
 anyhow = "1.0.100"
-phenopackets = { version = "0.2.2-post1", features = ["serde"] }
+phenopackets = { version = "0.2.2-post2", features = ["serde"] }
 validator = { version = "0.20.0", features = ["derive"] }
 calamine = { version = "0.31.0", features = ["dates"] }
 regex = "1.12.2"
@@ -22,7 +22,7 @@ either = "1.15.0"
 chrono = "0.4.41"
 ontolius = "0.6.0"
 serde_json = "1.0.145"
-prost-types = "0.13.5" # Do not update. Version depends on Phenopackets crate.
+prost-types = "0.14.0" # Do not update. Version depends on Phenopackets crate.
 directories = "6.0.0"
 ordermap = "1.0.0"
 ratelimit = "0.10.0"
