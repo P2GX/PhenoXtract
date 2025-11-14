@@ -69,19 +69,15 @@ impl ContextualizedDataFrame {
     /// Retrieves columns from the dataset based on the given identifier(s).
     ///
     /// # Parameters
-    /// - `id`: An `Identifier` specifying which columns to retrieve. This can be:
-    ///     - `Identifier::Regex(pattern)`: Uses a regular expression to match column names.
-    ///       It first tries an escaped version of the regex pattern and falls back to the raw pattern
-    ///       if no columns are found.
-    ///     - `Identifier::Multi(multi)`: A collection of column names to retrieve explicitly.
+    /// - `id`: An [`Identifier`] specifying which columns to retrieve. This can be:
+    ///   - `Identifier::Regex(pattern)`: Uses a regular expression to match column names.
+    ///     - First attempts to find a column whose name exactly matches `pattern`.
+    ///     - If none is found, it returns all columns whose names match `pattern` as a regex.
+    ///   - `Identifier::Multi(multi)`: A collection of explicit column names to retrieve.
     ///
     /// # Returns
     /// A `Vec<&Column>` containing references to the columns that match the given identifier(s).
     /// If no columns match, an empty vector is returned.
-    ///
-    /// # Behavior
-    /// - When using a regex, columns are matched against the column names in the dataset.
-    /// - When using multiple identifiers, only the columns that exist in the dataset are returned.
     ///
     /// # Examples
     /// ```ignore
