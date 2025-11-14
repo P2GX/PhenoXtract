@@ -8,6 +8,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
 use phenopackets::schema::v2::core::Sex;
+use phenopackets::schema::v2::core::vital_status::Status;
 use polars::datatypes::DataType;
 use polars::prelude::{ChunkCast, Column};
 use serde::{Deserialize, Serialize};
@@ -58,6 +59,23 @@ pub struct MappingStrategy {
 }
 
 impl MappingStrategy {
+    #[allow(dead_code)]
+    pub fn new(
+        synonym_map: HashMap<String, String>,
+        data_context: Context,
+        header_context: Context,
+        column_dtype: DataType,
+        out_dtype: DataType,
+    ) -> Self {
+        Self {
+            synonym_map,
+            data_context,
+            header_context,
+            column_dtype,
+            out_dtype,
+        }
+    }
+
     #[allow(unused)]
     pub fn add_alias(&mut self, alias: &str, term: &str) {
         self.synonym_map
@@ -69,10 +87,10 @@ impl MappingStrategy {
         MappingStrategy::new(
             HashMap::from([
                 ("m".to_string(), Sex::Male.as_str_name().to_string()),
-                ("f".to_string(), Sex::Female.as_str_name().to_string()),
                 ("male".to_string(), Sex::Male.as_str_name().to_string()),
-                ("female".to_string(), Sex::Female.as_str_name().to_string()),
                 ("man".to_string(), Sex::Male.as_str_name().to_string()),
+                ("f".to_string(), Sex::Female.as_str_name().to_string()),
+                ("female".to_string(), Sex::Female.as_str_name().to_string()),
                 ("woman".to_string(), Sex::Female.as_str_name().to_string()),
                 (
                     "diverse".to_string(),
@@ -90,21 +108,40 @@ impl MappingStrategy {
             DataType::String,
         )
     }
-    #[allow(dead_code)]
-    pub fn new(
-        synonym_map: HashMap<String, String>,
-        data_context: Context,
-        header_context: Context,
-        column_dtype: DataType,
-        out_dtype: DataType,
-    ) -> Self {
-        Self {
-            synonym_map,
-            data_context,
-            header_context,
-            column_dtype,
-            out_dtype,
-        }
+
+    #[allow(unused)]
+    pub fn default_vital_status_mapping_strategy() -> MappingStrategy {
+        MappingStrategy::new(
+            HashMap::from([
+                ("yes".to_string(), Status::Alive.as_str_name().to_string()),
+                (
+                    "living".to_string(),
+                    Status::Alive.as_str_name().to_string(),
+                ),
+                ("alive".to_string(), Status::Alive.as_str_name().to_string()),
+                ("no".to_string(), Status::Deceased.as_str_name().to_string()),
+                (
+                    "dead".to_string(),
+                    Status::Deceased.as_str_name().to_string(),
+                ),
+                (
+                    "deceased".to_string(),
+                    Status::Deceased.as_str_name().to_string(),
+                ),
+                (
+                    "unknown".to_string(),
+                    Status::UnknownStatus.as_str_name().to_string(),
+                ),
+                (
+                    "no data".to_string(),
+                    Status::UnknownStatus.as_str_name().to_string(),
+                ),
+            ]),
+            Context::VitalStatus,
+            Context::None,
+            DataType::String,
+            DataType::String,
+        )
     }
 }
 
