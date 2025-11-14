@@ -544,6 +544,7 @@ impl Collector {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
@@ -963,7 +964,6 @@ mod tests {
     }
 
     #[fixture]
-    #[allow(clippy::too_many_arguments)]
     fn df_multi_patient(
         spasmus_nutans_onset_age: Age,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
@@ -1095,7 +1095,6 @@ mod tests {
     }
 
     #[fixture]
-    #[allow(clippy::too_many_arguments)]
     fn df_single_patient(
         pneumonia_onset_age: Age,
         pneumonia_pf_with_onset: PhenotypicFeature,
@@ -1279,7 +1278,6 @@ mod tests {
     }
 
     #[rstest]
-    #[allow(clippy::too_many_arguments)]
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
@@ -1384,7 +1382,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_collect_phenotypic_features(
         tc: TableContext,
@@ -1565,7 +1562,6 @@ mod tests {
     }
 
     #[rstest]
-    #[allow(clippy::too_many_arguments)]
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
