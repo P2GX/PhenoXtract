@@ -34,45 +34,6 @@
           }
         },
         {
-          "id": "http://purl.obolibrary.org/obo/HP_0000002",
-          "lbl": "Abnormality of body height",
-          "type": "CLASS",
-          "meta": {
-            "definition": {
-              "val": "Deviation from the norm of height with respect to that which is expected according to age and gender norms.",
-              "xrefs": [
-                "https://orcid.org/0000-0002-0736-9199"
-              ]
-            },
-            "synonyms": [
-              {
-                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
-                "pred": "hasExactSynonym",
-                "val": "Abnormality of body height"
-              }
-            ],
-            "xrefs": [
-              {
-                "val": "UMLS:C4025901"
-              }
-            ],
-            "basicPropertyValues": [
-              {
-                "pred": "http://purl.org/dc/terms/creator",
-                "val": "https://orcid.org/0000-0002-0736-9199"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
-                "val": "2008-02-27T02:20:00Z"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
-                "val": "human_phenotype"
-              }
-            ]
-          }
-        },
-        {
           "id": "http://purl.obolibrary.org/obo/HP_0000004",
           "type": "CLASS",
           "meta": {
@@ -643,45 +604,6 @@
               }
             ],
             "deprecated": true
-          }
-        },
-        {
-          "id": "http://purl.obolibrary.org/obo/HP_0001507",
-          "lbl": "Growth abnormality",
-          "type": "CLASS",
-          "meta": {
-            "synonyms": [
-              {
-                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
-                "pred": "hasExactSynonym",
-                "val": "Abnormal growth"
-              },
-              {
-                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
-                "pred": "hasExactSynonym",
-                "val": "Growth abnormality"
-              },
-              {
-                "synonymType": "http://purl.obolibrary.org/obo/hp.obo#layperson",
-                "pred": "hasExactSynonym",
-                "val": "Growth issue"
-              }
-            ],
-            "xrefs": [
-              {
-                "val": "UMLS:C0262361"
-              }
-            ],
-            "basicPropertyValues": [
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#hasAlternativeId",
-                "val": "HP:0008904"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
-                "val": "human_phenotype"
-              }
-            ]
           }
         },
         {
@@ -3292,23 +3214,6 @@
           }
         },
         {
-          "id": "http://purl.obolibrary.org/obo/HP_0008904",
-          "type": "CLASS",
-          "meta": {
-            "basicPropertyValues": [
-              {
-                "pred": "http://purl.obolibrary.org/obo/IAO_0000231",
-                "val": "http://purl.obolibrary.org/obo/IAO_0000227"
-              },
-              {
-                "pred": "http://purl.obolibrary.org/obo/IAO_0100001",
-                "val": "http://purl.obolibrary.org/obo/HP_0001507"
-              }
-            ],
-            "deprecated": true
-          }
-        },
-        {
           "id": "http://purl.obolibrary.org/obo/HP_0010533",
           "lbl": "Spasmus nutans",
           "type": "CLASS",
@@ -4100,73 +4005,6 @@
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
                 "val": "2014-02-01T01:29:58Z"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
-                "val": "human_phenotype"
-              }
-            ]
-          }
-        },
-        {
-          "id": "http://purl.obolibrary.org/obo/HP_0012772",
-          "lbl": "Abnormal upper to lower segment ratio",
-          "type": "CLASS",
-          "meta": {
-            "definition": {
-              "val": "A deviation from normal of the relation between the upper and the lower segment of the body, where the lower segment is defined as the length between the top of pubic symphysis to floor, and the upper segment is defined as the top of head to top of pubic symphysis.",
-              "xrefs": [
-                "https://orcid.org/0000-0002-0736-9199"
-              ]
-            },
-            "xrefs": [
-              {
-                "val": "UMLS:C4022728"
-              }
-            ],
-            "basicPropertyValues": [
-              {
-                "pred": "http://purl.org/dc/terms/creator",
-                "val": "https://orcid.org/0000-0002-0736-9199"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
-                "val": "2014-04-07T03:12:56Z"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
-                "val": "human_phenotype"
-              }
-            ]
-          }
-        },
-        {
-          "id": "http://purl.obolibrary.org/obo/HP_0012773",
-          "lbl": "Reduced upper to lower segment ratio",
-          "type": "CLASS",
-          "meta": {
-            "definition": {
-              "val": "Decreased ratio between the upper and the lower segment of the body, where the lower segment is defined as the length between the top of pubic symphysis to floor, and the upper segment is defined as the top of head to top of pubic symphysis. Consider the term Disproportionate tall stature (HP:0001519) if tall stature is also present.",
-              "xrefs": [
-                "https://orcid.org/0000-0002-0736-9199"
-              ]
-            },
-            "comments": [
-              "A ratio of less than 0.86 (or according to other sources 0.89) is considered abnormally reduced."
-            ],
-            "xrefs": [
-              {
-                "val": "UMLS:C1836996"
-              }
-            ],
-            "basicPropertyValues": [
-              {
-                "pred": "http://purl.org/dc/terms/creator",
-                "val": "https://orcid.org/0000-0002-0736-9199"
-              },
-              {
-                "pred": "http://www.geneontology.org/formats/oboInOwl#creation_date",
-                "val": "2014-04-07T03:14:28Z"
               },
               {
                 "pred": "http://www.geneontology.org/formats/oboInOwl#hasOBONamespace",
@@ -13437,11 +13275,6 @@
       ],
       "edges": [
         {
-          "sub": "http://purl.obolibrary.org/obo/HP_0000002",
-          "pred": "is_a",
-          "obj": "http://purl.obolibrary.org/obo/HP_0001507"
-        },
-        {
           "sub": "http://purl.obolibrary.org/obo/HP_0000118",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0000001"
@@ -13480,11 +13313,6 @@
           "sub": "http://purl.obolibrary.org/obo/HP_0000639",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0012547"
-        },
-        {
-          "sub": "http://purl.obolibrary.org/obo/HP_0001507",
-          "pred": "is_a",
-          "obj": "http://purl.obolibrary.org/obo/HP_0000118"
         },
         {
           "sub": "http://purl.obolibrary.org/obo/HP_0001522",
@@ -13720,16 +13548,6 @@
           "sub": "http://purl.obolibrary.org/obo/HP_0012649",
           "pred": "is_a",
           "obj": "http://purl.obolibrary.org/obo/HP_0012647"
-        },
-        {
-          "sub": "http://purl.obolibrary.org/obo/HP_0012772",
-          "pred": "is_a",
-          "obj": "http://purl.obolibrary.org/obo/HP_0000002"
-        },
-        {
-          "sub": "http://purl.obolibrary.org/obo/HP_0012773",
-          "pred": "is_a",
-          "obj": "http://purl.obolibrary.org/obo/HP_0012772"
         },
         {
           "sub": "http://purl.obolibrary.org/obo/HP_0012824",

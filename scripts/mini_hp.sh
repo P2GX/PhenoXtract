@@ -7,11 +7,9 @@ module load robot/1.8.3
 # BOT will assume that the term is at the bottom an a hierarchy and get all ancestors.
 TARGET_TERMS=(
 'HP:0012823|TOP' # Clinical modifier
-'HP:0012773|BOT' #|Reduced upper to lower segment ratio
 'HP:0041249|BOT' #|Fractured nose
 'HP:0010533|BOT' #|Spasmus nutans
 'HP:0002090|BOT' #|Pneumonia
-'HP:0003674|TOP' #|onset
 )
 
 
