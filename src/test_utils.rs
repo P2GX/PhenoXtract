@@ -152,7 +152,7 @@ pipeline:
   transform_strategies:
     - "alias_mapping"
     - "multi_hpo_column_expansion"
-  loader: "file_system"
+  output_directory: "folder"
   meta_data:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen

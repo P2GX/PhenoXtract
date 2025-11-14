@@ -15,8 +15,8 @@ pub struct PipelineConfig {
     pub transform_strategies: Vec<StrategyConfig>,
 
     #[allow(unused)]
-    /// The loader responsible for fetching the initial data.
-    pub loader: String,
+    /// The directory where the extracted Phenopackets will be outputted.
+    pub output_directory: String,
 }
 
 impl PipelineConfig {
@@ -29,7 +29,7 @@ impl PipelineConfig {
         Self {
             meta_data,
             transform_strategies,
-            loader,
+            output_directory: loader,
         }
     }
 }

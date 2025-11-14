@@ -125,7 +125,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             strategies,
             Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),
         );
-        let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
+        let loader_module = FileSystemLoader::new(PathBuf::from(config.output_directory));
 
         Ok(Pipeline::new(tf_module, loader_module))
     }
