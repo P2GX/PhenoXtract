@@ -187,6 +187,7 @@ impl Extractable for DataSource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,7 +390,6 @@ mod tests {
         ]
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_csv(
         temp_dir: TempDir,
@@ -590,7 +590,6 @@ AGE,18,27,89"#;
         assert_eq!(expected_df, cdf.into_data());
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[rstest]
     fn test_extract_excel(
         table_contexts: Vec<TableContext>,
