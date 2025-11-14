@@ -247,7 +247,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_column_regex_escape() {
+    fn test_get_column_string_match() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
