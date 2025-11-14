@@ -10,7 +10,7 @@ use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::prelude::{Column, DataFrame, Series};
-use regex::{Regex, escape};
+use regex::Regex;
 use std::mem::ManuallyDrop;
 use std::ptr;
 use validator::Validate;
@@ -69,19 +69,15 @@ impl ContextualizedDataFrame {
     /// Retrieves columns from the dataset based on the given identifier(s).
     ///
     /// # Parameters
-    /// - `id`: An `Identifier` specifying which columns to retrieve. This can be:
-    ///     - `Identifier::Regex(pattern)`: Uses a regular expression to match column names.
-    ///       It first tries an escaped version of the regex pattern and falls back to the raw pattern
-    ///       if no columns are found.
-    ///     - `Identifier::Multi(multi)`: A collection of column names to retrieve explicitly.
+    /// - `id`: An [`Identifier`] specifying which columns to retrieve. This can be:
+    ///   - `Identifier::Regex(pattern)`: Uses a regular expression to match column names.
+    ///     - First attempts to find a column whose name exactly matches `pattern`.
+    ///     - If none is found, it returns all columns whose names match `pattern` as a regex.
+    ///   - `Identifier::Multi(multi)`: A collection of explicit column names to retrieve.
     ///
     /// # Returns
     /// A `Vec<&Column>` containing references to the columns that match the given identifier(s).
     /// If no columns match, an empty vector is returned.
-    ///
-    /// # Behavior
-    /// - When using a regex, columns are matched against the column names in the dataset.
-    /// - When using multiple identifiers, only the columns that exist in the dataset are returned.
     ///
     /// # Examples
     /// ```ignore
@@ -92,12 +88,14 @@ impl ContextualizedDataFrame {
     pub fn get_columns(&self, id: &Identifier) -> Vec<&Column> {
         match id {
             Identifier::Regex(pattern) => {
-                let mut found_columns = vec![];
-                if let Ok(escape_regex) = Regex::new(escape(pattern).as_str()) {
-                    found_columns = self.regex_match_column(&escape_regex);
-                }
-                if let Ok(regex) = Regex::new(pattern.as_str())
-                    && found_columns.is_empty()
+                let mut found_columns = self
+                    .data
+                    .get_columns()
+                    .iter()
+                    .filter(|col| col.name() == pattern)
+                    .collect::<Vec<&Column>>();
+                if found_columns.is_empty()
+                    && let Ok(regex) = Regex::new(pattern.as_str())
                 {
                     found_columns = self.regex_match_column(&regex);
                 }
@@ -286,6 +284,22 @@ mod tests {
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["user.name", "age"]);
+    }
+
+    #[rstest]
+    fn test_get_column_no_partial_matches() {
+        let df = df!(
+        "blah" => &["Alice", "Bob", "Charlie"],
+        "blah_blah" => &["Al", "Bobby", "Chaz"],
+        )
+        .unwrap();
+        let cdf = ContextualizedDataFrame::new(TableContext::default(), df);
+
+        let id = Identifier::Regex("blah".to_string());
+        let cols = cdf.get_columns(&id);
+
+        let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
+        assert_eq!(col_names, vec!["blah"]);
     }
 
     #[rstest]
