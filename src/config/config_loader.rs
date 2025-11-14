@@ -70,7 +70,7 @@ mod tests {
       transform_strategies:
         - "alias_mapping"
         - "multi_hpo_column_expansion"
-      loader: "file_system"
+      output_directory: "folder"
       meta_data:
         created_by: Rouven Reuter
         submitted_by: Magnus Knut Hansen
@@ -99,7 +99,7 @@ mod tests {
             "alias_mapping",
             "multi_hpo_column_expansion"
         ]
-        loader = "file_system"
+        output_directory = "folder"
 
         [pipeline.meta_data]
         created_by = "Rouven Reuter"
@@ -133,7 +133,7 @@ mod tests {
       "alias_mapping",
       "multi_hpo_column_expansion"
     ],
-    "loader": "file_system",
+    "output_directory": "folder",
     "meta_data": {
       "created_by": "Rouven Reuter",
       "submitted_by": "Magnus Knut Hansen",
@@ -169,7 +169,7 @@ mod tests {
       "alias_mapping",
       "multi_hpo_column_expansion",
     ],
-    loader: "file_system",
+    output_directory: "folder",
     meta_data: (
       created_by: "Rouven Reuter",
       submitted_by: "Magnus Knut Hansen",
@@ -243,7 +243,7 @@ mod tests {
                     StrategyConfig::AliasMapping,
                     StrategyConfig::MultiHPOColumnExpansion,
                 ],
-                "file_system".to_string(),
+                "folder".to_string(),
             ),
             data_sources: vec![
                 // First data source: CSV
