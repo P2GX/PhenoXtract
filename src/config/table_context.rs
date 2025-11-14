@@ -94,7 +94,7 @@ pub enum Context {
     #[allow(unused)]
     WeightInKg,
     #[allow(unused)]
-    TimeOfDeath,
+    AgeOfDeath,
     #[allow(unused)]
     CauseOfDeath,
     #[allow(unused)]

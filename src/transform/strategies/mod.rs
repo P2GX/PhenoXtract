@@ -7,5 +7,6 @@ pub use ontology_normaliser::OntologyNormaliserStrategy;
 
 pub mod multi_hpo_col_expansion;
 pub mod strategy_factory;
+mod age_to_iso8601;
 
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;

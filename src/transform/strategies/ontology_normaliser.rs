@@ -68,7 +68,7 @@ impl Strategy for OntologyNormaliserStrategy {
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), StrategyError> {
-        info!("Applying HPOSynonymsToPrimaryTerms strategy to data.");
+        info!("Applying OntologyNormaliser strategy to data.");
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 

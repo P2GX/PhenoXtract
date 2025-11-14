@@ -168,6 +168,8 @@ pub enum StrategyError {
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
+    #[error("{0} is invalid. Only ages between 0 and 150 are allowed.")]
+    InvalidAge(i32)
 }
 
 impl From<DataProcessingError> for StrategyError {

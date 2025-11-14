@@ -156,7 +156,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_data_context(Context::DateOfBirth),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Time of death".to_string()))
-                    .with_data_context(Context::TimeOfDeath),
+                    .with_data_context(Context::AgeOfDeath),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex(
                         "Survival time since diagnosis (days)".to_string(),

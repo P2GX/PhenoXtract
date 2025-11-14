@@ -62,6 +62,15 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
+    pub fn where_data_context_is_age(mut self) -> Self {
+        self.data_context.extend(vec![
+            Filter::Is(&Context::SubjectAge),
+            Filter::Is(&Context::AgeOfDeath),
+            Filter::Is(&Context::OnsetAge),
+        ]);
+        self
+    }
+
     #[allow(dead_code)]
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.fill_missing.push(fill_missing);
@@ -163,6 +172,15 @@ impl<'a> ColumnFilter<'a> {
             Filter::Is(&Context::MondoLabelOrId),
             Filter::Is(&Context::OmimLabelOrId),
             Filter::Is(&Context::OrphanetLabelOrId),
+        ]);
+        self
+    }
+
+    pub fn where_data_context_is_age(mut self) -> Self {
+        self.series_filter.data_context.extend(vec![
+            Filter::Is(&Context::SubjectAge),
+            Filter::Is(&Context::AgeOfDeath),
+            Filter::Is(&Context::OnsetAge),
         ]);
         self
     }

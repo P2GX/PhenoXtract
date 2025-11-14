@@ -108,7 +108,7 @@ impl Collector {
         if let Some(status) = status {
             let time_of_death = Self::collect_single_multiplicity_element(
                 patient_cdf,
-                Context::TimeOfDeath,
+                Context::AgeOfDeath,
                 patient_id,
             )?;
 
@@ -897,7 +897,7 @@ mod tests {
 
         let time_of_death_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_of_death".to_string()))
-            .with_data_context(Context::TimeOfDeath);
+            .with_data_context(Context::AgeOfDeath);
 
         let survival_time_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("survival_time".to_string()))

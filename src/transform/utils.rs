@@ -4,6 +4,8 @@ use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column, TimeUnit};
+use regex::Regex;
+use crate::constants::ISO8601_DUR_PATTERN;
 
 fn cast_to_bool(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
@@ -92,6 +94,11 @@ fn cast_to_datetime(column: &Column) -> Result<Column, DataProcessingError> {
         .collect::<Result<Vec<AnyValue>, DataProcessingError>>()?;
 
     Ok(Column::new(col_name.clone(), datetimes))
+}
+
+pub fn is_iso8601_duration(dur_string: &str) -> bool {
+    let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
+    re.is_match(dur_string)
 }
 
 pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
