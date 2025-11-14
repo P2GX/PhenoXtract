@@ -1,6 +1,7 @@
 use crate::config::strategy_config::StrategyConfig;
 use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
+use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
 use crate::transform::strategies::mapping::DefaultMappings;
 use crate::transform::strategies::{
     AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
@@ -56,6 +57,7 @@ impl StrategyFactory {
                     data_context.clone(),
                 )))
             }
+            StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
         }
     }
 }
@@ -122,6 +124,15 @@ mod tests {
             data_context: Context::GenoLabelOrId,
         };
 
+        let result = factory.try_from_config(&config);
+
+        assert!(result.is_ok(), "{:?}", result);
+    }
+
+    #[rstest]
+    fn test_try_from_config_age_to_iso8601() {
+        let mut factory = create_test_factory();
+        let config = StrategyConfig::AgeToIso8601;
         let result = factory.try_from_config(&config);
 
         assert!(result.is_ok(), "{:?}", result);

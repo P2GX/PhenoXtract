@@ -14,4 +14,5 @@ pub enum StrategyConfig {
         ontology_prefix: OntologyRef,
         data_context: Context,
     },
+    AgeToIso8601,
 }

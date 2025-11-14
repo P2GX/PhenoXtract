@@ -1,11 +1,11 @@
 use crate::config::table_context::OutputDataType;
+use crate::constants::ISO8601_DUR_PATTERN;
 use crate::transform::error::DataProcessingError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column, TimeUnit};
 use regex::Regex;
-use crate::constants::ISO8601_DUR_PATTERN;
 
 fn cast_to_bool(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
@@ -221,8 +221,8 @@ impl HpoColMaker {
 mod tests {
     use crate::config::table_context::OutputDataType;
     use crate::transform::utils::{
-        HpoColMaker, cast_to_bool, cast_to_date, cast_to_datetime, polars_column_cast_ambivalent,
-        polars_column_cast_specific,
+        HpoColMaker, cast_to_bool, cast_to_date, cast_to_datetime, is_iso8601_duration,
+        polars_column_cast_ambivalent, polars_column_cast_specific,
     };
     use polars::datatypes::TimeUnit;
     use polars::prelude::{AnyValue, Column, DataType};
@@ -560,5 +560,19 @@ mod tests {
             ("HP:1234567", None),
             hpo_col_maker.decode_column_header(&hpo_col2)
         );
+    }
+
+    #[rstest]
+    fn test_is_iso8601_duration() {
+        assert!(is_iso8601_duration("P47Y"));
+        assert!(is_iso8601_duration("P47Y5M"));
+        assert!(is_iso8601_duration("P47Y5M29D"));
+        assert!(is_iso8601_duration("P47Y5M29DT8H"));
+        assert!(is_iso8601_duration("P47Y5M29DT8H12M"));
+        assert!(is_iso8601_duration("P47Y5M29DT8H12M15S"));
+
+        assert!(!is_iso8601_duration("asd"));
+        assert!(!is_iso8601_duration("123"));
+        assert!(!is_iso8601_duration("47Y"));
     }
 }
