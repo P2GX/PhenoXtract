@@ -68,8 +68,8 @@ mod tests {
           name: "test_table"
     pipeline:
       transform_strategies:
-        - "alias_mapping"
-        - "multi_hpo_column_expansion"
+        - "alias_map"
+        - "multi_hpo_col_expansion"
       loader: "file_system"
       meta_data:
         created_by: Rouven Reuter
@@ -96,8 +96,8 @@ mod tests {
 
         [pipeline]
         transform_strategies = [
-            "alias_mapping",
-            "multi_hpo_column_expansion"
+            "alias_map",
+            "multi_hpo_col_expansion"
         ]
         loader = "file_system"
 
@@ -130,8 +130,8 @@ mod tests {
   ],
   "pipeline": {
     "transform_strategies": [
-      "alias_mapping",
-      "multi_hpo_column_expansion"
+      "alias_map",
+      "multi_hpo_col_expansion"
     ],
     "loader": "file_system",
     "meta_data": {
@@ -166,8 +166,8 @@ mod tests {
   ],
   pipeline: (
     transform_strategies: [
-      "alias_mapping",
-      "multi_hpo_column_expansion",
+      "alias_map",
+      "multi_hpo_col_expansion",
     ],
     loader: "file_system",
     meta_data: (
@@ -240,8 +240,8 @@ mod tests {
                     Some(&OntologyRef::geno()),
                 ),
                 vec![
-                    StrategyConfig::AliasMapping,
-                    StrategyConfig::MultiHPOColumnExpansion,
+                    StrategyConfig::AliasMap,
+                    StrategyConfig::MultiHpoColExpansion,
                 ],
                 "file_system".to_string(),
             ),

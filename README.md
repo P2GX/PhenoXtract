@@ -100,7 +100,7 @@ data_sources:
 
 pipeline:
  transform_strategies:
-  - "alias_mapping"
+  - "alias_map"
   - "fill_null"
  loader: "file_system"
 

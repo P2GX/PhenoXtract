@@ -1,7 +1,7 @@
 use crate::config::strategy_config::StrategyConfig;
 use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
-use crate::transform::strategies::mapping::DefaultMappings;
+use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::{
     AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
 };
@@ -38,14 +38,14 @@ impl StrategyFactory {
         Self: Sized,
     {
         match config {
-            StrategyConfig::AliasMapping => Ok(Box::new(AliasMapStrategy)),
-            StrategyConfig::DefaultMappings(mapping_type) => match mapping_type {
-                DefaultMappings::SexMapping => {
+            StrategyConfig::AliasMap => Ok(Box::new(AliasMapStrategy)),
+            StrategyConfig::DefaultMapping(mapping_type) => match mapping_type {
+                DefaultMapping::SexMapping => {
                     Ok(Box::new(MappingStrategy::default_sex_mapping_strategy()))
                 }
             },
-            StrategyConfig::MultiHPOColumnExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
-            StrategyConfig::OntologyNormalizer {
+            StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
+            StrategyConfig::OntologyNormaliser {
                 ontology_prefix,
                 data_context,
             } => {
@@ -66,7 +66,7 @@ mod tests {
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Context;
     use crate::ontology::OntologyRef;
-    use crate::transform::strategies::mapping::DefaultMappings;
+    use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
     fn create_test_factory() -> StrategyFactory {
@@ -78,7 +78,7 @@ mod tests {
     #[rstest]
     fn test_try_from_config_alias_mapping() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::AliasMapping;
+        let config = StrategyConfig::AliasMap;
 
         let result = factory.try_from_config(&config);
 
@@ -91,7 +91,7 @@ mod tests {
     #[rstest]
     fn test_try_from_config_default_sex_mapping() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::DefaultMappings(DefaultMappings::SexMapping);
+        let config = StrategyConfig::DefaultMapping(DefaultMapping::SexMapping);
 
         let result = factory.try_from_config(&config);
 
@@ -104,7 +104,7 @@ mod tests {
     #[rstest]
     fn test_try_from_config_multi_hpo_expansion() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::MultiHPOColumnExpansion;
+        let config = StrategyConfig::MultiHpoColExpansion;
 
         let result = factory.try_from_config(&config);
 
@@ -117,7 +117,7 @@ mod tests {
     #[rstest]
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::OntologyNormalizer {
+        let config = StrategyConfig::OntologyNormaliser {
             ontology_prefix: OntologyRef::geno().clone(),
             data_context: Context::GenoLabelOrId,
         };
@@ -145,7 +145,7 @@ mod tests {
     #[rstest]
     fn test_try_from_configs_single() {
         let mut factory = create_test_factory();
-        let configs = vec![StrategyConfig::AliasMapping];
+        let configs = vec![StrategyConfig::AliasMap];
 
         let result = factory.try_from_configs(&configs);
 
@@ -157,9 +157,9 @@ mod tests {
     fn test_try_from_configs_multiple() {
         let mut factory = create_test_factory();
         let configs = vec![
-            StrategyConfig::AliasMapping,
-            StrategyConfig::MultiHPOColumnExpansion,
-            StrategyConfig::DefaultMappings(DefaultMappings::SexMapping),
+            StrategyConfig::AliasMap,
+            StrategyConfig::MultiHpoColExpansion,
+            StrategyConfig::DefaultMapping(DefaultMapping::SexMapping),
         ];
 
         let result = factory.try_from_configs(&configs);
@@ -171,7 +171,7 @@ mod tests {
     #[rstest]
     fn test_strategy_trait_object_creation() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::AliasMapping;
+        let config = StrategyConfig::AliasMap;
 
         let strategy_result = factory.try_from_config(&config);
 
