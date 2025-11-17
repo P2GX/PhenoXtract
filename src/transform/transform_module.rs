@@ -5,7 +5,7 @@ use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::DataType;
+use polars::prelude::{DataType, StringNameSpaceImpl};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -38,6 +38,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
+            Self::trim_strings(table)?;
             Self::ensure_ints(table)?;
             Self::polars_dataframe_cast_ambivalent(table)?;
         }
@@ -47,6 +48,23 @@ impl TransformerModule {
         }
 
         Ok(self.collector.collect(data)?)
+    }
+
+    fn trim_strings(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
+        let string_col_names: Vec<String> = cdf
+            .filter_columns()
+            .where_dtype(Filter::Is(&DataType::String))
+            .collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect();
+
+        for col_name in string_col_names {
+            let column = cdf.data().column(&col_name)?;
+            let stringified_col = column.str()?;
+            stringified_col.apply_mut(|s| s.trim());
+        }
+        Ok(())
     }
 
     /// Converts float columns to Int64 if all values are whole numbers within i64 range.
@@ -139,6 +157,7 @@ impl PartialEq for TransformerModule {
 mod tests {
     use super::*;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use log::debug;
     use polars::df;
     use polars::prelude::{DataType, TimeUnit};
     use rstest::rstest;
@@ -301,5 +320,26 @@ mod tests {
                 result_col.dtype()
             );
         }
+    }
+
+    #[rstest]
+    fn test_trim_strings() {
+        let df = df![
+            "string_col" => &["   hello", "world  ", "  test  ", "blah"],
+            "int col" => &[1, 2, 3, 4],
+        ]
+        .unwrap();
+        let mut cdf = ContextualizedDataFrame::new(TableContext::default(), df.clone());
+
+        TransformerModule::trim_strings(&mut cdf).unwrap();
+
+        assert_eq!(
+            cdf.data(),
+            &df![
+                "string_col" => &["hello", "world", "test", "blah"],
+                "int col" => &[1, 2, 3, 4],
+            ]
+            .unwrap()
+        );
     }
 }
