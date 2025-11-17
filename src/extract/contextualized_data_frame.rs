@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::StrategyError;
@@ -153,6 +154,11 @@ impl ContextualizedDataFrame {
             .iter()
             .filter_map(|sc| sc.get_building_block_id())
             .collect()
+    }
+    
+    ///doc string todo! 
+    pub fn create_subject_id_data_hash_map(&self, data: Context) -> HashMap<AnyValue, AnyValue> {
+        
     }
 }
 

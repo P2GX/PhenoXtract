@@ -64,6 +64,7 @@ impl Strategy for DateToAgeStrategy {
         // need to zip together the subject IDs and Dobs
         // there should be an optional column name filter in the strategy if you want to apply it more specifically
         // (possibly also for other strategies?)
+        // apply on CDF level
 
         for table in tables.iter_mut() {
             let column_names: Vec<PlSmallStr> = table
