@@ -5,6 +5,7 @@ pub use mapping::MappingStrategy;
 pub mod ontology_normaliser;
 pub use ontology_normaliser::OntologyNormaliserStrategy;
 
+mod date_to_age;
 pub mod multi_hpo_col_expansion;
 pub mod strategy_factory;
 
