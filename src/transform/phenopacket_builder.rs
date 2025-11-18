@@ -18,14 +18,14 @@ use phenopackets::ga4gh::vrsatile::v1::{
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
-use phenopackets::schema::v2::core::time_element::Element::{Age, Timestamp};
+use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
     AcmgPathogenicityClassification, Age as IndividualAge, Diagnosis, Disease,
     GenomicInterpretation, Individual, Interpretation, OntologyClass, PhenotypicFeature, Sex,
     TherapeuticActionability, TimeElement, VariantInterpretation, VitalStatus,
 };
-use prost_types::Timestamp as TimestampProtobuf;
+use prost_types::Timestamp;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -509,7 +509,7 @@ impl PhenopacketBuilder {
         //try to parse the string as a datetime
         if let Ok(ts) = Self::try_parse_timestamp(te_string) {
             let datetime_te = TimeElement {
-                element: Some(Timestamp(ts)),
+                element: Some(Element::Timestamp(ts)),
             };
             return Ok(datetime_te);
         }
@@ -525,7 +525,7 @@ impl PhenopacketBuilder {
         })
     }
 
-    fn try_parse_timestamp(ts_string: &str) -> Result<TimestampProtobuf, PhenopacketBuilderError> {
+    fn try_parse_timestamp(ts_string: &str) -> Result<Timestamp, PhenopacketBuilderError> {
         let utc_dt = try_parse_string_datetime(ts_string)
             .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
             .map(|naive| Utc.from_utc_datetime(&naive))
@@ -536,7 +536,7 @@ impl PhenopacketBuilder {
 
         let seconds = utc_dt.timestamp();
         let nanos = utc_dt.timestamp_subsec_nanos() as i32;
-        Ok(TimestampProtobuf { seconds, nanos })
+        Ok(Timestamp { seconds, nanos })
     }
 
     fn try_parse_iso8601duration(dur_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
@@ -819,7 +819,7 @@ mod tests {
     #[fixture]
     fn onset_timestamp_te() -> Option<TimeElement> {
         Some(TimeElement {
-            element: Some(Timestamp(TimestampProtobuf {
+            element: Some(Element::Timestamp(Timestamp {
                 seconds: 1128170096,
                 nanos: 0,
             })),
@@ -1574,7 +1574,7 @@ mod tests {
         assert_eq!(individual.sex, Sex::Male as i32);
         assert_eq!(
             individual.date_of_birth,
-            Some(TimestampProtobuf {
+            Some(Timestamp {
                 seconds: 980726400,
                 nanos: 0,
             })
@@ -1658,7 +1658,7 @@ mod tests {
         assert_eq!(
             te_date,
             TimeElement {
-                element: Some(Timestamp(TimestampProtobuf {
+                element: Some(Element::Timestamp(Timestamp {
                     seconds: 980726400,
                     nanos: 0,
                 })),
@@ -1669,7 +1669,7 @@ mod tests {
         assert_eq!(
             te_datetime,
             TimeElement {
-                element: Some(Timestamp(TimestampProtobuf {
+                element: Some(Element::Timestamp(Timestamp {
                     seconds: 1433495859,
                     nanos: 0,
                 })),
@@ -1692,7 +1692,7 @@ mod tests {
         let ts_date = PhenopacketBuilder::try_parse_timestamp("2001-01-29").unwrap();
         assert_eq!(
             ts_date,
-            TimestampProtobuf {
+            Timestamp {
                 seconds: 980726400,
                 nanos: 0,
             }
@@ -1700,7 +1700,7 @@ mod tests {
         let ts_datetime = PhenopacketBuilder::try_parse_timestamp("2015-06-05T09:17:39Z").unwrap();
         assert_eq!(
             ts_datetime,
-            TimestampProtobuf {
+            Timestamp {
                 seconds: 1433495859,
                 nanos: 0,
             }
