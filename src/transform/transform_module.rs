@@ -1,9 +1,10 @@
+use crate::config::table_context::{Context, OutputDataType};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collector::Collector;
 use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
-use crate::transform::utils::polars_column_cast_ambivalent;
+use crate::transform::utils::{polars_column_cast_ambivalent, polars_column_cast_specific};
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::DataType;
 
@@ -39,7 +40,8 @@ impl TransformerModule {
 
         for table in &mut tables_refs {
             Self::ensure_ints(table)?;
-            Self::polars_dataframe_cast_ambivalent(table)?;
+            Self::ambivalent_cast_non_id_columns(table)?;
+            Self::cast_subject_id_col_to_string(table)?;
         }
 
         for strategy in &self.strategies {
@@ -101,25 +103,32 @@ impl TransformerModule {
         Ok(())
     }
 
-    fn polars_dataframe_cast_ambivalent(
+    fn ambivalent_cast_non_id_columns(
         cdf: &mut ContextualizedDataFrame,
     ) -> Result<(), DataProcessingError> {
-        let col_names: Vec<String> = cdf
-            .data()
-            .get_column_names()
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let non_subject_id_col_names = cdf
+            .filter_columns()
+            .where_data_context(Filter::IsNot(&Context::SubjectId))
+            .collect_names();
 
-        for col_name in col_names {
-            let column = cdf.data().column(col_name.as_str())?;
+        for col_name in non_subject_id_col_names {
+            let column = cdf.data().column(col_name)?;
 
             let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
             cdf.builder()
-                .replace_column(col_name.as_str(), casted_series)?
+                .replace_column(col_name, casted_series)?
                 .build()?;
         }
         Ok(())
+    }
+
+    fn cast_subject_id_col_to_string(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
+        let subject_id_col = cdf.filter_columns().where_data_context(Filter::Is(&Context::SubjectId)).collect().first().expect("There should be at least one SubjectID column in a ContextualisedDataFrame.");
+        let stringified_subject_id_col = polars_column_cast_specific(subject_id_col, &OutputDataType::String)?.take_materialized_series();
+        cdf.builder()
+            .replace_column(col_name, casted_series)?
+            .build()?;
+
     }
 }
 
@@ -165,7 +174,7 @@ mod tests {
             df.clone(),
         );
 
-        let result = TransformerModule::polars_dataframe_cast_ambivalent(&mut cdf);
+        let result = TransformerModule::ambivalent_cast_non_id_columns(&mut cdf);
         assert!(result.is_ok());
         assert_eq!(
             cdf.data().column("int_col").unwrap().dtype(),
