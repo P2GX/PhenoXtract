@@ -159,7 +159,7 @@ mod tests {
     use super::*;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use polars::df;
-    use polars::prelude::{DataType, TimeUnit};
+    use polars::prelude::{Column, DataType, TimeUnit};
     use rstest::rstest;
 
     #[rstest]
@@ -349,6 +349,7 @@ mod tests {
 
         let new_subject_id_col = cdf.data().column("subject_id").unwrap();
         assert_eq!(new_subject_id_col.dtype(), &DataType::String);
+        assert_eq!(new_subject_id_col, &Column::new("subject_id".into(), vec!["1", "2", "3", "4"]));
         let age_col = cdf.data().column("age").unwrap();
         assert_eq!(age_col.dtype(), &DataType::Int32);
         let name_col = cdf.data().column("name").unwrap();
