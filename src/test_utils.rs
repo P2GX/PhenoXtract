@@ -11,7 +11,6 @@ use phenopackets::schema::v2::core::{
     OntologyClass, PhenotypicFeature, Resource, TimeElement, Update,
 };
 use pretty_assertions::assert_eq;
-use prost_types::Timestamp;
 use ratelimit::Ratelimiter;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -150,8 +149,8 @@ data_sources:
 pub(crate) static PIPELINE_CONFIG: &[u8] = br#"
 pipeline:
   transform_strategies:
-    - "alias_mapping"
-    - "multi_hpo_column_expansion"
+    - "alias_map"
+    - "multi_hpo_col_expansion"
   loader: "file_system"
   meta_data:
     created_by: Rouven Reuter
