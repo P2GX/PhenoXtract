@@ -122,13 +122,23 @@ impl TransformerModule {
         Ok(())
     }
 
-    fn cast_subject_id_col_to_string(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
-        let subject_id_col = cdf.filter_columns().where_data_context(Filter::Is(&Context::SubjectId)).collect().first().expect("There should be at least one SubjectID column in a ContextualisedDataFrame.");
-        let stringified_subject_id_col = polars_column_cast_specific(subject_id_col, &OutputDataType::String)?.take_materialized_series();
+    fn cast_subject_id_col_to_string(
+        cdf: &mut ContextualizedDataFrame,
+    ) -> Result<(), DataProcessingError> {
+        let subject_id_col = cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect()
+            .first()
+            .expect("There should be at least one SubjectID column in a ContextualisedDataFrame.");
+        let subject_id_col_name = subject_id_col.name();
+        let stringified_subject_id_col =
+            polars_column_cast_specific(subject_id_col, &OutputDataType::String)?
+                .take_materialized_series();
         cdf.builder()
-            .replace_column(col_name, casted_series)?
+            .replace_column(subject_id_col_name, stringified_subject_id_col)?
             .build()?;
-
+        Ok(())
     }
 }
 
@@ -310,5 +320,38 @@ mod tests {
                 result_col.dtype()
             );
         }
+    }
+
+    fn test_cast_subject_id_col_to_string() {
+        let df = df!(
+            "subject_id" => &[1, 2, 3, 4],
+                    "age" => &[15, 25, 35, 65],
+            "name" => &["adam", "bertha", "carey", "denise"]
+        )
+        .unwrap();
+
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "patient_data".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_data_context(Context::SubjectId)
+                        .with_identifier(Identifier::from("subject_id")),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::from("age"))
+                        .with_data_context(Context::SubjectAge),
+                    SeriesContext::default().with_identifier(Identifier::from("name")),
+                ],
+            ),
+            df,
+        );
+        TransformerModule::cast_subject_id_col_to_string(&mut cdf).unwrap();
+
+        let new_subject_id_col = cdf.data().column("subject_id").unwrap();
+        assert_eq!(new_subject_id_col.dtype(), &DataType::String);
+        let age_col = cdf.data().column("age").unwrap();
+        assert_eq!(age_col.dtype(), &DataType::Int32);
+        let name_col = cdf.data().column("name").unwrap();
+        assert_eq!(name_col.dtype(), &DataType::String);
     }
 }
