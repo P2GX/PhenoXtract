@@ -95,6 +95,13 @@ impl Strategy for AgeToIso8601Strategy {
                         i32_to_iso8601
                             .get(&years)
                             .expect("Age was too high or too low")
+                    } else if let Ok(years) = cell_value.parse::<f64>()
+                        && years.fract() == 0.0
+                        && self.is_valid_age(years as i32)
+                    {
+                        i32_to_iso8601
+                            .get(&(years as i32))
+                            .expect("Age was too high or too low")
                     } else {
                         if !cell_value.is_empty() {
                             let mapping_error_info = MappingErrorInfo {
@@ -159,7 +166,7 @@ mod tests {
         let age_col = Column::new(
             "age".into(),
             [
-                AnyValue::String("32"),
+                AnyValue::String("32.0"),
                 AnyValue::String("P47Y5M12D"),
                 AnyValue::Null,
                 AnyValue::String("15"),
