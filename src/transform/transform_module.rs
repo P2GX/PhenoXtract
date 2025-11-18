@@ -5,7 +5,7 @@ use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{DataType, StringNameSpaceImpl};
+use polars::prelude::{DataType, IntoSeries};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -61,8 +61,10 @@ impl TransformerModule {
 
         for col_name in string_col_names {
             let column = cdf.data().column(&col_name)?;
-            let stringified_col = column.str()?;
-            stringified_col.apply_mut(|s| s.trim());
+            let trimmed_col = column.str()?.apply_mut(|s| s.trim());
+            cdf.builder()
+                .replace_column(&col_name, trimmed_col.into_series())?
+                .build()?;
         }
         Ok(())
     }
@@ -157,7 +159,6 @@ impl PartialEq for TransformerModule {
 mod tests {
     use super::*;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
-    use log::debug;
     use polars::df;
     use polars::prelude::{DataType, TimeUnit};
     use rstest::rstest;
@@ -325,17 +326,32 @@ mod tests {
     #[rstest]
     fn test_trim_strings() {
         let df = df![
+            "subject_id" => ["P001", "P002", "P003", "P004"],
             "string_col" => &["   hello", "world  ", "  test  ", "blah"],
-            "int col" => &[1, 2, 3, 4],
+            "int_col" => &[1, 2, 3, 4],
         ]
         .unwrap();
-        let mut cdf = ContextualizedDataFrame::new(TableContext::default(), df.clone());
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "table".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("subject_id".to_string()))
+                        .with_data_context(Context::SubjectId),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("string_col".to_string())),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                ],
+            ),
+            df,
+        );
 
         TransformerModule::trim_strings(&mut cdf).unwrap();
 
         assert_eq!(
             cdf.data(),
-            &df![
+            &df!["subject_id" => ["P001", "P002", "P003", "P004"],
                 "string_col" => &["hello", "world", "test", "blah"],
                 "int col" => &[1, 2, 3, 4],
             ]
