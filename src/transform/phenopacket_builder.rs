@@ -542,7 +542,7 @@ impl PhenopacketBuilder {
     fn try_parse_iso8601duration(dur_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
         if is_iso8601_duration(dur_string) {
             Ok(TimeElement {
-                element: Some(Age(IndividualAge {
+                element: Some(Element::Age(IndividualAge {
                     iso8601duration: dur_string.to_string(),
                 })),
             })
@@ -1599,7 +1599,7 @@ mod tests {
             Some(VitalStatus {
                 status: Status::Alive.into(),
                 time_of_death: Some(TimeElement {
-                    element: Some(Age(IndividualAge {
+                    element: Some(Element::Age(IndividualAge {
                         iso8601duration: "P81Y5M13D".to_string()
                     }))
                 }),
@@ -1645,7 +1645,7 @@ mod tests {
         assert_eq!(
             te,
             TimeElement {
-                element: Some(Age(IndividualAge {
+                element: Some(Element::Age(IndividualAge {
                     iso8601duration: "P81Y5M13D".to_string()
                 }))
             }
