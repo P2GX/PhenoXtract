@@ -1,6 +1,8 @@
 use crate::extract::error::ExtractionError;
-use crate::ontology::error::RegistryError;
+use crate::ontology::error::{OntologyFactoryError, RegistryError};
 use crate::transform::error::TransformError;
+use config::ConfigError;
+use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::load::error::LoadError;
@@ -9,24 +11,34 @@ use validator::ValidationErrors;
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum ConstructionError {
-    #[error("Registry error: {0}")]
+    #[error(transparent)]
     Registry(#[from] RegistryError),
-    #[error("Ontolius error: {0}")]
+    #[error(transparent)]
     Ontolius(#[from] anyhow::Error),
+    #[error(transparent)]
+    OntologyFactoryError(#[from] OntologyFactoryError),
+    #[error("No Pipeline Config found.")]
+    NoPipelineConfigFound,
+    #[error("Could not find config file at '{0}'")]
+    NoConfigFileFound(PathBuf),
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+    #[error(transparent)]
+    ConfigError(#[from] ConfigError),
 }
 
 #[derive(Debug, Error)]
 pub enum PipelineError {
     #[allow(dead_code)]
-    #[error("Extraction error: {0}")]
+    #[error(transparent)]
     Extraction(#[from] ExtractionError),
     #[allow(dead_code)]
-    #[error("Transform error: {0}")]
+    #[error(transparent)]
     Transform(#[from] TransformError),
     #[allow(dead_code)]
-    #[error("Validation error: {0}")]
+    #[error(transparent)]
     Validation(#[from] ValidationErrors),
     #[allow(dead_code)]
-    #[error("Load error: {0}")]
+    #[error(transparent)]
     Load(#[from] LoadError),
 }

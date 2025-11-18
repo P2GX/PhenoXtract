@@ -1,14 +1,14 @@
 use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::StrategyError::{MappingError, TransformationError};
+use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use polars::prelude::{DataType, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -73,8 +73,6 @@ impl Strategy for OntologyNormaliserStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let table_name = table.context().name().to_string();
-
             let column_names: Vec<PlSmallStr> = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
@@ -94,24 +92,23 @@ impl Strategy for OntologyNormaliserStrategy {
                         curie_id
                     } else {
                         if !cell_value.is_empty() {
-                            error_info.insert(MappingErrorInfo {
+                            let mapping_error_info = MappingErrorInfo {
                                 column: col.name().to_string(),
                                 table: table.context().name().to_string(),
                                 old_value: cell_value.to_string(),
                                 possible_mappings: vec![],
-                            });
+                            };
+                            if !error_info.contains(&mapping_error_info) {
+                                error_info.insert(mapping_error_info);
+                            }
                         }
                         cell_value
                     }
                 });
                 table
-                    .data_mut()
-                    .replace(&col_name, mapped_column)
-                    .map_err(|_| TransformationError {
-                        transformation: "replace".to_string(),
-                        col_name: col_name.to_string(),
-                        table_name: table_name.to_string(),
-                    })?;
+                    .builder()
+                    .replace_column(&col_name, mapped_column.into_series())?
+                    .build()?;
             }
         }
 
@@ -138,49 +135,66 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
+    use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
-
     #[fixture]
     fn tc() -> TableContext {
         let sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("phenotypic_features".to_string()))
+            .with_identifier(Identifier::Multi(vec![
+                "phenotypic_features".to_string(),
+                "more_phenotypic_features".to_string(),
+            ]))
             .with_data_context(Context::HpoLabelOrId);
-        TableContext::new("patient_data".to_string(), vec![sc])
+        let sc_pid = SeriesContext::default()
+            .with_identifier(Identifier::from("subject_ids"))
+            .with_data_context(Context::SubjectId);
+        TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }
 
     #[rstest]
     fn test_hpo_syns_strategy(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
-            ["pneumonia", "HP:0000256", "HP:0001369", "Nail psoriasis"],
+            [
+                "abnormal eye phySiology",
+                "HP:0000639",
+                "HP:0012043",
+                "Nystagmus",
+            ],
         );
         let col2 = Column::new(
             "more_phenotypic_features".into(),
             [
-                "bronchial asthma",
-                "Reactive airway disease",
-                "Joint inflammation",
-                "Nail psoriasis",
+                "Fractured nose",
+                "Abnormal nasal morphology",
+                "Abnormality of the nose",
+                "Abnormality of the face",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabelOrId,
         };
-        assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
+        let result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
+
+        if let Err(e) = result {
+            panic!("{}", e);
+        }
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
-            ["HP:0002090", "HP:0000256", "HP:0001369", "HP:0033327"],
+            ["HP:0012373", "HP:0000639", "HP:0012043", "HP:0000639"],
         );
         let expected_col2 = Column::new(
             "more_phenotypic_features".into(),
-            ["HP:0002099", "HP:0002099", "HP:0001369", "HP:0033327"],
+            ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
+        let expected_df =
+            DataFrame::new(vec![expected_col1, expected_col2, col_pid.clone()]).unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -188,18 +202,20 @@ mod tests {
     fn test_hpo_syns_strategy_fail(tc: TableContext) {
         let col1 = Column::new(
             "phenotypic_features".into(),
-            ["abcdef", "Big calvaria", "Joint inflammation", "12355"],
+            ["abcdef", "Fractured nose", "HP:0000639", "12355"],
         );
         let col2 = Column::new(
             "more_phenotypic_features".into(),
             [
-                "bronchial asthma",
-                "Reactive airway disease",
-                "jimmy",
-                "Nail psoriasis",
+                "Fractured nose",
+                "Abnormal nasal morphology",
+                "Abnormality of the nose",
+                "Abnormality of the face",
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+
+        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -242,13 +258,14 @@ mod tests {
 
         let col1_after_strat = Column::new(
             "phenotypic_features".into(),
-            ["abcdef", "HP:0000256", "HP:0001369", "12355"],
+            ["abcdef", "HP:0041249", "HP:0000639", "12355"],
         );
         let col2_after_strat = Column::new(
             "more_phenotypic_features".into(),
-            ["HP:0002099", "HP:0002099", "jimmy", "HP:0033327"],
+            ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let df_after_strat = DataFrame::new(vec![col1_after_strat, col2_after_strat]).unwrap();
+        let df_after_strat =
+            DataFrame::new(vec![col1_after_strat, col2_after_strat, col_pid]).unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
     }
 
@@ -257,57 +274,42 @@ mod tests {
         let col1 = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("pneumonia"),
+                AnyValue::String("abnormal eye phySiology"),
                 AnyValue::Null,
-                AnyValue::String("bronchial asthma"),
-                AnyValue::String("Nail psoriasis"),
-                AnyValue::String("Big calvaria"),
-                AnyValue::Null,
-            ],
-        );
-        let col2 = Column::new(
-            "more_phenotypic_features".into(),
-            [
-                AnyValue::String("HP:0002099"),
-                AnyValue::Null,
-                AnyValue::String("asthma"),
-                AnyValue::String("nail psoriasis"),
-                AnyValue::Null,
+                AnyValue::String("Nystagmus"),
+                AnyValue::String("Abnormality of the face"),
+                AnyValue::String("Fractured nose"),
                 AnyValue::Null,
             ],
         );
-        let df = DataFrame::new(vec![col1, col2]).unwrap();
+
+        let col_subject_id = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
+
+        let df = DataFrame::new(vec![col1, col_subject_id.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df);
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabelOrId,
         };
-        assert!(get_hpo_labels_strat.transform(&mut [&mut cdf]).is_ok());
+        let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
+
+        if let Err(err) = res {
+            panic!("Test failed at mapping stage: {}", err)
+        }
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
             [
-                AnyValue::String("HP:0002090"),
+                AnyValue::String("HP:0012373"),
                 AnyValue::Null,
-                AnyValue::String("HP:0002099"),
-                AnyValue::String("HP:0033327"),
-                AnyValue::String("HP:0000256"),
-                AnyValue::Null,
-            ],
-        );
-        let expected_col2 = Column::new(
-            "more_phenotypic_features".into(),
-            [
-                AnyValue::String("HP:0002099"),
-                AnyValue::Null,
-                AnyValue::String("HP:0002099"),
-                AnyValue::String("HP:0033327"),
-                AnyValue::Null,
+                AnyValue::String("HP:0000639"),
+                AnyValue::String("HP:0000271"),
+                AnyValue::String("HP:0041249"),
                 AnyValue::Null,
             ],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, expected_col2]).unwrap();
-        assert_eq!(cdf.into_data(), expected_df);
+        let expected_df = DataFrame::new(vec![expected_col1, col_subject_id]).unwrap();
+        assert_eq!(cdf.data(), &expected_df);
     }
 }

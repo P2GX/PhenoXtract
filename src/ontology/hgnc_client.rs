@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::ontology::error::ClientError;
-use directories::ProjectDirs;
+use crate::ontology::utils::get_cache_dir;
 use log::{debug, info};
 use ratelimit::Ratelimiter;
 use redb::{
@@ -10,6 +10,7 @@ use reqwest;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
+use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;
@@ -122,7 +123,7 @@ impl GeneResponse {
         type_name::<GeneResponse>()
             .split("::")
             .last()
-            .unwrap()
+            .expect("Could not get Struct name")
             .to_string()
     }
 
@@ -154,7 +155,7 @@ impl Value for GeneResponse {
     where
         Self: 'a,
     {
-        Self::from_bytes(data).unwrap()
+        Self::from_bytes(data).expect("Could not convert to bytes.")
     }
 
     fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
@@ -176,7 +177,7 @@ pub struct HGNCClient {
 }
 
 impl HGNCClient {
-    fn new(
+    pub fn new(
         rate_limiter: Ratelimiter,
         cache_file_path: PathBuf,
         api_url: String,
@@ -195,7 +196,7 @@ impl HGNCClient {
         Ok(self)
     }
     fn cache(&self) -> Result<RedbDatabase, DatabaseError> {
-        RedbDatabase::create(&self.cache_file_path)
+        RedbDatabase::open(&self.cache_file_path)
     }
 
     fn init_cache(cache_dir: &Path) -> Result<(), ClientError> {
@@ -208,10 +209,10 @@ impl HGNCClient {
         Ok(())
     }
     pub fn default_cache_dir() -> Option<PathBuf> {
-        let pkg_name = env!("CARGO_PKG_NAME");
-
-        ProjectDirs::from("", "", pkg_name)
-            .map(|project_dirs| project_dirs.cache_dir().join("hgnc_cache"))
+        match get_cache_dir() {
+            Ok(cache_dir) => Some(cache_dir.join("hgnc_cache")),
+            Err(_) => None,
+        }
     }
 
     pub fn fetch_gene_data(&self, symbol: &str) -> Result<GeneResponse, ClientError> {
@@ -258,13 +259,24 @@ impl Default for HGNCClient {
             .build()
             .expect("Building rate limiter failed");
 
-        let cache_dir = Self::default_cache_dir().unwrap();
+        let cache_dir = Self::default_cache_dir().expect("Could not find default cache dir.");
         info!("HGNC client cache dir: {:?}", cache_dir);
-        HGNCClient {
+        HGNCClient::new(
             rate_limiter,
-            cache_file_path: cache_dir,
-            api_url: "https://rest.genenames.org/".to_string(),
-        }
+            cache_dir,
+            "https://rest.genenames.org/".to_string(),
+        )
+        .expect("Failure when creating HGNC client.")
+    }
+}
+
+impl Debug for HGNCClient {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HGNCClient")
+            .field("cache_file_path", &self.cache_file_path)
+            .field("api_url", &self.api_url)
+            .field("rate_limiter", &"<Ratelimiter>")
+            .finish()
     }
 }
 
@@ -272,22 +284,11 @@ impl Default for HGNCClient {
 mod tests {
     use super::*;
     use crate::skip_in_ci;
-    use rstest::rstest;
+    use crate::test_utils::build_hgnc_test_client;
+    use pretty_assertions::assert_eq;
+    use rstest::{fixture, rstest};
     use serial_test::serial;
     use tempfile::TempDir;
-
-    fn build_client(cache_file_path: PathBuf) -> HGNCClient {
-        let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
-            .max_tokens(10)
-            .build()
-            .expect("Building rate limiter failed");
-        HGNCClient::new(
-            rate_limiter,
-            cache_file_path,
-            "https://rest.genenames.org/".to_string(),
-        )
-        .unwrap()
-    }
 
     fn clear_cache(cache_dir: &PathBuf) {
         let cache = RedbDatabase::create(cache_dir).unwrap();
@@ -298,12 +299,14 @@ mod tests {
         }
         write_txn.commit().unwrap();
     }
-
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
     #[rstest]
     #[serial]
-    fn test_fetch_gene_data() {
-        let temp_dir = TempDir::new().unwrap();
-        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
+    fn test_fetch_gene_data(temp_dir: TempDir) {
+        let client = build_hgnc_test_client(temp_dir.path());
 
         let symbol = "ZNF3";
         let gene_response = client.fetch_gene_data(symbol).unwrap();
@@ -316,10 +319,9 @@ mod tests {
 
     #[rstest]
     #[serial]
-    fn test_fetch_gene_data_rate_limit() {
+    fn test_fetch_gene_data_rate_limit(temp_dir: TempDir) {
         skip_in_ci!();
-        let temp_dir = TempDir::new().unwrap();
-        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
+        let client = build_hgnc_test_client(temp_dir.path());
 
         for _ in 0..50 {
             let _ = client.fetch_gene_data("ZNF3").unwrap();
@@ -329,10 +331,9 @@ mod tests {
 
     #[rstest]
     #[serial]
-    fn test_cache() {
+    fn test_cache(temp_dir: TempDir) {
         let symbol = "CLOCK";
-        let temp_dir = TempDir::new().unwrap();
-        let client = build_client(temp_dir.path().to_path_buf().join("hgnc_cache"));
+        let client = build_hgnc_test_client(temp_dir.path());
 
         let _ = client.fetch_gene_data(symbol).unwrap();
 

@@ -1,4 +1,6 @@
 use crate::config::table_context::Context;
+use crate::ontology::error::ClientError;
+use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -24,13 +26,19 @@ impl MappingSuggestion {
             .map(|(key, value)| MappingSuggestion::new(key.clone(), value.to_string()))
             .collect()
     }
-
     #[allow(dead_code)]
     pub fn suggestions_to_hashmap(suggestions: Vec<MappingSuggestion>) -> HashMap<String, String> {
         suggestions
             .into_iter()
             .map(|mapping| (mapping.from, mapping.to))
             .collect()
+    }
+}
+
+impl Display for MappingSuggestion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "'{}' -> '{}'", self.from, self.to)?;
+        Ok(())
     }
 }
 
@@ -46,7 +54,7 @@ impl Display for MappingErrorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "column '{}' in table '{}' with value '{}'",
+            "Column '{}' in table '{}' with value '{}'",
             self.column, self.table, self.old_value
         )?;
         if !self.possible_mappings.is_empty() {
@@ -63,12 +71,6 @@ impl Display for MappingErrorInfo {
     }
 }
 
-impl Display for MappingSuggestion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}' -> '{}'", self.from, self.to)
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum DataProcessingError {
     #[error("DataFrame Filter result was unexpectedly empty.")]
@@ -80,13 +82,21 @@ pub enum DataProcessingError {
         from: DataType,
         to: DataType,
     },
+    #[error(transparent)]
+    StrategyError(#[from] StrategyError),
+    #[error(transparent)]
+    PolarsError(#[from] PolarsError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
 }
 #[derive(Debug, Error)]
 pub enum TransformError {
-    #[error("StrategyError error: {0}")]
+    #[error(transparent)]
     StrategyError(#[from] StrategyError),
-    #[error("CollectorError error: {0}")]
+    #[error(transparent)]
     CollectorError(#[from] Box<CollectorError>),
+    #[error(transparent)]
+    DataProcessingError(#[from] Box<DataProcessingError>),
 }
 
 impl From<CollectorError> for TransformError {
@@ -95,22 +105,67 @@ impl From<CollectorError> for TransformError {
     }
 }
 
+impl From<DataProcessingError> for TransformError {
+    fn from(err: DataProcessingError) -> Self {
+        TransformError::DataProcessingError(Box::new(err))
+    }
+}
+
+fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
+    let mut grouped: HashMap<(&str, &str), Vec<&MappingErrorInfo>> = HashMap::new();
+
+    for error in errors {
+        grouped
+            .entry((&error.column, &error.table))
+            .or_default()
+            .push(error);
+    }
+
+    let mut result = String::new();
+    for ((column, table), group) in grouped {
+        result.push_str(&format!("  Column '{}' in table '{}':\n", column, table));
+        for error in group {
+            result.push_str(&format!("    - '{}'", error.old_value));
+            if !error.possible_mappings.is_empty() {
+                result.push_str(&format!(
+                    " (possible mappings: {})",
+                    error
+                        .possible_mappings
+                        .iter()
+                        .map(|pm| pm.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ));
+            }
+            result.push('\n');
+        }
+    }
+
+    result
+}
+
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
     #[error("Could not {transformation} column '{col_name}' for table '{table_name}'")]
-    TransformationError {
+    BuilderError {
         transformation: String,
         col_name: String,
         table_name: String,
     },
-    #[error("Strategy '{strategy_name}' unable to map {}", info.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", "))]
+
+    #[error(
+        "Strategy '{strategy_name}' unable to map: \n {}",
+        format_grouped_errors(info)
+    )]
     MappingError {
         strategy_name: String,
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
-    DataProcessing(Box<DataProcessingError>),
+    ValidationError(#[from] PxValidationError),
+    #[error(transparent)]
+    DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
 }
@@ -135,6 +190,15 @@ pub enum CollectorError {
         context: Context,
     },
     #[error(
+        "Expected at most one column with data contexts '{contexts:?}' in the building block '{bb_id}' in table '{table_name}'"
+    )]
+    ExpectedAtMostOneLinkedColumnWithContexts {
+        table_name: String,
+        bb_id: String,
+        contexts: Vec<Context>,
+        amount_found: usize,
+    },
+    #[error(
         "Found multiple values of {context} in table {table_name} for {patient_id} when there should only be one."
     )]
     ExpectedSingleValue {
@@ -142,15 +206,24 @@ pub enum CollectorError {
         patient_id: String,
         context: Context,
     },
-
+    #[error(
+        "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
+    )]
+    ExpectedUniquePhenotypeData {
+        table_name: String,
+        patient_id: String,
+        phenotype: String,
+    },
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(#[from] PolarsError),
     #[error("ParseFloatError error: {0}")]
     ParseFloatError(#[from] ParseFloatError),
-    #[error("PhenopacketBuilderError error: {0}")]
+    #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantData(String),
 }
 
 impl From<DataProcessingError> for CollectorError {
@@ -162,4 +235,16 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
+    #[error("Missing BiDict for {0}")]
+    MissingBiDict(String),
+    #[error(transparent)]
+    HgncClient(#[from] ClientError),
+    #[error("Error validating HGVS variant: {0}")]
+    VariantValidation(String),
+    #[error("No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}.")]
+    HgncGeneInfoRequest { gene: String },
+    #[error(
+        "The HGVS variant {variant} for patient {patient} did not have the correct reference:transcript format."
+    )]
+    HgvsFormat { patient: String, variant: String },
 }
