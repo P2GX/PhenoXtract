@@ -178,7 +178,7 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_polars_dataframe_cast_ambivalent() {
+    fn test_ambivalent_cast_non_id_columns() {
         let df = df![
             "int_col" => &["1", "2", "3"],
             "float_col" => &["1.5", "2.5", "3.5"],
@@ -193,6 +193,9 @@ mod tests {
                 vec![
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
+                        .with_identifier(Identifier::Regex("string_col".to_string())),
+                    SeriesContext::default()
+                        .with_data_context(Context::SubjectAge)
                         .with_identifier(Identifier::Regex("int_col".to_string())),
                 ],
             ),
