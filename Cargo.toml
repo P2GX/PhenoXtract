@@ -22,13 +22,13 @@ either = "1.15.0"
 chrono = "0.4.41"
 ontolius = "0.6.0"
 serde_json = "1.0.145"
-prost-types = "0.13.5" # Do not update. Version depends on Phenopackets crate.
+prost-types = "0.14.1" # Do not update. Phenopackets crate depends on this version.
 directories = "6.0.0"
 ordermap = "1.0.0"
 ratelimit = "0.10.0"
 redb = "3.1.0"
 thiserror = "2.0.17"
-ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.134' }
+ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.137' }
 
 [dev-dependencies]
 rstest = "0.26.1"
