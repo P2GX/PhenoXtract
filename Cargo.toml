@@ -1,5 +1,5 @@
 [package]
-authors = ["Rouven Reuter", "Peter Robinson", "Patrick Simon Nairne"]
+authors = ["Rouven Reuter", "Peter Robinson", "Patrick Simon Nairne", "Varenya Jain"]
 description = "A configurable ETL pipeline to convert tables into phenpackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
@@ -28,7 +28,7 @@ ordermap = "1.0.0"
 ratelimit = "0.10.0"
 redb = "3.1.0"
 thiserror = "2.0.17"
-ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.134' }
+ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.137' }
 
 [dev-dependencies]
 rstest = "0.26.1"
