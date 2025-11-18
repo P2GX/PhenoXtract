@@ -19,7 +19,7 @@ use std::string::ToString;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub enum DefaultMappings {
+pub enum DefaultMapping {
     SexMapping,
 }
 
