@@ -1,10 +1,10 @@
-use crate::config::table_context::{Context, OutputDataType};
+use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collector::Collector;
 use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
-use crate::transform::utils::{polars_column_cast_ambivalent, polars_column_cast_specific};
+use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{DataType, IntoSeries};
 
@@ -39,10 +39,10 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
-            Self::trim_strings(table)?;
             Self::ensure_ints(table)?;
             Self::ambivalent_cast_non_id_columns(table)?;
             Self::cast_subject_id_col_to_string(table)?;
+            Self::trim_strings(table)?;
         }
 
         for strategy in &self.strategies {
@@ -56,10 +56,7 @@ impl TransformerModule {
         let string_col_names: Vec<String> = cdf
             .filter_columns()
             .where_dtype(Filter::Is(&DataType::String))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         for col_name in string_col_names {
             let column = cdf.data().column(&col_name)?;
@@ -81,10 +78,7 @@ impl TransformerModule {
             .where_dtype(Filter::Is(&DataType::Float64))
             .where_dtype(Filter::Is(&DataType::Float32))
             .where_dtype(Filter::Is(&DataType::Int32))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         for col_name in float_col_names {
             let column = cdf.data().column(&col_name)?;
@@ -129,14 +123,14 @@ impl TransformerModule {
         let non_subject_id_col_names = cdf
             .filter_columns()
             .where_data_context(Filter::IsNot(&Context::SubjectId))
-            .collect_names();
+            .collect_owned_names();
 
         for col_name in non_subject_id_col_names {
-            let column = cdf.data().column(col_name)?;
+            let column = cdf.data().column(col_name.as_str())?;
 
             let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
             cdf.builder()
-                .replace_column(col_name, casted_series)?
+                .replace_column(col_name.as_str(), casted_series)?
                 .build()?;
         }
         Ok(())
@@ -145,18 +139,19 @@ impl TransformerModule {
     fn cast_subject_id_col_to_string(
         cdf: &mut ContextualizedDataFrame,
     ) -> Result<(), DataProcessingError> {
-        let subject_id_col = cdf
+        let subject_id_cols = cdf
             .filter_columns()
             .where_data_context(Filter::Is(&Context::SubjectId))
-            .collect()
+            .collect();
+        let subject_id_col = subject_id_cols
             .first()
             .expect("There should be at least one SubjectID column in a ContextualisedDataFrame.");
-        let subject_id_col_name = subject_id_col.name();
-        let stringified_subject_id_col =
-            polars_column_cast_specific(subject_id_col, &OutputDataType::String)?
-                .take_materialized_series();
+        let subject_id_col_name = subject_id_col.name().clone();
+        let stringified_subject_id_col = subject_id_col
+            .cast(&DataType::String)?
+            .take_materialized_series();
         cdf.builder()
-            .replace_column(subject_id_col_name, stringified_subject_id_col)?
+            .replace_column(subject_id_col_name.as_str(), stringified_subject_id_col)?
             .build()?;
         Ok(())
     }
@@ -342,40 +337,6 @@ mod tests {
         }
     }
 
-    fn test_cast_subject_id_col_to_string() {
-        let df = df!(
-            "subject_id" => &[1, 2, 3, 4],
-                    "age" => &[15, 25, 35, 65],
-            "name" => &["adam", "bertha", "carey", "denise"]
-        )
-        .unwrap();
-
-        let mut cdf = ContextualizedDataFrame::new(
-            TableContext::new(
-                "patient_data".to_string(),
-                vec![
-                    SeriesContext::default()
-                        .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::from("subject_id")),
-                    SeriesContext::default()
-                        .with_identifier(Identifier::from("age"))
-                        .with_data_context(Context::SubjectAge),
-                    SeriesContext::default().with_identifier(Identifier::from("name")),
-                ],
-            ),
-            df,
-        );
-        TransformerModule::cast_subject_id_col_to_string(&mut cdf).unwrap();
-
-        let new_subject_id_col = cdf.data().column("subject_id").unwrap();
-        assert_eq!(new_subject_id_col.dtype(), &DataType::String);
-        assert_eq!(new_subject_id_col, &Column::new("subject_id".into(), vec!["1", "2", "3", "4"]));
-        let age_col = cdf.data().column("age").unwrap();
-        assert_eq!(age_col.dtype(), &DataType::Int32);
-        let name_col = cdf.data().column("name").unwrap();
-        assert_eq!(name_col.dtype(), &DataType::String);
-    }
-
     #[rstest]
     fn test_trim_strings() {
         let df = df![
@@ -410,5 +371,43 @@ mod tests {
             ]
             .unwrap()
         );
+    }
+
+    #[rstest]
+    fn test_cast_subject_id_col_to_string() {
+        let df = df!(
+            "subject_id" => &[1, 2, 3, 4],
+                    "age" => &[15, 25, 35, 65],
+            "name" => &["adam", "bertha", "carey", "denise"]
+        )
+        .unwrap();
+
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "patient_data".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_data_context(Context::SubjectId)
+                        .with_identifier(Identifier::from("subject_id")),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::from("age"))
+                        .with_data_context(Context::SubjectAge),
+                    SeriesContext::default().with_identifier(Identifier::from("name")),
+                ],
+            ),
+            df,
+        );
+        TransformerModule::cast_subject_id_col_to_string(&mut cdf).unwrap();
+
+        let new_subject_id_col = cdf.data().column("subject_id").unwrap();
+        assert_eq!(new_subject_id_col.dtype(), &DataType::String);
+        assert_eq!(
+            new_subject_id_col,
+            &Column::new("subject_id".into(), vec!["1", "2", "3", "4"])
+        );
+        let age_col = cdf.data().column("age").unwrap();
+        assert_eq!(age_col.dtype(), &DataType::Int32);
+        let name_col = cdf.data().column("name").unwrap();
+        assert_eq!(name_col.dtype(), &DataType::String);
     }
 }
