@@ -9,7 +9,7 @@ use crate::validation::contextualised_dataframe_validation::{
 use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
-use polars::prelude::{Column, DataFrame, Series};
+use polars::prelude::{Column, DataFrame, Series, StringChunked};
 use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -158,13 +158,24 @@ impl ContextualizedDataFrame {
 
     pub fn get_subject_id_col(&self) -> &Column {
         self.filter_columns()
+            .where_header_context(Filter::Is(&Context::None))
             .where_data_context(Filter::Is(&Context::SubjectId))
             .collect()[0]
     }
 
     ///doc string todo!
-    pub fn create_subject_id_data_hash_map(&self, data: Context) -> HashMap<String, String> {
-        let subject_id_col = self.get_subject_id_col();
+    pub fn create_subject_id_string_data_hash_map<'a>(
+        &'a self,
+        string_data: &'a StringChunked,
+    ) -> HashMap<&'a str, Option<&'a str>> {
+        let mut hm = HashMap::new();
+        let stringified_subject_id_col = self.get_subject_id_col().str().unwrap();
+        for (subject_id, data_val) in stringified_subject_id_col.iter().zip(string_data.iter()) {
+            if let Some(subject_id) = subject_id {
+                hm.insert(subject_id, data_val);
+            }
+        }
+        hm
     }
 }
 

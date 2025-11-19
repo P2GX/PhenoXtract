@@ -50,28 +50,20 @@ impl Strategy for DateToAgeStrategy {
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        let dob_tables = tables
-            .iter()
-            .filter(|table| {
-                !table
-                    .filter_columns()
-                    .where_data_context(Filter::Is(&Context::DateOfBirth))
-                    .collect()
-                    .is_empty()
-            })
-            .collect::<[&mut ContextualizedDataFrame]>();
-        let dob_table = if dob_tables.len() == 1 {
-            dob_tables[0]
-        } else {
-            return Err(StrategyError::DateOfBirthError {
-                tables: dob_tables
-                    .iter()
-                    .map(|table| table.context().name().to_string())
-                    .collect(),
-            });
-        };
+        let dob_table = tables.iter().find(|table|                !table
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::DateOfBirth))
+            .collect()
+            .is_empty()).expect("Unexpectedly could not find table with DateOfBirth data when applying DateToAge strategy.");
 
-        let patient_dob_hash_map = dob_table.create_subject_id_data_hash_map(Context::DateOfBirth);
+        let dob_column = dob_table
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::DateOfBirth))
+            .collect()
+            .first()
+            .expect("Unexpectedly could not find DateOfBirth column in table.");
+
+        let patient_dob_hash_map = dob_table.create_subject_id_string_data_hash_map(dob_column.str()?);
 
         for table in tables.iter_mut() {
             let column_names: Vec<PlSmallStr> = table

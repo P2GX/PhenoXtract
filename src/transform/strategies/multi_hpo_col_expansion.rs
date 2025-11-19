@@ -53,13 +53,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
             let table_name = table.context().name().to_string();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
-            let stringified_subject_id_col = table
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect()
-                .last()
-                .ok_or(DataProcessingError::EmptyFilteringError)?
-                .str()?;
+            let stringified_subject_id_col = table.get_subject_id_col().str()?;
             let mut inserts: Vec<(SeriesContext, Vec<Column>)> = Vec::new();
 
             let mut bb_ids = table
