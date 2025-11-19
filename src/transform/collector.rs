@@ -30,20 +30,7 @@ impl Collector {
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect();
-            if subject_id_cols.len() > 1 {
-                return Err(CollectorError::ExpectedSingleColumn {
-                    table_name: cdf.context().name().to_string(),
-                    context: Context::SubjectId,
-                });
-            }
-
-            let subject_id_col = subject_id_cols
-                .last()
-                .ok_or(DataProcessingError::EmptyFilteringError)?;
+            let subject_id_col = cdf.get_subject_id_col();
 
             let patient_dfs = cdf
                 .data()

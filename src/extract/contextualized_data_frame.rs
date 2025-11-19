@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::StrategyError;
@@ -12,6 +11,7 @@ use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::prelude::{Column, DataFrame, Series};
 use regex::Regex;
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
 use validator::Validate;
@@ -155,10 +155,16 @@ impl ContextualizedDataFrame {
             .filter_map(|sc| sc.get_building_block_id())
             .collect()
     }
-    
-    ///doc string todo! 
-    pub fn create_subject_id_data_hash_map(&self, data: Context) -> HashMap<AnyValue, AnyValue> {
-        
+
+    pub fn get_subject_id_col(&self) -> &Column {
+        self.filter_columns()
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect()[0]
+    }
+
+    ///doc string todo!
+    pub fn create_subject_id_data_hash_map(&self, data: Context) -> HashMap<String, String> {
+        let subject_id_col = self.get_subject_id_col();
     }
 }
 

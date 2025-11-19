@@ -50,21 +50,28 @@ impl Strategy for DateToAgeStrategy {
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        let mut dob_columns = vec![];
+        let dob_tables = tables
+            .iter()
+            .filter(|table| {
+                !table
+                    .filter_columns()
+                    .where_data_context(Filter::Is(&Context::DateOfBirth))
+                    .collect()
+                    .is_empty()
+            })
+            .collect::<[&mut ContextualizedDataFrame]>();
+        let dob_table = if dob_tables.len() == 1 {
+            dob_tables[0]
+        } else {
+            return Err(StrategyError::DateOfBirthError {
+                tables: dob_tables
+                    .iter()
+                    .map(|table| table.context().name().to_string())
+                    .collect(),
+            });
+        };
 
-        for table in tables.iter() {
-            let table_dob_columns = table.filter_columns().where_data_context(Filter::Is(&Context::DateOfBirth)).collect();
-            dob_columns.extend(table_dob_columns);
-        }
-
-        // there should be validation so I can do this
-        let dob_column = dob_columns.first().unwrap();
-
-        let patient_dob_hash_map;
-        // need to zip together the subject IDs and Dobs
-        // there should be an optional column name filter in the strategy if you want to apply it more specifically
-        // (possibly also for other strategies?)
-        // apply on CDF level
+        let patient_dob_hash_map = dob_table.create_subject_id_data_hash_map(Context::DateOfBirth);
 
         for table in tables.iter_mut() {
             let column_names: Vec<PlSmallStr> = table

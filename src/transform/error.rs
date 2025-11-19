@@ -153,7 +153,8 @@ pub enum StrategyError {
         col_name: String,
         table_name: String,
     },
-
+    #[error("Found multiple tables {tables} with patient date of birth information.")]
+    DateOfBirthError { tables: Vec<String> },
     #[error(
         "Strategy '{strategy_name}' unable to map: \n {}",
         format_grouped_errors(info)
