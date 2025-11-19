@@ -5,7 +5,7 @@ use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{DataType, StringNameSpaceImpl};
+use polars::prelude::DataType;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -158,7 +158,6 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
-    use log::debug;
     use polars::df;
     use polars::prelude::{DataType, TimeUnit};
     use rstest::rstest;

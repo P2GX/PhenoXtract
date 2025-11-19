@@ -66,41 +66,22 @@ impl Strategy for DateToAgeStrategy {
         let patient_dob_hash_map = dob_table.create_subject_id_string_data_hash_map(dob_column.str()?);
 
         for table in tables.iter_mut() {
-            let column_names: Vec<PlSmallStr> = table
-                .filter_columns()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&self.data_context))
-                .collect()
-                .iter()
-                .map(|col| col.name())
-                .cloned()
-                .collect();
 
-            for col_name in column_names {
-                let col = table.data().column(&col_name)?;
-                let mapped_column = col.str()?.apply_mut(|cell_value| {
-                    if self.ontology_dict.is_id(cell_value) {
-                        cell_value
-                    } else if let Some(curie_id) = self.ontology_dict.get(cell_value) {
-                        curie_id
-                    } else {
-                        if !cell_value.is_empty() {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: cell_value.to_string(),
-                                possible_mappings: vec![],
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                error_info.insert(mapping_error_info);
-                            }
-                        }
-                        cell_value
-                    }
-                });
+            let stringified_subject_id_col = table.get_subject_id_col().str()?;
+
+            let age_column_names = table
+                .filter_columns()
+                .where_data_context_is_age()
+                .collect_owned_names();
+
+            for age_col_name in age_column_names {
+                let stringified_age_col = table.data().column(&age_col_name)?.str()?;
+                let
+
+
                 table
                     .builder()
-                    .replace_column(&col_name, mapped_column.into_series())?
+                    .replace_column(&age_col_name, mapped_column.into_series())?
                     .build()?;
             }
         }
