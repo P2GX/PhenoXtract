@@ -45,7 +45,6 @@ impl TransformerModule {
             Self::ensure_ints(table)?;
             Self::ambivalent_cast_non_id_columns(table)?;
             Self::cast_subject_id_col_to_string(table)?;
-            Self::trim_strings(table)?;
         }
 
         for strategy in &self.strategies {
@@ -219,8 +218,7 @@ mod tests {
     use super::*;
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use polars::df;
-    use polars::prelude::{Column, DataType, TimeUnit};
-    use polars::prelude::{AnyValue, DataType, TimeUnit};
+    use polars::prelude::{AnyValue, Column, DataType, TimeUnit};
     use rstest::rstest;
 
     #[rstest]
