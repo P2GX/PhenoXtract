@@ -1,7 +1,8 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
+use phenoxtract::config::context::Context;
 use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
+    AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
 };
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;

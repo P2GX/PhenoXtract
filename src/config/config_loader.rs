@@ -34,12 +34,13 @@ impl ConfigLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::Context;
     use crate::config::meta_data::MetaData;
     use crate::config::strategy_config::StrategyConfig;
+    use crate::config::table_context::Identifier;
     use crate::config::table_context::{
         AliasMap, CellValue, OutputDataType, SeriesContext, TableContext,
     };
-    use crate::config::table_context::{Context as PhenopacketContext, Identifier};
     use crate::config::{PhenoXtractorConfig, PipelineConfig};
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
@@ -48,7 +49,7 @@ mod tests {
     use crate::ontology::OntologyRef;
     use crate::test_utils::get_full_config_bytes;
     use pretty_assertions::assert_eq;
-    use rstest::*;
+    use rstest::{fixture, rstest};
     use std::collections::HashMap;
     use std::fs::File as StdFile;
     use std::io::Write;
@@ -259,8 +260,8 @@ mod tests {
                         "TestTable".to_string(),
                         vec![SeriesContext::new(
                             Identifier::Regex("patient_id".to_string()),
-                            PhenopacketContext::SubjectId,
-                            PhenopacketContext::HpoLabelOrId,
+                            Context::SubjectId,
+                            Context::HpoLabelOrId,
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                             Some(AliasMap::new(
                                 HashMap::from([
@@ -300,8 +301,8 @@ mod tests {
                             "Sheet1".to_string(),
                             vec![SeriesContext::new(
                                 Identifier::Regex("lab_result_.*".to_string()),
-                                PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabelOrId,
+                                Context::SubjectId,
+                                Context::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([
@@ -322,8 +323,8 @@ mod tests {
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
-                                PhenopacketContext::SubjectId,
-                                PhenopacketContext::HpoLabelOrId,
+                                Context::SubjectId,
+                                Context::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([("smoker".to_string(), "true".to_string())]),

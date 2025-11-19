@@ -1,4 +1,3 @@
-use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, StrategyError};
@@ -7,6 +6,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
+use crate::config::context::Context;
 use crate::transform::utils::is_iso8601_duration;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
@@ -29,16 +29,16 @@ pub struct AgeToIso8601Strategy {
 
 impl Default for AgeToIso8601Strategy {
     fn default() -> Self {
-        AgeToIso8601Strategy {
-            min_age: 0,
-            max_age: 150,
-        }
+        AgeToIso8601Strategy::new()
     }
 }
 
 impl AgeToIso8601Strategy {
-    pub fn new(min_age: i32, max_age: i32) -> Self {
-        AgeToIso8601Strategy { min_age, max_age }
+    pub fn new() -> Self {
+        AgeToIso8601Strategy {
+            min_age: 0,
+            max_age: 150,
+        }
     }
 
     fn is_valid_age(&self, age: i32) -> bool {
@@ -139,7 +139,8 @@ impl Strategy for AgeToIso8601Strategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;

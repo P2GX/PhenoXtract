@@ -65,8 +65,8 @@ impl StrategyFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::Context;
     use crate::config::strategy_config::StrategyConfig;
-    use crate::config::table_context::Context;
     use crate::ontology::OntologyRef;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;

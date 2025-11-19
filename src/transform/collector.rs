@@ -1,4 +1,4 @@
-use crate::config::table_context::Context;
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
@@ -547,7 +547,8 @@ impl Collector {
 #[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
