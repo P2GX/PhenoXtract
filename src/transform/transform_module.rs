@@ -45,8 +45,6 @@ impl TransformerModule {
             Self::polars_dataframe_cast_ambivalent(table)?;
         }
 
-        dbg!(&tables_refs);
-
         for strategy in &self.strategies {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
