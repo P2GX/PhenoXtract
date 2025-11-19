@@ -213,6 +213,13 @@ impl<'a> ColumnFilter<'a> {
             })
             .collect()
     }
+
+    pub fn collect_owned_names(self) -> Vec<String> {
+        self.collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect()
+    }
 }
 
 #[cfg(test)]

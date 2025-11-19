@@ -64,40 +64,44 @@ impl Strategy for AgeToIso8601Strategy {
     ) -> Result<(), StrategyError> {
         info!("Applying AgeToISO8601 strategy to data.");
 
-        let i32_to_iso8601: HashMap<i32, String> =
-            (self.min_age..=self.max_age).map(|n| (n, format!("P{n}Y"))).collect();
+        let years_to_iso8601: HashMap<i32, String> = (self.min_age..=self.max_age)
+            .map(|n| (n, format!("P{n}Y")))
+            .collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let column_names: Vec<PlSmallStr> = table
+            let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context_is_age()
-                .collect()
-                .iter()
-                .map(|col| col.name())
-                .cloned()
-                .collect();
+                .collect_owned_names();
 
             for col_name in column_names {
                 let col = table.data().column(&col_name)?;
-                let cast_col = col.cast(&DataType::String)?;
+
+                let cast_col = if col.dtype() != &DataType::String {
+                    &col.cast(&DataType::String)?
+                } else {
+                    col
+                };
+
                 let mapped_column = cast_col.str()?.apply_mut(|cell_value| {
                     if is_iso8601_duration(cell_value) {
                         cell_value
                     } else if let Ok(years) = cell_value.parse::<i32>()
                         && self.is_valid_age(years)
                     {
-                        i32_to_iso8601
+                        years_to_iso8601
                             .get(&years)
-                            .expect("Age was too high or too low")
+                            .expect("Age was too high or too low.")
                     } else if let Ok(years) = cell_value.parse::<f64>()
                         && years.fract() == 0.0
                         && self.is_valid_age(years as i32)
                     {
-                        i32_to_iso8601
-                            .get(&(years as i32))
+                        let years_i32 = years as i32;
+                        years_to_iso8601
+                            .get(&years_i32)
                             .expect("Age was too high or too low")
                     } else {
                         if !cell_value.is_empty() {
@@ -158,7 +162,71 @@ mod tests {
     }
 
     #[rstest]
-    fn test_age_to_iso8601(tc: TableContext) {
+    fn test_age_to_iso8601_ints(tc: TableContext) {
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+        let age_col = Column::new(
+            "age".into(),
+            [
+                AnyValue::Int64(32),
+                AnyValue::Int64(47),
+                AnyValue::Null,
+                AnyValue::Int64(15),
+            ],
+        );
+        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let mut cdf = ContextualizedDataFrame::new(tc, df);
+
+        let age_to_iso8601_strat = AgeToIso8601Strategy::default();
+        age_to_iso8601_strat.transform(&mut [&mut cdf]).unwrap();
+
+        let expected_transformed_age_col = Column::new(
+            "age".into(),
+            [
+                AnyValue::String("P32Y"),
+                AnyValue::String("P47Y"),
+                AnyValue::Null,
+                AnyValue::String("P15Y"),
+            ],
+        );
+        let expected_df =
+            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        assert_eq!(cdf.into_data(), expected_df);
+    }
+
+    #[rstest]
+    fn test_age_to_iso8601_floats(tc: TableContext) {
+        let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
+        let age_col = Column::new(
+            "age".into(),
+            [
+                AnyValue::Float64(32.0),
+                AnyValue::Float64(47.0),
+                AnyValue::Null,
+                AnyValue::Float64(15.0),
+            ],
+        );
+        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let mut cdf = ContextualizedDataFrame::new(tc, df);
+
+        let age_to_iso8601_strat = AgeToIso8601Strategy::default();
+        age_to_iso8601_strat.transform(&mut [&mut cdf]).unwrap();
+
+        let expected_transformed_age_col = Column::new(
+            "age".into(),
+            [
+                AnyValue::String("P32Y"),
+                AnyValue::String("P47Y"),
+                AnyValue::Null,
+                AnyValue::String("P15Y"),
+            ],
+        );
+        let expected_df =
+            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        assert_eq!(cdf.into_data(), expected_df);
+    }
+
+    #[rstest]
+    fn test_age_to_iso8601_mixed_bag(tc: TableContext) {
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
         let age_col = Column::new(
             "age".into(),
