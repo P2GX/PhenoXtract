@@ -64,11 +64,8 @@ impl Strategy for AgeToIso8601Strategy {
     ) -> Result<(), StrategyError> {
         info!("Applying AgeToISO8601 strategy to data.");
 
-        let min_age = 0;
-        let max_age = 150;
-
         let i32_to_iso8601: HashMap<i32, String> =
-            (min_age..=max_age).map(|n| (n, format!("P{n}Y"))).collect();
+            (self.min_age..=self.max_age).map(|n| (n, format!("P{n}Y"))).collect();
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
