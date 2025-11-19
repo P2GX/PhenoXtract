@@ -120,10 +120,21 @@ impl TransformerModule {
     fn ambivalent_cast_non_id_columns(
         cdf: &mut ContextualizedDataFrame,
     ) -> Result<(), DataProcessingError> {
-        let non_subject_id_col_names = cdf
+        let possible_subject_id_col_names = cdf
             .filter_columns()
-            .where_data_context(Filter::IsNot(&Context::SubjectId))
+            .where_data_context(Filter::Is(&Context::SubjectId))
             .collect_owned_names();
+        let subject_id_col_name = possible_subject_id_col_names
+            .first()
+            .expect("Should be exactly one SubjectID column in data.");
+
+        let non_subject_id_col_names = cdf
+            .data()
+            .get_column_names()
+            .into_iter()
+            .filter(|&name| name != subject_id_col_name)
+            .map(|name| name.to_string())
+            .collect::<Vec<String>>();
 
         for col_name in non_subject_id_col_names {
             let column = cdf.data().column(col_name.as_str())?;
@@ -194,9 +205,6 @@ mod tests {
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
                         .with_identifier(Identifier::Regex("string_col".to_string())),
-                    SeriesContext::default()
-                        .with_data_context(Context::SubjectAge)
-                        .with_identifier(Identifier::Regex("int_col".to_string())),
                 ],
             ),
             df.clone(),
