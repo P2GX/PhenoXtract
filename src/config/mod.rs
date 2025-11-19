@@ -8,6 +8,7 @@ pub mod strategy_config;
 pub use self::strategy_config::StrategyConfig;
 mod config_loader;
 pub use self::config_loader::ConfigLoader;
+pub mod context;
 pub mod table_context;
 
 pub use self::table_context::TableContext;

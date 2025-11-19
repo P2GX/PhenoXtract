@@ -156,7 +156,8 @@ impl PartialEq for TransformerModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use log::debug;
     use polars::df;
     use polars::prelude::{DataType, TimeUnit};

@@ -1,4 +1,4 @@
-use crate::config::table_context::Context;
+use crate::config::context::Context;
 use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;

@@ -105,8 +105,9 @@ impl Strategy for AliasMapStrategy {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::context::Context;
     use crate::config::table_context::{
-        AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
+        AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
     };
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
