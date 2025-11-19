@@ -6,7 +6,8 @@ use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::{DataType, IntoSeries};
+use polars::prelude::{ChunkApply, DataType, IntoSeries};
+use std::borrow::Cow;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -39,6 +40,8 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
+            Self::trim_strings(table)?;
+            Self::empty_strings_to_nulls(table)?;
             Self::ensure_ints(table)?;
             Self::ambivalent_cast_non_id_columns(table)?;
             Self::cast_subject_id_col_to_string(table)?;
@@ -63,6 +66,37 @@ impl TransformerModule {
             let trimmed_col = column.str()?.apply_mut(|s| s.trim());
             cdf.builder()
                 .replace_column(&col_name, trimmed_col.into_series())?
+                .build()?;
+        }
+        Ok(())
+    }
+
+    fn empty_strings_to_nulls(
+        cdf: &mut ContextualizedDataFrame,
+    ) -> Result<(), DataProcessingError> {
+        let string_col_names: Vec<String> = cdf
+            .filter_columns()
+            .where_dtype(Filter::Is(&DataType::String))
+            .collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect();
+
+        for col_name in string_col_names {
+            let column = cdf.data().column(&col_name)?;
+            let nulled_col = column.str()?.apply(|opt_s| {
+                if let Some(s) = opt_s {
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(Cow::Borrowed(s))
+                    }
+                } else {
+                    None
+                }
+            });
+            cdf.builder()
+                .replace_column(&col_name, nulled_col.into_series())?
                 .build()?;
         }
         Ok(())
@@ -186,6 +220,7 @@ mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use polars::df;
     use polars::prelude::{Column, DataType, TimeUnit};
+    use polars::prelude::{AnyValue, DataType, TimeUnit};
     use rstest::rstest;
 
     #[rstest]
@@ -351,9 +386,9 @@ mod tests {
     #[rstest]
     fn test_trim_strings() {
         let df = df![
-            "subject_id" => ["P001", "P002", "P003", "P004"],
-            "string_col" => &["   hello", "world  ", "  test  ", "blah"],
-            "int_col" => &[1, 2, 3, 4],
+            "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+            "string_col" => &["   hello", "world  ", "  test  ", "blah", "  "],
+            "int_col" => &[1, 2, 3, 4, 5],
         ]
         .unwrap();
         let mut cdf = ContextualizedDataFrame::new(
@@ -376,11 +411,47 @@ mod tests {
 
         assert_eq!(
             cdf.data(),
-            &df!["subject_id" => ["P001", "P002", "P003", "P004"],
-                "string_col" => &["hello", "world", "test", "blah"],
-                "int col" => &[1, 2, 3, 4],
+            &df!["subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+                "string_col" => &["hello", "world", "test", "blah", ""],
+                "int col" => &[1, 2, 3, 4, 5],
             ]
             .unwrap()
+        );
+    }
+
+    #[rstest]
+    fn test_empty_strings_to_nulls() {
+        let df = df![
+            "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+            "string_col" => &["", "hello", "", "blah", "  "],
+            "int_col" => &[1, 2, 3, 4, 5],
+        ]
+        .unwrap();
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "table".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("subject_id".to_string()))
+                        .with_data_context(Context::SubjectId),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("string_col".to_string())),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                ],
+            ),
+            df,
+        );
+
+        TransformerModule::empty_strings_to_nulls(&mut cdf).unwrap();
+
+        assert_eq!(
+            cdf.data(),
+            &df!["subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+                "string_col" => &[AnyValue::Null, AnyValue::String("hello"), AnyValue::Null, AnyValue::String("blah"), AnyValue::String("  ")],
+                "int col" => &[1, 2, 3, 4, 5],
+            ]
+                .unwrap()
         );
     }
 
