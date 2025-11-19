@@ -506,7 +506,6 @@ impl PhenopacketBuilder {
     }
 
     fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
-        //try to parse the string as a datetime
         if let Ok(ts) = Self::try_parse_timestamp(te_string) {
             let datetime_te = TimeElement {
                 element: Some(Element::Timestamp(ts)),
@@ -514,7 +513,6 @@ impl PhenopacketBuilder {
             return Ok(datetime_te);
         }
 
-        //try to parse the string as an ISO8601 duration
         if let Ok(dur) = Self::try_parse_iso8601duration(te_string) {
             return Ok(dur);
         }

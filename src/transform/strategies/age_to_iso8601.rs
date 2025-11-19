@@ -8,7 +8,7 @@ use log::info;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::utils::is_iso8601_duration;
-use polars::prelude::{DataType, IntoSeries, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 
