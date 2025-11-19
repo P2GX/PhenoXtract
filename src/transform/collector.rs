@@ -555,7 +555,7 @@ mod tests {
     use polars::frame::DataFrame;
     use polars::prelude::{Column, NamedFrom, Series};
     use pretty_assertions::assert_eq;
-    use prost_types::Timestamp as TimestampProtobuf;
+    use prost_types::Timestamp;
     use rstest::{fixture, rstest};
     use std::path::Path;
     use tempfile::TempDir;
@@ -1518,7 +1518,7 @@ mod tests {
 
         let indiv = Individual {
             id: "P006".to_string(),
-            date_of_birth: Some(TimestampProtobuf {
+            date_of_birth: Some(Timestamp {
                 seconds: -312595200,
                 nanos: 0,
             }),
@@ -1526,7 +1526,7 @@ mod tests {
             vital_status: Some(VitalStatus {
                 status: Status::Alive as i32,
                 time_of_death: Some(TimeElement {
-                    element: Some(Element::Timestamp(TimestampProtobuf {
+                    element: Some(Element::Timestamp(Timestamp {
                         seconds: 980726400,
                         nanos: 0,
                     })),
