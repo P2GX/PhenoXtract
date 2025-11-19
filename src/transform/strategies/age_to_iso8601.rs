@@ -6,7 +6,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::Context;
+use crate::config::context::{Context, AGE_CONTEXTS};
 use crate::transform::utils::is_iso8601_duration;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
@@ -52,7 +52,7 @@ impl Strategy for AgeToIso8601Strategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context_is_age()
+                .where_data_contexts(&AGE_CONTEXTS)
                 .collect()
                 .is_empty()
         })
@@ -74,7 +74,7 @@ impl Strategy for AgeToIso8601Strategy {
             let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context_is_age()
+                .where_data_contexts(&AGE_CONTEXTS)
                 .collect_owned_names();
 
             for col_name in column_names {

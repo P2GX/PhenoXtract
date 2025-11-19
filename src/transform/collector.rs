@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, DISEASE_LABEL_OR_ID_CONTEXTS};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
@@ -285,7 +285,7 @@ impl Collector {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context_is_disease()
+            .where_data_contexts(&DISEASE_LABEL_OR_ID_CONTEXTS)
             .collect();
 
         for disease_sc in disease_in_cells_scs {
@@ -350,7 +350,7 @@ impl Collector {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context_is_disease()
+            .where_data_contexts(&DISEASE_LABEL_OR_ID_CONTEXTS)
             .collect();
 
         for disease_sc in disease_in_cells_scs {

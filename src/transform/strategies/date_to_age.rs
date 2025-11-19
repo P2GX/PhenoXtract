@@ -1,6 +1,4 @@
-use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, StrategyError};
 use crate::transform::traits::Strategy;
@@ -8,10 +6,10 @@ use log::{info, warn};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use polars::prelude::{DataType, IntoSeries, PlSmallStr};
 use std::any::type_name;
 use std::collections::HashSet;
-use std::sync::Arc;
+use polars::prelude::{AnyValue, Column};
+use crate::config::context::{Context, DATE_CONTEXTS};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -56,10 +54,12 @@ impl Strategy for DateToAgeStrategy {
             .collect()
             .is_empty()).expect("Unexpectedly could not find table with DateOfBirth data when applying DateToAge strategy.");
 
-        let dob_column = dob_table
+        let dob_columns = dob_table
             .filter_columns()
             .where_data_context(Filter::Is(&Context::DateOfBirth))
-            .collect()
+            .collect();
+
+        let dob_column = dob_columns
             .first()
             .expect("Unexpectedly could not find DateOfBirth column in table.");
 
@@ -67,21 +67,50 @@ impl Strategy for DateToAgeStrategy {
 
         for table in tables.iter_mut() {
 
+            let table_name = table.context().name().to_string();
+
             let stringified_subject_id_col = table.get_subject_id_col().str()?;
 
-            let age_column_names = table
+            let date_column_names = table
                 .filter_columns()
-                .where_data_context_is_age()
+                .where_data_contexts(&DATE_CONTEXTS)
                 .collect_owned_names();
 
-            for age_col_name in age_column_names {
-                let stringified_age_col = table.data().column(&age_col_name)?.str()?;
-                let
+            for date_col_name in date_column_names {
+                let stringified_date_col = table.data().column(&date_col_name)?.str()?;
+                let mut ages = vec![];
+                for row_idx in 0..stringified_date_col.len() {
 
+                    let subject_id = stringified_subject_id_col.get(row_idx).expect("Missing SubjectID");
+                    let subject_dob = patient_dob_hash_map.get(subject_id).cloned().flatten();
+
+                    let date = stringified_date_col.get(row_idx);
+
+                    if let Some(date) = date {
+                        if let Some(subject_dob) = subject_dob {
+                            //magic! todo!
+                        } else {
+                                let mapping_error_info = MappingErrorInfo {
+                                    column: date_col_name.to_string(),
+                                    table: table_name.clone(),
+                                    old_value: date.to_string(),
+                                    possible_mappings: vec![],
+                                };
+                                if !error_info.contains(&mapping_error_info) {
+                                    error_info.insert(mapping_error_info);
+                                }
+                            ages.push(AnyValue::String(date));
+                        }
+                    } else {
+                        ages.push(AnyValue::Null);
+                    }
+
+                }
+                let ages_column = Column::new(date_col_name.clone().into(), ages);
 
                 table
                     .builder()
-                    .replace_column(&age_col_name, mapped_column.into_series())?
+                    .replace_column(&date_col_name, ages_column.take_materialized_series())?
                     .build()?;
             }
         }
@@ -90,6 +119,7 @@ impl Strategy for DateToAgeStrategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "Cannot convert dates for subjects without date of birth data.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {

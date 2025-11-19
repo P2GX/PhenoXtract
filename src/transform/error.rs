@@ -159,6 +159,7 @@ pub enum StrategyError {
     )]
     MappingError {
         strategy_name: String,
+        message: String,
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
