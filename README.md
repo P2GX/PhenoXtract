@@ -165,6 +165,32 @@ The project includes extensive unit tests using `rstest` and `tempfile`. Tests c
 - Auto-casting of datatypes.
 - Context and alias mapping validation.
   Integration tests under `/tests/` verify end-to-end ETL correctness and Phenopacket schema compliance.
+ 
+```yaml
+data_sources:
+ - type: "csv"
+ source: "./data/cohort.csv"
+ separator: ","
+ extraction_config:
+ name: "patients"
+ has_headers: true
+ patients_are_rows: true
+ context:
+  name: "patient_table"
+  context:
+   - identifier: "patient_id"
+  header_context: subject_id
+  data_context: hpo_label
+  alias_map:
+   "M": "Male"
+   "F": "Female"
+```
+
+pipeline:
+ transform_strategies:
+  - "alias_map"
+  - "fill_null"
+ loader: "file_system"
 
 Run all tests with:
 

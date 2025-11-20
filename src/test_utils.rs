@@ -150,8 +150,8 @@ data_sources:
 pub(crate) static PIPELINE_CONFIG: &[u8] = br#"
 pipeline:
   transform_strategies:
-    - "alias_mapping"
-    - "multi_hpo_column_expansion"
+    - "alias_map"
+    - "multi_hpo_col_expansion"
   loader: "file_system"
   meta_data:
     created_by: Rouven Reuter
