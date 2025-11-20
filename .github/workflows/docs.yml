@@ -29,6 +29,11 @@ jobs:
      - name: Build Rust documentation
        run: cargo doc --no-deps
 
+     - name: Add redirect index.html
+       run: |
+        mkdir -p target/doc
+        echo '<meta http-equiv="refresh" content="0; url=phenoxtract/index.html">' > target/doc/index.html
+
      - name: Upload documentation artifact
        uses: actions/upload-pages-artifact@v3
        with:
