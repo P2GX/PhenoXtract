@@ -36,11 +36,11 @@ jobs:
          path: target/doc            # the built docs
 
  deploy:
-   if: github.ref == 'refs/heads/main'   # Only deploy from main
+   #if: github.ref == 'refs/heads/main'   # Only deploy from main
    needs: build
    runs-on: ubuntu-latest
    environment:
-     name: github-pages
+     name: github-pages-${{ github.ref_name }}
      url: ${{ steps.deployment.outputs.page_url }}
    permissions:
      pages: write
