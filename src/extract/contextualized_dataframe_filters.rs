@@ -1,4 +1,4 @@
-use crate::config::context::{AGE_CONTEXTS, Context, DISEASE_LABEL_OR_ID_CONTEXTS};
+use crate::config::context::Context;
 use crate::config::table_context::{CellValue, Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
@@ -338,7 +338,7 @@ mod tests {
         assert!(result.iter().all(|s| s.get_data_context() == &ctx1));
     }
 
-/*    #[rstest]
+    /*    #[rstest]
     fn test_filter_data_context_by_disease() {
         let ctx1 = Context::SubjectId;
         let ctx2 = Context::OmimLabelOrId;

@@ -116,6 +116,7 @@ impl Strategy for OntologyNormaliserStrategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "Could not find ontology terms for these strings.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -227,10 +228,12 @@ mod tests {
 
         if let Err(StrategyError::MappingError {
             strategy_name,
+            message,
             info,
         }) = strat_result
         {
             assert_eq!(strategy_name, "OntologyNormaliserStrategy");
+            assert_eq!(message, "Could not find ontology terms for these strings.");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "phenotypic_features".to_string(),

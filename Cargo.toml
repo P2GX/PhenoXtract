@@ -28,6 +28,8 @@ ordermap = "1.0.0"
 ratelimit = "0.10.0"
 redb = "3.1.0"
 thiserror = "2.0.17"
+date-differencer = "0.1.3"
+iso8601-duration = "0.2.0"
 ga4ghphetools = { git = 'https://github.com/P2GX/ga4ghphetools.git', tag = '0.4.138' }
 
 [dev-dependencies]

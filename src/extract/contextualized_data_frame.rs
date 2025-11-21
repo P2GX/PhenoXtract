@@ -168,12 +168,12 @@ impl ContextualizedDataFrame {
     pub fn create_subject_id_string_data_hash_map<'a>(
         &'a self,
         string_data: &'a StringChunked,
-    ) -> HashMap<&'a str, Option<&'a str>> {
+    ) -> HashMap<String, Option<String>> {
         let mut hm = HashMap::new();
         let stringified_subject_id_col = self.get_subject_id_col().str().unwrap();
         for (subject_id, data_val) in stringified_subject_id_col.iter().zip(string_data.iter()) {
             if let Some(subject_id) = subject_id {
-                hm.insert(subject_id, data_val);
+                hm.insert(subject_id.to_string(), data_val.map(|val| val.to_string()));
             }
         }
         hm

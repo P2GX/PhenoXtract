@@ -246,6 +246,7 @@ impl Strategy for MappingStrategy {
         if !error_info.is_empty() {
             Err(StrategyError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "Could not find aliases for these cell values.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -370,10 +371,12 @@ mod tests {
         match err {
             Err(StrategyError::MappingError {
                 strategy_name,
+                message,
                 mut info,
             }) => {
                 let i = info.pop().unwrap();
                 assert_eq!(strategy_name, "MappingStrategy");
+                assert_eq!(message, "Could not find aliases for these cell values.");
                 assert_eq!(i.old_value, "mole");
                 assert_eq!(i.column, "sex");
                 assert_eq!(i.table, "TestTable");

@@ -6,7 +6,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::{Context, AGE_CONTEXTS};
+use crate::config::context::{AGE_CONTEXTS, Context};
 use crate::transform::utils::is_iso8601_duration;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
@@ -129,6 +129,7 @@ impl Strategy for AgeToIso8601Strategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "These cell values were neither ISO8601 nor years.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -280,10 +281,12 @@ mod tests {
 
         if let Err(StrategyError::MappingError {
             strategy_name,
+            message,
             info,
         }) = result
         {
             assert_eq!(strategy_name, "AgeToIso8601Strategy");
+            assert_eq!(message, "These cell values were neither ISO8601 nor years.");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "age".to_string(),

@@ -75,5 +75,4 @@ pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
 pub const AGE_CONTEXTS: [Context; 3] =
     [Context::SubjectAge, Context::OnsetAge, Context::AgeOfDeath];
 
-pub const DATE_CONTEXTS: [Context; 2] =
-    [Context::OnsetDateTime, Context::DateOfDeath];
+pub const DATE_CONTEXTS: [Context; 2] = [Context::OnsetDateTime, Context::DateOfDeath];
