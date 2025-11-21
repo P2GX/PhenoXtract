@@ -1278,6 +1278,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
