@@ -8,7 +8,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::config::context::{Context, DATE_CONTEXTS};
 use chrono::NaiveDate;
-use date_differencer::{DateTimeDiff, date_diff};
+use date_differencer::date_diff;
 use iso8601_duration::Duration;
 use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
@@ -67,41 +67,34 @@ impl Strategy for DateToAgeStrategy {
                 .where_data_contexts(&DATE_CONTEXTS)
                 .collect_owned_names();
 
-            for date_col_name in date_column_names {
-                let stringified_date_col = table.data().column(&date_col_name)?.str()?;
+            for date_col_name in date_column_names.iter() {
+                let stringified_date_col = table.data().column(date_col_name)?.str()?;
                 let mut ages = vec![];
-                for row_idx in 0..stringified_date_col.len() {
-                    let subject_id = stringified_subject_id_col
-                        .get(row_idx)
-                        .expect("Missing SubjectID");
-                    let subject_dob = patient_dob_hash_map.get(subject_id).cloned().flatten();
-                    let date = stringified_date_col.get(row_idx);
 
-                    if let Some(date) = date {
-                        if let Some(subject_dob) = subject_dob {
+                for (subject_id_opt, date_opt) in stringified_subject_id_col
+                    .iter()
+                    .zip(stringified_date_col.iter())
+                {
+                    let subject_id = subject_id_opt.expect("Missing SubjectID");
+                    let subject_dob_opt = patient_dob_hash_map.get(subject_id).cloned().flatten();
+
+                    if date_opt.is_none() {
+                        ages.push(AnyValue::Null);
+                    } else if let Some(date) = date_opt {
+                        if let Some(subject_dob) = subject_dob_opt {
                             let age = Self::date_and_dob_to_age(date, subject_dob)?;
                             ages.push(AnyValue::StringOwned(age.into()));
                         } else {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: date_col_name.to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: date.to_string(),
-                                possible_mappings: vec![],
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                error_info.insert(mapping_error_info);
-                            }
+                            Self::upsert_mapping_error(&mut error_info, date_col_name, table, date);
                             ages.push(AnyValue::String(date));
                         }
-                    } else {
-                        ages.push(AnyValue::Null);
                     }
                 }
                 let ages_column = Column::new(date_col_name.clone().into(), ages);
 
                 table
                     .builder()
-                    .replace_column(&date_col_name, ages_column.take_materialized_series())?
+                    .replace_column(date_col_name, ages_column.take_materialized_series())?
                     .build()?;
             }
         }
@@ -158,11 +151,28 @@ impl DateToAgeStrategy {
             diff.years as f32,
             diff.months as f32,
             diff.days as f32,
-            diff.hours() as f32,
-            diff.minutes() as f32,
-            diff.seconds() as f32,
+            0f32,
+            0f32,
+            0f32,
         );
         Ok(dur.to_string())
+    }
+
+    fn upsert_mapping_error(
+        error_info: &mut HashSet<MappingErrorInfo>,
+        date_col_name: &str,
+        table: &ContextualizedDataFrame,
+        date: &str,
+    ) {
+        let mapping_error_info = MappingErrorInfo {
+            column: date_col_name.to_string(),
+            table: table.context().name().to_string(),
+            old_value: date.to_string(),
+            possible_mappings: vec![],
+        };
+        if !error_info.contains(&mapping_error_info) {
+            error_info.insert(mapping_error_info);
+        }
     }
 }
 
