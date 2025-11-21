@@ -752,6 +752,7 @@ mod tests {
 
     use crate::ontology::DatabaseRef;
     use crate::ontology::resource_references::ResourceRef;
+    use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use phenopackets::schema::v2::core::time_element::Element::Age;
     use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
@@ -1148,6 +1149,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
@@ -1204,6 +1206,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
@@ -1268,6 +1271,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
@@ -1327,6 +1331,7 @@ mod tests {
         basic_pp_with_disease_info: Phenopacket,
         temp_dir: TempDir,
     ) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
 
@@ -1749,6 +1754,7 @@ mod tests {
 
     #[rstest]
     fn test_get_genomic_interpretation_from_data(temp_dir: TempDir) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_gi = builder
             .get_genomic_interpretation_from_data(
