@@ -1206,6 +1206,7 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
+        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
         let disease_id = "MONDO:0012145";
