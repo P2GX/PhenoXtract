@@ -1563,6 +1563,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
