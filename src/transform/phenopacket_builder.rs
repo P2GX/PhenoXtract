@@ -1,5 +1,4 @@
 #![allow(clippy::too_many_arguments)]
-use crate::constants::ISO8601_DUR_PATTERN;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
@@ -7,6 +6,7 @@ use crate::ontology::{DatabaseRef, HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
+use crate::transform::utils::is_iso8601_duration;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use ga4ghphetools::dto::hgvs_variant::HgvsVariant;
@@ -26,7 +26,6 @@ use phenopackets::schema::v2::core::{
     TherapeuticActionability, TimeElement, VariantInterpretation, VitalStatus,
 };
 use prost_types::Timestamp;
-use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -507,7 +506,6 @@ impl PhenopacketBuilder {
     }
 
     fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
-        //try to parse the string as a datetime
         if let Ok(ts) = Self::try_parse_timestamp(te_string) {
             let datetime_te = TimeElement {
                 element: Some(Element::Timestamp(ts)),
@@ -515,15 +513,8 @@ impl PhenopacketBuilder {
             return Ok(datetime_te);
         }
 
-        let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
-        let is_iso8601_dur = re.is_match(te_string);
-        if is_iso8601_dur {
-            let age_te = TimeElement {
-                element: Some(Element::Age(IndividualAge {
-                    iso8601duration: te_string.to_string(),
-                })),
-            };
-            return Ok(age_te);
+        if let Ok(dur) = Self::try_parse_iso8601duration(te_string) {
+            return Ok(dur);
         }
 
         Err(PhenopacketBuilderError::ParsingError {
@@ -544,6 +535,21 @@ impl PhenopacketBuilder {
         let seconds = utc_dt.timestamp();
         let nanos = utc_dt.timestamp_subsec_nanos() as i32;
         Ok(Timestamp { seconds, nanos })
+    }
+
+    fn try_parse_iso8601duration(dur_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
+        if is_iso8601_duration(dur_string) {
+            Ok(TimeElement {
+                element: Some(Element::Age(IndividualAge {
+                    iso8601duration: dur_string.to_string(),
+                })),
+            })
+        } else {
+            Err(PhenopacketBuilderError::ParsingError {
+                what: "Iso8601Duration".to_string(),
+                value: dur_string.to_string(),
+            })
+        }
     }
 
     fn ensure_resource(
@@ -754,8 +760,8 @@ mod tests {
     use crate::ontology::resource_references::ResourceRef;
     use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
-    use phenopackets::schema::v2::core::time_element::Element::Age;
-    use phenopackets::schema::v2::core::{Age as age_struct, MetaData, Resource};
+    use phenopackets::schema::v2::core::time_element::Element;
+    use phenopackets::schema::v2::core::{Age, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
     use tempfile::TempDir;
@@ -798,7 +804,7 @@ mod tests {
     #[fixture]
     fn onset_age_te() -> Option<TimeElement> {
         Some(TimeElement {
-            element: Some(Age(age_struct {
+            element: Some(Element::Age(Age {
                 iso8601duration: "P48Y4M21D".to_string(),
             })),
         })
@@ -1443,7 +1449,7 @@ mod tests {
                     label: "macular degeneration, age-related, 3".to_string(),
                 }),
                 onset: Some(TimeElement {
-                    element: Some(Age(age_struct {
+                    element: Some(Element::Age(Age {
                         iso8601duration: "P3Y4M".to_string(),
                     })),
                 }),
@@ -1596,7 +1602,7 @@ mod tests {
             Some(VitalStatus {
                 status: Status::Alive.into(),
                 time_of_death: Some(TimeElement {
-                    element: Some(Age(IndividualAge {
+                    element: Some(Element::Age(IndividualAge {
                         iso8601duration: "P81Y5M13D".to_string()
                     }))
                 }),
@@ -1642,7 +1648,7 @@ mod tests {
         assert_eq!(
             te,
             TimeElement {
-                element: Some(Age(IndividualAge {
+                element: Some(Element::Age(IndividualAge {
                     iso8601duration: "P81Y5M13D".to_string()
                 }))
             }
@@ -1706,6 +1712,21 @@ mod tests {
         assert!(result.is_err());
         let result = PhenopacketBuilder::try_parse_timestamp("2020-20-15T09:17:39Z");
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_try_parse_iso8601duration() {
+        let te = PhenopacketBuilder::try_parse_iso8601duration("P47Y5M").unwrap();
+        assert_eq!(
+            te,
+            TimeElement {
+                element: Some(Element::Age(Age {
+                    iso8601duration: "P47Y5M".to_string()
+                }))
+            }
+        );
+        let parse_fail = PhenopacketBuilder::try_parse_iso8601duration("47Y5M");
+        assert!(parse_fail.is_err());
     }
 
     #[rstest]

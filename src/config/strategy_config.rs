@@ -1,4 +1,4 @@
-use crate::config::table_context::Context;
+use crate::config::context::Context;
 use crate::ontology::OntologyRef;
 use crate::transform::strategies::mapping::DefaultMapping;
 use serde::{Deserialize, Serialize};
@@ -13,4 +13,5 @@ pub enum StrategyConfig {
         ontology_prefix: OntologyRef,
         data_context: Context,
     },
+    AgeToIso8601,
 }

@@ -1,4 +1,5 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext};
+use crate::config::context::Context;
+use crate::config::table_context::{Identifier, SeriesContext};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
