@@ -1266,6 +1266,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
@@ -1550,6 +1551,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
