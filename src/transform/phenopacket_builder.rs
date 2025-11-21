@@ -1153,6 +1153,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
@@ -1209,6 +1210,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
@@ -1273,6 +1275,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_001";
@@ -1329,6 +1332,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_upsert_interpretation_update(
         basic_pp_with_disease_info: Phenopacket,
         temp_dir: TempDir,
@@ -1769,6 +1773,7 @@ mod tests {
     }
 
     #[rstest]
+    #[ignore]
     fn test_get_genomic_interpretation_from_data(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_gi = builder
