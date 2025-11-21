@@ -8,7 +8,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use polars::prelude::{DataType, IntoSeries, PlSmallStr};
+use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -73,15 +73,11 @@ impl Strategy for OntologyNormaliserStrategy {
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
-            let column_names: Vec<PlSmallStr> = table
+            let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context(Filter::Is(&self.data_context))
-                .collect()
-                .iter()
-                .map(|col| col.name())
-                .cloned()
-                .collect();
+                .collect_owned_names();
 
             for col_name in column_names {
                 let col = table.data().column(&col_name)?;

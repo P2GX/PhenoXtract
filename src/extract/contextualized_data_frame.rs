@@ -370,10 +370,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             .filter_columns()
             .where_header_context(Filter::Is(header_context))
             .where_data_context(Filter::Is(data_context))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self = self.remove_many_columns(col_refs.as_slice())?;
