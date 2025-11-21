@@ -549,6 +549,7 @@ impl Collector {
 mod tests {
     use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+    use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::ga4gh::vrsatile::v1::{
@@ -1278,7 +1279,6 @@ mod tests {
     }
 
     #[rstest]
-    #[ignore]
     fn test_collect(
         df_multi_patient: DataFrame,
         tc: TableContext,
@@ -1296,6 +1296,7 @@ mod tests {
         geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        skip_in_ci!();
         let mut collector = init_test_collector(temp_dir.path());
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
@@ -1563,7 +1564,6 @@ mod tests {
     }
 
     #[rstest]
-    #[ignore]
     fn test_collect_interpretations(
         tc: TableContext,
         df_single_patient: DataFrame,
@@ -1574,6 +1574,7 @@ mod tests {
         geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        skip_in_ci!();
         fn update_ids(
             interpretation: &mut Interpretation,
             new_subject_id: &str,
