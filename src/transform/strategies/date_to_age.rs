@@ -86,27 +86,37 @@ impl Strategy for DateToAgeStrategy {
 
             for date_col_name in date_column_names.iter() {
                 let stringified_date_col = table.data().column(date_col_name)?.str()?;
-                let mut ages = vec![];
 
-                for (subject_id_opt, date_opt) in stringified_subject_id_col
+                let subject_id_date_zip = stringified_subject_id_col
                     .iter()
-                    .zip(stringified_date_col.iter())
-                {
-                    let subject_id = subject_id_opt.expect("Missing SubjectID");
-                    let subject_dob_opt = patient_dob_hash_map.get(subject_id).cloned().flatten();
+                    .zip(stringified_date_col.iter());
 
-                    if date_opt.is_none() {
-                        ages.push(AnyValue::Null);
-                    } else if let Some(date) = date_opt {
-                        if let Some(subject_dob) = subject_dob_opt {
-                            let age = Self::date_and_dob_to_age(date, subject_dob)?;
-                            ages.push(AnyValue::StringOwned(age.into()));
+                let ages: Vec<AnyValue> = subject_id_date_zip
+                    .map(|(subject_id_opt, date_opt)| {
+                        let subject_id =
+                            subject_id_opt.expect("SubjectID column should have no gaps.");
+                        let subject_dob_opt = patient_dob_hash_map.get(subject_id).cloned();
+
+                        if let Some(date) = date_opt {
+                            if let Some(subject_dob) = subject_dob_opt
+                                && let Ok(age) = Self::date_and_dob_to_age(date, subject_dob)
+                            {
+                                AnyValue::StringOwned(age.into())
+                            } else {
+                                Self::upsert_mapping_error(
+                                    &mut error_info,
+                                    date_col_name,
+                                    table,
+                                    date,
+                                );
+                                AnyValue::String(date)
+                            }
                         } else {
-                            Self::upsert_mapping_error(&mut error_info, date_col_name, table, date);
-                            ages.push(AnyValue::String(date));
+                            AnyValue::Null
                         }
-                    }
-                }
+                    })
+                    .collect();
+
                 let ages_column = Column::new(date_col_name.clone().into(), ages);
 
                 table
@@ -120,7 +130,7 @@ impl Strategy for DateToAgeStrategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
-                message: "Cannot convert dates for subjects without date of birth data."
+                message: "DOB data is missing, or DOB/date could not be parsed as NaiveDate."
                     .to_string(),
                 info: error_info.into_iter().collect(),
             })
@@ -154,6 +164,7 @@ impl DateToAgeStrategy {
         Ok(dob_table.create_subject_id_string_data_hash_map(dob_column.str()?))
     }
 
+    //todo!
     fn date_and_dob_to_age(date: &str, dob: String) -> Result<String, StrategyError> {
         let date_object = date
             .parse::<NaiveDate>()
