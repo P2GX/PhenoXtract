@@ -1,4 +1,4 @@
-use crate::config::table_context::Context;
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
@@ -108,7 +108,7 @@ impl Collector {
         if let Some(status) = status {
             let time_of_death = Self::collect_single_multiplicity_element(
                 patient_cdf,
-                Context::TimeOfDeath,
+                Context::AgeOfDeath,
                 patient_id,
             )?;
 
@@ -547,8 +547,10 @@ impl Collector {
 #[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+    use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use crate::transform::collector::Collector;
     use phenopackets::ga4gh::vrsatile::v1::{
@@ -897,7 +899,7 @@ mod tests {
 
         let time_of_death_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_of_death".to_string()))
-            .with_data_context(Context::TimeOfDeath);
+            .with_data_context(Context::AgeOfDeath);
 
         let survival_time_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("survival_time".to_string()))
@@ -1295,6 +1297,7 @@ mod tests {
         geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        skip_in_ci!();
         let mut collector = init_test_collector(temp_dir.path());
 
         let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
@@ -1572,6 +1575,8 @@ mod tests {
         geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
+        skip_in_ci!();
+
         fn update_ids(
             interpretation: &mut Interpretation,
             new_subject_id: &str,

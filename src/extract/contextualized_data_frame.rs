@@ -1,4 +1,5 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::config::context::Context;
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::StrategyError;
 use crate::validation::cdf_checks::check_orphaned_columns;
@@ -159,7 +160,7 @@ impl ContextualizedDataFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::Context;
+    use crate::config::context::Context;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::{fixture, rstest};
@@ -512,7 +513,8 @@ impl<'b> Drop for ContextualizedDataFrameBuilder<'b> {
 
 #[cfg(test)]
 mod builder_tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::extract::contextualized_dataframe_filters::Filter;
     use polars::df;
