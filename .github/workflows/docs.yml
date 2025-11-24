@@ -4,7 +4,6 @@ on:
  push:
    branches:
      - main
-     - vj/basic_README
 
 permissions:
  contents: write
