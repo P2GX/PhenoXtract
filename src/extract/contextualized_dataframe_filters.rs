@@ -1,4 +1,5 @@
-use crate::config::table_context::{CellValue, Context, Identifier, SeriesContext};
+use crate::config::context::{AGE_CONTEXTS, Context, DISEASE_LABEL_OR_ID_CONTEXTS};
+use crate::config::table_context::{CellValue, Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
 use serde::Deserialize;
@@ -54,11 +55,16 @@ impl<'a> SeriesContextFilter<'a> {
     }
 
     pub fn where_data_context_is_disease(mut self) -> Self {
-        self.data_context.extend(vec![
-            Filter::Is(&Context::MondoLabelOrId),
-            Filter::Is(&Context::OmimLabelOrId),
-            Filter::Is(&Context::OrphanetLabelOrId),
-        ]);
+        for disease_context in DISEASE_LABEL_OR_ID_CONTEXTS.iter() {
+            self.data_context.push(Filter::Is(disease_context));
+        }
+        self
+    }
+
+    pub fn where_data_context_is_age(mut self) -> Self {
+        for age_context in AGE_CONTEXTS.iter() {
+            self.data_context.push(Filter::Is(age_context));
+        }
         self
     }
 
@@ -159,11 +165,20 @@ impl<'a> ColumnFilter<'a> {
     }
 
     pub fn where_data_context_is_disease(mut self) -> Self {
-        self.series_filter.data_context.extend(vec![
-            Filter::Is(&Context::MondoLabelOrId),
-            Filter::Is(&Context::OmimLabelOrId),
-            Filter::Is(&Context::OrphanetLabelOrId),
-        ]);
+        for disease_context in DISEASE_LABEL_OR_ID_CONTEXTS.iter() {
+            self.series_filter
+                .data_context
+                .push(Filter::Is(disease_context));
+        }
+        self
+    }
+
+    pub fn where_data_context_is_age(mut self) -> Self {
+        for age_context in AGE_CONTEXTS.iter() {
+            self.series_filter
+                .data_context
+                .push(Filter::Is(age_context));
+        }
         self
     }
 
@@ -207,7 +222,7 @@ impl<'a> ColumnFilter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{CellValue, Context, Identifier, SeriesContext};
+    use crate::config::table_context::{CellValue, Identifier, SeriesContext};
     use rstest::rstest;
 
     #[rstest]

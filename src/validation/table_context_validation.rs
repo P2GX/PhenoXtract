@@ -1,4 +1,5 @@
-use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+use crate::config::context::Context;
+use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
@@ -66,7 +67,8 @@ pub(crate) fn validate_subject_ids_context(
 #[cfg(test)]
 mod tests {
     use super::{validate_subject_ids_context, validate_unique_identifiers};
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 
     use rstest::rstest;
 

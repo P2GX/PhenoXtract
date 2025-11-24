@@ -100,7 +100,7 @@
       {
         "id": "hgnc",
         "name": "HUGO Gene Nomenclature Committee",
-        "url": "http://aber-owl.net/media/ontologies/HGNC/6/hgnc.owl",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn",
         "version": "-",
         "namespacePrefix": "hgnc",
         "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"

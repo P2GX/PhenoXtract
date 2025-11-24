@@ -1,4 +1,4 @@
-use crate::config::table_context::Context;
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
@@ -68,7 +68,7 @@ impl Strategy for OntologyNormaliserStrategy {
         &self,
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), StrategyError> {
-        info!("Applying HPOSynonymsToPrimaryTerms strategy to data.");
+        info!("Applying OntologyNormaliser strategy to data.");
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
@@ -122,7 +122,8 @@ impl Strategy for OntologyNormaliserStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_utils::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};

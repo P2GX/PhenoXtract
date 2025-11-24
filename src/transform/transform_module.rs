@@ -41,7 +41,6 @@ impl TransformerModule {
 
         for table in &mut tables_refs {
             Self::trim_strings(table)?;
-            Self::empty_strings_to_nulls(table)?;
             Self::ensure_ints(table)?;
             Self::ambivalent_cast_non_id_columns(table)?;
             Self::cast_subject_id_col_to_string(table)?;
@@ -62,40 +61,19 @@ impl TransformerModule {
 
         for col_name in string_col_names {
             let column = cdf.data().column(&col_name)?;
-            let trimmed_col = column.str()?.apply_mut(|s| s.trim());
-            cdf.builder()
-                .replace_column(&col_name, trimmed_col.into_series())?
-                .build()?;
-        }
-        Ok(())
-    }
-
-    fn empty_strings_to_nulls(
-        cdf: &mut ContextualizedDataFrame,
-    ) -> Result<(), DataProcessingError> {
-        let string_col_names: Vec<String> = cdf
-            .filter_columns()
-            .where_dtype(Filter::Is(&DataType::String))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
-
-        for col_name in string_col_names {
-            let column = cdf.data().column(&col_name)?;
-            let nulled_col = column.str()?.apply(|opt_s| {
-                if let Some(s) = opt_s {
-                    if s.is_empty() {
+            let trimmed_col = column.str()?.apply(|s| match s {
+                None => None,
+                Some(s) => {
+                    let trimmed = s.trim();
+                    if trimmed.is_empty() {
                         None
                     } else {
-                        Some(Cow::Borrowed(s))
+                        Some(Cow::Borrowed(trimmed))
                     }
-                } else {
-                    None
                 }
             });
             cdf.builder()
-                .replace_column(&col_name, nulled_col.into_series())?
+                .replace_column(&col_name, trimmed_col.into_series())?
                 .build()?;
         }
         Ok(())
@@ -216,7 +194,8 @@ impl PartialEq for TransformerModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use polars::df;
     use polars::prelude::{AnyValue, Column, DataType, TimeUnit};
     use rstest::rstest;
@@ -410,46 +389,10 @@ mod tests {
         assert_eq!(
             cdf.data(),
             &df!["subject_id" => ["P001", "P002", "P003", "P004", "P005"],
-                "string_col" => &["hello", "world", "test", "blah", ""],
+                "string_col" => &[AnyValue::String("hello"), AnyValue::String("world"), AnyValue::String("test"), AnyValue::String("blah"), AnyValue::Null],
                 "int col" => &[1, 2, 3, 4, 5],
             ]
             .unwrap()
-        );
-    }
-
-    #[rstest]
-    fn test_empty_strings_to_nulls() {
-        let df = df![
-            "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
-            "string_col" => &["", "hello", "", "blah", "  "],
-            "int_col" => &[1, 2, 3, 4, 5],
-        ]
-        .unwrap();
-        let mut cdf = ContextualizedDataFrame::new(
-            TableContext::new(
-                "table".to_string(),
-                vec![
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("subject_id".to_string()))
-                        .with_data_context(Context::SubjectId),
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("string_col".to_string())),
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("int_col".to_string())),
-                ],
-            ),
-            df,
-        );
-
-        TransformerModule::empty_strings_to_nulls(&mut cdf).unwrap();
-
-        assert_eq!(
-            cdf.data(),
-            &df!["subject_id" => ["P001", "P002", "P003", "P004", "P005"],
-                "string_col" => &[AnyValue::Null, AnyValue::String("hello"), AnyValue::Null, AnyValue::String("blah"), AnyValue::String("  ")],
-                "int col" => &[1, 2, 3, 4, 5],
-            ]
-                .unwrap()
         );
     }
 

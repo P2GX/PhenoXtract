@@ -1,7 +1,8 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
+use phenoxtract::config::context::Context;
 use phenoxtract::config::table_context::{
-    AliasMap, Context, Identifier, OutputDataType, SeriesContext, TableContext,
+    AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
 };
 use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
@@ -12,8 +13,8 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::strategies::MappingStrategy;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
+use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
@@ -155,8 +156,8 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_identifier(Identifier::Regex("DOB".to_string()))
                     .with_data_context(Context::DateOfBirth),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Time of death".to_string()))
-                    .with_data_context(Context::TimeOfDeath),
+                    .with_identifier(Identifier::Regex("Age of death".to_string()))
+                    .with_data_context(Context::AgeOfDeath),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex(
                         "Survival time since diagnosis (days)".to_string(),
@@ -282,6 +283,7 @@ fn test_pipeline_integration(
             Context::HpoLabelOrId,
         )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
+        Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),
     ];
 
