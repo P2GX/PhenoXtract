@@ -1,9 +1,9 @@
-use crate::config::table_context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{
     DataProcessingError, MappingErrorInfo, MappingSuggestion, StrategyError,
 };
 
+use crate::config::context::Context;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
 use log::{debug, info, warn};
@@ -257,7 +257,7 @@ impl Strategy for MappingStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{Context, Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
     use rstest::rstest;
