@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+#[deprecated]
 fn empty_strings_to_nulls(
     cdf: &mut ContextualizedDataFrame,
 ) -> Result<(), DataProcessingError> {
