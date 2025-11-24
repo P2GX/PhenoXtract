@@ -11,7 +11,6 @@ use phenopackets::schema::v2::core::{
     OntologyClass, PhenotypicFeature, Resource, TimeElement, Update,
 };
 use pretty_assertions::assert_eq;
-use prost_types::Timestamp;
 use ratelimit::Ratelimiter;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
