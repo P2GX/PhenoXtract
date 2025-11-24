@@ -16,7 +16,12 @@ use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
 #[derive(Debug)]
-/// todo!
+/// This strategy finds columns whose cells contain dates, and converts these dates
+/// to a certain age of the patient, by leveraging data on the patient's date of birth.
+/// 
+/// If there is no data on a certain patient's date of birth, 
+/// yet there is a date corresponding to this patient,
+/// then an error will be thrown. 
 pub struct DateToAgeStrategy;
 
 impl DateToAgeStrategy {
@@ -41,10 +46,20 @@ impl Strategy for DateToAgeStrategy {
                 .collect()
                 .is_empty()
         });
-        if exists_dob_column {
+        let exists_date_column = tables.iter().any(|table| {
+            !table
+                .filter_columns()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_contexts(&DATE_CONTEXTS)
+                .collect()
+                .is_empty()
+        });
+        if exists_dob_column && exists_date_column {
             true
+        } else if exists_date_column && !exists_dob_column {
+            warn!("Date columns were found in the data, yet there was no DateOfBirth column. DateToAge Strategy was not applied.");
+            false
         } else {
-            warn!("No DateOfBirth column found in data. DateToAge Strategy cannot be applied.");
             false
         }
     }
