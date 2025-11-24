@@ -18,10 +18,10 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug)]
 /// This strategy finds columns whose cells contain dates, and converts these dates
 /// to a certain age of the patient, by leveraging data on the patient's date of birth.
-/// 
-/// If there is no data on a certain patient's date of birth, 
+///
+/// If there is no data on a certain patient's date of birth,
 /// yet there is a date corresponding to this patient,
-/// then an error will be thrown. 
+/// then an error will be thrown.
 pub struct DateToAgeStrategy;
 
 impl DateToAgeStrategy {
@@ -57,7 +57,9 @@ impl Strategy for DateToAgeStrategy {
         if exists_dob_column && exists_date_column {
             true
         } else if exists_date_column && !exists_dob_column {
-            warn!("Date columns were found in the data, yet there was no DateOfBirth column. DateToAge Strategy was not applied.");
+            warn!(
+                "Date columns were found in the data, yet there was no DateOfBirth column. DateToAge Strategy was not applied."
+            );
             false
         } else {
             false
@@ -129,9 +131,11 @@ impl Strategy for DateToAgeStrategy {
 }
 
 impl DateToAgeStrategy {
+    /// The date of birth column in the data will be found
+    /// and a patient-DOB HashMap is constructed
     fn create_patient_dob_hash_map(
         tables: &[&mut ContextualizedDataFrame],
-    ) -> Result<HashMap<String, Option<String>>, StrategyError> {
+    ) -> Result<HashMap<String, String>, StrategyError> {
         let dob_table = tables.iter().find(|table|                !table
             .filter_columns()
             .where_data_context(Filter::Is(&Context::DateOfBirth))

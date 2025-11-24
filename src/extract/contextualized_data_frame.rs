@@ -164,16 +164,23 @@ impl ContextualizedDataFrame {
             .collect()[0]
     }
 
-    ///doc string todo!
+    /// Given a stringified column in a ContextualisedDataFrame, this function will create a patient_ID -> data HashMap.
+    /// 
+    /// NOTE: no validation is done to ensure that there is exactly one value in the data for each patient. 
+    /// If there are different cell values for the same patient, the value with the greatest row index will be chosen as the value in the HashMap for the patient.
     pub fn create_subject_id_string_data_hash_map<'a>(
         &'a self,
         string_data: &'a StringChunked,
-    ) -> HashMap<String, Option<String>> {
+    ) -> HashMap<String, String> {
         let mut hm = HashMap::new();
-        let stringified_subject_id_col = self.get_subject_id_col().str().unwrap();
-        for (subject_id, data_val) in stringified_subject_id_col.iter().zip(string_data.iter()) {
-            if let Some(subject_id) = subject_id {
-                hm.insert(subject_id.to_string(), data_val.map(|val| val.to_string()));
+        let stringified_subject_id_col = self
+            .get_subject_id_col()
+            .str()
+            .expect("SubjectID column should be of String data type.");
+        for (subject_id_opt, data_val_opt) in stringified_subject_id_col.iter().zip(string_data.iter()) {
+            let subject_id = subject_id_opt.expect("There should be no gaps in the SubjectID column");
+            if let Some(data_val) = data_val_opt {
+                hm.insert(subject_id.to_string(), data_val.to_string());
             }
         }
         hm
