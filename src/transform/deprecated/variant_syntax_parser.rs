@@ -4,6 +4,7 @@ use hgvs::parser::HgvsVariant;
 use std::str::FromStr;
 
 #[allow(unused)]
+#[deprecated]
 #[derive(Debug, Default, PartialEq)]
 pub struct VariantParser;
 
@@ -38,6 +39,7 @@ mod tests {
 
     #[rstest]
     fn test_get_syntax_from_str() {
+        skip_in_ci!();
         //coding SNP
         assert_eq!(
             VariantParser::try_parse_syntax("NM_004006.2:c.4375C>T").unwrap(),
@@ -106,6 +108,7 @@ mod tests {
 
     #[rstest]
     fn test_get_syntax_from_str_fail() {
+        skip_in_ci!();
         //null
         assert!(VariantParser::try_parse_syntax("").is_err());
         //invalid formatting

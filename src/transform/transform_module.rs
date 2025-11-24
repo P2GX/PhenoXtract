@@ -5,7 +5,8 @@ use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
 use phenopackets::schema::v2::Phenopacket;
-use polars::prelude::DataType;
+use polars::prelude::{ChunkApply, DataType, IntoSeries};
+use std::borrow::Cow;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -38,6 +39,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
+            Self::trim_strings(table)?;
             Self::ensure_ints(table)?;
             Self::polars_dataframe_cast_ambivalent(table)?;
         }
@@ -47,6 +49,35 @@ impl TransformerModule {
         }
 
         Ok(self.collector.collect(data)?)
+    }
+
+    fn trim_strings(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
+        let string_col_names: Vec<String> = cdf
+            .filter_columns()
+            .where_dtype(Filter::Is(&DataType::String))
+            .collect()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect();
+
+        for col_name in string_col_names {
+            let column = cdf.data().column(&col_name)?;
+            let trimmed_col = column.str()?.apply(|s| match s {
+                None => None,
+                Some(s) => {
+                    let trimmed = s.trim();
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(Cow::Borrowed(trimmed))
+                    }
+                }
+            });
+            cdf.builder()
+                .replace_column(&col_name, trimmed_col.into_series())?
+                .build()?;
+        }
+        Ok(())
     }
 
     /// Converts float columns to Int64 if all values are whole numbers within i64 range.
@@ -141,7 +172,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use polars::df;
-    use polars::prelude::{DataType, TimeUnit};
+    use polars::prelude::{AnyValue, DataType, TimeUnit};
     use rstest::rstest;
 
     #[rstest]
@@ -302,5 +333,41 @@ mod tests {
                 result_col.dtype()
             );
         }
+    }
+
+    #[rstest]
+    fn test_trim_strings() {
+        let df = df![
+            "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+            "string_col" => &["   hello", "world  ", "  test  ", "blah", "  "],
+            "int_col" => &[1, 2, 3, 4, 5],
+        ]
+        .unwrap();
+        let mut cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "table".to_string(),
+                vec![
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("subject_id".to_string()))
+                        .with_data_context(Context::SubjectId),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("string_col".to_string())),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                ],
+            ),
+            df,
+        );
+
+        TransformerModule::trim_strings(&mut cdf).unwrap();
+
+        assert_eq!(
+            cdf.data(),
+            &df!["subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+                "string_col" => &[AnyValue::String("hello"), AnyValue::String("world"), AnyValue::String("test"), AnyValue::String("blah"), AnyValue::Null],
+                "int col" => &[1, 2, 3, 4, 5],
+            ]
+            .unwrap()
+        );
     }
 }
