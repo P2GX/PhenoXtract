@@ -6,7 +6,9 @@
     "vitalStatus": {
       "status": "DECEASED",
       "timeOfDeath": {
-        "timestamp": "2024-10-03T00:00:00Z"
+        "age": {
+          "iso8601duration": "P54Y5M3D"
+        }
       },
       "survivalTimeInDays": 1432
     },
