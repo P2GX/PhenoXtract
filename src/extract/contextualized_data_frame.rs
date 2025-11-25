@@ -737,18 +737,18 @@ mod builder_tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        let expected_len = cdf.context().context().len() - 1;
+        let expected_len = cdf.context().context().len() - 2;
 
         cdf.builder()
             .drop_many_series_context(&[
-                Identifier::Regex("different".to_string()),
                 Identifier::Regex("age".to_string()),
+                Identifier::Regex("overweight".to_string()),
             ])
             .unwrap()
             .build_dirty();
 
-        assert!(cdf.data().column("different").is_err());
         assert!(cdf.data().column("age").is_err());
+        assert!(cdf.data().column("overweight").is_err());
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
 
