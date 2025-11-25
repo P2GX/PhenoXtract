@@ -281,7 +281,7 @@ mod tests {
             ],
         );
 
-        ContextualizedDataFrame::new(tc, df)
+        ContextualizedDataFrame::new(tc, df).unwrap()
     }
 
     #[rstest]
@@ -295,7 +295,8 @@ mod tests {
             .collect()
             .unwrap();
 
-        let mut table = ContextualizedDataFrame::new(table.context().clone(), filtered_table);
+        let mut table =
+            ContextualizedDataFrame::new(table.context().clone(), filtered_table).unwrap();
 
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 

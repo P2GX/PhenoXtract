@@ -110,7 +110,7 @@ mod tests {
         let sc3 = regex("abc"); //identifies col4 and col5
         let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3]);
 
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         assert!(validate_one_context_per_column(&cdf).is_ok());
     }
@@ -123,7 +123,7 @@ mod tests {
         let sc4 = regex("abcabcabc"); //identifies col5
         let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3, sc4]);
 
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let cols_with_multiple_scs = validate_one_context_per_column(&cdf)
             .err()
@@ -148,7 +148,8 @@ mod tests {
         let table_context = ContextualizedDataFrame::new(
             TableContext::default().with_name("test_table"),
             DataFrame::new(vec![]).unwrap(),
-        );
+        )
+        .unwrap();
 
         let result = validate_single_subject_id_column(&table_context);
 
@@ -185,7 +186,8 @@ mod tests {
                 Column::new("sub_col_2".into(), ["P001"]),
             ])
             .unwrap(),
-        );
+        )
+        .unwrap();
 
         let result = validate_single_subject_id_column(&table_context);
 
@@ -217,7 +219,8 @@ mod tests {
         let table_context = ContextualizedDataFrame::new(
             TableContext::new("test_table".to_string(), vec![sc.clone()]),
             DataFrame::new(vec![]).unwrap(),
-        );
+        )
+        .unwrap();
         let result = validate_dangling_sc(&table_context);
 
         assert!(result.is_err());
