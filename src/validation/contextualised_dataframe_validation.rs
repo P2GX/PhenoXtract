@@ -76,9 +76,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
-    use crate::validation::contextualised_dataframe_validation::{
-        validate_dangling_sc, validate_one_context_per_column, validate_single_subject_id_column,
-    };
+    use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
     use crate::validation::error::ValidationError;
     use polars::df;
     use polars::prelude::{Column, DataFrame};
