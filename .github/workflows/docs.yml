@@ -4,7 +4,6 @@ on:
  push:
    branches:
      - main
-     - vj/basic_README
 
 permissions:
  contents: write
@@ -37,11 +36,9 @@ jobs:
      - name: Upload documentation artifact
        uses: actions/upload-pages-artifact@v3
        with:
-         #name: github-pages          # required for deploy-pages to find it
          path: target/doc            # the built docs
 
  deploy:
-   #if: github.ref == 'refs/heads/main'   # Only deploy from main
    needs: build
    runs-on: ubuntu-latest
    environment:
