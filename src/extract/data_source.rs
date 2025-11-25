@@ -234,8 +234,8 @@ mod tests {
     }
 
     #[fixture]
-    fn row_names() -> [&'static str; 4] {
-        ["time_of_birth", "age", "weight", "smokes"]
+    fn row_names() -> [&'static str; 5] {
+        ["subject_id", "time_of_birth", "age", "weight", "smokes"]
     }
 
     #[fixture]
@@ -341,24 +341,36 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
                     .with_building_block_id(Some("Block_2".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("subject_id"))
+                    .with_data_context(Context::SubjectId),
             ],
         )
     }
 
     #[fixture]
-    fn table_context_column_wise_no_header(
-        table_context_column_wise_header: TableContext,
-    ) -> TableContext {
-        let test_tc3 = table_context_column_wise_header.clone();
-        test_tc3.with_name("third_sheet")
+    fn table_context_column_wise_no_header() -> TableContext {
+        TableContext::new(
+            "third_sheet".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("1".to_string()))
+                    .with_data_context(Context::SubjectId)
+                    .with_building_block_id(Some("Block_1".to_string())),
+            ],
+        )
     }
 
     #[fixture]
-    fn table_context_row_wise_no_header(
-        table_context_row_wise_header: TableContext,
-    ) -> TableContext {
-        let test_tc4 = table_context_row_wise_header.clone();
-        test_tc4.with_name("fourth_sheet")
+    fn table_context_row_wise_no_header() -> TableContext {
+        TableContext::new(
+            "fourth_sheet".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("1"))
+                    .with_data_context(Context::SubjectId),
+            ],
+        )
     }
 
     #[fixture]
@@ -629,7 +641,7 @@ AGE,18,27,89"#;
         hpo_ids: [&'static str; 4],
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
-        row_names: [&'static str; 4],
+        row_names: [&'static str; 5],
         times_of_birth: [ExcelDateTime; 4],
         ages: [i32; 4],
         weights: [f64; 4],
