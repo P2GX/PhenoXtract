@@ -54,6 +54,26 @@ pub(crate) fn validate_single_subject_id_column(
     }
 }
 
+pub(crate) fn validate_full_subject_id_column(
+    cdf: &ContextualizedDataFrame,
+) -> Result<(), ValidationError> {
+    let subject_id_col = cdf.get_subject_id_col();
+    let null_count = subject_id_col.null_count();
+    let is_valid = null_count == 0;
+    if is_valid {
+        Ok(())
+    } else {
+        let mut error = ValidationError::new("subject_id_column");
+        error.add_param(Cow::from("table_name"), &cdf.context().name());
+
+        let error_message = format!(
+            "SubjectID column in table {} has gaps.",
+            cdf.context().name()
+        );
+        Err(error.with_message(Cow::Owned(error_message)))
+    }
+}
+
 pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), ValidationError> {
     let mut error = ValidationError::new("dangling_series_context");
 
@@ -73,12 +93,15 @@ pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
+    use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::{
-        validate_dangling_sc, validate_one_context_per_column, validate_single_subject_id_column,
+        validate_dangling_sc, validate_full_subject_id_column, validate_one_context_per_column,
+        validate_single_subject_id_column,
     };
-    use polars::prelude::{Column, DataFrame};
+    use polars::df;
+    use polars::prelude::{AnyValue, Column, DataFrame};
     use rstest::{fixture, rstest};
     use serde_json::from_value;
 
@@ -236,5 +259,53 @@ mod tests {
             from_value(error.params.get("series_context").unwrap().clone()).unwrap();
 
         assert_eq!(sc, extracted_sc);
+    }
+
+    #[rstest]
+    fn test_validate_full_subject_id_column_success() {
+        let df = df!(
+        "subject_id" => &["Alice", "Bob", "Charlie"],
+        "age" => &[25, 30, 40],
+        )
+        .unwrap();
+
+        let subject_id_sc = SeriesContext::default()
+            .with_identifier(Identifier::from("subject_id"))
+            .with_data_context(Context::SubjectId);
+        let age_sc = SeriesContext::default()
+            .with_identifier(Identifier::from("age"))
+            .with_data_context(Context::OnsetAge);
+        let table_context = ContextualizedDataFrame::new(
+            TableContext::new(
+                "test_table".to_string(),
+                vec![subject_id_sc.clone(), age_sc.clone()],
+            ),
+            df,
+        );
+        validate_full_subject_id_column(&table_context).unwrap();
+    }
+
+    #[rstest]
+    fn test_validate_full_subject_id_column_fail() {
+        let df = df!(
+        "subject_id" => &[AnyValue::Null, AnyValue::String("bob"), AnyValue::String("charlie")],
+        "age" => &[25, 30, 40],
+        )
+        .unwrap();
+
+        let subject_id_sc = SeriesContext::default()
+            .with_identifier(Identifier::from("subject_id"))
+            .with_data_context(Context::SubjectId);
+        let age_sc = SeriesContext::default()
+            .with_identifier(Identifier::from("age"))
+            .with_data_context(Context::OnsetAge);
+        let table_context = ContextualizedDataFrame::new(
+            TableContext::new(
+                "test_table".to_string(),
+                vec![subject_id_sc.clone(), age_sc.clone()],
+            ),
+            df,
+        );
+        assert!(validate_full_subject_id_column(&table_context).is_err());
     }
 }

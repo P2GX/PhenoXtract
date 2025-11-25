@@ -1,3 +1,4 @@
+use crate::validation::contextualised_dataframe_validation::validate_full_subject_id_column;
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
@@ -24,6 +25,7 @@ use validator::Validate;
 #[validate(schema(function = "validate_one_context_per_column",))]
 #[validate(schema(function = "validate_single_subject_id_column",))]
 #[validate(schema(function = "validate_dangling_sc",))]
+#[validate(schema(function = "validate_full_subject_id_column",))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -154,6 +156,13 @@ impl ContextualizedDataFrame {
             .iter()
             .filter_map(|sc| sc.get_building_block_id())
             .collect()
+    }
+
+    pub fn get_subject_id_col(&self) -> &Column {
+        self.filter_columns()
+            .where_header_context(Filter::Is(&Context::None))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect()[0]
     }
 }
 
