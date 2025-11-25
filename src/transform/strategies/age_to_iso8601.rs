@@ -159,7 +159,7 @@ mod tests {
             .with_data_context(Context::SubjectId);
         let sc_age = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
-            .with_data_context(Context::SubjectAge);
+            .with_data_context(Context::AgeAtLastEncounter);
         TableContext::new("patient_data".to_string(), vec![sc_pid, sc_age])
     }
 

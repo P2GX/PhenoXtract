@@ -1,6 +1,7 @@
 use crate::config::context::Context;
 use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
+use chrono::ParseError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -168,6 +169,8 @@ pub enum StrategyError {
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
+    #[error(transparent)]
+    DateParsingError(#[from] ParseError),
 }
 
 impl From<DataProcessingError> for StrategyError {

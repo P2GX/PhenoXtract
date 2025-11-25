@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 
@@ -6,7 +7,7 @@ use std::fmt::Display;
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
-#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize, Hash, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
     #[allow(unused)]
@@ -36,7 +37,9 @@ pub enum Context {
     #[allow(unused)]
     VitalStatus,
     #[allow(unused)]
-    SubjectAge,
+    AgeAtLastEncounter,
+    #[allow(unused)]
+    DateAtLastEncounter,
     #[allow(unused)]
     WeightInKg,
     #[allow(unused)]
@@ -72,8 +75,19 @@ pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
     Context::OrphanetLabelOrId,
 ];
 
-pub const AGE_CONTEXTS: [Context; 3] =
-    [Context::SubjectAge, Context::OnsetAge, Context::AgeOfDeath];
-
 // NOT including DateOfBirth
-pub const DATE_CONTEXTS: [Context; 2] = [Context::OnsetDateTime, Context::DateOfDeath];
+pub const DATE_CONTEXTS: [Context; 3] = [
+    Context::DateAtLastEncounter,
+    Context::OnsetDateTime,
+    Context::DateOfDeath,
+];
+
+pub const AGE_CONTEXTS: [Context; 3] = [
+    Context::AgeAtLastEncounter,
+    Context::OnsetAge,
+    Context::AgeOfDeath,
+];
+
+pub fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
+    DATE_CONTEXTS.into_iter().zip(AGE_CONTEXTS).collect()
+}

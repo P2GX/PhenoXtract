@@ -10,7 +10,7 @@ use crate::validation::contextualised_dataframe_validation::{
 use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
-use polars::prelude::{Column, DataFrame, Series, StringChunked};
+use polars::prelude::{Column, DataFrame, PolarsError, Series};
 use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -164,19 +164,21 @@ impl ContextualizedDataFrame {
             .collect()[0]
     }
 
-    /// Given a stringified column in a ContextualisedDataFrame, this function will create a patient_ID -> data HashMap.
+    /// Given a column of String datatype in a ContextualisedDataFrame, this function will create a patient_ID -> data HashMap.
+    /// Where the data is whatever is contained in the cells of the string column.
     ///
     /// NOTE: no validation is done to ensure that there is exactly one value in the data for each patient.
     /// If there are different cell values for the same patient, the value with the greatest row index will be chosen as the value in the HashMap for the patient.
-    pub fn create_subject_id_string_data_hash_map<'a>(
-        &'a self,
-        string_data: &'a StringChunked,
-    ) -> HashMap<String, String> {
+    pub fn create_subject_id_string_data_hash_map(
+        &self,
+        string_col_name: &str,
+    ) -> Result<HashMap<String, String>, PolarsError> {
         let mut hm = HashMap::new();
         let stringified_subject_id_col = self
             .get_subject_id_col()
             .str()
             .expect("SubjectID column should be of String data type.");
+        let string_data = self.data.column(string_col_name)?.str()?;
         for (subject_id_opt, data_val_opt) in
             stringified_subject_id_col.iter().zip(string_data.iter())
         {
@@ -186,7 +188,7 @@ impl ContextualizedDataFrame {
                 hm.insert(subject_id.to_string(), data_val.to_string());
             }
         }
-        hm
+        Ok(hm)
     }
 }
 
@@ -204,7 +206,7 @@ mod tests {
         "user.name" => &["Alice", "Bob", "Charlie"],
         "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
-        "location (some stuff)" => &["NY", "SF", "LA"],
+        "location (some stuff)" => &[AnyValue::String("NY"), AnyValue::Null, AnyValue::String("LA")],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
         )
@@ -225,7 +227,7 @@ mod tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge)
+                    .with_data_context(Context::AgeAtLastEncounter)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -245,6 +247,7 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
+        cdf.validate().unwrap();
 
         let regex = Regex::new("^a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
@@ -345,6 +348,19 @@ mod tests {
         expected_bb_ids.insert("block_1");
 
         assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
+    }
+
+    #[rstest]
+    fn test_create_subject_id_string_data_hash_map() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let patient_data_hash_map = cdf
+            .create_subject_id_string_data_hash_map("location (some stuff)")
+            .unwrap();
+        assert_eq!(patient_data_hash_map.len(), 2);
+        assert_eq!(patient_data_hash_map["Alice"], "NY");
+        assert_eq!(patient_data_hash_map["Charlie"], "LA");
     }
 }
 
@@ -515,6 +531,17 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
+    pub fn change_data_contexts_via_hm(self, data_context_hm: HashMap<Context, Context>) -> Self {
+        let scs = self.cdf.context.context_mut();
+        for sc in scs {
+            let dc = sc.get_data_context();
+            if data_context_hm.contains_key(dc) {
+                *sc.data_context_mut() = data_context_hm.get(dc).unwrap().clone();
+            }
+        }
+        self.mark_dirty()
+    }
+
     pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
         let builder = ManuallyDrop::new(self.mark_clean());
 
@@ -583,7 +610,7 @@ mod builder_tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge)
+                    .with_data_context(Context::AgeAtLastEncounter)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -840,5 +867,46 @@ mod builder_tests {
         )
         .unwrap();
         assert_eq!(cdf.data(), &expected_df);
+    }
+
+    #[rstest]
+    fn test_change_data_contexts_via_hm() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+
+        let keys = vec![Context::ObservationStatus, Context::AgeAtLastEncounter];
+        let values = vec![Context::DateOfBirth, Context::OmimLabelOrId];
+
+        let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
+
+        cdf.builder()
+            .change_data_contexts_via_hm(data_context_hm)
+            .build_dirty();
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::ObservationStatus))
+                .where_data_context(Filter::Is(&Context::AgeAtLastEncounter))
+                .collect()
+                .len(),
+            0
+        );
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::DateOfBirth))
+                .collect()
+                .len(),
+            2
+        );
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::OmimLabelOrId))
+                .collect()
+                .len(),
+            1
+        );
     }
 }
