@@ -755,7 +755,6 @@ impl PartialEq for PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::ontology::DatabaseRef;
     use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
