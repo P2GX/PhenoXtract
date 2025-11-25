@@ -161,19 +161,8 @@ impl TransformerModule {
     fn cast_subject_id_col_to_string(
         cdf: &mut ContextualizedDataFrame,
     ) -> Result<(), DataProcessingError> {
-        let subject_id_cols = cdf
-            .filter_columns()
-            .where_data_context(Filter::Is(&Context::SubjectId))
-            .collect();
-        let subject_id_col = subject_id_cols
-            .first()
-            .expect("There should be at least one SubjectID column in a ContextualisedDataFrame.");
-        let subject_id_col_name = subject_id_col.name().clone();
-        let stringified_subject_id_col = subject_id_col
-            .cast(&DataType::String)?
-            .take_materialized_series();
         cdf.builder()
-            .replace_column(subject_id_col_name.as_str(), stringified_subject_id_col)?
+            .cast(&Context::None, &Context::SubjectId, DataType::String)?
             .build()?;
         Ok(())
     }
