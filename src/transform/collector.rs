@@ -1509,20 +1509,6 @@ mod tests {
     ) {
         skip_in_ci!();
 
-        fn update_ids(
-            interpretation: &mut Interpretation,
-            new_subject_id: &str,
-            new_interpretation_id: &str,
-        ) {
-            interpretation.id = new_interpretation_id.to_string();
-
-            if let Some(diagnosis) = &mut interpretation.diagnosis
-                && let Some(genomic_interpretation) = diagnosis.genomic_interpretations.get_mut(0)
-            {
-                genomic_interpretation.subject_or_biosample_id = new_subject_id.to_string();
-            }
-        }
-
         let patient_id = "P002";
         let phenopacket_id = format!("cohort2019-{patient_id}").to_string();
 

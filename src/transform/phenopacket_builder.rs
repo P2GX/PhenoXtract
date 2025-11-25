@@ -757,7 +757,6 @@ mod tests {
     use super::*;
 
     use crate::ontology::DatabaseRef;
-    use crate::ontology::resource_references::ResourceRef;
     use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use phenopackets::schema::v2::core::time_element::Element;

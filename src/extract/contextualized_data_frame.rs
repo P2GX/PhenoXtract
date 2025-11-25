@@ -356,7 +356,6 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         col_name: &str,
         replacement_data: Series,
     ) -> Result<Self, StrategyError> {
-        let table_name = self.cdf.context().name().to_string();
         self.cdf.data.replace(col_name, replacement_data)?;
 
         Ok(self.mark_dirty())
