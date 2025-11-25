@@ -366,8 +366,9 @@ mod tests {
         let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2());
         let tables = [&mut cdf1, &mut cdf2];
         let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
-        assert_eq!(patient_dob_hm.len(), 2);
-        assert_eq!(patient_dob_hm["Bob"], "1990-12-01");
-        assert_eq!(patient_dob_hm["Charlie"], "1980-01-08");
+        assert_eq!(patient_dob_hm.len(), 3);
+        assert_eq!(patient_dob_hm["Alice"], dob_alice());
+        assert_eq!(patient_dob_hm["Bob"], dob_bob());
+        assert_eq!(patient_dob_hm["Charlie"], dob_charlie());
     }
 }

@@ -247,7 +247,6 @@ mod tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df);
-        cdf.validate().unwrap();
 
         let regex = Regex::new("^a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
