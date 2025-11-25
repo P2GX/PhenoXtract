@@ -338,39 +338,6 @@ mod tests {
         assert!(result.iter().all(|s| s.get_data_context() == &ctx1));
     }
 
-    /*    #[rstest]
-    fn test_filter_data_context_by_disease() {
-        let ctx1 = Context::SubjectId;
-        let ctx2 = Context::OmimLabelOrId;
-        let ctx3 = Context::OrphanetLabelOrId;
-
-        let series = vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_data_context(ctx1.clone()),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_data_context(ctx2.clone()),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_data_context(ctx3.clone()),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("id4".to_string()))
-                .with_data_context(ctx3.clone()),
-        ];
-
-        let result = SeriesContextFilter::new(&series)
-            .where_data_context_is_disease()
-            .collect();
-
-        assert_eq!(result.len(), 3);
-        assert!(
-            result
-                .iter()
-                .all(|s| s.get_data_context() == &ctx2 || s.get_data_context() == &ctx3)
-        );
-    }*/
-
     #[rstest]
     fn test_filter_by_fill_missing_some() {
         let fill_val = CellValue::String("default".to_string());
