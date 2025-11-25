@@ -1744,10 +1744,7 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id".to_string();
 
-        builder.ensure_resource(
-            &pp_id,
-            &ResourceRef::new("omim".to_string(), "latest".to_string()),
-        );
+        builder.ensure_resource(&pp_id, &DatabaseRef::omim());
 
         let pp = builder.build().first().unwrap().clone();
         let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();

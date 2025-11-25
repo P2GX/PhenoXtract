@@ -1510,7 +1510,7 @@ mod tests {
         temp_dir: TempDir,
     ) {
         skip_in_ci!();
-        dbg!(&platelet_defect_interpretation);
+
         fn update_ids(
             interpretation: &mut Interpretation,
             new_subject_id: &str,
