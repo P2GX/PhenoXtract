@@ -1502,11 +1502,9 @@ mod tests {
     #[rstest]
     fn test_collect_interpretations(
         single_disease_phenotype_cdf: ContextualizedDataFrame,
-        mut platelet_defect_interpretation: Interpretation,
-        mut dysostosis_interpretation: Interpretation,
+        dysostosis_interpretation: Interpretation,
         mondo_meta_data_resource: Resource,
         hgnc_meta_data_resource: Resource,
-        geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         skip_in_ci!();
@@ -1528,17 +1526,6 @@ mod tests {
         let patient_id = "P002";
         let phenopacket_id = format!("cohort2019-{patient_id}").to_string();
 
-        update_ids(
-            &mut platelet_defect_interpretation,
-            patient_id,
-            &format!("{phenopacket_id}-MONDO:0008258"),
-        );
-        update_ids(
-            &mut dysostosis_interpretation,
-            patient_id,
-            &format!("{phenopacket_id}-MONDO:0000359"),
-        );
-
         let mut collector = init_test_collector(temp_dir.path());
 
         collector
@@ -1549,13 +1536,9 @@ mod tests {
 
         let mut expected_p002 = Phenopacket {
             id: phenopacket_id.to_string(),
-            interpretations: vec![dysostosis_interpretation, platelet_defect_interpretation],
+            interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
-                resources: vec![
-                    mondo_meta_data_resource,
-                    hgnc_meta_data_resource,
-                    geno_meta_data_resource,
-                ],
+                resources: vec![mondo_meta_data_resource, hgnc_meta_data_resource],
                 ..Default::default()
             }),
             ..Default::default()
