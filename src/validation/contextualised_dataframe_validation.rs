@@ -57,6 +57,7 @@ pub(crate) fn validate_single_subject_id_column(
 pub(crate) fn validate_subject_id_col_no_nulls(
     cdf: &ContextualizedDataFrame,
 ) -> Result<(), ValidationError> {
+    validate_single_subject_id_column(cdf)?;
     let subject_id_col = cdf.get_subject_id_col();
     let null_count = subject_id_col.null_count();
     let is_valid = null_count == 0;
@@ -97,15 +98,11 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::{
-        validate_dangling_sc, validate_one_context_per_column, validate_single_subject_id_column,
-        validate_subject_id_col_no_nulls,
+        validate_one_context_per_column, validate_subject_id_col_no_nulls,
     };
-    use polars::df;
-    use polars::prelude::{AnyValue, Column, DataFrame};
-    use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
     use crate::validation::error::ValidationError;
     use polars::df;
-    use polars::prelude::{Column, DataFrame};
+    use polars::prelude::{AnyValue, Column, DataFrame};
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use serde_json::from_value;
@@ -308,7 +305,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_validate_full_subject_id_column_success() {
+    fn test_validate_subject_id_col_no_nulls_success() {
         let df = df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
         "age" => &[25, 30, 40],
@@ -327,12 +324,13 @@ mod tests {
                 vec![subject_id_sc.clone(), age_sc.clone()],
             ),
             df,
-        );
+        )
+        .unwrap();
         validate_subject_id_col_no_nulls(&table_context).unwrap();
     }
 
     #[rstest]
-    fn test_validate_full_subject_id_column_fail() {
+    fn test_validate_subject_id_col_no_nulls_fail() {
         let df = df!(
         "subject_id" => &[AnyValue::Null, AnyValue::String("bob"), AnyValue::String("charlie")],
         "age" => &[25, 30, 40],
@@ -345,13 +343,13 @@ mod tests {
         let age_sc = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
             .with_data_context(Context::OnsetAge);
-        let table_context = ContextualizedDataFrame::new(
+        let cdf_creation_attempt = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
                 vec![subject_id_sc.clone(), age_sc.clone()],
             ),
             df,
         );
-        assert!(validate_subject_id_col_no_nulls(&table_context).is_err());
+        assert!(cdf_creation_attempt.is_err());
     }
 }
