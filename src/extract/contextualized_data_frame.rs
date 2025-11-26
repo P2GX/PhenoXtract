@@ -836,7 +836,7 @@ mod builder_tests {
     fn test_cast() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
             .cast(&Context::None, &Context::SubjectAge, DataType::String)
             .unwrap()

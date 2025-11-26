@@ -413,7 +413,8 @@ mod tests {
                 ],
             ),
             df,
-        );
+        )
+        .unwrap();
         TransformerModule::cast_subject_id_col_to_string(&mut cdf).unwrap();
 
         let new_subject_id_col = cdf.data().column("subject_id").unwrap();
