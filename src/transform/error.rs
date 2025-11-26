@@ -225,6 +225,8 @@ pub enum CollectorError {
     ParseFloatError(#[from] ParseFloatError),
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
 }

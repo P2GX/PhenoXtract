@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, Ser
 use crate::transform::error::StrategyError;
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
+use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use crate::validation::contextualised_dataframe_validation::{
     validate_one_context_per_column, validate_single_subject_id_column,
 };
@@ -25,6 +26,7 @@ use validator::Validate;
 #[validate(schema(function = "validate_one_context_per_column",))]
 #[validate(schema(function = "validate_single_subject_id_column",))]
 #[validate(schema(function = "validate_dangling_sc",))]
+#[validate(schema(function = "validate_subject_id_col_no_nulls",))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
@@ -33,8 +35,10 @@ pub struct ContextualizedDataFrame {
 }
 
 impl ContextualizedDataFrame {
-    pub fn new(context: TableContext, data: DataFrame) -> Self {
-        ContextualizedDataFrame { context, data }
+    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationError> {
+        let cdf = ContextualizedDataFrame { context, data };
+        cdf.validate()?;
+        Ok(cdf)
     }
 
     #[allow(unused)]
@@ -219,10 +223,7 @@ mod tests {
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
-                        "user.name".to_string(),
-                        "different".to_string(),
-                    ]))
+                    .with_identifier(Identifier::Multi(vec!["user.name".to_string()]))
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
@@ -246,7 +247,7 @@ mod tests {
     fn test_regex_match_column_found() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let regex = Regex::new("^a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
@@ -259,7 +260,7 @@ mod tests {
     fn test_regex_match_column_found_partial_matches() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let regex = Regex::new("a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
@@ -274,7 +275,7 @@ mod tests {
     fn test_regex_match_column_none() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let regex = Regex::new("does_not_exist").unwrap();
         let cols = cdf.regex_match_column(&regex);
@@ -286,7 +287,7 @@ mod tests {
     fn test_get_column_string_match() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("location (some stuff)".to_string());
         let cols = cdf.get_columns(&id);
@@ -299,7 +300,7 @@ mod tests {
     fn test_get_column_regex_raw() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("^[a,u]{1}[a-z.]*".to_string());
         let cols = cdf.get_columns(&id);
@@ -313,7 +314,7 @@ mod tests {
     fn test_get_column_multi() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Multi(vec!["user.name".to_string(), "age".to_string()]);
         let cols = cdf.get_columns(&id);
@@ -329,7 +330,15 @@ mod tests {
         "blah_blah" => &["Al", "Bobby", "Chaz"],
         )
         .unwrap();
-        let cdf = ContextualizedDataFrame::new(TableContext::default(), df);
+        let table_context = TableContext::new(
+            "test_get_column_no_partial_matches".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("blah".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
+        let cdf = ContextualizedDataFrame::new(table_context, df).unwrap();
 
         let id = Identifier::Regex("blah".to_string());
         let cols = cdf.get_columns(&id);
@@ -342,7 +351,7 @@ mod tests {
     fn test_get_building_block_ids() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let mut expected_bb_ids = OrderSet::new();
         expected_bb_ids.insert("block_1");
 
@@ -397,15 +406,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         col_name: &str,
         replacement_data: Series,
     ) -> Result<Self, StrategyError> {
-        let table_name = self.cdf.context().name().to_string();
-        self.cdf
-            .data
-            .replace(col_name, replacement_data)
-            .map_err(|_| StrategyError::BuilderError {
-                transformation: "replace".to_string(),
-                col_name: col_name.to_string(),
-                table_name,
-            })?;
+        self.cdf.data.replace(col_name, replacement_data)?;
 
         Ok(self.mark_dirty())
     }
@@ -601,10 +602,7 @@ mod builder_tests {
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
-                        "user.name".to_string(),
-                        "different".to_string(),
-                    ]))
+                    .with_identifier(Identifier::Multi(vec!["user.name".to_string()]))
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
@@ -628,7 +626,7 @@ mod builder_tests {
     fn test_remove_scs_with_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
             .remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
             .build_dirty();
@@ -640,7 +638,7 @@ mod builder_tests {
     fn test_remove_scs_with_context_no_change() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
             .remove_scs_with_context(&Context::VitalStatus, &Context::None)
             .build_dirty();
@@ -654,21 +652,21 @@ mod builder_tests {
     fn test_remove_scs_and_cols_with_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
             .unwrap()
             .build_dirty();
 
         assert_eq!(cdf.context().context().len(), 3);
-        assert_eq!(cdf.data().width(), 4);
+        assert_eq!(cdf.data().width(), 5);
     }
 
     #[rstest]
     fn test_remove_scs_and_cols_with_context_no_change() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
             .unwrap()
@@ -683,7 +681,7 @@ mod builder_tests {
     fn test_drop_cols_with_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let filter_cols = cdf
             .filter_columns()
@@ -721,7 +719,7 @@ mod builder_tests {
     fn test_remove_column_nonexistent() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let result = cdf.builder().remove_column("nonexistent");
         assert!(result.is_err());
@@ -731,7 +729,7 @@ mod builder_tests {
     fn test_remove_many_columns() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let expected_width = cdf.data().width() - 2;
 
         cdf.builder()
@@ -748,7 +746,7 @@ mod builder_tests {
     fn test_remove_series_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.builder()
@@ -761,7 +759,7 @@ mod builder_tests {
     fn test_drop_series_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let expected_len = cdf.context().context().len() - 1;
 
         cdf.builder()
@@ -777,7 +775,7 @@ mod builder_tests {
     fn test_drop_many_series_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let expected_len = cdf.context().context().len() - 1;
 
         cdf.builder()
@@ -797,7 +795,7 @@ mod builder_tests {
     fn test_insert_columns_with_series_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let expected_len = cdf.context().context().len() + 1;
         let expected_width = cdf.data().width() + 1;
         let new_col = Column::new("test_col".into(), &[10, 11, 12]);
@@ -818,7 +816,7 @@ mod builder_tests {
     fn test_bulk_insert_columns_with_series_context() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let expected_len = cdf.context().context().len() + 2;
         let expected_width = cdf.data().width() + 2;
 
@@ -846,7 +844,7 @@ mod builder_tests {
     fn test_replace_column() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let transformed_vec = vec![1001, 1002, 1003];
         cdf.builder()
             .replace_column(

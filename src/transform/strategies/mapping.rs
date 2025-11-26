@@ -266,7 +266,7 @@ mod tests {
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
             "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null],
-            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::Null]
+            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::String("9")],
         ]
         .unwrap();
 
@@ -282,7 +282,7 @@ mod tests {
             ],
         );
 
-        ContextualizedDataFrame::new(tc, df)
+        ContextualizedDataFrame::new(tc, df).unwrap()
     }
 
     #[rstest]
@@ -296,7 +296,8 @@ mod tests {
             .collect()
             .unwrap();
 
-        let mut table = ContextualizedDataFrame::new(table.context().clone(), filtered_table);
+        let mut table =
+            ContextualizedDataFrame::new(table.context().clone(), filtered_table).unwrap();
 
         let strategy = MappingStrategy::default_sex_mapping_strategy();
 

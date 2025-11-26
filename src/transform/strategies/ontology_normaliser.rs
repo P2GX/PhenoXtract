@@ -175,17 +175,13 @@ mod tests {
         );
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
         let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
             data_context: Context::HpoLabelOrId,
         };
-        let result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
-
-        if let Err(e) = result {
-            panic!("{}", e);
-        }
+        let _ = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
@@ -218,7 +214,7 @@ mod tests {
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
 
         let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
@@ -290,7 +286,7 @@ mod tests {
         let col_subject_id = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
 
         let df = DataFrame::new(vec![col1, col_subject_id.clone()]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),

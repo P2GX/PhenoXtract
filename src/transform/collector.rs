@@ -45,7 +45,7 @@ impl Collector {
                 let phenopacket_id = format!("{}-{}", self.cohort_name.clone(), patient_id);
 
                 let patient_cdf =
-                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone());
+                    ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
                 self.collect_individual(&patient_cdf, &phenopacket_id, &patient_id)?;
                 self.collect_phenotypic_features(&patient_cdf, &patient_id, &phenopacket_id)?;
                 self.collect_diseases(&patient_cdf, &phenopacket_id)?;
@@ -408,12 +408,12 @@ impl Collector {
     /// return Ok(unique_val) if there is a single unique value
     fn collect_single_multiplicity_element(
         patient_cdf: &ContextualizedDataFrame,
-        context: Context,
+        data_context: Context,
         patient_id: &str,
     ) -> Result<Option<String>, CollectorError> {
         let cols_of_element_type = patient_cdf
             .filter_columns()
-            .where_data_context(Filter::Is(&context))
+            .where_data_context(Filter::Is(&data_context))
             .collect();
 
         if cols_of_element_type.is_empty() {
@@ -442,7 +442,7 @@ impl Collector {
             Err(CollectorError::ExpectedSingleValue {
                 table_name: patient_cdf.context().name().to_string(),
                 patient_id: patient_id.to_string(),
-                context,
+                context: data_context,
             })
         } else {
             match unique_values.iter().next() {
@@ -554,8 +554,10 @@ mod tests {
         VitalStatus,
     };
     use polars::datatypes::{AnyValue, DataType};
+    use polars::df;
     use polars::frame::DataFrame;
-    use polars::prelude::{Column, NamedFrom, Series};
+    use polars::prelude::{Column, Series};
+    use polars::series::ChunkCompareEq;
     use pretty_assertions::assert_eq;
     use prost_types::Timestamp;
     use rstest::{fixture, rstest};
@@ -681,7 +683,7 @@ mod tests {
     }
 
     #[fixture]
-    fn dysostosis_term() -> OntologyClass {
+    fn spondylocostal_dysostosis_term() -> OntologyClass {
         OntologyClass {
             id: "MONDO:0000359".to_string(),
             label: "spondylocostal dysostosis".to_string(),
@@ -689,7 +691,7 @@ mod tests {
     }
 
     #[fixture]
-    fn dysostosis_onset_age() -> Age {
+    fn spondylocostal_dysostosis_onset_age() -> Age {
         Age {
             iso8601duration: "P10Y4M21D".to_string(),
         }
@@ -697,13 +699,13 @@ mod tests {
 
     #[fixture]
     fn dysostosis_disease_with_onset(
-        dysostosis_term: OntologyClass,
-        dysostosis_onset_age: Age,
+        spondylocostal_dysostosis_term: OntologyClass,
+        spondylocostal_dysostosis_onset_age: Age,
     ) -> Disease {
         Disease {
-            term: Some(dysostosis_term),
+            term: Some(spondylocostal_dysostosis_term),
             onset: Some(TimeElement {
-                element: Some(Element::Age(dysostosis_onset_age)),
+                element: Some(Element::Age(spondylocostal_dysostosis_onset_age)),
             }),
             ..Default::default()
         }
@@ -782,12 +784,12 @@ mod tests {
     }
 
     #[fixture]
-    fn dysostosis_interpretation(dysostosis_term: OntologyClass) -> Interpretation {
+    fn dysostosis_interpretation(spondylocostal_dysostosis_term: OntologyClass) -> Interpretation {
         Interpretation {
             id: "cohort2019-P002-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
-                disease: Some(dysostosis_term),
+                disease: Some(spondylocostal_dysostosis_term),
                 genomic_interpretations: vec![GenomicInterpretation {
                     subject_or_biosample_id: "P002".to_string(),
                     interpretation_status: 0,
@@ -834,7 +836,7 @@ mod tests {
         Resource {
             id: "hgnc".to_string(),
             name: "HUGO Gene Nomenclature Committee".to_string(),
-            url: "http://aber-owl.net/media/ontologies/HGNC/6/hgnc.owl".to_string(),
+            url: "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn".to_string(),
             version: "-".to_string(),
             namespace_prefix: "hgnc".to_string(),
             iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
@@ -853,9 +855,109 @@ mod tests {
             iri_prefix: "http://purl.obolibrary.org/obo/GENO_$1".to_string(),
         }
     }
+    #[fixture]
+    fn individual_info_tc() -> TableContext {
+        let id_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("subject_id".to_string()))
+            .with_data_context(Context::SubjectId);
+
+        let dob_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("dob".to_string()))
+            .with_data_context(Context::DateOfBirth);
+
+        let time_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_of_death".to_string()))
+            .with_data_context(Context::AgeOfDeath);
+
+        let sex_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("sex".to_string()))
+            .with_data_context(Context::SubjectSex);
+
+        let vital_status_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("vital_status".to_string()))
+            .with_data_context(Context::VitalStatus);
+
+        let survival_time_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("survival_time".to_string()))
+            .with_data_context(Context::SurvivalTimeDays);
+
+        TableContext::new(
+            "patient_data".to_string(),
+            vec![
+                id_sc,
+                dob_sc,
+                sex_sc,
+                vital_status_sc,
+                time_of_death_sc,
+                survival_time_sc,
+            ],
+        )
+    }
 
     #[fixture]
-    fn tc(spasmus_nutans_pf_with_onset: PhenotypicFeature) -> TableContext {
+    fn individual_info_df() -> DataFrame {
+        let id_col = Column::new("subject_id".into(), ["P001", "P002", "P003"]);
+
+        let subject_sex_col = Column::new(
+            "sex".into(),
+            [
+                AnyValue::String("MALE"),
+                AnyValue::String("FEMALE"),
+                AnyValue::Null,
+            ],
+        );
+        let vital_status_col = Column::new(
+            "vital_status".into(),
+            [
+                AnyValue::String("UNKNOWN_STATUS"),
+                AnyValue::String("ALIVE"),
+                AnyValue::Null,
+            ],
+        );
+
+        let dob_col = Column::new(
+            "dob".into(),
+            [
+                AnyValue::String("1960-02-05"),
+                AnyValue::String("1960-02-05"),
+                AnyValue::Null,
+            ],
+        );
+        let time_of_death_col = Column::new(
+            "time_of_death".into(),
+            [
+                AnyValue::String("2001-01-29"),
+                AnyValue::String("2000-10-18"),
+                AnyValue::Null,
+            ],
+        );
+        let survival_time_col = Column::new(
+            "survival_time".into(),
+            [
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+                AnyValue::Int32(155),
+            ],
+        );
+        DataFrame::new(vec![
+            id_col,
+            subject_sex_col,
+            vital_status_col,
+            time_of_death_col,
+            survival_time_col,
+            dob_col,
+        ])
+        .unwrap()
+    }
+    #[fixture]
+    fn individual_info_cdf(
+        individual_info_df: DataFrame,
+        individual_info_tc: TableContext,
+    ) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(individual_info_tc, individual_info_df).unwrap()
+    }
+    #[fixture]
+    fn disease_phenotype_tc() -> TableContext {
         let id_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("subject_id".to_string()))
             .with_data_context(Context::SubjectId);
@@ -871,39 +973,6 @@ mod tests {
             ))
             .with_data_context(Context::OnsetAge)
             .with_building_block_id(Some("Block_1".to_string()));
-
-        let dob_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("dob".to_string()))
-            .with_data_context(Context::DateOfBirth);
-
-        let sex_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("sex".to_string()))
-            .with_data_context(Context::SubjectSex);
-
-        let vital_status_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("vital_status".to_string()))
-            .with_data_context(Context::VitalStatus);
-
-        let time_of_death_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("time_of_death".to_string()))
-            .with_data_context(Context::AgeOfDeath);
-
-        let survival_time_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("survival_time".to_string()))
-            .with_data_context(Context::SurvivalTimeDays);
-
-        let spasmus_nutans_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex(
-                spasmus_nutans_pf_with_onset.r#type.clone().unwrap().id,
-            ))
-            .with_header_context(Context::HpoLabelOrId)
-            .with_data_context(Context::ObservationStatus)
-            .with_building_block_id(Some("Block_2".to_string()));
-
-        let spasmus_nutans_onset_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("spasmus_nutans_onset_age".to_string()))
-            .with_data_context(Context::OnsetDateTime)
-            .with_building_block_id(Some("Block_2".to_string()));
 
         let diseases_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("diseases".to_string()))
@@ -936,13 +1005,6 @@ mod tests {
                 id_sc,
                 pf_sc,
                 onset_sc,
-                dob_sc,
-                sex_sc,
-                vital_status_sc,
-                time_of_death_sc,
-                survival_time_sc,
-                spasmus_nutans_sc,
-                spasmus_nutans_onset_sc,
                 diseases_sc,
                 disease_onset_sc,
                 genes_sc,
@@ -953,16 +1015,16 @@ mod tests {
     }
 
     #[fixture]
-    fn df_multi_patient(
+    fn disease_phenotype_df(
         spasmus_nutans_onset_age: Age,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         pneumonia_onset_age: Age,
         pneumonia_pf_with_onset: PhenotypicFeature,
         fractured_nose_pf: PhenotypicFeature,
         platelet_defect_term: OntologyClass,
-        dysostosis_term: OntologyClass,
+        spondylocostal_dysostosis_term: OntologyClass,
         platelet_defect_onset_age: Age,
-        dysostosis_onset_age: Age,
+        spondylocostal_dysostosis_onset_age: Age,
     ) -> DataFrame {
         let id_col = Column::new(
             "subject_id".into(),
@@ -990,34 +1052,13 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let subject_sex_col = Column::new(
-            "sex".into(),
-            [
-                AnyValue::String("MALE"),
-                AnyValue::String("MALE"),
-                AnyValue::Null,
-                AnyValue::String("FEMALE"),
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let vital_status_col = Column::new(
-            "vital_status".into(),
-            [
-                AnyValue::String("UNKNOWN_STATUS"),
-                AnyValue::Null,
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::String("DECEASED"),
-            ],
-        );
+
         let disease_col = Column::new(
             "diseases".into(),
             [
                 AnyValue::String(platelet_defect_term.label.as_str()),
                 AnyValue::String(platelet_defect_term.id.as_str()), // with no onset this time
-                AnyValue::String(dysostosis_term.label.as_str()),
+                AnyValue::String(spondylocostal_dysostosis_term.label.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -1028,7 +1069,7 @@ mod tests {
             [
                 AnyValue::String(platelet_defect_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
-                AnyValue::String(dysostosis_onset_age.iso8601duration.as_str()),
+                AnyValue::String(spondylocostal_dysostosis_onset_age.iso8601duration.as_str()),
                 AnyValue::Null,
                 AnyValue::Null,
                 AnyValue::Null,
@@ -1072,8 +1113,6 @@ mod tests {
             id_col,
             pf_col,
             onset_col,
-            subject_sex_col,
-            vital_status_col,
             disease_col,
             disease_onset_col,
             gene_col,
@@ -1084,192 +1123,67 @@ mod tests {
     }
 
     #[fixture]
-    fn df_single_patient(
-        pneumonia_onset_age: Age,
-        pneumonia_pf_with_onset: PhenotypicFeature,
-        fractured_nose_pf: PhenotypicFeature,
-        spasmus_nutans_pf_with_onset: PhenotypicFeature,
-        spasmus_nutans_onset_age: Age,
-        platelet_defect_disease_with_onset: Disease,
-        dysostosis_disease_with_onset: Disease,
-    ) -> DataFrame {
-        let id_col = Column::new("subject_id".into(), ["P006", "P006", "P006", "P006"]);
-        let dob_col = Column::new(
-            "dob".into(),
-            [
-                AnyValue::String("1960-02-05"),
-                AnyValue::String("1960-02-05"),
-                AnyValue::Null,
-                AnyValue::String("1960-02-05"),
-            ],
-        );
-        let subject_sex_col = Column::new(
-            "sex".into(),
-            [
-                AnyValue::String("FEMALE"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let vital_status_col = Column::new(
-            "vital_status".into(),
-            [
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::String("ALIVE"),
-                AnyValue::Null,
-            ],
-        );
-        let time_of_death_col = Column::new(
-            "time_of_death".into(),
-            [
-                AnyValue::String("2001-01-29"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let survival_time_col = Column::new(
-            "survival_time".into(),
-            [
-                AnyValue::Int32(155),
-                AnyValue::Int32(155),
-                AnyValue::Int32(155),
-                AnyValue::Int32(155),
-            ],
-        );
-        let pf_col = Column::new(
-            "phenotypic_features".into(),
-            [
-                AnyValue::String(
-                    pneumonia_pf_with_onset
-                        .r#type
-                        .clone()
-                        .unwrap()
-                        .label
-                        .as_str(),
-                ),
-                AnyValue::Null,
-                AnyValue::String(fractured_nose_pf.r#type.clone().unwrap().label.as_str()),
-                AnyValue::String(
-                    pneumonia_pf_with_onset
-                        .r#type
-                        .clone()
-                        .unwrap()
-                        .label
-                        .as_str(),
-                ),
-            ],
-        );
-        let pf_onset_col = Column::new(
-            "phenotypic_features_onset_age".into(),
-            [
-                AnyValue::String(pneumonia_onset_age.iso8601duration.as_str()),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::String(pneumonia_onset_age.iso8601duration.as_str()),
-            ],
-        );
-        let spasmus_nutans_col = Column::new(
-            spasmus_nutans_pf_with_onset
-                .r#type
-                .clone()
-                .unwrap()
-                .id
-                .into(),
-            [
-                AnyValue::Boolean(true),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let spasmus_nutans_onset_col = Column::new(
-            "spasmus_nutans_onset_age".into(),
-            [
-                AnyValue::String(spasmus_nutans_onset_age.iso8601duration.as_str()),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-            ],
-        );
-        let disease_col = Column::new(
-            "diseases".into(),
-            [
-                AnyValue::String(
-                    platelet_defect_disease_with_onset
-                        .term
-                        .clone()
-                        .unwrap()
-                        .label
-                        .as_str(),
-                ),
-                AnyValue::Null,
-                AnyValue::String(platelet_defect_disease_with_onset.term.unwrap().id.as_str()), // no onset this time
-                AnyValue::String(dysostosis_disease_with_onset.term.unwrap().label.as_str()),
-            ],
-        );
-        let disease_onset_col = Column::new(
-            "disease_onset".into(),
-            [
-                AnyValue::String("P45Y10M05D"),
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::String("P10Y4M21D"),
-            ],
-        );
-        let gene_col = Column::new(
-            "genes".into(),
-            [
-                AnyValue::String("KIF21A"),
-                AnyValue::Null,
-                AnyValue::String("KIF21A"),
-                AnyValue::String("ALMS1"),
-            ],
-        );
-        let hgvs_col1 = Column::new(
-            "hgvs1".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-            ],
-        );
-        let hgvs_col2 = Column::new(
-            "hgvs2".into(),
-            [
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-                AnyValue::String("NM_001173464.1:c.2860C>T"),
-                AnyValue::Null,
-            ],
-        );
-        DataFrame::new(vec![
-            id_col,
-            dob_col,
-            subject_sex_col,
-            vital_status_col,
-            time_of_death_col,
-            survival_time_col,
-            pf_col,
-            pf_onset_col,
-            spasmus_nutans_col,
-            spasmus_nutans_onset_col,
-            disease_col,
-            disease_onset_col,
-            gene_col,
-            hgvs_col1,
-            hgvs_col2,
-        ])
-        .unwrap()
+    fn disease_phenotype_cdf(
+        disease_phenotype_tc: TableContext,
+        disease_phenotype_df: DataFrame,
+    ) -> ContextualizedDataFrame {
+        ContextualizedDataFrame::new(disease_phenotype_tc, disease_phenotype_df).unwrap()
+    }
+
+    #[fixture]
+    fn single_disease_phenotype_cdf(
+        disease_phenotype_cdf: ContextualizedDataFrame,
+    ) -> ContextualizedDataFrame {
+        let patient_dfs = disease_phenotype_cdf
+            .data()
+            .partition_by(vec!["subject_id"], true)
+            .unwrap();
+
+        let p2_df: Vec<&DataFrame> = patient_dfs
+            .iter()
+            .filter(|&df| {
+                let col = df.column("subject_id").unwrap();
+                let mask = col.str().unwrap().equal("P002");
+                mask.any()
+            })
+            .collect();
+
+        return ContextualizedDataFrame::new(
+            disease_phenotype_cdf.context().clone(),
+            p2_df.first().cloned().unwrap().clone(),
+        )
+        .unwrap();
+    }
+
+    #[fixture]
+    fn single_individual_cdf(
+        individual_info_cdf: ContextualizedDataFrame,
+    ) -> ContextualizedDataFrame {
+        let patient_dfs = individual_info_cdf
+            .data()
+            .partition_by(vec!["subject_id"], true)
+            .unwrap();
+
+        let p2_df: Vec<&DataFrame> = patient_dfs
+            .iter()
+            .filter(|&df| {
+                let col = df.column("subject_id").unwrap();
+                let mask = col.str().unwrap().equal("P002");
+                mask.any()
+            })
+            .collect();
+
+        return ContextualizedDataFrame::new(
+            individual_info_cdf.context().clone(),
+            p2_df.first().cloned().unwrap().clone(),
+        )
+        .unwrap();
     }
 
     #[rstest]
     fn test_collect(
-        df_multi_patient: DataFrame,
-        tc: TableContext,
+        disease_phenotype_cdf: ContextualizedDataFrame,
+        individual_info_cdf: ContextualizedDataFrame,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         pneumonia_pf_with_onset: PhenotypicFeature,
         fractured_nose_pf: PhenotypicFeature,
@@ -1287,17 +1201,28 @@ mod tests {
         skip_in_ci!();
         let mut collector = init_test_collector(temp_dir.path());
 
-        let cdf = ContextualizedDataFrame::new(tc, df_multi_patient);
-
-        let phenopackets = collector.collect(vec![cdf]).unwrap();
+        let phenopackets = collector
+            .collect(vec![disease_phenotype_cdf, individual_info_cdf])
+            .unwrap();
 
         let expected_p001 = Phenopacket {
             id: "cohort2019-P001".to_string(),
             subject: Some(Individual {
                 id: "P001".to_string(),
                 sex: Sex::Male as i32,
+                date_of_birth: Some(Timestamp {
+                    seconds: -312595200,
+                    nanos: 0,
+                }),
                 vital_status: Some(VitalStatus {
                     status: Status::UnknownStatus as i32,
+                    survival_time_in_days: 155,
+                    time_of_death: Some(TimeElement {
+                        element: Some(Element::Timestamp(Timestamp {
+                            seconds: 980726400,
+                            nanos: 0,
+                        })),
+                    }),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -1321,8 +1246,19 @@ mod tests {
             subject: Some(Individual {
                 id: "P002".to_string(),
                 sex: Sex::Female as i32,
+                date_of_birth: Some(Timestamp {
+                    seconds: -312595200,
+                    nanos: 0,
+                }),
                 vital_status: Some(VitalStatus {
                     status: Status::Alive as i32,
+                    survival_time_in_days: 155,
+                    time_of_death: Some(TimeElement {
+                        element: Some(Element::Timestamp(Timestamp {
+                            seconds: 971827200,
+                            nanos: 0,
+                        })),
+                    }),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -1348,10 +1284,7 @@ mod tests {
             id: "cohort2019-P003".to_string(),
             subject: Some(Individual {
                 id: "P003".to_string(),
-                vital_status: Some(VitalStatus {
-                    status: Status::Deceased as i32,
-                    ..Default::default()
-                }),
+                vital_status: None,
                 ..Default::default()
             }),
             meta_data: Some(MetaData::default()),
@@ -1374,30 +1307,27 @@ mod tests {
 
     #[rstest]
     fn test_collect_phenotypic_features(
-        tc: TableContext,
         fractured_nose_pf: PhenotypicFeature,
         pneumonia_pf_with_onset: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
-        df_single_patient: DataFrame,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         let mut collector = init_test_collector(temp_dir.path());
 
-        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
-
-        let phenopacket_id = "cohort2019-P006".to_string();
+        let phenopacket_id = "cohort2019-P002".to_string();
         collector
-            .collect_phenotypic_features(&patient_cdf, "P006", &phenopacket_id)
+            .collect_phenotypic_features(&single_disease_phenotype_cdf, "P002", &phenopacket_id)
             .unwrap();
         let mut phenopackets = collector.phenopacket_builder.build();
 
-        let mut expected_p006 = Phenopacket {
-            id: "cohort2019-P006".to_string(),
+        let mut expected_p002 = Phenopacket {
+            id: phenopacket_id.to_string(),
             phenotypic_features: vec![
+                spasmus_nutans_pf_with_onset,
                 pneumonia_pf_with_onset,
                 fractured_nose_pf,
-                spasmus_nutans_pf_with_onset,
             ],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource],
@@ -1407,27 +1337,32 @@ mod tests {
         };
 
         assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p002);
     }
 
     #[rstest]
     fn test_collect_hpo_in_cells_col(
-        df_single_patient: DataFrame,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
         fractured_nose_pf: PhenotypicFeature,
         pneumonia_pf_with_onset: PhenotypicFeature,
+        spasmus_nutans_pf_with_onset: PhenotypicFeature,
         hp_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         let mut collector = init_test_collector(temp_dir.path());
 
-        let patient_hpo_col = df_single_patient.column("phenotypic_features").unwrap();
-        let patient_onset_col = df_single_patient
+        let patient_hpo_col = single_disease_phenotype_cdf
+            .data()
+            .column("phenotypic_features")
+            .unwrap();
+        let patient_onset_col = single_disease_phenotype_cdf
+            .data()
             .column("phenotypic_features_onset_age")
             .unwrap();
 
         let stringified_onset_col = patient_onset_col.str().unwrap();
 
-        let phenopacket_id = "cohort2019-P006".to_string();
+        let phenopacket_id = "cohort2019-P002".to_string();
         collector
             .collect_hpo_in_cells_col(
                 &phenopacket_id,
@@ -1437,9 +1372,13 @@ mod tests {
             .unwrap();
         let mut phenopackets = collector.phenopacket_builder.build();
 
-        let mut expected_p006 = Phenopacket {
-            id: "cohort2019-P006".to_string(),
-            phenotypic_features: vec![pneumonia_pf_with_onset, fractured_nose_pf],
+        let mut expected_p002 = Phenopacket {
+            id: phenopacket_id.to_string(),
+            phenotypic_features: vec![
+                spasmus_nutans_pf_with_onset,
+                pneumonia_pf_with_onset,
+                fractured_nose_pf,
+            ],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource],
                 ..Default::default()
@@ -1448,7 +1387,7 @@ mod tests {
         };
 
         assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p002);
     }
 
     #[rstest]
@@ -1505,22 +1444,20 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_individual(tc: TableContext, df_single_patient: DataFrame, temp_dir: TempDir) {
+    fn test_collect_individual(single_individual_cdf: ContextualizedDataFrame, temp_dir: TempDir) {
         let mut collector = init_test_collector(temp_dir.path());
 
-        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
-
-        let phenopacket_id = "cohort2019-P006".to_string();
-        let patient_id = "P006".to_string();
+        let patient_id = "P002".to_string();
+        let phenopacket_id = format!("cohort2019-{patient_id}").to_string();
 
         collector
-            .collect_individual(&patient_cdf, &phenopacket_id, &patient_id)
+            .collect_individual(&single_individual_cdf, &phenopacket_id, &patient_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
         let indiv = Individual {
-            id: "P006".to_string(),
+            id: patient_id.to_string(),
             date_of_birth: Some(Timestamp {
                 seconds: -312595200,
                 nanos: 0,
@@ -1530,7 +1467,7 @@ mod tests {
                 status: Status::Alive as i32,
                 time_of_death: Some(TimeElement {
                     element: Some(Element::Timestamp(Timestamp {
-                        seconds: 980726400,
+                        seconds: 971827200,
                         nanos: 0,
                     })),
                 }),
@@ -1540,114 +1477,72 @@ mod tests {
             ..Default::default()
         };
 
-        let mut expected_p006 = Phenopacket {
-            id: "cohort2019-P006".to_string(),
+        let mut expected_p002 = Phenopacket {
+            id: phenopacket_id.to_string(),
             subject: Some(indiv),
             meta_data: Some(MetaData::default()),
             ..Default::default()
         };
 
         assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p002);
     }
 
     #[rstest]
     fn test_collect_interpretations(
-        tc: TableContext,
-        df_single_patient: DataFrame,
-        mut platelet_defect_interpretation: Interpretation,
-        mut dysostosis_interpretation: Interpretation,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
+        dysostosis_interpretation: Interpretation,
         mondo_meta_data_resource: Resource,
         hgnc_meta_data_resource: Resource,
-        geno_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         skip_in_ci!();
 
-        fn update_ids(
-            interpretation: &mut Interpretation,
-            new_subject_id: &str,
-            new_interpretation_id: &str,
-        ) {
-            interpretation.id = new_interpretation_id.to_string();
-
-            if let Some(diagnosis) = &mut interpretation.diagnosis
-                && let Some(genomic_interpretation) = diagnosis.genomic_interpretations.get_mut(0)
-            {
-                genomic_interpretation.subject_or_biosample_id = new_subject_id.to_string();
-            }
-        }
-
-        update_ids(
-            &mut platelet_defect_interpretation,
-            "P006",
-            "cohort2019-P006-MONDO:0008258",
-        );
-        update_ids(
-            &mut dysostosis_interpretation,
-            "P006",
-            "cohort2019-P006-MONDO:0000359",
-        );
+        let patient_id = "P002";
+        let phenopacket_id = format!("cohort2019-{patient_id}").to_string();
 
         let mut collector = init_test_collector(temp_dir.path());
 
-        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
-
-        let phenopacket_id = "cohort2019-P006".to_string();
-
         collector
-            .collect_interpretations("P006", &patient_cdf, &phenopacket_id)
+            .collect_interpretations(patient_id, &single_disease_phenotype_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
-        let mut expected_p006 = Phenopacket {
-            id: "cohort2019-P006".to_string(),
-            interpretations: vec![platelet_defect_interpretation, dysostosis_interpretation],
+        let mut expected_p002 = Phenopacket {
+            id: phenopacket_id.to_string(),
+            interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
-                resources: vec![
-                    mondo_meta_data_resource,
-                    hgnc_meta_data_resource,
-                    geno_meta_data_resource,
-                ],
+                resources: vec![mondo_meta_data_resource, hgnc_meta_data_resource],
                 ..Default::default()
             }),
             ..Default::default()
         };
 
         assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p002);
     }
 
     #[rstest]
     fn test_collect_diseases(
-        tc: TableContext,
-        df_single_patient: DataFrame,
-        platelet_defect_disease_with_onset: Disease,
-        platelet_defect_disease: Disease,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
         dysostosis_disease_with_onset: Disease,
         mondo_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
         let mut collector = init_test_collector(temp_dir.path());
 
-        let patient_cdf = ContextualizedDataFrame::new(tc, df_single_patient);
-
-        let phenopacket_id = "cohort2019-P006".to_string();
+        let phenopacket_id = "cohort2019-P002".to_string();
 
         collector
-            .collect_diseases(&patient_cdf, &phenopacket_id)
+            .collect_diseases(&single_disease_phenotype_cdf, &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = collector.phenopacket_builder.build();
 
-        let mut expected_p006 = Phenopacket {
-            id: "cohort2019-P006".to_string(),
-            diseases: vec![
-                platelet_defect_disease_with_onset,
-                platelet_defect_disease,
-                dysostosis_disease_with_onset,
-            ],
+        let mut expected_p002 = Phenopacket {
+            id: phenopacket_id.to_string(),
+            diseases: vec![dysostosis_disease_with_onset],
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource],
                 ..Default::default()
@@ -1656,115 +1551,106 @@ mod tests {
         };
 
         assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_p006);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_p002);
     }
 
     #[rstest]
     fn test_collect_single_multiplicity_element_nulls_and_non_nulls(
-        tc: TableContext,
-        df_single_patient: DataFrame,
+        single_individual_cdf: ContextualizedDataFrame,
     ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
         let sme = Collector::collect_single_multiplicity_element(
-            &patient_cdf,
+            &single_individual_cdf,
             Context::SubjectSex,
-            "P006",
+            "P002",
         )
         .unwrap()
         .unwrap();
+
         assert_eq!(sme, "FEMALE");
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element_nulls(
-        tc: TableContext,
-        mut df_single_patient: DataFrame,
-    ) {
-        let null_subject_sex_col = Series::new(
-            "sex".into(),
-            [
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
-                AnyValue::Null,
+    fn test_collect_single_multiplicity_element_nulls() {
+        let patient_id = "P002";
+        let df = df!["subject_id" => [patient_id, patient_id],
+            "sex" => &[AnyValue::Null, AnyValue::Null],
+        ]
+        .unwrap();
+        let context = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("subject_id"))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("sex"))
+                    .with_data_context(Context::SubjectSex),
             ],
         );
-        df_single_patient
-            .replace("sex", null_subject_sex_col)
-            .unwrap();
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let sme = Collector::collect_single_multiplicity_element(
-            &patient_cdf,
-            Context::SubjectSex,
-            "P006",
-        )
-        .unwrap();
+        let cdf = ContextualizedDataFrame::new(context, df).unwrap();
+
+        let sme =
+            Collector::collect_single_multiplicity_element(&cdf, Context::SubjectSex, patient_id)
+                .unwrap();
         assert_eq!(sme, None);
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element_multiple(
-        tc: TableContext,
-        mut df_single_patient: DataFrame,
-    ) {
-        let many_subject_sex_col = Series::new(
-            "sex".into(),
-            [
-                AnyValue::String("MALE"),
-                AnyValue::String("MALE"),
-                AnyValue::String("MALE"),
-                AnyValue::String("MALE"),
+    fn test_collect_single_multiplicity_element_multiple() {
+        let patient_id = "P002";
+        let df = df!["subject_id" => [patient_id, patient_id],
+            "sex" => &[AnyValue::String("MALE"), AnyValue::String("MALE")],
+        ]
+        .unwrap();
+        let context = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("subject_id"))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("sex"))
+                    .with_data_context(Context::SubjectSex),
             ],
         );
-        df_single_patient
-            .replace("sex", many_subject_sex_col)
-            .unwrap();
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let sme = Collector::collect_single_multiplicity_element(
-            &patient_cdf,
-            Context::SubjectSex,
-            "P006",
-        )
-        .unwrap()
-        .unwrap();
+        let cdf = ContextualizedDataFrame::new(context, df).unwrap();
+
+        let sme =
+            Collector::collect_single_multiplicity_element(&cdf, Context::SubjectSex, patient_id)
+                .unwrap()
+                .unwrap();
         assert_eq!(sme, "MALE");
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element_err(
-        tc: TableContext,
-        mut df_single_patient: DataFrame,
-    ) {
-        let invalid_subject_sex_col = Series::new(
-            "sex".into(),
-            [
-                AnyValue::String("FEMALE"),
-                AnyValue::Null,
-                AnyValue::String("MALE"),
-                AnyValue::Null,
+    fn test_collect_single_multiplicity_element_err() {
+        let df = df!["subject_id" => ["P002", "P002"],
+            "sex" => &[AnyValue::String("FEMALE"), AnyValue::String("MALE")],
+        ]
+        .unwrap();
+        let context = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("subject_id"))
+                    .with_data_context(Context::SubjectId),
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("sex"))
+                    .with_data_context(Context::SubjectSex),
             ],
         );
-        df_single_patient
-            .replace("sex", invalid_subject_sex_col)
-            .unwrap();
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-        let sme = Collector::collect_single_multiplicity_element(
-            &patient_cdf,
-            Context::SubjectSex,
-            "P006",
-        );
+        let cdf = ContextualizedDataFrame::new(context, df).unwrap();
+
+        let sme = Collector::collect_single_multiplicity_element(&cdf, Context::SubjectSex, "P006");
         assert!(sme.is_err());
     }
 
     #[rstest]
     fn test_get_get_single_stringified_column_with_data_contexts_in_bb(
-        tc: TableContext,
-        df_single_patient: DataFrame,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
     ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-
         let extracted_col = Collector::get_single_stringified_column_with_data_contexts_in_bb(
-            &patient_cdf,
+            &single_disease_phenotype_cdf,
             Some("Block_3"),
             vec![&Context::MondoLabelOrId],
         )
@@ -1776,13 +1662,10 @@ mod tests {
 
     #[rstest]
     fn test_get_get_single_stringified_column_with_data_contexts_no_match(
-        tc: TableContext,
-        df_single_patient: DataFrame,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
     ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-
         let extracted_col = Collector::get_single_stringified_column_with_data_contexts_in_bb(
-            &patient_cdf,
+            &single_disease_phenotype_cdf,
             Some("Block_3"),
             vec![&Context::OrphanetLabelOrId],
         )
@@ -1793,13 +1676,10 @@ mod tests {
 
     #[rstest]
     fn test_get_get_single_stringified_column_with_data_contexts_in_bb_err(
-        tc: TableContext,
-        df_single_patient: DataFrame,
+        single_disease_phenotype_cdf: ContextualizedDataFrame,
     ) {
-        let patient_cdf = ContextualizedDataFrame::new(tc.clone(), df_single_patient.clone());
-
         let result = Collector::get_single_stringified_column_with_data_contexts_in_bb(
-            &patient_cdf,
+            &single_disease_phenotype_cdf,
             Some("Block_3"),
             vec![&Context::MondoLabelOrId, &Context::OnsetAge],
         );
