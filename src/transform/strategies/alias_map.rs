@@ -271,7 +271,7 @@ mod tests {
             [
                 AnyValue::String("P001"),
                 AnyValue::String("P002"),
-                AnyValue::Null,
+                AnyValue::String("P003"),
                 AnyValue::String("P004"),
             ],
         );
@@ -366,7 +366,7 @@ mod tests {
                 [
                     AnyValue::String("patient_1"),
                     AnyValue::String("patient_2"),
-                    AnyValue::Null,
+                    AnyValue::String("patient_3"),
                     AnyValue::String("patient_4")
                 ]
             )
