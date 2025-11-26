@@ -75,8 +75,14 @@ pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
     Context::OrphanetLabelOrId,
 ];
 
-// NOT including DateOfBirth
-pub const DATE_CONTEXTS: [Context; 3] = [
+pub const DATE_CONTEXTS: [Context; 4] = [
+    Context::DateOfBirth,
+    Context::DateAtLastEncounter,
+    Context::OnsetDateTime,
+    Context::DateOfDeath,
+];
+
+pub const DATE_CONTEXTS_WITHOUT_DOB: [Context; 3] = [
     Context::DateAtLastEncounter,
     Context::OnsetDateTime,
     Context::DateOfDeath,
@@ -89,5 +95,26 @@ pub const AGE_CONTEXTS: [Context; 3] = [
 ];
 
 pub fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
-    DATE_CONTEXTS.into_iter().zip(AGE_CONTEXTS).collect()
+    DATE_CONTEXTS_WITHOUT_DOB
+        .into_iter()
+        .zip(AGE_CONTEXTS)
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::context::{Context, date_to_age_contexts_hash_map};
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_date_to_age_contexts_hash_map() {
+        let hm = date_to_age_contexts_hash_map();
+        assert_eq!(hm.len(), 3);
+        assert_eq!(
+            hm[&Context::DateAtLastEncounter],
+            Context::AgeAtLastEncounter
+        );
+        assert_eq!(hm[&Context::OnsetDateTime], Context::OnsetAge);
+        assert_eq!(hm[&Context::DateOfDeath], Context::AgeOfDeath);
+    }
 }

@@ -1,7 +1,6 @@
 use crate::config::context::Context;
 use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
-use chrono::ParseError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::HashMap;
@@ -171,8 +170,19 @@ pub enum StrategyError {
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
-    #[error(transparent)]
-    DateParsingError(#[from] ParseError),
+    #[error(
+        "Multiplicity error for {context}: {message}. Invalid for the following patients: {patients:?}"
+    )]
+    MultiplicityError {
+        context: Context,
+        message: String,
+        patients: Vec<String>,
+    },
+    #[error("Could not parse {unparseable_date} as a date or datetime for {subject_id}")]
+    DateParsingError {
+        subject_id: String,
+        unparseable_date: String,
+    },
 }
 
 impl From<DataProcessingError> for StrategyError {
