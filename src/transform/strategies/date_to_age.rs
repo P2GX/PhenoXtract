@@ -541,4 +541,56 @@ mod tests {
         assert_eq!(patient_dob_hm["Bob"], dob_bob_datetime_str());
         assert_eq!(patient_dob_hm["Charlie"], dob_charlie_datetime_str());
     }
+
+    #[rstest]
+    fn test_validate_and_flatten_patient_dob_hash_map() {
+        let p_ids = [
+            "Alice".to_string(),
+            "Bob".to_string(),
+            "Charlie".to_string(),
+        ];
+        let dob_vecs = [
+            vec![dob_alice_string()],
+            vec![dob_bob_string()],
+            vec![dob_charlie_string()],
+        ];
+        let dobs = [dob_alice_string(), dob_bob_string(), dob_charlie_string()];
+
+        let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
+        let flattened_hm =
+            DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).unwrap();
+
+        let expected_flattened_hm: HashMap<String, String> = p_ids.into_iter().zip(dobs).collect();
+        assert_eq!(flattened_hm, expected_flattened_hm);
+    }
+
+    #[rstest]
+    fn test_validate_and_flatten_patient_dob_hash_map_err_on_multiple() {
+        let p_ids = [
+            "Alice".to_string(),
+            "Bob".to_string(),
+            "Charlie".to_string(),
+        ];
+        let dob_vecs = [
+            vec![dob_alice_string()],
+            vec![dob_bob_string(), onset_bob()],
+            vec![dob_charlie_string()],
+        ];
+
+        let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
+        assert!(DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).is_err());
+    }
+
+    #[rstest]
+    fn test_validate_and_flatten_patient_dob_hash_map_err_on_none() {
+        let p_ids = [
+            "Alice".to_string(),
+            "Bob".to_string(),
+            "Charlie".to_string(),
+        ];
+        let dob_vecs = [vec![], vec![dob_bob_string()], vec![dob_charlie_string()]];
+
+        let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
+        assert!(DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).is_err());
+    }
 }
