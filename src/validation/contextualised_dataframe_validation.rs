@@ -121,7 +121,7 @@ mod tests {
 
     #[rstest]
     fn test_more_than_one_context_per_col(df: DataFrame) {
-        let sc1 = regex("column_[0-57-9]\\d*"); //identifies col1, col2, col3 and col6
+        let sc1 = regex("column_[0-57-9]\\d*"); //identifies col1, col2, col3
         let sc2 = multi_ids(vec!["column_2", "abcabc"]); //identifies col2 and col4
         let sc3 = regex("abcabcabc"); //identifies col5
         let sc4 = regex("abcabcabc"); //identifies col5
@@ -137,8 +137,8 @@ mod tests {
                 let kind = val_error.0.values().next().unwrap();
                 match kind {
                     ValidationErrorsKind::Field(err) => {
-                        let b = err.first().unwrap();
-                        let cols_with_multiple_scs = b
+                        let f = err.first().unwrap();
+                        let cols_with_multiple_scs = f
                             .params
                             .get("duplicates")
                             .unwrap()
@@ -177,17 +177,17 @@ mod tests {
                 let kind = err.0.values().next().unwrap();
                 match kind {
                     ValidationErrorsKind::Field(field) => {
-                        let b = field.first().unwrap();
-                        assert_eq!(b.code, "subject_id_column");
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "subject_id_column");
                         assert!(
-                            b.message
+                            f.message
                                 .clone()
                                 .unwrap()
                                 .to_string()
                                 .contains("test_table")
                         );
                         assert!(
-                            b.message
+                            f.message
                                 .clone()
                                 .unwrap()
                                 .to_string()
@@ -205,7 +205,7 @@ mod tests {
 
     #[rstest]
     fn test_validate_single_subject_id_column_multiple_subject_ids() {
-        /*let result = ContextualizedDataFrame::new(
+        let result = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
                 vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
@@ -219,24 +219,25 @@ mod tests {
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        assert_eq!(error.code, "subject_id_column");
 
-        assert_eq!(error.code, "subject_id_column");
-        assert!(
-            error
-                .message
-                .clone()
-                .unwrap()
-                .to_string()
-                .contains("test_table")
-        );
-        assert!(
-            error
-                .message
-                .unwrap()
-                .to_string()
-                .contains("more than one or no column")
-        );*/
+        match error {
+            ValidationError::ValidationCrateError(err) => {
+                let kind = err.0.values().next().unwrap();
+                match kind {
+                    ValidationErrorsKind::Field(field) => {
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "subject_id_column");
+                        let message = f.message.clone().unwrap().to_string();
+                        assert!(message.contains("test_table"));
+                        assert!(message.contains("more than one or no column"));
+                    }
+                    _ => panic!("Expected ValidationCrateError"),
+                }
+            }
+            _ => {
+                panic!("Expected ValidationCrateError")
+            }
+        }
     }
 
     #[rstest]
@@ -263,11 +264,11 @@ mod tests {
                 let kind = err.0.values().next().unwrap();
                 match kind {
                     ValidationErrorsKind::Field(field) => {
-                        let b = field.first().unwrap();
-                        assert_eq!(b.code, "dangling_series_context");
-                        assert!(b.message.clone().unwrap().to_string().contains("no-column"));
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "dangling_series_context");
+                        assert!(f.message.clone().unwrap().to_string().contains("no-column"));
                         let extracted_sc: SeriesContext =
-                            from_value(b.params.get("series_context").unwrap().clone()).unwrap();
+                            from_value(f.params.get("series_context").unwrap().clone()).unwrap();
 
                         assert_eq!(sc, extracted_sc);
                     }

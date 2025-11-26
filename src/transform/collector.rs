@@ -869,7 +869,7 @@ mod tests {
         }
     }
     #[fixture]
-    fn individual_tc() -> TableContext {
+    fn individual_info_tc() -> TableContext {
         let id_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("subject_id".to_string()))
             .with_data_context(Context::SubjectId);
@@ -908,7 +908,7 @@ mod tests {
     }
 
     #[fixture]
-    fn individual_df() -> DataFrame {
+    fn individual_info_df() -> DataFrame {
         let id_col = Column::new("subject_id".into(), ["P001", "P002", "P003"]);
 
         let subject_sex_col = Column::new(
@@ -963,11 +963,11 @@ mod tests {
         .unwrap()
     }
     #[fixture]
-    fn individual_cdf(
-        individual_df: DataFrame,
-        individual_tc: TableContext,
+    fn individual_info_cdf(
+        individual_info_df: DataFrame,
+        individual_info_tc: TableContext,
     ) -> ContextualizedDataFrame {
-        ContextualizedDataFrame::new(individual_tc, individual_df).unwrap()
+        ContextualizedDataFrame::new(individual_info_tc, individual_info_df).unwrap()
     }
     #[fixture]
     fn disease_phenotype_tc() -> TableContext {
@@ -1169,8 +1169,10 @@ mod tests {
     }
 
     #[fixture]
-    fn single_individual_cdf(individual_cdf: ContextualizedDataFrame) -> ContextualizedDataFrame {
-        let patient_dfs = individual_cdf
+    fn single_individual_cdf(
+        individual_info_cdf: ContextualizedDataFrame,
+    ) -> ContextualizedDataFrame {
+        let patient_dfs = individual_info_cdf
             .data()
             .partition_by(vec!["subject_id"], true)
             .unwrap();
@@ -1185,7 +1187,7 @@ mod tests {
             .collect();
 
         return ContextualizedDataFrame::new(
-            individual_cdf.context().clone(),
+            individual_info_cdf.context().clone(),
             p2_df.first().cloned().unwrap().clone(),
         )
         .unwrap();
@@ -1194,7 +1196,7 @@ mod tests {
     #[rstest]
     fn test_collect(
         disease_phenotype_cdf: ContextualizedDataFrame,
-        individual_cdf: ContextualizedDataFrame,
+        individual_info_cdf: ContextualizedDataFrame,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         pneumonia_pf_with_onset: PhenotypicFeature,
         fractured_nose_pf: PhenotypicFeature,
@@ -1213,7 +1215,7 @@ mod tests {
         let mut collector = init_test_collector(temp_dir.path());
 
         let phenopackets = collector
-            .collect(vec![disease_phenotype_cdf, individual_cdf])
+            .collect(vec![disease_phenotype_cdf, individual_info_cdf])
             .unwrap();
 
         let expected_p001 = Phenopacket {
