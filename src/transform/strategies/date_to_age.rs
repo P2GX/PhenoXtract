@@ -305,8 +305,8 @@ mod tests {
 
     #[rstest]
     fn test_date_to_age_strategy() {
-        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1());
-        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2());
+        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1()).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2()).unwrap();
         let tables = &mut [&mut cdf1, &mut cdf2];
         let date_to_age_strat = DateToAgeStrategy;
         date_to_age_strat.transform(tables).unwrap();
@@ -362,8 +362,8 @@ mod tests {
 
     #[rstest]
     fn test_create_patient_dob_hash_map() {
-        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1());
-        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2());
+        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1()).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2()).unwrap();
         let tables = [&mut cdf1, &mut cdf2];
         let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
         assert_eq!(patient_dob_hm.len(), 3);

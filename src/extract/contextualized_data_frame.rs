@@ -362,7 +362,7 @@ mod tests {
     fn test_create_subject_id_string_data_hash_map() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df);
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let patient_data_hash_map = cdf
             .create_subject_id_string_data_hash_map("location (some stuff)")
             .unwrap();
@@ -870,7 +870,7 @@ mod builder_tests {
     fn test_change_data_contexts_via_hm() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let keys = vec![Context::ObservationStatus, Context::AgeAtLastEncounter];
         let values = vec![Context::DateOfBirth, Context::OmimLabelOrId];
@@ -911,7 +911,10 @@ mod builder_tests {
     fn test_get_subject_id_col() {
         let df = sample_df();
         let ctx = sample_ctx();
-        let mut cdf = ContextualizedDataFrame::new(ctx, df);
-        assert_eq!(cdf.get_subject_id_col(), Column::new())
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        assert_eq!(
+            cdf.get_subject_id_col(),
+            &Column::new("user.name".into(), &["Alice", "Bob", "Charlie"])
+        );
     }
 }
