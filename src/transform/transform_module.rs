@@ -1,3 +1,4 @@
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collector::Collector;
@@ -41,7 +42,11 @@ impl TransformerModule {
         for table in &mut tables_refs {
             Self::trim_strings(table)?;
             Self::ensure_ints(table)?;
-            Self::polars_dataframe_cast_ambivalent(table)?;
+            Self::ambivalent_cast_non_id_columns(table)?;
+            table
+                .builder()
+                .cast(&Context::None, &Context::SubjectId, DataType::String)?
+                .build()?;
         }
 
         for strategy in &self.strategies {
@@ -55,10 +60,7 @@ impl TransformerModule {
         let string_col_names: Vec<String> = cdf
             .filter_columns()
             .where_dtype(Filter::Is(&DataType::String))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         for col_name in string_col_names {
             let column = cdf.data().column(&col_name)?;
@@ -90,10 +92,7 @@ impl TransformerModule {
             .where_dtype(Filter::Is(&DataType::Float64))
             .where_dtype(Filter::Is(&DataType::Float32))
             .where_dtype(Filter::Is(&DataType::Int32))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         for col_name in float_col_names {
             let column = cdf.data().column(&col_name)?;
@@ -132,17 +131,26 @@ impl TransformerModule {
         Ok(())
     }
 
-    fn polars_dataframe_cast_ambivalent(
+    fn ambivalent_cast_non_id_columns(
         cdf: &mut ContextualizedDataFrame,
     ) -> Result<(), DataProcessingError> {
-        let col_names: Vec<String> = cdf
+        let possible_subject_id_col_names = cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect_owned_names();
+        let subject_id_col_name = possible_subject_id_col_names
+            .first()
+            .expect("Should be exactly one SubjectID column in data.");
+
+        let non_subject_id_col_names = cdf
             .data()
             .get_column_names()
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+            .into_iter()
+            .filter(|&name| name != subject_id_col_name)
+            .map(|name| name.to_string())
+            .collect::<Vec<String>>();
 
-        for col_name in col_names {
+        for col_name in non_subject_id_col_names {
             let column = cdf.data().column(col_name.as_str())?;
 
             let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
@@ -176,7 +184,7 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_polars_dataframe_cast_ambivalent() {
+    fn test_ambivalent_cast_non_id_columns() {
         let df = df![
             "int_col" => &["1", "2", "3"],
             "float_col" => &["1.5", "2.5", "3.5"],
@@ -191,14 +199,14 @@ mod tests {
                 vec![
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                        .with_identifier(Identifier::Regex("string_col".to_string())),
                 ],
             ),
             df.clone(),
         )
         .unwrap();
 
-        let result = TransformerModule::polars_dataframe_cast_ambivalent(&mut cdf);
+        let result = TransformerModule::ambivalent_cast_non_id_columns(&mut cdf);
         assert!(result.is_ok());
         assert_eq!(
             cdf.data().column("int_col").unwrap().dtype(),

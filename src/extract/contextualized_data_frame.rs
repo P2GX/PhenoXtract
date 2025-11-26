@@ -11,7 +11,7 @@ use crate::validation::contextualised_dataframe_validation::{
 use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
-use polars::prelude::{Column, DataFrame, Series};
+use polars::prelude::{Column, DataFrame, DataType, Series};
 use regex::Regex;
 use std::mem::ManuallyDrop;
 use std::ptr;
@@ -379,10 +379,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             .filter_columns()
             .where_header_context(Filter::Is(header_context))
             .where_data_context(Filter::Is(data_context))
-            .collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .collect_owned_names();
 
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self = self.remove_many_columns(col_refs.as_slice())?;
@@ -431,10 +428,9 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     pub fn drop_series_context(mut self, sc_id: &Identifier) -> Result<Self, StrategyError> {
         let col_names: Vec<String> = self
             .cdf
-            .get_columns(sc_id)
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect();
+            .filter_columns()
+            .where_identifier(Filter::Is(sc_id))
+            .collect_owned_names();
 
         let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
         self = self.remove_many_columns(col_refs.as_slice())?;
@@ -490,6 +486,28 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
+    pub fn cast(
+        self,
+        header_context: &Context,
+        data_context: &Context,
+        output_data_type: DataType,
+    ) -> Result<Self, StrategyError> {
+        let col_names: Vec<String> = self
+            .cdf
+            .filter_columns()
+            .where_header_context(Filter::Is(header_context))
+            .where_data_context(Filter::Is(data_context))
+            .collect_owned_names();
+        for col_name in col_names.iter() {
+            let col = self.cdf.data.column(col_name)?;
+            let cast_col = col.cast(&output_data_type)?;
+            self.cdf
+                .data
+                .replace(col_name, cast_col.take_materialized_series())?;
+        }
+        Ok(self.mark_dirty())
+    }
+
     pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
         let builder = ManuallyDrop::new(self.mark_clean());
 
@@ -527,7 +545,7 @@ mod builder_tests {
     use crate::extract::contextualized_dataframe_filters::Filter;
     use polars::df;
     use polars::frame::DataFrame;
-    use polars::prelude::{Column, NamedFrom, Series};
+    use polars::prelude::{Column, DataType, NamedFrom, Series};
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
 
@@ -724,18 +742,18 @@ mod builder_tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-        let expected_len = cdf.context().context().len() - 1;
+        let expected_len = cdf.context().context().len() - 2;
 
         cdf.builder()
             .drop_many_series_context(&[
-                Identifier::Regex("different".to_string()),
                 Identifier::Regex("age".to_string()),
+                Identifier::Regex("overweight".to_string()),
             ])
             .unwrap()
             .build_dirty();
 
-        assert!(cdf.data().column("different").is_err());
         assert!(cdf.data().column("age").is_err());
+        assert!(cdf.data().column("overweight").is_err());
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
 
@@ -812,5 +830,19 @@ mod builder_tests {
         )
         .unwrap();
         assert_eq!(cdf.data(), &expected_df);
+    }
+
+    #[rstest]
+    fn test_cast() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        cdf.builder()
+            .cast(&Context::None, &Context::SubjectAge, DataType::String)
+            .unwrap()
+            .build_dirty();
+        let age_col = cdf.data().column("age").unwrap();
+        assert_eq!(age_col.dtype(), &DataType::String);
+        assert_eq!(age_col, &Column::new("age".into(), vec!["25", "30", "40"]));
     }
 }

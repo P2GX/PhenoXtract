@@ -357,6 +357,26 @@ mod tests {
     }
 
     #[rstest]
+    fn test_filter_by_data_context_is_not() {
+        let series = vec![
+            SeriesContext::default().with_data_context(Context::SubjectId),
+            SeriesContext::default().with_data_context(Context::HpoLabelOrId),
+            SeriesContext::default().with_data_context(Context::SubjectAge),
+        ];
+
+        let result = SeriesContextFilter::new(&series)
+            .where_data_context(Filter::IsNot(&Context::SubjectId))
+            .collect();
+
+        assert_eq!(result.len(), 2);
+        assert!(
+            result
+                .iter()
+                .all(|s| s.get_data_context() != &Context::SubjectId)
+        );
+    }
+
+    #[rstest]
     fn test_filter_data_context_by_disease() {
         let ctx1 = Context::SubjectId;
         let ctx2 = Context::OmimLabelOrId;
