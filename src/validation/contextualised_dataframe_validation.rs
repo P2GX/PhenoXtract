@@ -54,7 +54,7 @@ pub(crate) fn validate_single_subject_id_column(
     }
 }
 
-pub(crate) fn validate_full_subject_id_column(
+pub(crate) fn validate_subject_id_col_no_nulls(
     cdf: &ContextualizedDataFrame,
 ) -> Result<(), ValidationError> {
     let subject_id_col = cdf.get_subject_id_col();
@@ -97,8 +97,8 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::{
-        validate_dangling_sc, validate_full_subject_id_column, validate_one_context_per_column,
-        validate_single_subject_id_column,
+        validate_dangling_sc, validate_one_context_per_column, validate_single_subject_id_column,
+        validate_subject_id_col_no_nulls,
     };
     use polars::df;
     use polars::prelude::{AnyValue, Column, DataFrame};
@@ -282,7 +282,7 @@ mod tests {
             ),
             df,
         );
-        validate_full_subject_id_column(&table_context).unwrap();
+        validate_subject_id_col_no_nulls(&table_context).unwrap();
     }
 
     #[rstest]
@@ -306,6 +306,6 @@ mod tests {
             ),
             df,
         );
-        assert!(validate_full_subject_id_column(&table_context).is_err());
+        assert!(validate_subject_id_col_no_nulls(&table_context).is_err());
     }
 }

@@ -4,7 +4,7 @@ use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, Ser
 use crate::transform::error::StrategyError;
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
-use crate::validation::contextualised_dataframe_validation::validate_full_subject_id_column;
+use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use crate::validation::contextualised_dataframe_validation::{
     validate_one_context_per_column, validate_single_subject_id_column,
 };
@@ -25,7 +25,7 @@ use validator::Validate;
 #[validate(schema(function = "validate_one_context_per_column",))]
 #[validate(schema(function = "validate_single_subject_id_column",))]
 #[validate(schema(function = "validate_dangling_sc",))]
-#[validate(schema(function = "validate_full_subject_id_column",))]
+#[validate(schema(function = "validate_subject_id_col_no_nulls",))]
 pub struct ContextualizedDataFrame {
     #[allow(unused)]
     context: TableContext,
