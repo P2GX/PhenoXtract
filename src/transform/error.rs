@@ -97,6 +97,8 @@ pub enum TransformError {
     CollectorError(#[from] Box<CollectorError>),
     #[error(transparent)]
     DataProcessingError(#[from] Box<DataProcessingError>),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
 }
 
 impl From<CollectorError> for TransformError {
