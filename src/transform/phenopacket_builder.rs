@@ -755,9 +755,7 @@ impl PartialEq for PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::ontology::DatabaseRef;
-    use crate::ontology::resource_references::ResourceRef;
     use crate::skip_in_ci;
     use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use phenopackets::schema::v2::core::time_element::Element;
@@ -1744,10 +1742,7 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id".to_string();
 
-        builder.ensure_resource(
-            &pp_id,
-            &ResourceRef::new("omim".to_string(), "latest".to_string()),
-        );
+        builder.ensure_resource(&pp_id, &DatabaseRef::omim());
 
         let pp = builder.build().first().unwrap().clone();
         let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();

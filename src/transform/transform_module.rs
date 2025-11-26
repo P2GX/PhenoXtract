@@ -209,7 +209,8 @@ mod tests {
                 ],
             ),
             df.clone(),
-        );
+        )
+        .unwrap();
 
         let result = TransformerModule::ambivalent_cast_non_id_columns(&mut cdf);
         assert!(result.is_ok());
@@ -258,7 +259,8 @@ mod tests {
                 ],
             ),
             float32_df,
-        );
+        )
+        .unwrap();
         TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         // Verify the column was cast to Int64
@@ -292,7 +294,8 @@ mod tests {
                 ],
             ),
             float64_df,
-        );
+        )
+        .unwrap();
         TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         let result_col = cdf.data().column("values").unwrap();
@@ -329,7 +332,8 @@ mod tests {
                 ],
             ),
             float64_df,
-        );
+        )
+        .unwrap();
         TransformerModule::ensure_ints(&mut cdf).unwrap();
 
         for (expected_data_type, col_name) in [
@@ -371,7 +375,8 @@ mod tests {
                 ],
             ),
             df,
-        );
+        )
+        .unwrap();
 
         TransformerModule::trim_strings(&mut cdf).unwrap();
 

@@ -229,7 +229,7 @@ mod tests {
 
     #[fixture]
     fn cdf_aliasing(tc: TableContext, df_aliasing: DataFrame) -> ContextualizedDataFrame {
-        ContextualizedDataFrame::new(tc, df_aliasing)
+        ContextualizedDataFrame::new(tc, df_aliasing).unwrap()
     }
 
     #[fixture]
@@ -243,7 +243,7 @@ mod tests {
 
     #[fixture]
     fn cdf_no_aliasing(tc: TableContext, df_no_aliasing: DataFrame) -> ContextualizedDataFrame {
-        ContextualizedDataFrame::new(tc, df_no_aliasing)
+        ContextualizedDataFrame::new(tc, df_no_aliasing).unwrap()
     }
 
     #[fixture]
@@ -252,7 +252,7 @@ mod tests {
         df_aliasing: DataFrame,
     ) -> ContextualizedDataFrame {
         let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_int_fail]);
-        ContextualizedDataFrame::new(tc, df_aliasing)
+        ContextualizedDataFrame::new(tc, df_aliasing).unwrap()
     }
 
     #[fixture]
@@ -261,7 +261,7 @@ mod tests {
         df_aliasing: DataFrame,
     ) -> ContextualizedDataFrame {
         let tc = TableContext::new("patient_data".to_string(), vec![sc_convert_to_int_success]);
-        ContextualizedDataFrame::new(tc, df_aliasing)
+        ContextualizedDataFrame::new(tc, df_aliasing).unwrap()
     }
 
     #[fixture]
@@ -271,7 +271,7 @@ mod tests {
             [
                 AnyValue::String("P001"),
                 AnyValue::String("P002"),
-                AnyValue::Null,
+                AnyValue::String("P003"),
                 AnyValue::String("P004"),
             ],
         );
@@ -316,7 +316,7 @@ mod tests {
 
     #[fixture]
     fn cdf_nulls(tc: TableContext, df_nulls: DataFrame) -> ContextualizedDataFrame {
-        ContextualizedDataFrame::new(tc, df_nulls)
+        ContextualizedDataFrame::new(tc, df_nulls).unwrap()
     }
 
     //tests that the alias map makes the desired changes
@@ -366,7 +366,7 @@ mod tests {
                 [
                     AnyValue::String("patient_1"),
                     AnyValue::String("patient_2"),
-                    AnyValue::Null,
+                    AnyValue::String("patient_3"),
                     AnyValue::String("patient_4")
                 ]
             )
