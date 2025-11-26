@@ -152,7 +152,7 @@ impl Strategy for MappingStrategy {
                 .filter_columns()
                 .where_header_context(Filter::Is(&self.header_context))
                 .where_data_context(Filter::Is(&self.data_context))
-                .where_dtype(Filter::Is(&self.column_dtype))
+                .where_data_type(Filter::Is(&self.column_dtype))
                 .collect()
                 .is_empty()
         })

@@ -50,7 +50,7 @@ impl Strategy for DateToAgeStrategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts(&DATE_CONTEXTS)
+                .where_data_contexts_are(&DATE_CONTEXTS)
                 .collect()
                 .is_empty()
         });
@@ -81,7 +81,7 @@ impl Strategy for DateToAgeStrategy {
 
             let date_column_names = table
                 .filter_columns()
-                .where_data_contexts(&DATE_CONTEXTS)
+                .where_data_contexts_are(&DATE_CONTEXTS)
                 .collect_owned_names();
 
             for date_col_name in date_column_names.iter() {
@@ -328,14 +328,14 @@ mod tests {
         //check the change of contexts has succeeded
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts(&DATE_CONTEXTS)
+                .where_data_contexts_are(&DATE_CONTEXTS)
                 .collect()
                 .len(),
             0
         );
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts(&AGE_CONTEXTS)
+                .where_data_contexts_are(&AGE_CONTEXTS)
                 .collect()
                 .len(),
             1

@@ -908,4 +908,12 @@ mod builder_tests {
             1
         );
     }
+
+    #[rstest]
+    fn test_get_subject_id_col() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df);
+        assert_eq!(cdf.get_subject_id_col(), Column::new())
+    }
 }

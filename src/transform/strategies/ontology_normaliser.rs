@@ -58,7 +58,7 @@ impl Strategy for OntologyNormaliserStrategy {
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context(Filter::Is(&self.data_context))
-                .where_dtype(Filter::Is(&DataType::String))
+                .where_data_type(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
         })

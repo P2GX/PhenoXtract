@@ -52,7 +52,7 @@ impl Strategy for AgeToIso8601Strategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts(&AGE_CONTEXTS)
+                .where_data_contexts_are(&AGE_CONTEXTS)
                 .collect()
                 .is_empty()
         })
@@ -74,7 +74,7 @@ impl Strategy for AgeToIso8601Strategy {
             let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts(&AGE_CONTEXTS)
+                .where_data_contexts_are(&AGE_CONTEXTS)
                 .collect_owned_names();
 
             for col_name in column_names {
