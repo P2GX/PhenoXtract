@@ -122,7 +122,7 @@ impl Extractable for DataSource {
                         csv_data.rename(col_name.as_str(), new_col_name.into())?;
                     }
                 }
-                let cdf = ContextualizedDataFrame::new(csv_source.context.clone(), csv_data);
+                let cdf = ContextualizedDataFrame::new(csv_source.context.clone(), csv_data)?;
 
                 info!("Extracted CSV data from {}", csv_source.source.display());
                 Ok(vec![cdf])
@@ -171,7 +171,7 @@ impl Extractable for DataSource {
 
                     let sheet_data = excel_range_reader.extract_to_df()?;
 
-                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data);
+                    let cdf = ContextualizedDataFrame::new(sheet_context.clone(), sheet_data)?;
 
                     cdf_vec.push(cdf);
                     info!(
@@ -191,8 +191,8 @@ impl Extractable for DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::Identifier::Regex;
-    use crate::config::table_context::{SeriesContext, TableContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
@@ -234,8 +234,8 @@ mod tests {
     }
 
     #[fixture]
-    fn row_names() -> [&'static str; 4] {
-        ["time_of_birth", "age", "weight", "smokes"]
+    fn row_names() -> [&'static str; 5] {
+        ["subject_id", "time_of_birth", "age", "weight", "smokes"]
     }
 
     #[fixture]
@@ -326,7 +326,8 @@ mod tests {
             "first_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Regex("patient_id".to_string()))
+                    .with_identifier(Identifier::Regex("patient_id".to_string()))
+                    .with_data_context(Context::SubjectId)
                     .with_building_block_id(Some("Block_1".to_string())),
             ],
         )
@@ -338,26 +339,38 @@ mod tests {
             "second_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Regex("age".to_string()))
+                    .with_identifier(Identifier::Regex("age".to_string()))
                     .with_building_block_id(Some("Block_2".to_string())),
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("subject_id"))
+                    .with_data_context(Context::SubjectId),
             ],
         )
     }
 
     #[fixture]
-    fn table_context_column_wise_no_header(
-        table_context_column_wise_header: TableContext,
-    ) -> TableContext {
-        let test_tc3 = table_context_column_wise_header.clone();
-        test_tc3.with_name("third_sheet")
+    fn table_context_column_wise_no_header() -> TableContext {
+        TableContext::new(
+            "third_sheet".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("1".to_string()))
+                    .with_data_context(Context::SubjectId)
+                    .with_building_block_id(Some("Block_1".to_string())),
+            ],
+        )
     }
 
     #[fixture]
-    fn table_context_row_wise_no_header(
-        table_context_row_wise_header: TableContext,
-    ) -> TableContext {
-        let test_tc4 = table_context_row_wise_header.clone();
-        test_tc4.with_name("fourth_sheet")
+    fn table_context_row_wise_no_header() -> TableContext {
+        TableContext::new(
+            "fourth_sheet".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("1"))
+                    .with_data_context(Context::SubjectId),
+            ],
+        )
     }
 
     #[fixture]
@@ -451,7 +464,14 @@ PID_1,PID_2,PID_3
 M,F,M
 18,27,89"#;
 
-        let table_context = TableContext::default();
+        let table_context = TableContext::new(
+            "test_extract_csv_no_headers_patients_in_rows".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("1".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
         let file_path = temp_dir.path().join("test_data.csv");
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data.as_bytes()).unwrap();
@@ -487,7 +507,14 @@ PID_1,54,M,18
 PID_2,55,F,27
 PID_3,56,M,89"#;
 
-        let table_context = TableContext::default();
+        let table_context = TableContext::new(
+            "test_extract_csv_no_headers_patients_in_rows".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("1".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
         let file_path = temp_dir.path().join("test_data.csv");
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
@@ -525,7 +552,14 @@ PID_1,54,M,18
 PID_2,55,F,27
 PID_3,56,M,89"#;
 
-        let table_context = TableContext::default();
+        let table_context = TableContext::new(
+            "test_extract_csv_headers_patients_in_rows".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient_IDs".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
         let file_path = temp_dir.path().join("test_data.csv");
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
@@ -563,7 +597,14 @@ HPO_IDs,54,55,56
 SEX,M,F,M
 AGE,18,27,89"#;
 
-        let table_context = TableContext::default();
+        let table_context = TableContext::new(
+            "test_extract_csv_extract_config_headers_patient_in_columns".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("Patient_IDs".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
         let file_path = temp_dir.path().join("test_data.csv");
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
@@ -600,7 +641,7 @@ AGE,18,27,89"#;
         hpo_ids: [&'static str; 4],
         disease_ids: [&'static str; 4],
         subject_sexes: [&'static str; 4],
-        row_names: [&'static str; 4],
+        row_names: [&'static str; 5],
         times_of_birth: [ExcelDateTime; 4],
         ages: [i32; 4],
         weights: [f64; 4],
@@ -749,8 +790,15 @@ AGE,18,27,89"#;
             "value2" => &[3, 4]
         ]
         .unwrap();
-        let context = TableContext::new("".to_string(), vec![]);
-        ContextualizedDataFrame::new(context, data)
+        let context = TableContext::new(
+            "create_test_cdf".to_string(),
+            vec![
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("id".to_string()))
+                    .with_data_context(Context::SubjectId),
+            ],
+        );
+        ContextualizedDataFrame::new(context, data).unwrap()
     }
 
     #[rstest]
