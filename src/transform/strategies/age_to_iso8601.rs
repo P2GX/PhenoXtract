@@ -1,6 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError::MappingError;
-use crate::transform::error::{MappingErrorInfo, StrategyError};
+use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
@@ -105,15 +105,12 @@ impl Strategy for AgeToIso8601Strategy {
                             .expect("Age was too high or too low")
                     } else {
                         if !cell_value.is_empty() {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: cell_value.to_string(),
-                                possible_mappings: vec![],
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                error_info.insert(mapping_error_info);
-                            }
+                            error_info.insert_error(
+                                col.name().to_string(),
+                                table.context().name().to_string(),
+                                cell_value.to_string(),
+                                vec![],
+                            );
                         }
                         cell_value
                     }

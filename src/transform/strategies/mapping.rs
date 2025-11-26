@@ -1,12 +1,12 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{
-    DataProcessingError, MappingErrorInfo, MappingSuggestion, StrategyError,
+    DataProcessingError, MappingErrorInfo, MappingSuggestion, PushMappingError, StrategyError,
 };
 
 use crate::config::context::Context;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::traits::Strategy;
-use log::{debug, info, warn};
+use log::{debug, info};
 use phenopackets::schema::v2::core::Sex;
 use phenopackets::schema::v2::core::vital_status::Status;
 use polars::datatypes::DataType;
@@ -208,18 +208,12 @@ impl Strategy for MappingStrategy {
                             alias
                         }
                         None => {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: cell_value.to_string(),
-                                possible_mappings: MappingSuggestion::from_hashmap(
-                                    &self.synonym_map,
-                                ),
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                warn!("Unable to convert map '{cell_value}'");
-                                error_info.insert(mapping_error_info);
-                            }
+                            error_info.insert_error(
+                                col.name().to_string(),
+                                table.context().name().to_string(),
+                                cell_value.to_string(),
+                                MappingSuggestion::from_hashmap(&self.synonym_map),
+                            );
                             cell_value
                         }
                     }

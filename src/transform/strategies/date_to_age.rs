@@ -1,6 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError::MappingError;
-use crate::transform::error::{MappingErrorInfo, StrategyError};
+use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::{info, warn};
 
@@ -90,20 +90,20 @@ impl Strategy for DateToAgeStrategy {
                     .map(|(subject_id_opt, date_opt)| {
                         let subject_id =
                             subject_id_opt.expect("SubjectID column should have no gaps.");
-                        let subject_dob_opt = patient_dob_hash_map.get(subject_id).cloned();
+                        let subject_dob_opt = patient_dob_hash_map.get(subject_id);
 
                         if let Some(date) = date_opt {
                             if let Some(subject_dob) = subject_dob_opt
                                 && let Ok(age) =
-                                    Self::date_and_dob_to_age(subject_id, subject_dob, date)
+                                    Self::date_and_dob_to_age(subject_id, subject_dob.clone(), date)
                             {
                                 AnyValue::StringOwned(age.into())
                             } else {
-                                Self::upsert_mapping_error(
-                                    &mut error_info,
-                                    date_col_name,
-                                    table,
-                                    date,
+                                error_info.insert_error(
+                                    date_col_name.clone(),
+                                    table.context().name().to_string(),
+                                    date.to_string(),
+                                    vec![],
                                 );
                                 AnyValue::String(date)
                             }
@@ -241,23 +241,6 @@ impl DateToAgeStrategy {
         );
         Ok(dur.to_string())
     }
-
-    fn upsert_mapping_error(
-        error_info: &mut HashSet<MappingErrorInfo>,
-        date_col_name: &str,
-        table: &ContextualizedDataFrame,
-        date: &str,
-    ) {
-        let mapping_error_info = MappingErrorInfo {
-            column: date_col_name.to_string(),
-            table: table.context().name().to_string(),
-            old_value: date.to_string(),
-            possible_mappings: vec![],
-        };
-        if !error_info.contains(&mapping_error_info) {
-            error_info.insert(mapping_error_info);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -377,7 +360,7 @@ mod tests {
     }
 
     #[fixture]
-    fn df1_string() -> DataFrame {
+    fn df_with_string_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
         "DOB" => &[AnyValue::String(dob_alice_string().as_str()), AnyValue::String(dob_bob_string().as_str()), AnyValue::String(dob_charlie_string().as_str())],
@@ -387,7 +370,7 @@ mod tests {
     }
 
     #[fixture]
-    fn df1_date() -> DataFrame {
+    fn df_with_date_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
         "DOB" => &[AnyValue::Date(dob_alice_date()), AnyValue::Date(dob_bob_date()), AnyValue::Date(dob_charlie_date())],
@@ -397,7 +380,7 @@ mod tests {
     }
 
     #[fixture]
-    fn df1_datetime() -> DataFrame {
+    fn df_with_datetime_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
         "DOB" => &[AnyValue::Datetime(dob_alice_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_charlie_datetime(), TimeUnit::Milliseconds, None)],
@@ -407,7 +390,7 @@ mod tests {
     }
 
     #[fixture]
-    fn tc1() -> TableContext {
+    fn dob_tc() -> TableContext {
         TableContext::new(
             "table1".to_string(),
             vec![
@@ -426,7 +409,7 @@ mod tests {
     }
 
     #[fixture]
-    fn df2() -> DataFrame {
+    fn df_with_str_onset() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
         "pneumonia" => &["Not observed", "Not observed", "Observed"],
@@ -436,7 +419,7 @@ mod tests {
     }
 
     #[fixture]
-    fn tc2() -> TableContext {
+    fn onset_tc() -> TableContext {
         TableContext::new(
             "table2".to_string(),
             vec![
@@ -456,12 +439,12 @@ mod tests {
 
     #[rstest]
     #[rstest]
-    #[case(df1_string())]
-    #[case(df1_date())]
-    #[case(df1_datetime())]
-    fn test_date_to_age_strategy(#[case] df1: DataFrame) {
-        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1).unwrap();
-        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2()).unwrap();
+    #[case(df_with_string_dob())]
+    #[case(df_with_date_dob())]
+    #[case(df_with_datetime_dob())]
+    fn test_date_to_age_strategy(#[case] dob_df: DataFrame) {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
         let tables = &mut [&mut cdf1, &mut cdf2];
         let date_to_age_strat = DateToAgeStrategy;
         date_to_age_strat.transform(tables).unwrap();
@@ -534,11 +517,11 @@ mod tests {
     }
 
     #[rstest]
-    #[case(df1_string())]
-    #[case(df1_date())]
-    fn test_create_patient_dob_hash_map_string_and_date(#[case] df1: DataFrame) {
-        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1).unwrap();
-        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2()).unwrap();
+    #[case(df_with_string_dob())]
+    #[case(df_with_date_dob())]
+    fn test_create_patient_dob_hash_map_string_and_date(#[case] dob_df: DataFrame) {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
         let tables = [&mut cdf1, &mut cdf2];
         let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
         assert_eq!(patient_dob_hm.len(), 3);
@@ -549,8 +532,8 @@ mod tests {
 
     #[rstest]
     fn test_create_patient_dob_hash_map_datetimes() {
-        let mut cdf1 = ContextualizedDataFrame::new(tc1(), df1_datetime()).unwrap();
-        let mut cdf2 = ContextualizedDataFrame::new(tc2(), df2()).unwrap();
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_datetime_dob()).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
         let tables = [&mut cdf1, &mut cdf2];
         let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
         assert_eq!(patient_dob_hm.len(), 3);
