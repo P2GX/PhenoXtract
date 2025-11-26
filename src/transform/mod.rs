@@ -5,6 +5,7 @@ pub mod phenopacket_builder;
 pub use phenopacket_builder::PhenopacketBuilder;
 pub(crate) mod cached_resource_resolver;
 
+mod constants;
 pub mod pathogenic_gene_variant_info;
 pub mod strategies;
 pub mod traits;

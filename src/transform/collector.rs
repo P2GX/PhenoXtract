@@ -4,7 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
-use crate::transform::utils::HpoColMaker;
+use crate::transform::utils::{HpoColMaker, MeasurementColDecoder, MeasurementColTypes};
 use log::warn;
 use phenopackets::schema::v2::Phenopacket;
 use polars::prelude::{Column, DataType, PolarsError, StringChunked};
@@ -235,7 +235,9 @@ impl Collector {
         patient_hpo_col: &Column,
         stringified_onset_col: Option<&StringChunked>,
     ) -> Result<(), CollectorError> {
-        let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
+        let hpo_id = HpoColMaker::default()
+            .decode_hpo_col_header(patient_hpo_col)
+            .0;
 
         let boolified_hpo_col = patient_hpo_col.bool()?;
 
@@ -409,6 +411,122 @@ impl Collector {
             }
         }
 
+        Ok(())
+    }
+
+    fn collect_measurements(
+        &mut self,
+        patient_cdf: &ContextualizedDataFrame,
+        patient_id: &str,
+        phenopacket_id: &str,
+    ) -> Result<(), CollectorError> {
+        let quantitative_measurement_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::LoincIdAndUnit))
+            .where_data_context(Filter::Is(&Context::QuantitativeMeasurement))
+            .collect();
+        let qualitative_measurement_scs = patient_cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::LoincIdAndUnit))
+            .where_data_context(Filter::Is(&Context::QualitativeMeasurement))
+            .collect();
+
+        let measurement_scs = [quantitative_measurement_scs, qualitative_measurement_scs].concat();
+
+        for measurement_sc in measurement_scs {
+            let sc_id = measurement_sc.get_identifier();
+            let measurement_cols = patient_cdf.get_columns(sc_id);
+
+            let stringified_linked_obs_time_col =
+                Self::get_single_stringified_column_with_data_contexts_in_bb(
+                    patient_cdf,
+                    measurement_sc.get_building_block_id(),
+                    vec![&Context::AgeObserved, &Context::DateObserved],
+                )?;
+
+            for measurement_col in measurement_cols {
+                if measurement_sc.get_data_context() == &Context::QuantitativeMeasurement {
+                    self.collect_quantitative_measurements(
+                        phenopacket_id,
+                        measurement_col,
+                        stringified_linked_obs_time_col.as_ref(),
+                    )?;
+                } else {
+                    self.collect_qualitative_measurements(
+                        phenopacket_id,
+                        measurement_col,
+                        stringified_linked_obs_time_col.as_ref(),
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_quantitative_measurements(
+        &mut self,
+        phenopacket_id: &str,
+        measurement_col: &Column,
+        stringified_obs_time_col: Option<&StringChunked>,
+    ) -> Result<(), CollectorError> {
+        let measurement_col_decoder = MeasurementColDecoder::default();
+        let (loinc_id, unit) = measurement_col_decoder
+            .decode_measurement_col_header(measurement_col, MeasurementColTypes::Quantitative)?;
+
+        let floatified_measurement_col = measurement_col.f64()?;
+
+        for row_idx in 0..floatified_measurement_col.len() {
+            let measurement = floatified_measurement_col.get(row_idx);
+            if let Some(measurement) = measurement {
+                let obs_time = if let Some(obs_time_col) = &stringified_obs_time_col {
+                    obs_time_col.get(row_idx)
+                } else {
+                    None
+                };
+
+                self.phenopacket_builder.insert_quantitative_measurement(
+                    phenopacket_id,
+                    loinc_id,
+                    unit,
+                    measurement,
+                    obs_time,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_qualitative_measurements(
+        &mut self,
+        phenopacket_id: &str,
+        measurement_col: &Column,
+        stringified_obs_time_col: Option<&StringChunked>,
+    ) -> Result<(), CollectorError> {
+        let measurement_col_decoder = MeasurementColDecoder::default();
+        let (loinc_id, ontology_prefix) = measurement_col_decoder
+            .decode_measurement_col_header(measurement_col, MeasurementColTypes::Quantitative)?;
+
+        let stringified_measurement_col = measurement_col.str()?;
+
+        for row_idx in 0..stringified_measurement_col.len() {
+            let measurement = stringified_measurement_col.get(row_idx);
+            if let Some(measurement) = measurement {
+                let obs_time = if let Some(obs_time_col) = &stringified_obs_time_col {
+                    obs_time_col.get(row_idx)
+                } else {
+                    None
+                };
+
+                self.phenopacket_builder.insert_qualitative_measurement(
+                    phenopacket_id,
+                    loinc_id,
+                    ontology_prefix,
+                    measurement,
+                    obs_time,
+                )?;
+            }
+        }
         Ok(())
     }
 

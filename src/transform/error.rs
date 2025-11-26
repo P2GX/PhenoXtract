@@ -1,5 +1,6 @@
 use crate::config::context::Context;
 use crate::ontology::error::ClientError;
+use crate::transform::utils::MeasurementColTypes;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
@@ -224,6 +225,11 @@ pub enum CollectorError {
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
+    #[error("Header of {col_type} measurement column has invalid format: {invalid_header}")]
+    MeasurementColHeader {
+        col_type: MeasurementColTypes,
+        invalid_header: String,
+    },
 }
 
 impl From<DataProcessingError> for CollectorError {
