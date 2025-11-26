@@ -1,4 +1,3 @@
-use crate::config::table_context::OutputDataType;
 use crate::constants::ISO8601_DUR_PATTERN;
 use crate::transform::error::DataProcessingError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
@@ -140,7 +139,7 @@ pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
 
 pub fn polars_column_cast_specific(
     column: &Column,
-    desired_output_dtype: &OutputDataType,
+    desired_output_dtype: &DataType,
 ) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
     debug!("Trying to cast column: {col_name} to datatype: {desired_output_dtype:?}");
@@ -157,28 +156,28 @@ pub fn polars_column_cast_specific(
     };
 
     match desired_output_dtype {
-        OutputDataType::String => Ok(column.clone()),
-        OutputDataType::Boolean => cast_to_bool(column).inspect(|_casted| {
+        DataType::Boolean => cast_to_bool(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to bool.");
         }),
-        OutputDataType::Int64 => column
+        DataType::Int64 => column
             .strict_cast(&DataType::Int64)
             .inspect(|_casted| {
                 debug!("Casted column: {col_name} to Int64.");
             })
             .map_err(|_| failed_parse_err(DataType::Int64)),
-        OutputDataType::Float64 => column
+        DataType::Float64 => column
             .strict_cast(&DataType::Float64)
             .inspect(|_casted| {
                 debug!("Casted column: {col_name} to Float64.");
             })
             .map_err(|_| failed_parse_err(DataType::Float64)),
-        OutputDataType::Date => cast_to_date(column).inspect(|_casted| {
+        DataType::Date => cast_to_date(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to Date.");
         }),
-        OutputDataType::Datetime => cast_to_datetime(column).inspect(|_casted| {
+        DataType::Datetime { .. } => cast_to_datetime(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to Datetime.");
         }),
+        _ => Ok(column.clone()),
     }
 }
 
@@ -219,7 +218,6 @@ impl HpoColMaker {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::table_context::OutputDataType;
     use crate::transform::utils::{
         HpoColMaker, cast_to_bool, cast_to_date, cast_to_datetime, is_iso8601_duration,
         polars_column_cast_ambivalent, polars_column_cast_specific,
@@ -423,47 +421,37 @@ mod tests {
     }
 
     #[rstest]
-    #[case::int(int_col(), OutputDataType::Int64, DataType::Int64, casted_int_col())]
-    #[case::float(
-        float_col(),
-        OutputDataType::Float64,
-        DataType::Float64,
-        casted_float_col()
-    )]
-    #[case::bool(
-        bool_col(),
-        OutputDataType::Boolean,
-        DataType::Boolean,
-        casted_bool_col()
-    )]
+    #[case::int(int_col(), DataType::Int64, DataType::Int64, casted_int_col())]
+    #[case::float(float_col(), DataType::Float64, DataType::Float64, casted_float_col())]
+    #[case::bool(bool_col(), DataType::Boolean, DataType::Boolean, casted_bool_col())]
     #[case::bool_with_nulls(
         bool_col_with_nulls(),
-        OutputDataType::Boolean,
+        DataType::Boolean,
         DataType::Boolean,
         casted_bool_col_with_nulls()
     )]
-    #[case::date(date_col(), OutputDataType::Date, DataType::Date, casted_date_col())]
+    #[case::date(date_col(), DataType::Date, DataType::Date, casted_date_col())]
     #[case::date_with_null(
         date_col_with_null(),
-        OutputDataType::Date,
+        DataType::Date,
         DataType::Date,
         casted_date_col_with_null()
     )]
     #[case::datetime(
         datetime_col(),
-        OutputDataType::Datetime,
+        DataType::Datetime(TimeUnit::Milliseconds, None),
         DataType::Datetime(TimeUnit::Milliseconds, None),
         casted_datetime_col()
     )]
     #[case::datetime_with_null(
         datetime_col_with_null(),
-        OutputDataType::Datetime,
+        DataType::Datetime(TimeUnit::Milliseconds, None),
         DataType::Datetime(TimeUnit::Milliseconds, None),
         casted_datetime_col_with_null()
     )]
     fn test_cast_specific(
         #[case] input: Column,
-        #[case] output_dtype: OutputDataType,
+        #[case] output_dtype: DataType,
         #[case] expected_dtype: DataType,
         #[case] expected: Column,
     ) {
@@ -474,14 +462,14 @@ mod tests {
 
     #[rstest]
     fn test_string_col_no_change_specific(string_col: Column) {
-        let casted_col = polars_column_cast_specific(&string_col, &OutputDataType::String).unwrap();
+        let casted_col = polars_column_cast_specific(&string_col, &DataType::String).unwrap();
         assert_eq!(casted_col.dtype(), &DataType::String);
         assert_eq!(casted_col, string_col);
     }
 
     #[rstest]
     fn test_mixed_bag_err_specific(mixed_bag_col: Column) {
-        assert!(polars_column_cast_specific(&mixed_bag_col, &OutputDataType::Float64).is_err());
+        assert!(polars_column_cast_specific(&mixed_bag_col, &DataType::Float64).is_err());
     }
 
     #[rstest]

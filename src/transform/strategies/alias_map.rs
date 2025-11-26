@@ -87,7 +87,7 @@ impl Strategy for AliasMapStrategy {
                 let recast_series = if desired_output_dtype == &OutputDataType::String {
                     aliased_col.take_materialized_series()
                 } else {
-                    polars_column_cast_specific(&aliased_col, desired_output_dtype)?
+                    polars_column_cast_specific(&aliased_col, &desired_output_dtype.as_polars())?
                         .take_materialized_series()
                 };
 
