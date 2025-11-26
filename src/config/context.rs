@@ -51,6 +51,16 @@ pub enum Context {
     ObservationStatus,
     #[allow(unused)]
     MultiHpoId,
+    #[allow(unused)]
+    LoincIdAndUnit,
+    #[allow(unused)]
+    QuantitativeMeasurement,
+    #[allow(unused)]
+    QualitativeMeasurement,
+    #[allow(unused)]
+    DateObserved,
+    #[allow(unused)]
+    AgeObserved,
     #[default]
     None,
     //...

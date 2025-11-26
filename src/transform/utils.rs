@@ -1,11 +1,19 @@
 use crate::config::table_context::OutputDataType;
 use crate::constants::ISO8601_DUR_PATTERN;
-use crate::transform::error::DataProcessingError;
+use crate::transform::constants::{CURIE_ID, LOINC_FORMAT, ONTOLOGY_PREFIX};
+use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column, TimeUnit};
 use regex::Regex;
+use std::fmt;
+use std::fmt::Display;
+
+fn validate_format(string: &str, pattern: &str) -> bool {
+    let re = Regex::new(pattern).unwrap();
+    re.is_match(string)
+}
 
 fn cast_to_bool(column: &Column) -> Result<Column, DataProcessingError> {
     let col_name = column.name();
@@ -192,8 +200,8 @@ pub struct HpoColMaker {
 }
 
 impl HpoColMaker {
-    pub fn new() -> HpoColMaker {
-        HpoColMaker { separator: '#' }
+    pub fn new(separator: char) -> HpoColMaker {
+        HpoColMaker { separator }
     }
 
     pub fn create_hpo_col(
@@ -209,7 +217,7 @@ impl HpoColMaker {
         Column::new(header.into(), data)
     }
 
-    pub fn decode_column_header<'a>(&self, hpo_col: &'a Column) -> (&'a str, Option<&'a str>) {
+    pub fn decode_hpo_col_header<'a>(&self, hpo_col: &'a Column) -> (&'a str, Option<&'a str>) {
         let split_col_name: Vec<&str> = hpo_col.name().split(self.separator).collect();
         let hpo_id = split_col_name[0];
         let block_id = split_col_name.get(1).copied();
@@ -217,12 +225,98 @@ impl HpoColMaker {
     }
 }
 
+impl Default for HpoColMaker {
+    fn default() -> Self {
+        Self::new('#')
+    }
+}
+
+/// This Struct allows us to decode quantitative or qualitative measurement columns and retrieve the relevant LOINC and UNIT IDs
+/// from the headers.
+///
+/// For quantitative measurements, the header must have the form "LOINC:12345-6#(NCIT:C28253)" or "LOINC:12345-6#(UO:0000316)"
+/// that is, a LOINC ID followed by an ontology ID for the unit
+///
+/// For qualitative measurements, the header must have the form "LOINC:12345-6#(NCIT)" which indicates
+/// that is, a LOINC ID followed by the ontology prefix for the ordinal/qualitative values in the cells of the column.
+/// For example, if the header has the format "LOINC:12345-6#(NCIT)" then the cells can have the entries
+/// Present, Absent, Abnormal, Elevated, Reduced etc. which are labels of NCIT terms.
+pub struct MeasurementColDecoder {
+    separator: char,
+}
+
+#[derive(Debug, Clone)]
+pub enum MeasurementColTypes {
+    Quantitative,
+    Qualitative,
+}
+
+impl Display for MeasurementColTypes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl MeasurementColDecoder {
+    pub fn new(separator: char) -> MeasurementColDecoder {
+        MeasurementColDecoder { separator }
+    }
+
+    pub fn decode_measurement_col_header<'a>(
+        &self,
+        measurement_col: &'a Column,
+        col_type: MeasurementColTypes,
+    ) -> Result<(&'a str, &'a str), CollectorError> {
+        let col_name = measurement_col.name();
+        let split_col_name: Vec<&str> = col_name.split(self.separator).collect();
+        let loinc_id = split_col_name.first();
+        match col_type {
+            MeasurementColTypes::Quantitative => {
+                if let Some(loinc_id) = loinc_id
+                    && let Some(unit_ontology_id) = split_col_name.get(1)
+                    && validate_format(loinc_id, LOINC_FORMAT)
+                    && validate_format(unit_ontology_id, CURIE_ID)
+                {
+                    Ok((loinc_id, unit_ontology_id))
+                } else {
+                    Err(CollectorError::MeasurementColHeader {
+                        col_type: col_type.clone(),
+                        invalid_header: col_name.to_string(),
+                    })
+                }
+            }
+            MeasurementColTypes::Qualitative => {
+                if let Some(loinc_id) = loinc_id
+                    && let Some(ontology_prefix) = split_col_name.get(1)
+                    && validate_format(loinc_id, LOINC_FORMAT)
+                    && validate_format(ontology_prefix, ONTOLOGY_PREFIX)
+                {
+                    Ok((loinc_id, ontology_prefix))
+                } else {
+                    Err(CollectorError::MeasurementColHeader {
+                        col_type: col_type.clone(),
+                        invalid_header: col_name.to_string(),
+                    })
+                }
+            }
+        }
+    }
+}
+
+impl Default for MeasurementColDecoder {
+    fn default() -> Self {
+        MeasurementColDecoder::new('#')
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config::table_context::OutputDataType;
+    use crate::transform::constants::LOINC_FORMAT;
     use crate::transform::utils::{
-        HpoColMaker, cast_to_bool, cast_to_date, cast_to_datetime, is_iso8601_duration,
-        polars_column_cast_ambivalent, polars_column_cast_specific,
+        HpoColMaker, MeasurementColDecoder, MeasurementColTypes, cast_to_bool, cast_to_date,
+        cast_to_datetime, is_iso8601_duration, polars_column_cast_ambivalent,
+        polars_column_cast_specific, validate_format,
     };
     use polars::datatypes::TimeUnit;
     use polars::prelude::{AnyValue, Column, DataType};
@@ -519,7 +613,7 @@ mod tests {
 
     #[rstest]
     fn test_create_hpo_col() {
-        let hpo_col_maker = HpoColMaker::new();
+        let hpo_col_maker = HpoColMaker::default();
 
         let hpo_col = hpo_col_maker.create_hpo_col(
             "HP:1234567",
@@ -547,18 +641,18 @@ mod tests {
     }
 
     #[rstest]
-    fn test_decode_column_header() {
-        let hpo_col_maker = HpoColMaker::new();
+    fn test_decode_hpo_col_header() {
+        let hpo_col_maker = HpoColMaker::default();
         let hpo_col = Column::new("HP:1234567#A".into(), vec![true, true, false]);
         assert_eq!(
             ("HP:1234567", Some("A")),
-            hpo_col_maker.decode_column_header(&hpo_col)
+            hpo_col_maker.decode_hpo_col_header(&hpo_col)
         );
 
         let hpo_col2 = Column::new("HP:1234567".into(), vec![true, true, false]);
         assert_eq!(
             ("HP:1234567", None),
-            hpo_col_maker.decode_column_header(&hpo_col2)
+            hpo_col_maker.decode_hpo_col_header(&hpo_col2)
         );
     }
 
@@ -574,5 +668,95 @@ mod tests {
         assert!(!is_iso8601_duration("asd"));
         assert!(!is_iso8601_duration("123"));
         assert!(!is_iso8601_duration("47Y"));
+    }
+
+    #[rstest]
+    fn test_decode_measurement_col_header_valid_quant() {
+        let quant_meas_col = Column::new(
+            "LOINC:1234-5#NCIT:1234".into(),
+            vec![
+                AnyValue::Float64(32.4),
+                AnyValue::Null,
+                AnyValue::Float64(-0.3),
+            ],
+        );
+
+        let measurement_col_decoder = MeasurementColDecoder::default();
+
+        let (loinc_id, ncit_id) = measurement_col_decoder
+            .decode_measurement_col_header(&quant_meas_col, MeasurementColTypes::Quantitative)
+            .unwrap();
+        assert_eq!(loinc_id, "LOINC:1234-5");
+        assert_eq!(ncit_id, "NCIT:1234");
+    }
+
+    #[rstest]
+    fn test_decode_measurement_col_header_invalid_quant() {
+        let quant_meas_col = Column::new(
+            "LOINC*1234-5#NCIT:1234".into(),
+            vec![
+                AnyValue::Float64(32.4),
+                AnyValue::Null,
+                AnyValue::Float64(-0.3),
+            ],
+        );
+
+        let measurement_col_decoder = MeasurementColDecoder::default();
+
+        assert!(
+            measurement_col_decoder
+                .decode_measurement_col_header(&quant_meas_col, MeasurementColTypes::Quantitative)
+                .is_err()
+        );
+    }
+
+    #[rstest]
+    fn test_decode_measurement_col_header_valid_qual() {
+        let qual_meas_col = Column::new(
+            "LOINC:1234-5#NCIT".into(),
+            vec![
+                AnyValue::String("Present"),
+                AnyValue::Null,
+                AnyValue::String("Absent"),
+            ],
+        );
+
+        let measurement_col_decoder = MeasurementColDecoder::default();
+
+        let (loinc_id, ontology_prefix) = measurement_col_decoder
+            .decode_measurement_col_header(&qual_meas_col, MeasurementColTypes::Qualitative)
+            .unwrap();
+        assert_eq!(loinc_id, "LOINC:1234-5");
+        assert_eq!(ontology_prefix, "NCIT");
+    }
+
+    #[rstest]
+    fn test_decode_measurement_col_header_invalid_qual() {
+        let qual_meas_col = Column::new(
+            "LOINC:1234-5%NCIT".into(),
+            vec![
+                AnyValue::String("Present"),
+                AnyValue::Null,
+                AnyValue::String("Absent"),
+            ],
+        );
+
+        let measurement_col_decoder = MeasurementColDecoder::default();
+
+        assert!(
+            measurement_col_decoder
+                .decode_measurement_col_header(&qual_meas_col, MeasurementColTypes::Qualitative)
+                .is_err()
+        );
+    }
+
+    #[rstest]
+    fn test_validate_format_success() {
+        assert!(validate_format("LOINC:1234-5", LOINC_FORMAT));
+    }
+
+    #[rstest]
+    fn test_validate_format_fail() {
+        assert!(!validate_format("LOINC:1234$5", LOINC_FORMAT));
     }
 }

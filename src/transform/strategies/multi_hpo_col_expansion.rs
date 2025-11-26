@@ -210,7 +210,7 @@ impl MultiHPOColExpansionStrategy {
                 .collect();
 
             let new_hpo_col =
-                HpoColMaker::new().create_hpo_col(hpo, building_block_id, observation_statuses);
+                HpoColMaker::default().create_hpo_col(hpo, building_block_id, observation_statuses);
             new_hpo_col_names.push(new_hpo_col.name().to_string());
             new_hpo_cols.push(new_hpo_col);
         }
