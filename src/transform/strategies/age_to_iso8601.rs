@@ -175,7 +175,7 @@ mod tests {
             ],
         );
         let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
         age_to_iso8601_strat.transform(&mut [&mut cdf]).unwrap();
@@ -207,7 +207,7 @@ mod tests {
             ],
         );
         let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
         age_to_iso8601_strat.transform(&mut [&mut cdf]).unwrap();
@@ -239,7 +239,7 @@ mod tests {
             ],
         );
         let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
         age_to_iso8601_strat.transform(&mut [&mut cdf]).unwrap();
@@ -271,7 +271,7 @@ mod tests {
             ],
         );
         let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
-        let mut cdf = ContextualizedDataFrame::new(tc, df);
+        let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
         let result = age_to_iso8601_strat.transform(&mut [&mut cdf]);

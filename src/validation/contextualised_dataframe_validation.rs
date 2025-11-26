@@ -102,8 +102,14 @@ mod tests {
     };
     use polars::df;
     use polars::prelude::{AnyValue, Column, DataFrame};
+    use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
+    use crate::validation::error::ValidationError;
+    use polars::df;
+    use polars::prelude::{Column, DataFrame};
+    use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use serde_json::from_value;
+    use validator::ValidationErrorsKind;
 
     #[fixture]
     fn df() -> DataFrame {
@@ -131,74 +137,101 @@ mod tests {
         let sc1 = regex("column_1"); //identifies just col1
         let sc2 = multi_ids(vec!["column_2", "column_3"]); //identifies col2 and col3
         let sc3 = regex("abc"); //identifies col4 and col5
-        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3]);
+        let subject_col = regex("column_6").with_data_context(Context::SubjectId);
+        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3, subject_col]);
 
-        let cdf = ContextualizedDataFrame::new(tc, df);
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         assert!(validate_one_context_per_column(&cdf).is_ok());
     }
 
     #[rstest]
     fn test_more_than_one_context_per_col(df: DataFrame) {
-        let sc1 = regex("column"); //identifies col1, col2, col3 and col6
+        let sc1 = regex("column_[0-57-9]\\d*"); //identifies col1, col2, col3
         let sc2 = multi_ids(vec!["column_2", "abcabc"]); //identifies col2 and col4
         let sc3 = regex("abcabcabc"); //identifies col5
         let sc4 = regex("abcabcabc"); //identifies col5
-        let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3, sc4]);
+        let subject_col = regex("column_6").with_data_context(Context::SubjectId);
 
-        let cdf = ContextualizedDataFrame::new(tc, df);
-
-        let cols_with_multiple_scs = validate_one_context_per_column(&cdf)
-            .err()
-            .unwrap()
-            .params
-            .get("duplicates")
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|s| s.as_str().unwrap().to_string())
-            .collect::<Vec<String>>();
-
-        assert!(
-            cols_with_multiple_scs == vec!["column_2".to_string(), "abcabcabc".to_string()]
-                || cols_with_multiple_scs == vec!["abcabcabc".to_string(), "column_2".to_string()]
+        let tc = TableContext::new(
+            "patient_data".to_string(),
+            vec![sc1, sc2, sc3, sc4, subject_col],
         );
+
+        match ContextualizedDataFrame::new(tc, df).err().unwrap() {
+            ValidationError::ValidationCrateError(val_error) => {
+                let kind = val_error.0.values().next().unwrap();
+                match kind {
+                    ValidationErrorsKind::Field(err) => {
+                        let f = err.first().unwrap();
+                        let cols_with_multiple_scs = f
+                            .params
+                            .get("duplicates")
+                            .unwrap()
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .map(|s| s.as_str().unwrap().to_string())
+                            .collect::<Vec<String>>();
+
+                        assert!(
+                            cols_with_multiple_scs
+                                == vec!["column_2".to_string(), "abcabcabc".to_string()]
+                                || cols_with_multiple_scs
+                                    == vec!["abcabcabc".to_string(), "column_2".to_string()]
+                        );
+                    }
+                    _ => panic!("unexpected field error"),
+                }
+            }
+
+            _ => panic!("Expected an error"),
+        }
     }
 
     #[rstest]
     fn test_validate_single_subject_id_column_no_subject_id() {
-        let table_context = ContextualizedDataFrame::new(
+        let result = ContextualizedDataFrame::new(
             TableContext::default().with_name("test_table"),
             DataFrame::new(vec![]).unwrap(),
         );
 
-        let result = validate_single_subject_id_column(&table_context);
-
         assert!(result.is_err());
         let error = result.unwrap_err();
-
-        assert_eq!(error.code, "subject_id_column");
-        assert!(
-            error
-                .message
-                .clone()
-                .unwrap()
-                .to_string()
-                .contains("test_table")
-        );
-        assert!(
-            error
-                .message
-                .unwrap()
-                .to_string()
-                .contains("more than one or no column")
-        );
+        match error {
+            ValidationError::ValidationCrateError(err) => {
+                let kind = err.0.values().next().unwrap();
+                match kind {
+                    ValidationErrorsKind::Field(field) => {
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "subject_id_column");
+                        assert!(
+                            f.message
+                                .clone()
+                                .unwrap()
+                                .to_string()
+                                .contains("test_table")
+                        );
+                        assert!(
+                            f.message
+                                .clone()
+                                .unwrap()
+                                .to_string()
+                                .contains("more than one or no column")
+                        );
+                    }
+                    _ => panic!("Expected ValidationCrateError"),
+                }
+            }
+            _ => {
+                panic!("Expected ValidationCrateError")
+            }
+        }
     }
 
     #[rstest]
     fn test_validate_single_subject_id_column_multiple_subject_ids() {
-        let table_context = ContextualizedDataFrame::new(
+        let result = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
                 vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
@@ -210,55 +243,68 @@ mod tests {
             .unwrap(),
         );
 
-        let result = validate_single_subject_id_column(&table_context);
-
         assert!(result.is_err());
         let error = result.unwrap_err();
-        assert_eq!(error.code, "subject_id_column");
 
-        assert_eq!(error.code, "subject_id_column");
-        assert!(
-            error
-                .message
-                .clone()
-                .unwrap()
-                .to_string()
-                .contains("test_table")
-        );
-        assert!(
-            error
-                .message
-                .unwrap()
-                .to_string()
-                .contains("more than one or no column")
-        );
+        match error {
+            ValidationError::ValidationCrateError(err) => {
+                let kind = err.0.values().next().unwrap();
+                match kind {
+                    ValidationErrorsKind::Field(field) => {
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "subject_id_column");
+                        let message = f.message.clone().unwrap().to_string();
+                        assert!(message.contains("test_table"));
+                        assert!(message.contains("more than one or no column"));
+                    }
+                    _ => panic!("Expected ValidationCrateError"),
+                }
+            }
+            _ => {
+                panic!("Expected ValidationCrateError")
+            }
+        }
     }
 
     #[rstest]
     fn test_validate_dangling_sc() {
         let sc = SeriesContext::default().with_identifier(Identifier::from("no-column"));
-        let table_context = ContextualizedDataFrame::new(
-            TableContext::new("test_table".to_string(), vec![sc.clone()]),
-            DataFrame::new(vec![]).unwrap(),
+        let result = ContextualizedDataFrame::new(
+            TableContext::new(
+                "test_table".to_string(),
+                vec![
+                    sc.clone(),
+                    SeriesContext::default()
+                        .with_identifier(Identifier::from("subject_id"))
+                        .with_data_context(Context::SubjectId),
+                ],
+            ),
+            df!["subject_id" => ["P001"]].unwrap(),
         );
-        let result = validate_dangling_sc(&table_context);
 
         assert!(result.is_err());
         let error = result.unwrap_err();
 
-        assert_eq!(error.code, "dangling_series_context");
-        assert!(
-            error
-                .message
-                .clone()
-                .unwrap()
-                .to_string()
-                .contains("no-column")
-        );
-        let extracted_sc: SeriesContext =
-            from_value(error.params.get("series_context").unwrap().clone()).unwrap();
+        match error {
+            ValidationError::ValidationCrateError(err) => {
+                let kind = err.0.values().next().unwrap();
+                match kind {
+                    ValidationErrorsKind::Field(field) => {
+                        let f = field.first().unwrap();
+                        assert_eq!(f.code, "dangling_series_context");
+                        assert!(f.message.clone().unwrap().to_string().contains("no-column"));
+                        let extracted_sc: SeriesContext =
+                            from_value(f.params.get("series_context").unwrap().clone()).unwrap();
 
-        assert_eq!(sc, extracted_sc);
+                        assert_eq!(sc, extracted_sc);
+                    }
+                    _ => panic!("Expected ValidationCrateError"),
+                }
+            }
+            _ => {
+                panic!("Expected ValidationCrateError")
+            }
+        }
     }
 
     #[rstest]

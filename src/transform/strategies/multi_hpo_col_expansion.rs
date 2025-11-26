@@ -281,7 +281,7 @@ mod tests {
             ],
         );
 
-        ContextualizedDataFrame::new(tc, df)
+        ContextualizedDataFrame::new(tc, df).unwrap()
     }
 
     #[fixture]
@@ -351,7 +351,7 @@ mod tests {
             ],
         );
 
-        ContextualizedDataFrame::new(expected_tc, expected_df)
+        ContextualizedDataFrame::new(expected_tc, expected_df).unwrap()
     }
 
     #[rstest]
