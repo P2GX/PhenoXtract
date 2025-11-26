@@ -4,10 +4,12 @@ use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::ontology::{DatabaseRef, HGNCClient, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
+use crate::transform::data_processing::parsing::{
+    try_parse_string_date, try_parse_string_datetime,
+};
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::utils::is_iso8601_duration;
-use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use chrono::{TimeZone, Utc};
 use ga4ghphetools::dto::hgvs_variant::HgvsVariant;
 use ga4ghphetools::variant::validate_one_hgvs_variant;
