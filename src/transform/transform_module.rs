@@ -1,7 +1,7 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::collector::Collector;
+use crate::transform::data_processing::preprocessor::CDFPreprocessor;
 use crate::transform::error::TransformError;
-use crate::transform::preprocessor::CDFPreprocessor;
 use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
 

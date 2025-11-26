@@ -1,8 +1,8 @@
 use crate::config::table_context::{AliasMap, OutputDataType};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
+use crate::transform::data_processing::casting::polars_column_cast_specific;
 use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::traits::Strategy;
-use crate::transform::utils::polars_column_cast_specific;
 use log::info;
 use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::Column;
