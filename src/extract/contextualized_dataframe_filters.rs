@@ -431,7 +431,7 @@ mod tests {
         let series = vec![
             SeriesContext::default().with_data_context(Context::SubjectId),
             SeriesContext::default().with_data_context(Context::HpoLabelOrId),
-            SeriesContext::default().with_data_context(Context::SubjectAge),
+            SeriesContext::default().with_data_context(Context::AgeAtLastEncounter),
         ];
 
         let result = SeriesContextFilter::new(&series)

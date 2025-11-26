@@ -11,8 +11,7 @@ use crate::validation::contextualised_dataframe_validation::{
 use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
-use polars::prelude::{Column, DataFrame, DataType, Series};
-use polars::prelude::{Column, DataFrame, PolarsError, Series};
+use polars::prelude::{Column, DataFrame, DataType, PolarsError, Series};
 use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -943,7 +942,7 @@ mod builder_tests {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
-            .cast(&Context::None, &Context::SubjectAge, DataType::String)
+            .cast(&Context::None, &Context::AgeAtLastEncounter, DataType::String)
             .unwrap()
             .build_dirty();
         let age_col = cdf.data().column("age").unwrap();
