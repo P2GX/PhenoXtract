@@ -375,11 +375,11 @@ impl PhenopacketBuilder {
 
     pub(crate) fn insert_quantitative_measurement(
         &mut self,
-        phenopacket_id: &str,
-        assay: &str,
-        unit: &str,
-        measurement: f64,
-        obs_time: Option<&str>,
+        _phenopacket_id: &str,
+        _assay: &str,
+        _unit: &str,
+        _measurement: f64,
+        _obs_time: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         //todo!
 
@@ -388,11 +388,11 @@ impl PhenopacketBuilder {
 
     pub(crate) fn insert_qualitative_measurement(
         &mut self,
-        phenopacket_id: &str,
-        assay: &str,
-        ontology_prefix: &str,
-        measurement: &str,
-        obs_time: Option<&str>,
+        _phenopacket_id: &str,
+        _assay: &str,
+        _ontology_prefix: &str,
+        _measurement: &str,
+        _obs_time: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         //todo!
 

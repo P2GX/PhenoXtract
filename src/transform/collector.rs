@@ -417,7 +417,6 @@ impl Collector {
     fn collect_measurements(
         &mut self,
         patient_cdf: &ContextualizedDataFrame,
-        patient_id: &str,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
         let quantitative_measurement_scs = patient_cdf

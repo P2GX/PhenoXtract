@@ -1,4 +1,3 @@
-use crate::config::context::Context;
 use crate::config::table_context::OutputDataType;
 use crate::constants::ISO8601_DUR_PATTERN;
 use crate::transform::constants::{CURIE_ID, LOINC_FORMAT, ONTOLOGY_PREFIX};
@@ -6,7 +5,7 @@ use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
-use polars::prelude::{AnyValue, Column, TimeUnit, col};
+use polars::prelude::{AnyValue, Column, TimeUnit};
 use regex::Regex;
 use std::fmt;
 use std::fmt::Display;
