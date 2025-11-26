@@ -179,10 +179,7 @@ impl Strategy for MappingStrategy {
                 .filter_columns()
                 .where_header_context(Filter::Is(&self.header_context))
                 .where_data_context(Filter::Is(&self.data_context))
-                .collect()
-                .iter()
-                .map(|col| col.name().to_string())
-                .collect();
+                .collect_owned_names();
 
             for col_name in col_names {
                 let original_column = table.data().column(&col_name)?;
