@@ -8,9 +8,9 @@ use polars::prelude::ChunkApply;
 use polars::series::IntoSeries;
 use std::borrow::Cow;
 
-pub(crate) struct CDFPreprocessor;
+pub(crate) struct CdfPreprocessor;
 
-impl CDFPreprocessor {
+impl CdfPreprocessor {
     pub(crate) fn process(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
         Self::trim_strings(cdf)?;
         Self::ensure_ints(cdf)?;
@@ -173,7 +173,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = CDFPreprocessor::cast_cdf(&mut cdf);
+        let result = CdfPreprocessor::cast_cdf(&mut cdf);
         assert!(result.is_ok());
         assert_eq!(
             cdf.data().column("int_col").unwrap().dtype(),
@@ -222,7 +222,7 @@ mod tests {
             float32_df,
         )
         .unwrap();
-        CDFPreprocessor::ensure_ints(&mut cdf).unwrap();
+        CdfPreprocessor::ensure_ints(&mut cdf).unwrap();
 
         // Verify the column was cast to Int64
         let result_col = cdf.data().column("values").unwrap();
@@ -257,7 +257,7 @@ mod tests {
             float64_df,
         )
         .unwrap();
-        CDFPreprocessor::ensure_ints(&mut cdf).unwrap();
+        CdfPreprocessor::ensure_ints(&mut cdf).unwrap();
 
         let result_col = cdf.data().column("values").unwrap();
         assert_eq!(result_col.dtype(), &DataType::Int64);
@@ -295,7 +295,7 @@ mod tests {
             float64_df,
         )
         .unwrap();
-        CDFPreprocessor::ensure_ints(&mut cdf).unwrap();
+        CdfPreprocessor::ensure_ints(&mut cdf).unwrap();
 
         for (expected_data_type, col_name) in [
             (DataType::Float32, col_name_f32),
@@ -339,7 +339,7 @@ mod tests {
         )
         .unwrap();
 
-        CDFPreprocessor::trim_strings(&mut cdf).unwrap();
+        CdfPreprocessor::trim_strings(&mut cdf).unwrap();
 
         assert_eq!(
             cdf.data(),

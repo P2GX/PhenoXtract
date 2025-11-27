@@ -1,6 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::collector::Collector;
-use crate::transform::data_processing::preprocessor::CDFPreprocessor;
+use crate::transform::data_processing::preprocessor::CdfPreprocessor;
 use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
@@ -36,7 +36,7 @@ impl TransformerModule {
             .collect::<Vec<&mut ContextualizedDataFrame>>();
 
         for table in &mut tables_refs {
-            CDFPreprocessor::process(table)?
+            CdfPreprocessor::process(table)?
         }
 
         for strategy in &self.strategies {
