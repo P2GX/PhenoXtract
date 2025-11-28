@@ -9,6 +9,7 @@ use crate::transform::utils::HpoColMaker;
 use log::warn;
 use polars::datatypes::StringChunked;
 use polars::prelude::Column;
+use std::any::Any;
 use std::collections::HashSet;
 
 #[derive(Debug)]
@@ -69,6 +70,10 @@ impl Collect for PhenotypeCollector {
         }
 
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

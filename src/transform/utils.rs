@@ -1,12 +1,9 @@
-use crate::config::TableContext;
-use crate::config::table_context::{Identifier, OutputDataType, SeriesContext};
+use crate::config::table_context::OutputDataType;
 use crate::constants::ISO8601_DUR_PATTERN;
-use crate::extract::ContextualizedDataFrame;
 use crate::transform::error::DataProcessingError;
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use log::debug;
 use polars::datatypes::DataType;
-use polars::df;
 use polars::prelude::{AnyValue, Column, TimeUnit};
 use regex::Regex;
 

@@ -13,8 +13,8 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::collecting::broker::CDFBroker;
 use phenoxtract::transform::collecting::disease_collector::DiseaseCollector;
+use phenoxtract::transform::collecting::dispatcher::CdfBroker;
 use phenoxtract::transform::collecting::individual_collector::IndividualCollector;
 use phenoxtract::transform::collecting::interpretation_collector::InterpretationCollector;
 use phenoxtract::transform::collecting::phenotype_collector::PhenotypeCollector;
@@ -312,7 +312,7 @@ fn test_pipeline_integration(
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CDFBroker::new(phenopacket_builder, cohort_name.to_owned(), collectors),
+        CdfBroker::new(phenopacket_builder, cohort_name.to_owned(), collectors),
     );
 
     let output_dir = assets_path.join("do_not_push");

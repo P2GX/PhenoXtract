@@ -1,4 +1,3 @@
-pub(crate) mod collector;
 pub mod error;
 pub mod phenopacket_builder;
 pub use phenopacket_builder::PhenopacketBuilder;

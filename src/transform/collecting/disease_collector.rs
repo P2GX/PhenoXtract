@@ -7,6 +7,7 @@ use crate::transform::collecting::utils;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct DiseaseCollector;
@@ -68,6 +69,10 @@ impl Collect for DiseaseCollector {
         }
 
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

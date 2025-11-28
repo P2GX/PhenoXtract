@@ -8,6 +8,7 @@ use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 #[derive(Debug)]
 pub struct InterpretationCollector;
 
@@ -81,6 +82,10 @@ impl Collect for InterpretationCollector {
 
         Ok(())
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -92,13 +97,15 @@ mod tests {
     use crate::test_utils::{
         assert_phenopackets, build_test_phenopacket_builder, generate_patent_cdf_components,
     };
-    use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
+    use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
+    use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::genomic_interpretation::Call::Gene;
-    use phenopackets::schema::v2::core::time_element::Element;
+    use phenopackets::schema::v2::core::AcmgPathogenicityClassification;
+    use phenopackets::schema::v2::core::TherapeuticActionability;
+    use phenopackets::schema::v2::core::genomic_interpretation::Call;
     use phenopackets::schema::v2::core::{
-        Age, Diagnosis, Disease, GenomicInterpretation, Interpretation, MetaData, OntologyClass,
-        Resource, TimeElement,
+        Diagnosis, GenomicInterpretation, Interpretation, MetaData, OntologyClass, Resource,
+        VariantInterpretation,
     };
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
@@ -127,22 +134,84 @@ mod tests {
     }
 
     #[fixture]
+    fn geno_meta_data_resource() -> Resource {
+        Resource {
+            id: "geno".to_string(),
+            name: "Genotype Ontology".to_string(),
+            url: "http://purl.obolibrary.org/obo/geno.json".to_string(),
+            version: "2025-07-25".to_string(),
+            namespace_prefix: "GENO".to_string(),
+            iri_prefix: "http://purl.obolibrary.org/obo/GENO_$1".to_string(),
+        }
+    }
+
+    #[fixture]
     fn dysostosis_interpretation(spondylocostal_dysostosis_term: OntologyClass) -> Interpretation {
         Interpretation {
-            id: "cohort2019-P002-MONDO:0000359".to_string(),
+            id: "pp_1-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
                 disease: Some(spondylocostal_dysostosis_term),
                 genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: "P002".to_string(),
+                    subject_or_biosample_id: "P0".to_string(),
                     interpretation_status: 0,
-                    call: Some(Gene(GeneDescriptor {
-                        value_id: "HGNC:428".to_string(),
-                        symbol: "ALMS1".to_string(),
-                        description: "".to_string(),
-                        alternate_ids: vec![],
-                        alternate_symbols: vec![],
-                        xrefs: vec![],
+                    call: Some(Call::VariantInterpretation(VariantInterpretation {
+                        acmg_pathogenicity_classification:
+                            AcmgPathogenicityClassification::Pathogenic as i32,
+                        therapeutic_actionability: TherapeuticActionability::UnknownActionability
+                            as i32,
+                        variation_descriptor: Some(VariationDescriptor {
+                            id: "c2860CtoT_KIF21A_NM_001173464v1".to_string(),
+                            variation: None,
+                            label: "".to_string(),
+                            description: "".to_string(),
+                            gene_context: Some(GeneDescriptor {
+                                value_id: "HGNC:19349".to_string(),
+                                symbol: "KIF21A".to_string(),
+                                description: "".to_string(),
+                                alternate_ids: Vec::new(),
+                                alternate_symbols: Vec::new(),
+                                xrefs: Vec::new(),
+                            }),
+                            expressions: vec![
+                                Expression {
+                                    syntax: "hgvs.c".to_string(),
+                                    value: "NM_001173464.1:c.2860C>T".to_string(),
+                                    version: "".to_string(),
+                                },
+                                Expression {
+                                    syntax: "hgvs.g".to_string(),
+                                    value: "NC_000012.12:g.39332405G>A".to_string(),
+                                    version: "".to_string(),
+                                },
+                                Expression {
+                                    syntax: "hgvs.p".to_string(),
+                                    value: "NP_001166935.1:p.(Arg954Trp)".to_string(),
+                                    version: "".to_string(),
+                                },
+                            ],
+                            vcf_record: Some(VcfRecord {
+                                genome_assembly: "hg38".to_string(),
+                                chrom: "chr12".to_string(),
+                                pos: 39332405,
+                                id: "".to_string(),
+                                r#ref: "G".to_string(),
+                                alt: "A".to_string(),
+                                qual: "".to_string(),
+                                filter: "".to_string(),
+                                info: "".to_string(),
+                            }),
+                            xrefs: vec![],
+                            alternate_labels: vec![],
+                            extensions: vec![],
+                            molecule_context: MoleculeContext::Genomic as i32,
+                            structural_type: None,
+                            vrs_ref_allele_seq: "".to_string(),
+                            allelic_state: Some(OntologyClass {
+                                id: "GENO:0000136".to_string(),
+                                label: "homozygous".to_string(),
+                            }),
+                        }),
                     })),
                 }],
             }),
@@ -172,6 +241,7 @@ mod tests {
     fn test_collect_interpretations(
         dysostosis_interpretation: Interpretation,
         mondo_meta_data_resource: Resource,
+        geno_meta_data_resource: Resource,
         hgnc_meta_data_resource: Resource,
         spondylocostal_dysostosis_term: OntologyClass,
         temp_dir: TempDir,
@@ -242,7 +312,11 @@ mod tests {
             id: phenopacket_id.to_string(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
-                resources: vec![mondo_meta_data_resource, hgnc_meta_data_resource],
+                resources: vec![
+                    mondo_meta_data_resource,
+                    hgnc_meta_data_resource,
+                    geno_meta_data_resource,
+                ],
                 ..Default::default()
             }),
             ..Default::default()

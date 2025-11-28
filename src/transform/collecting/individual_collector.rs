@@ -4,6 +4,7 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils;
 use crate::transform::error::CollectorError;
+use std::any::Any;
 #[derive(Debug)]
 pub struct IndividualCollector;
 
@@ -39,6 +40,10 @@ impl Collect for IndividualCollector {
         )?;
         Self::collect_vitality_status(builder, patient_cdf, phenopacket_id)?;
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -80,16 +85,14 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
-    use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf,
-    };
+    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
     use phenopackets::schema::v2::core::{Individual, MetaData, Sex, TimeElement, VitalStatus};
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
-    use polars::prelude::{Column, NamedFrom, Series};
+    use polars::prelude::Column;
     use prost_types::Timestamp;
     use rstest::{fixture, rstest};
     use tempfile::TempDir;

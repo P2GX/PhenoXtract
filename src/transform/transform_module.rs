@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::collecting::broker::CDFBroker;
+use crate::transform::collecting::dispatcher::CdfBroker;
 use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
@@ -13,11 +13,11 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
-    collector: CDFBroker,
+    collector: CdfBroker,
 }
 
 impl TransformerModule {
-    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: CDFBroker) -> Self {
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: CdfBroker) -> Self {
         TransformerModule {
             strategies,
             collector,
