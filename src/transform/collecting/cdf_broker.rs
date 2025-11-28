@@ -7,7 +7,7 @@ use crate::transform::collecting::individual_collector::IndividualCollector;
 use crate::transform::collecting::interpretation_collector::InterpretationCollector;
 use crate::transform::collecting::phenotype_collector::PhenotypeCollector;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::error::{CollectorError, DataProcessingError};
+use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
 
 #[derive(Debug)]
