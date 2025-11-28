@@ -157,7 +157,7 @@ mod tests {
         mondo_meta_data_resource: Resource,
         temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder(&temp_dir.path());
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "cohort2019-P002".to_string();
 
         let mut cdf = generate_minimal_cdf(1, 2);

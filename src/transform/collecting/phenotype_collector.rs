@@ -18,7 +18,7 @@ pub struct PhenotypeCollector;
 impl Collect for PhenotypeCollector {
     fn collect(
         &self,
-        mut builder: &mut PhenopacketBuilder,
+        builder: &mut PhenopacketBuilder,
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
@@ -52,14 +52,14 @@ impl Collect for PhenotypeCollector {
                     && hpo_sc.get_data_context() == &Context::HpoLabelOrId
                 {
                     self.collect_hpo_in_cells_col(
-                        &mut builder,
+                        builder,
                         phenopacket_id,
                         hpo_col,
                         stringified_linked_onset_col.as_ref(),
                     )?;
                 } else {
                     self.collect_hpo_in_header_col(
-                        &mut builder,
+                        builder,
                         patient_cdf.context().name(),
                         phenopacket_id,
                         hpo_col,
@@ -301,7 +301,7 @@ mod tests {
         pp_id: String,
         temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder(&temp_dir.path());
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         PhenotypeCollector
             .collect(&mut builder, &phenotypes_in_rows_cdf, &pp_id)
@@ -332,7 +332,7 @@ mod tests {
         pp_id: String,
         temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder(&temp_dir.path());
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let patient_hpo_col = phenotypes_in_rows_cdf.data().column("phenotypes").unwrap();
         let patient_onset_col = phenotypes_in_rows_cdf.data().column("onset").unwrap();
@@ -372,7 +372,7 @@ mod tests {
         pp_id: String,
         temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder(&temp_dir.path());
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let collector = PhenotypeCollector;
 
         let mut fractured_nose_excluded = fractured_nose_pf.clone();

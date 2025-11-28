@@ -181,7 +181,7 @@ mod tests {
         individual_info_cdf: ContextualizedDataFrame,
         patient_id: String,
     ) {
-        let mut builder = build_test_phenopacket_builder(&temp_dir.path());
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "pp_id".to_string();
 
         IndividualCollector
