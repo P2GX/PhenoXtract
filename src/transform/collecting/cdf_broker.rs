@@ -90,6 +90,8 @@ impl PartialEq for CdfBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::Context;
+    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_utils::{build_test_phenopacket_builder, generate_minimal_cdf};
     use rstest::{fixture, rstest};
     use std::any::Any;
