@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::collecting::dispatcher::CdfBroker;
+use crate::transform::collecting::cdf_broker::CdfBroker;
 use crate::transform::error::{DataProcessingError, TransformError};
 use crate::transform::traits::Strategy;
 use crate::transform::utils::polars_column_cast_ambivalent;
@@ -53,7 +53,7 @@ impl TransformerModule {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
 
-        Ok(self.collector.broker(data)?)
+        Ok(self.collector.process(data)?)
     }
 
     fn trim_strings(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {

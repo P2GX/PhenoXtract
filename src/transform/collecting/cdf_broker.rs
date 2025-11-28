@@ -2,6 +2,10 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
+use crate::transform::collecting::disease_collector::DiseaseCollector;
+use crate::transform::collecting::individual_collector::IndividualCollector;
+use crate::transform::collecting::interpretation_collector::InterpretationCollector;
+use crate::transform::collecting::phenotype_collector::PhenotypeCollector;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use phenopackets::schema::v2::Phenopacket;
@@ -26,7 +30,7 @@ impl CdfBroker {
         }
     }
 
-    pub fn broker(
+    pub fn process(
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
@@ -56,7 +60,7 @@ impl CdfBroker {
                     .get(0)?
                     .str_value();
 
-                let phenopacket_id = format!("{}-{}", self.cohort_name, patient_id);
+                let phenopacket_id = self.generate_phenopacket_id(patient_id.as_ref());
 
                 let patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
@@ -72,6 +76,26 @@ impl CdfBroker {
         }
 
         Ok(self.phenopacket_builder.build())
+    }
+
+    pub fn with_default_collectors(
+        phenopacket_builder: PhenopacketBuilder,
+        cohort_name: String,
+    ) -> Self {
+        CdfBroker::new(
+            phenopacket_builder,
+            cohort_name,
+            vec![
+                Box::new(IndividualCollector),
+                Box::new(PhenotypeCollector),
+                Box::new(InterpretationCollector),
+                Box::new(DiseaseCollector),
+            ],
+        )
+    }
+
+    fn generate_phenopacket_id(&self, patient_id: &str) -> String {
+        format!("{}-{}", self.cohort_name, patient_id)
     }
 }
 
@@ -129,28 +153,57 @@ mod tests {
         }
     }
 
-    #[rstest]
-    fn test_collecting_broker(temp_dir: TempDir) {
+    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
-        let patient_cdf_1 = generate_minimal_cdf(2, 1);
-        let patient_cdf_2 = generate_minimal_cdf(1, 5);
+        let cohort_name = "cohort-1";
 
-        let mut broker = CdfBroker::new(
+        CdfBroker::new(
             builder,
-            "cohort-1".to_string(),
+            cohort_name.to_string(),
             vec![
                 Box::new(MockCollector::default()),
                 Box::new(MockCollector::default()),
             ],
-        );
+        )
+    }
 
-        broker.broker(vec![patient_cdf_1, patient_cdf_2]).unwrap();
+    #[rstest]
+    fn test_process(temp_dir: TempDir) {
+        let mut broker = build_test_cdf_broker(temp_dir);
+
+        let cohort_name = broker.cohort_name.clone();
+        let patient_cdf_1 = generate_minimal_cdf(2, 2);
+        let patient_cdf_2 = generate_minimal_cdf(1, 5);
+
+        broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
             if let Some(mock) = collector.as_any().downcast_ref::<MockCollector>() {
                 assert_eq!(mock.call_count.get(), 3);
+
+                let mut seen = mock.seen_pps.borrow().clone();
+                seen.sort();
+
+                let expected = vec![
+                    format!("{}-{}", cohort_name, "P0"),
+                    format!("{}-{}", cohort_name, "P0"),
+                    format!("{}-{}", cohort_name, "P1"),
+                ];
+                assert_eq!(seen, expected);
                 assert_eq!(mock.seen_pps.borrow().len(), 3);
             }
         }
+    }
+
+    #[rstest]
+    fn test_generate_phenopacket_id(temp_dir: TempDir) {
+        let broker = build_test_cdf_broker(temp_dir);
+        let p_id = "P001";
+        let cohort_name = broker.cohort_name.clone();
+
+        assert_eq!(
+            broker.generate_phenopacket_id(p_id),
+            format!("{}-{}", cohort_name, p_id)
+        );
     }
 }
