@@ -39,11 +39,13 @@ impl Collect for InterpretationCollector {
                 patient_cdf,
                 bb_id,
                 &Context::HgncSymbolOrId,
+                &Context::None,
             )?;
             let stringified_linked_hgvs_cols = utils::get_stringified_cols_with_data_context_in_bb(
                 patient_cdf,
                 bb_id,
                 &Context::Hgvs,
+                &Context::None,
             )?;
 
             for row_idx in 0..patient_cdf.data().height() {

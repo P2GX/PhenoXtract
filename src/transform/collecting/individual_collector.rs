@@ -15,11 +15,17 @@ impl Collect for IndividualCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let date_of_birth =
-            utils::collect_single_multiplicity_element(patient_cdf, Context::DateOfBirth)?;
+        let date_of_birth = utils::collect_single_multiplicity_element(
+            patient_cdf,
+            &Context::DateOfBirth,
+            &Context::None,
+        )?;
 
-        let subject_sex =
-            utils::collect_single_multiplicity_element(patient_cdf, Context::SubjectSex)?;
+        let subject_sex = utils::collect_single_multiplicity_element(
+            patient_cdf,
+            &Context::SubjectSex,
+            &Context::None,
+        )?;
 
         let subject_id = patient_cdf
             .get_subject_id_col()
@@ -31,9 +37,9 @@ impl Collect for IndividualCollector {
             phenopacket_id,
             subject_id,
             None,
-            date_of_birth.as_deref(),
+            date_of_birth,
             None,
-            subject_sex.as_deref(),
+            subject_sex,
             None,
             None,
             None,
@@ -53,24 +59,37 @@ impl IndividualCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let status = utils::collect_single_multiplicity_element(patient_cdf, Context::VitalStatus)?;
+        let status = utils::collect_single_multiplicity_element(
+            patient_cdf,
+            &Context::VitalStatus,
+            &Context::None,
+        )?;
 
         if let Some(status) = status {
-            let time_of_death =
-                utils::collect_single_multiplicity_element(patient_cdf, Context::AgeOfDeath)?;
+            let time_of_death = utils::collect_single_multiplicity_element(
+                patient_cdf,
+                &Context::AgeOfDeath,
+                &Context::None,
+            )?;
 
-            let cause_of_death =
-                utils::collect_single_multiplicity_element(patient_cdf, Context::CauseOfDeath)?;
+            let cause_of_death = utils::collect_single_multiplicity_element(
+                patient_cdf,
+                &Context::CauseOfDeath,
+                &Context::None,
+            )?;
 
-            let survival_time_days =
-                utils::collect_single_multiplicity_element(patient_cdf, Context::SurvivalTimeDays)?;
+            let survival_time_days = utils::collect_single_multiplicity_element(
+                patient_cdf,
+                &Context::SurvivalTimeDays,
+                &Context::None,
+            )?;
             let survival_time_days = survival_time_days
-                .map(|str| str.parse::<f64>().map(|f| f as u32))
+                .map(|str| str.parse::<u32>().map(|f| f))
                 .transpose()?;
 
             builder.upsert_vital_status(
                 phenopacket_id,
-                status.as_str(),
+                status,
                 time_of_death.as_deref(),
                 cause_of_death.as_deref(),
                 survival_time_days,

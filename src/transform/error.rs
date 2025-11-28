@@ -6,7 +6,7 @@ use polars::prelude::DataType;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
-use std::num::ParseFloatError;
+use std::num::{ParseFloatError, ParseIntError};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -221,7 +221,7 @@ pub enum CollectorError {
     #[error("Polars error: {0}")]
     PolarsError(#[from] PolarsError),
     #[error("ParseFloatError error: {0}")]
-    ParseFloatError(#[from] ParseFloatError),
+    ParseFloatError(#[from] ParseIntError),
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
     #[error(transparent)]
