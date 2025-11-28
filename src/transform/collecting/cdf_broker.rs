@@ -1,6 +1,4 @@
-use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::individual_collector::IndividualCollector;
