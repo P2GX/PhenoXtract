@@ -6,7 +6,7 @@ use polars::prelude::DataType;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
-use std::num::{ParseFloatError, ParseIntError};
+use std::num::ParseIntError;
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Hash)]

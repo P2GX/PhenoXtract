@@ -84,14 +84,14 @@ impl IndividualCollector {
                 &Context::None,
             )?;
             let survival_time_days = survival_time_days
-                .map(|str| str.parse::<u32>().map(|f| f))
+                .map(|str| str.parse::<u32>())
                 .transpose()?;
 
             builder.upsert_vital_status(
                 phenopacket_id,
                 status,
-                time_of_death.as_deref(),
-                cause_of_death.as_deref(),
+                time_of_death,
+                cause_of_death,
                 survival_time_days,
             )?;
         }
