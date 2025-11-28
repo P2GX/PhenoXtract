@@ -35,35 +35,18 @@ impl CdfBroker {
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect();
-            if subject_id_cols.len() > 1 {
-                return Err(CollectorError::ExpectedSingleColumn {
-                    table_name: cdf.context().name().to_string(),
-                    context: Context::SubjectId,
-                });
-            }
-
-            let subject_id_col = subject_id_cols
-                .last()
-                .ok_or(DataProcessingError::EmptyFilteringError)?;
+            let subject_id_col = cdf.get_subject_id_col();
 
             let patient_dfs = cdf
                 .data()
                 .partition_by(vec![subject_id_col.name().as_str()], true)?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_id = patient_df
-                    .column(subject_id_col.name())?
-                    .get(0)?
-                    .str_value();
-
-                let phenopacket_id = self.generate_phenopacket_id(patient_id.as_ref());
-
                 let patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
+
+                let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
+                let phenopacket_id = self.generate_phenopacket_id(patient_id.as_ref());
 
                 for collector in &self.collectors {
                     collector.collect(
