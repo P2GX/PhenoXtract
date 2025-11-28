@@ -149,7 +149,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_utils::generate_patent_cdf_components;
     use polars::prelude::{AnyValue, Column, DataFrame};
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
 
     #[rstest]
     fn test_collect_single_multiplicity_element_multiple() {
@@ -182,7 +182,32 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_get_single_stringified_column_with_data_contexts_in_bb() {
+    fn test_collect_single_multiplicity_element_err() {
+        let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
+        let context = Context::SubjectAge;
+
+        let df = DataFrame::new(vec![
+            subject_col.clone(),
+            Column::new("age".into(), &[46, 22]),
+        ])
+        .unwrap();
+        let tc = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                subject_sc,
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("age"))
+                    .with_data_context(context.clone()),
+            ],
+        );
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
+
+        let sme = collect_single_multiplicity_element(&cdf, &context, &Context::None);
+        assert!(sme.is_err());
+    }
+
+    #[fixture]
+    fn sex_cdf() -> ContextualizedDataFrame {
         let bb_id = "bb1";
         let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
         let df = DataFrame::new(vec![
@@ -191,7 +216,7 @@ mod tests {
         ])
         .unwrap();
         let tc = TableContext::new(
-            "test_get_get_single_stringified_column_with_data_contexts_in_bb".to_string(),
+            "sex_cdf".to_string(),
             vec![
                 subject_sc.with_building_block_id(Some(bb_id.to_string())),
                 SeriesContext::default()
@@ -200,12 +225,23 @@ mod tests {
                     .with_building_block_id(Some(bb_id.to_string())),
             ],
         );
+        ContextualizedDataFrame::new(tc, df).unwrap()
+    }
 
-        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
+    #[rstest]
+    fn test_get_get_single_stringified_column_with_data_contexts_in_bb(
+        sex_cdf: ContextualizedDataFrame,
+    ) {
+        let bb = sex_cdf
+            .context()
+            .context()
+            .first()
+            .unwrap()
+            .get_building_block_id();
 
         let extracted_col = get_single_stringified_column_with_data_contexts_in_bb(
-            &cdf,
-            Some(bb_id),
+            &sex_cdf,
+            bb,
             vec![&Context::SubjectSex],
         )
         .unwrap()
@@ -213,27 +249,18 @@ mod tests {
 
         assert_eq!(extracted_col.name().to_string(), "sex");
     }
-    /*
+
     #[rstest]
-    fn test_get_get_single_stringified_column_with_data_contexts_no_match() {
+    fn test_get_get_single_stringified_column_with_data_contexts_no_match(
+        sex_cdf: ContextualizedDataFrame,
+    ) {
         let extracted_col = get_single_stringified_column_with_data_contexts_in_bb(
-            &single_disease_phenotype_cdf,
-            Some("Block_3"),
+            &sex_cdf,
+            Some("Absent_BB"),
             vec![&Context::OrphanetLabelOrId],
         )
         .unwrap();
 
         assert!(extracted_col.is_none());
     }
-
-    #[rstest]
-    fn test_get_get_single_stringified_column_with_data_contexts_in_bb_err() {
-        let result = get_single_stringified_column_with_data_contexts_in_bb(
-            &single_disease_phenotype_cdf,
-            Some("Block_3"),
-            vec![&Context::MondoLabelOrId, &Context::OnsetAge],
-        );
-
-        assert!(result.is_err());
-    }*/
 }
