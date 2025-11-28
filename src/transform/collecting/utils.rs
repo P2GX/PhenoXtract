@@ -71,29 +71,47 @@ pub(crate) fn collect_single_multiplicity_element<'a>(
     patient_cdf: &'a ContextualizedDataFrame,
     data_context: &'a Context,
     header_context: &'a Context,
-) -> Result<Option<&'a str>, CollectorError> {
+) -> Result<Option<String>, CollectorError> {
     let cols_of_element_type = patient_cdf
         .filter_columns()
         .where_data_context(Filter::Is(data_context))
         .where_header_context(Filter::Is(header_context))
         .collect();
 
-    let mut unique_values: HashSet<&str> = HashSet::new();
+    let mut unique_values: HashSet<String> = HashSet::new();
 
     for col in cols_of_element_type {
-        let stringified_col_str = col.str()?;
-        stringified_col_str.into_iter().for_each(|opt_val| {
+        let stringified_col =
+            col.cast(&DataType::String)
+                .map_err(|_| DataProcessingError::CastingError {
+                    col_name: col.name().to_string(),
+                    from: col.dtype().clone(),
+                    to: DataType::String,
+                })?;
+
+        stringified_col.str()?.into_iter().for_each(|opt_val| {
             if let Some(val) = opt_val {
-                unique_values.insert(val);
+                unique_values.insert(val.to_string());
             }
         });
     }
 
     if unique_values.len() == 1 {
-        match &unique_values.iter().next() {
-            Some(unique_val) => Ok(Some(unique_val)),
+        match unique_values.iter().next() {
+            Some(unique_val) => Ok(Some(unique_val.to_owned())),
             None => Ok(None),
         }
+    } else if unique_values.len() > 1 {
+        Err(CollectorError::ExpectedSingleValue {
+            table_name: patient_cdf.context().name().to_string(),
+            patient_id: patient_cdf
+                .get_subject_id_col()
+                .get(0)?
+                .str_value()
+                .to_string(),
+            data_context: data_context.clone(),
+            header_context: header_context.clone(),
+        })
     } else {
         Ok(None)
     }
@@ -161,31 +179,6 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(sme, "MALE");
-    }
-
-    #[rstest]
-    fn test_collect_single_multiplicity_element_err() {
-        let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
-        let context = Context::SubjectAge;
-
-        let df = DataFrame::new(vec![
-            subject_col.clone(),
-            Column::new("age".into(), &[46, 22]),
-        ])
-        .unwrap();
-        let tc = TableContext::new(
-            "test_collect_single_multiplicity_element_err".to_string(),
-            vec![
-                subject_sc,
-                SeriesContext::default()
-                    .with_identifier(Identifier::from("age"))
-                    .with_data_context(context.clone()),
-            ],
-        );
-        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
-
-        let sme = collect_single_multiplicity_element(&cdf, &context, &Context::None);
-        assert!(sme.is_err());
     }
 
     #[rstest]

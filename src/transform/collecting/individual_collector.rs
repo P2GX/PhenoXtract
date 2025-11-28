@@ -37,9 +37,9 @@ impl Collect for IndividualCollector {
             phenopacket_id,
             subject_id,
             None,
-            date_of_birth,
+            date_of_birth.as_deref(),
             None,
-            subject_sex,
+            subject_sex.as_deref(),
             None,
             None,
             None,
@@ -89,9 +89,9 @@ impl IndividualCollector {
 
             builder.upsert_vital_status(
                 phenopacket_id,
-                status,
-                time_of_death,
-                cause_of_death,
+                status.as_ref(),
+                time_of_death.as_deref(),
+                cause_of_death.as_deref(),
                 survival_time_days,
             )?;
         }

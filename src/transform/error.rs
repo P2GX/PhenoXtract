@@ -201,12 +201,13 @@ pub enum CollectorError {
         amount_found: usize,
     },
     #[error(
-        "Found multiple values of {context} in table {table_name} for {patient_id} when there should only be one."
+        "Found multiple values for context data: '{data_context}' header: '{header_context}' in table '{table_name}' for '{patient_id}' when there should only be one."
     )]
     ExpectedSingleValue {
         table_name: String,
         patient_id: String,
-        context: Context,
+        data_context: Context,
+        header_context: Context,
     },
     #[error(
         "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
