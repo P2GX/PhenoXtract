@@ -29,8 +29,11 @@ pub struct TableContext {
 
 impl TableContext {
     #[allow(dead_code)]
-    pub fn new(name: String, context: Vec<SeriesContext>) -> Self {
-        TableContext { name, context }
+    pub fn new(name: impl Into<String>, context: Vec<SeriesContext>) -> Self {
+        TableContext {
+            name: name.into(),
+            context,
+        }
     }
 
     pub fn name(&self) -> &str {

@@ -13,11 +13,17 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
+use phenoxtract::transform::collecting::broker::CDFBroker;
+use phenoxtract::transform::collecting::disease_collector::DiseaseCollector;
+use phenoxtract::transform::collecting::individual_collector::IndividualCollector;
+use phenoxtract::transform::collecting::interpretation_collector::InterpretationCollector;
+use phenoxtract::transform::collecting::phenotype_collector::PhenotypeCollector;
+use phenoxtract::transform::collecting::traits::Collect;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::traits::Strategy;
-use phenoxtract::transform::{Collector, PhenopacketBuilder, TransformerModule};
+use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
@@ -297,9 +303,16 @@ fn test_pipeline_integration(
         build_hgnc_test_client(temp_dir.path()),
     );
 
+    let collectors: Vec<Box<dyn Collect>> = vec![
+        Box::new(IndividualCollector),
+        Box::new(PhenotypeCollector),
+        Box::new(InterpretationCollector),
+        Box::new(DiseaseCollector),
+    ];
+
     let transformer_module = TransformerModule::new(
         strategies,
-        Collector::new(phenopacket_builder, cohort_name.to_owned()),
+        CDFBroker::new(phenopacket_builder, cohort_name.to_owned(), collectors),
     );
 
     let output_dir = assets_path.join("do_not_push");

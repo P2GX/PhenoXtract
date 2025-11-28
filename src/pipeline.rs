@@ -9,7 +9,12 @@ use crate::load::traits::Loadable;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
-use crate::transform::Collector;
+use crate::transform::collecting::broker::CDFBroker;
+use crate::transform::collecting::disease_collector::DiseaseCollector;
+use crate::transform::collecting::individual_collector::IndividualCollector;
+use crate::transform::collecting::interpretation_collector::InterpretationCollector;
+use crate::transform::collecting::phenotype_collector::PhenotypeCollector;
+use crate::transform::collecting::traits::Collect;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::traits::Strategy;
@@ -121,9 +126,20 @@ impl TryFrom<PipelineConfig> for Pipeline {
             .map(|strat| strategy_factory.try_from_config(strat))
             .collect::<Result<Vec<_>, _>>()?;
 
+        let collectors: Vec<Box<dyn Collect>> = vec![
+            Box::new(IndividualCollector),
+            Box::new(PhenotypeCollector),
+            Box::new(InterpretationCollector),
+            Box::new(DiseaseCollector),
+        ];
+
         let tf_module = TransformerModule::new(
             strategies,
-            Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),
+            CDFBroker::new(
+                phenopacket_builder,
+                config.meta_data.cohort_name.clone(),
+                collectors,
+            ),
         );
         let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
 

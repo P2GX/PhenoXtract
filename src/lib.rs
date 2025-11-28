@@ -6,11 +6,9 @@ pub mod error;
 pub mod ontology;
 pub mod pipeline;
 
-pub mod transform;
-mod validation;
-
-mod utils;
-
 mod constants;
 #[cfg(test)]
 mod test_utils;
+pub mod transform;
+mod utils;
+mod validation;

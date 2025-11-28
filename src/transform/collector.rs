@@ -1510,7 +1510,7 @@ mod tests {
         temp_dir: TempDir,
     ) {
         skip_in_ci!();
-
+        dbg!(&single_disease_phenotype_cdf);
         let patient_id = "P002";
         let phenopacket_id = format!("cohort2019-{patient_id}").to_string();
 
