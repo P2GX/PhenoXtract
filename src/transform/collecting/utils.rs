@@ -2,9 +2,14 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
+use chrono::{Date, DateTime};
 use polars::datatypes::{DataType, StringChunked};
 use polars::error::PolarsError;
+use polars::prelude::{
+    ChunkedArray, Column, DateType, Int64Type, PolarsDataType, PolarsResult, StringType, UInt32Type,
+};
 use std::collections::HashSet;
+use std::hash::Hash;
 
 /// Given a CDF, building block ID and data contexts
 /// this function will find all columns
@@ -60,45 +65,72 @@ pub(super) fn get_single_stringified_column_with_data_contexts_in_bb(
     }
 }
 
-/// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
-/// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
-/// this function will:
-/// -find all values for that context
-/// -throw an error if it finds multiple distinct values
-/// return Ok(None) if it finds no values
-/// return Ok(unique_val) if there is a single unique value
-pub(crate) fn collect_single_multiplicity_element<'a>(
+pub(crate) trait PolarsSeriesDowncast: Sized {
+    type Chunked: PolarsDataType;
+    fn downcast(series: &Column) -> PolarsResult<&ChunkedArray<Self::Chunked>>;
+}
+
+impl PolarsSeriesDowncast for u32 {
+    type Chunked = UInt32Type;
+
+    fn downcast(series: &Column) -> PolarsResult<&ChunkedArray<Self::Chunked>> {
+        series.u32()
+    }
+}
+
+impl PolarsSeriesDowncast for String {
+    type Chunked = StringType;
+
+    fn downcast(series: &Column) -> PolarsResult<&ChunkedArray<Self::Chunked>> {
+        series.str()
+    }
+}
+
+impl<Tz: chrono::TimeZone> PolarsSeriesDowncast for DateTime<Tz> {
+    type Chunked = DateType;
+
+    fn downcast(series: &Column) -> PolarsResult<&ChunkedArray<Self::Chunked>> {
+        todo!()
+    }
+}
+
+impl PolarsSeriesDowncast for i64 {
+    type Chunked = Int64Type;
+
+    fn downcast(series: &Column) -> PolarsResult<&ChunkedArray<Self::Chunked>> {
+        Ok(&series.datetime()?.phys)
+    }
+}
+
+pub(crate) fn collect_single_multiplicity_element<'a, T: PolarsDataType + Clone, OutputType>(
     patient_cdf: &'a ContextualizedDataFrame,
     data_context: &'a Context,
     header_context: &'a Context,
-) -> Result<Option<String>, CollectorError> {
+) -> Result<Option<OutputType>, CollectorError>
+where
+    OutputType: PolarsSeriesDowncast<Chunked = T>,
+    T::Physical<'a>: Into<OutputType> + Hash + Eq + Copy,
+    [OutputType]: ToOwned,
+{
     let cols_of_element_type = patient_cdf
         .filter_columns()
         .where_data_context(Filter::Is(data_context))
         .where_header_context(Filter::Is(header_context))
         .collect();
 
-    let mut unique_values: HashSet<String> = HashSet::new();
+    let mut unique_values: HashSet<T::Physical<'a>> = HashSet::new();
 
     for col in cols_of_element_type {
-        let stringified_col =
-            col.cast(&DataType::String)
-                .map_err(|_| DataProcessingError::CastingError {
-                    col_name: col.name().to_string(),
-                    from: col.dtype().clone(),
-                    to: DataType::String,
-                })?;
-
-        stringified_col.str()?.into_iter().for_each(|opt_val| {
+        OutputType::downcast(col)?.iter().for_each(|opt_val| {
             if let Some(val) = opt_val {
-                unique_values.insert(val.to_string());
+                unique_values.insert(val);
             }
         });
     }
 
     if unique_values.len() == 1 {
         match unique_values.iter().next() {
-            Some(unique_val) => Ok(Some(unique_val.to_owned())),
+            Some(unique_val) => Ok(Some((*unique_val).into())),
             None => Ok(None),
         }
     } else if unique_values.len() > 1 {
@@ -175,9 +207,13 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(context, df).unwrap();
 
-        let sme = collect_single_multiplicity_element(&cdf, &Context::SubjectSex, &Context::None)
-            .unwrap()
-            .unwrap();
+        let sme = collect_single_multiplicity_element::<StringType, String>(
+            &cdf,
+            &Context::SubjectSex,
+            &Context::None,
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(sme, "MALE");
     }
 
@@ -202,7 +238,11 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
-        let sme = collect_single_multiplicity_element(&cdf, &context, &Context::None);
+        let sme = collect_single_multiplicity_element::<StringType, String>(
+            &cdf,
+            &context,
+            &Context::None,
+        );
         assert!(sme.is_err());
     }
 

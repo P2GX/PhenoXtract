@@ -4,7 +4,11 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils;
 use crate::transform::error::CollectorError;
+use chrono::DateTime;
+use polars::datatypes::Int64Type;
+use polars::prelude::StringType;
 use std::any::Any;
+
 #[derive(Debug)]
 pub struct IndividualCollector;
 
@@ -15,13 +19,19 @@ impl Collect for IndividualCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let date_of_birth = utils::collect_single_multiplicity_element(
+        let date_of_birth = utils::collect_single_multiplicity_element::<Int64Type, i64>(
             patient_cdf,
             &Context::DateOfBirth,
             &Context::None,
         )?;
 
-        let subject_sex = utils::collect_single_multiplicity_element(
+        let date_of_birth = date_of_birth.map(|timestamp| {
+            DateTime::from_timestamp(timestamp, 0)
+                .expect("Invalid timestamp")
+                .to_string()
+        });
+
+        let subject_sex = utils::collect_single_multiplicity_element::<StringType, String>(
             patient_cdf,
             &Context::SubjectSex,
             &Context::None,
@@ -59,40 +69,37 @@ impl IndividualCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let status = utils::collect_single_multiplicity_element(
+        let status = utils::collect_single_multiplicity_element::<StringType, String>(
             patient_cdf,
             &Context::VitalStatus,
             &Context::None,
         )?;
 
         if let Some(status) = status {
-            let time_of_death = utils::collect_single_multiplicity_element(
+            let time_of_death = utils::collect_single_multiplicity_element::<StringType, String>(
                 patient_cdf,
                 &Context::AgeOfDeath,
                 &Context::None,
             )?;
 
-            let cause_of_death = utils::collect_single_multiplicity_element(
+            let cause_of_death = utils::collect_single_multiplicity_element::<StringType, String>(
                 patient_cdf,
                 &Context::CauseOfDeath,
                 &Context::None,
             )?;
 
-            let survival_time_days = utils::collect_single_multiplicity_element(
+            let survival_time_days = utils::collect_single_multiplicity_element::<Int64Type, i64>(
                 patient_cdf,
                 &Context::SurvivalTimeDays,
                 &Context::None,
             )?;
-            let survival_time_days = survival_time_days
-                .map(|str| str.parse::<u32>())
-                .transpose()?;
 
             builder.upsert_vital_status(
                 phenopacket_id,
                 status.as_ref(),
                 time_of_death.as_deref(),
                 cause_of_death.as_deref(),
-                survival_time_days,
+                survival_time_days.map(|x| x as u32),
             )?;
         }
         Ok(())
@@ -175,7 +182,7 @@ mod tests {
         let dob_col = Column::new("dob".into(), [AnyValue::String("1960-02-05")]);
         let time_of_death_col =
             Column::new("time_of_death".into(), [AnyValue::String("2001-01-29")]);
-        let survival_time_col = Column::new("survival_time".into(), [AnyValue::Int32(155)]);
+        let survival_time_col = Column::new("survival_time".into(), [AnyValue::UInt32(155)]);
         DataFrame::new(vec![
             id_col,
             subject_sex_col,
