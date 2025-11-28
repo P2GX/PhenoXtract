@@ -31,7 +31,6 @@ use prost_types::Timestamp;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
@@ -67,10 +66,6 @@ impl PhenopacketBuilder {
         });
 
         phenopackets
-    }
-    #[allow(dead_code)]
-    pub(crate) fn build_for_id(&self, phenopacket_id: String) -> Option<Phenopacket> {
-        self.subject_to_phenopacket.get(&phenopacket_id).cloned()
     }
 
     pub(crate) fn upsert_individual(
@@ -202,7 +197,6 @@ impl PhenopacketBuilder {
     ///     Err(e) => eprintln!("Error upserting feature: {}", e)
     /// }
     /// ```
-    #[allow(dead_code)]
     pub(crate) fn upsert_phenotypic_feature(
         &mut self,
         phenopacket_id: &str,

@@ -24,9 +24,7 @@ use validator::Validate;
 #[validate(schema(function = "validate_dangling_sc",))]
 #[validate(schema(function = "validate_subject_id_col_no_nulls",))]
 pub struct ContextualizedDataFrame {
-    #[allow(unused)]
     context: TableContext,
-    #[allow(unused)]
     data: DataFrame,
 }
 
@@ -37,17 +35,14 @@ impl ContextualizedDataFrame {
         Ok(cdf)
     }
 
-    #[allow(unused)]
     pub fn context(&self) -> &TableContext {
         &self.context
     }
 
-    #[allow(unused)]
     pub fn series_contexts(&self) -> &Vec<SeriesContext> {
         self.context.context()
     }
 
-    #[allow(unused)]
     pub fn series_contexts_mut(&self) -> &Vec<SeriesContext> {
         self.context.context()
     }
@@ -86,7 +81,6 @@ impl ContextualizedDataFrame {
     /// let cols = dataset.get_column(&Identifier::Regex("user.*".into()));
     /// let specific_cols = dataset.get_column(&Identifier::Multi(vec!["id", "name"]));
     /// ```
-    #[allow(unused)]
     pub fn get_columns(&self, id: &Identifier) -> Vec<&Column> {
         match id {
             Identifier::Regex(pattern) => {

@@ -16,7 +16,6 @@ impl StrategyFactory {
     pub fn new(ontology_factory: CachedOntologyFactory) -> Self {
         StrategyFactory { ontology_factory }
     }
-    #[allow(dead_code)]
     pub fn try_from_configs(
         &mut self,
         configs: &[StrategyConfig],
@@ -30,7 +29,6 @@ impl StrategyFactory {
             .collect()
     }
 
-    #[allow(dead_code)]
     pub fn try_from_config(
         &mut self,
         config: &StrategyConfig,

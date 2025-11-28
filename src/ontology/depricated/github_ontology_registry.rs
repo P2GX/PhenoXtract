@@ -155,8 +155,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
 
         Ok(out_path)
     }
-    #[allow(dead_code)]
-    #[allow(unused)]
+
     fn deregister(&self, version: &str) -> Result<(), RegistryError> {
         let resolved_version = self.resolve_version(version);
         let file_path = self
@@ -173,8 +172,7 @@ impl OntologyRegistry for GithubOntologyRegistry {
         debug!("Deregistered {}", file_path.display());
         Ok(())
     }
-    #[allow(dead_code)]
-    #[allow(unused)]
+
     fn get_location(&self, version: &str) -> Option<PathBuf> {
         let resolved_version = self.resolve_version(version);
         let file_path = self

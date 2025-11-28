@@ -21,7 +21,6 @@ use regex::Regex;
 ///
 /// The old columns and contexts will be removed.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct MultiHPOColExpansionStrategy;
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {

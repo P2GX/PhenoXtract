@@ -12,7 +12,6 @@ use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 
-#[allow(dead_code)]
 #[derive(Debug)]
 /// Given a column whose cells contains ages (e.g. subject age, age of death, age of onset)
 /// this strategy converts integer entries to ISO8601 durations: 47 -> P47Y

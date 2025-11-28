@@ -18,10 +18,8 @@ use validator::Validate;
 ))]
 pub struct ExcelDatasource {
     /// The file path to the Excel workbook.
-    #[allow(unused)]
     pub source: PathBuf,
     /// A list of contexts, one for each sheet to be processed from the workbook.
-    #[allow(unused)]
     #[validate(custom(function = "validate_unique_sheet_names"))]
     pub contexts: Vec<TableContext>,
 
@@ -31,7 +29,6 @@ pub struct ExcelDatasource {
 }
 
 impl ExcelDatasource {
-    #[allow(dead_code)]
     pub fn new(
         source: PathBuf,
         contexts: Vec<TableContext>,

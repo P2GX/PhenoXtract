@@ -59,7 +59,6 @@ pub struct MappingStrategy {
 }
 
 impl MappingStrategy {
-    #[allow(dead_code)]
     pub fn new(
         synonym_map: HashMap<String, String>,
         data_context: Context,
@@ -76,13 +75,11 @@ impl MappingStrategy {
         }
     }
 
-    #[allow(unused)]
     pub fn add_alias(&mut self, alias: &str, term: &str) {
         self.synonym_map
             .insert(alias.trim().to_lowercase(), term.to_string());
     }
 
-    #[allow(unused)]
     pub fn default_sex_mapping_strategy() -> MappingStrategy {
         MappingStrategy::new(
             HashMap::from([
@@ -109,7 +106,6 @@ impl MappingStrategy {
         )
     }
 
-    #[allow(unused)]
     pub fn default_vital_status_mapping_strategy() -> MappingStrategy {
         MappingStrategy::new(
             HashMap::from([

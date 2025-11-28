@@ -10,7 +10,6 @@ use std::collections::HashMap;
 /// the results to avoid repeated network requests. It maintains a cache of resolved
 /// resources and allows specifying known versions for resources before resolution.
 #[derive(Clone, Default, Debug, PartialEq)]
-#[allow(dead_code)]
 pub struct CachedResourceResolver {
     cache: HashMap<String, Resource>,
     bio_reg_client: BioRegistryClient,
@@ -35,7 +34,6 @@ impl CachedResourceResolver {
     ///
     /// * `Some(Resource)` if the resource was successfully resolved with all required fields
     /// * `None` if the resource couldn't be found or is missing required fields
-    #[allow(dead_code)]
     pub fn resolve(&mut self, resource_ref: &(impl HasPrefixId + HasVersion)) -> Option<Resource> {
         let prefix_id = resource_ref.prefix_id().to_lowercase();
         debug!("Resolve id: {}", prefix_id);

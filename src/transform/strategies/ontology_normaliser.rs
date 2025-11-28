@@ -13,7 +13,6 @@ use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 /// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
 /// It is case-insensitive.

@@ -313,7 +313,7 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
 
         Ok(out_path)
     }
-    #[allow(unused)]
+
     fn deregister(&mut self, version: &str) -> Result<(), RegistryError> {
         let resolved_version = self.resolve_filename_and_version(version)?;
         let file_path = self
@@ -331,7 +331,6 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
         Ok(())
     }
 
-    #[allow(unused)]
     fn get_location(&mut self, version: &str) -> Option<PathBuf> {
         let resolved_version = self.resolve_filename_and_version(version).ok()?;
         let file_path = self

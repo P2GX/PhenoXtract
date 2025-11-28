@@ -8,8 +8,6 @@ pub trait Extractable: std::fmt::Debug {
 
 pub trait HasSource {
     type Source;
-    #[allow(dead_code)]
     fn source(&self) -> &Self::Source;
-    #[allow(dead_code)]
     fn with_source(self, source: &Self::Source) -> Self;
 }

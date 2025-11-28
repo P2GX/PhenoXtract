@@ -5,7 +5,6 @@ use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,

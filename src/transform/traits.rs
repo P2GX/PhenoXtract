@@ -2,7 +2,6 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError;
 use std::fmt::Debug;
 
-#[allow(dead_code)]
 /// Represents a strategy for transforming a collection of references to `ContextualizedDataFrame` structs.
 ///
 /// This trait defines a standard interface for applying a conditional transformation

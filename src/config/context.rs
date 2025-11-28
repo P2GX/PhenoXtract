@@ -9,47 +9,25 @@ use std::fmt::Display;
 #[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
-    #[allow(unused)]
     HpoLabelOrId,
-    #[allow(unused)]
     OmimLabelOrId,
-    #[allow(unused)]
     OrphanetLabelOrId,
-    #[allow(unused)]
     MondoLabelOrId,
-    #[allow(unused)]
     HgncSymbolOrId,
-    #[allow(unused)]
     GenoLabelOrId,
-    #[allow(unused)]
     Hgvs,
-    #[allow(unused)]
     OnsetDateTime,
-    #[allow(unused)]
     OnsetAge,
-    #[allow(unused)]
     SubjectId,
-    #[allow(unused)]
     SubjectSex,
-    #[allow(unused)]
     DateOfBirth,
-    #[allow(unused)]
     VitalStatus,
-    #[allow(unused)]
     SubjectAge,
-    #[allow(unused)]
     WeightInKg,
-    #[allow(unused)]
     AgeOfDeath,
-    #[allow(unused)]
     CauseOfDeath,
-    #[allow(unused)]
     SurvivalTimeDays,
-    #[allow(unused)]
-    SmokerBool,
-    #[allow(unused)]
     ObservationStatus,
-    #[allow(unused)]
     MultiHpoId,
     #[default]
     None,

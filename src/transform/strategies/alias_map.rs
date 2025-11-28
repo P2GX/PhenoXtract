@@ -15,7 +15,6 @@ use std::borrow::Cow;
 /// then the strategy will apply those aliases to each cell.
 /// # NOTE
 /// This does not transform the headers of the Dataframe.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct AliasMapStrategy;
 
@@ -165,7 +164,6 @@ mod tests {
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::default()
             .with_identifier(Identifier::Regex("smokes".to_string()))
-            .with_data_context(Context::SmokerBool)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("false".to_string(), "true".to_string())]),
                 OutputDataType::Boolean,
