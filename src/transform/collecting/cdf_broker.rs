@@ -1,9 +1,10 @@
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
+use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;
+use crate::transform::collecting::hpo_in_header_collecotr::HpoInHeaderCollector;
 use crate::transform::collecting::individual_collector::IndividualCollector;
 use crate::transform::collecting::interpretation_collector::InterpretationCollector;
-use crate::transform::collecting::phenotype_collector::PhenotypeCollector;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
@@ -68,7 +69,8 @@ impl CdfBroker {
             cohort_name,
             vec![
                 Box::new(IndividualCollector),
-                Box::new(PhenotypeCollector),
+                Box::new(HpoInCellsCollector),
+                Box::new(HpoInHeaderCollector),
                 Box::new(InterpretationCollector),
                 Box::new(DiseaseCollector),
             ],

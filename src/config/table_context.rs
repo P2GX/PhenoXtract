@@ -88,6 +88,24 @@ impl From<&str> for Identifier {
         Identifier::Regex(value.to_string())
     }
 }
+impl From<String> for Identifier {
+    fn from(value: String) -> Self {
+        Identifier::Regex(value)
+    }
+}
+
+impl From<Vec<String>> for Identifier {
+    fn from(value: Vec<String>) -> Self {
+        Identifier::Multi(value)
+    }
+}
+
+impl From<&[String]> for Identifier {
+    fn from(value: &[String]) -> Self {
+        Identifier::Multi(value.to_vec())
+    }
+}
+
 impl Default for Identifier {
     fn default() -> Self {
         Identifier::Regex(String::new())
