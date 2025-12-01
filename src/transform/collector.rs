@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, DISEASE_LABEL_OR_ID_CONTEXTS};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
@@ -30,20 +30,7 @@ impl Collector {
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
         for cdf in cdfs {
-            let subject_id_cols = cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect();
-            if subject_id_cols.len() > 1 {
-                return Err(CollectorError::ExpectedSingleColumn {
-                    table_name: cdf.context().name().to_string(),
-                    context: Context::SubjectId,
-                });
-            }
-
-            let subject_id_col = subject_id_cols
-                .last()
-                .ok_or(DataProcessingError::EmptyFilteringError)?;
+            let subject_id_col = cdf.get_subject_id_col();
 
             let patient_dfs = cdf
                 .data()
@@ -298,7 +285,7 @@ impl Collector {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context_is_disease()
+            .where_data_contexts_are(&DISEASE_LABEL_OR_ID_CONTEXTS)
             .collect();
 
         for disease_sc in disease_in_cells_scs {
@@ -363,7 +350,7 @@ impl Collector {
         let disease_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
-            .where_data_context_is_disease()
+            .where_data_contexts_are(&DISEASE_LABEL_OR_ID_CONTEXTS)
             .collect();
 
         for disease_sc in disease_in_cells_scs {

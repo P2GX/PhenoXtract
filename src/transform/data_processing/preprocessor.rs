@@ -28,7 +28,7 @@ impl CdfPreprocessor {
     fn trim_strings(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
         let string_col_names: Vec<String> = cdf
             .filter_columns()
-            .where_dtype(Filter::Is(&DataType::String))
+            .where_data_type(Filter::Is(&DataType::String))
             .collect_owned_names();
 
         for col_name in string_col_names {
@@ -58,9 +58,9 @@ impl CdfPreprocessor {
     fn ensure_ints(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
         let float_col_names: Vec<String> = cdf
             .filter_columns()
-            .where_dtype(Filter::Is(&DataType::Float64))
-            .where_dtype(Filter::Is(&DataType::Float32))
-            .where_dtype(Filter::Is(&DataType::Int32))
+            .where_data_type(Filter::Is(&DataType::Float64))
+            .where_data_type(Filter::Is(&DataType::Float32))
+            .where_data_type(Filter::Is(&DataType::Int32))
             .collect_owned_names();
 
         for col_name in float_col_names {

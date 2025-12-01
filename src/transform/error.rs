@@ -3,7 +3,7 @@ use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
 use polars::prelude::DataType;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
 use std::num::ParseFloatError;
@@ -68,6 +68,35 @@ impl Display for MappingErrorInfo {
             write!(f, ")")?;
         }
         Ok(())
+    }
+}
+
+pub trait PushMappingError {
+    fn insert_error(
+        &mut self,
+        column: String,
+        table: String,
+        old_value: String,
+        possible_mappings: Vec<MappingSuggestion>,
+    );
+}
+impl PushMappingError for HashSet<MappingErrorInfo> {
+    fn insert_error(
+        &mut self,
+        column: String,
+        table: String,
+        old_value: String,
+        possible_mappings: Vec<MappingSuggestion>,
+    ) {
+        let mapping_error_info = MappingErrorInfo {
+            column,
+            table,
+            old_value,
+            possible_mappings,
+        };
+        if !self.contains(&mapping_error_info) {
+            self.insert(mapping_error_info);
+        }
     }
 }
 
@@ -155,13 +184,13 @@ pub enum StrategyError {
         col_name: String,
         table_name: String,
     },
-
     #[error(
-        "Strategy '{strategy_name}' unable to map: \n {}",
+        "{message}. Strategy '{strategy_name}' unable to map: \n {}",
         format_grouped_errors(info)
     )]
     MappingError {
         strategy_name: String,
+        message: String,
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
@@ -170,6 +199,19 @@ pub enum StrategyError {
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
     PolarsError(Box<PolarsError>),
+    #[error(
+        "Multiplicity error for {context}: {message}. Invalid for the following patients: {patients:?}"
+    )]
+    MultiplicityError {
+        context: Context,
+        message: String,
+        patients: Vec<String>,
+    },
+    #[error("Could not parse {unparseable_date} as a date or datetime for {subject_id}")]
+    DateParsingError {
+        subject_id: String,
+        unparseable_date: String,
+    },
 }
 
 impl From<DataProcessingError> for StrategyError {
