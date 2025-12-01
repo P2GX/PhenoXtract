@@ -3,6 +3,7 @@ use crate::extract::contextualized_dataframe_filters::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
 use crate::validation::table_context_validation::validate_unique_identifiers;
+use polars::prelude::{DataType, TimeUnit};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -114,6 +115,19 @@ pub enum OutputDataType {
     Int64,
     Date,
     Datetime,
+}
+
+impl OutputDataType {
+    pub fn as_polars(&self) -> DataType {
+        match self {
+            OutputDataType::Boolean => DataType::Boolean,
+            OutputDataType::String => DataType::String,
+            OutputDataType::Float64 => DataType::Float64,
+            OutputDataType::Int64 => DataType::Int64,
+            OutputDataType::Date => DataType::Date,
+            OutputDataType::Datetime => DataType::Datetime(TimeUnit::Nanoseconds, None),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -258,5 +272,24 @@ impl SeriesContext {
     pub fn with_fill_missing(mut self, fill_missing: Option<CellValue>) -> Self {
         self.fill_missing = fill_missing;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_output_datatype_as_polars() {
+        assert_eq!(OutputDataType::Boolean.as_polars(), DataType::Boolean);
+        assert_eq!(OutputDataType::String.as_polars(), DataType::String);
+        assert_eq!(OutputDataType::Float64.as_polars(), DataType::Float64);
+        assert_eq!(OutputDataType::Int64.as_polars(), DataType::Int64);
+        assert_eq!(OutputDataType::Date.as_polars(), DataType::Date);
+        assert_eq!(
+            OutputDataType::Datetime.as_polars(),
+            DataType::Datetime(TimeUnit::Nanoseconds, None)
+        );
     }
 }
