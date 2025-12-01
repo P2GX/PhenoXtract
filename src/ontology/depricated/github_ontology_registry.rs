@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::ontology::traits::OntologyRegistry;
 
 use crate::ontology::error::RegistryError;

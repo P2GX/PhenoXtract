@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::ontology::traits::OntologyRegistry;
 
 use crate::ontology::error::RegistryError;
@@ -40,16 +38,17 @@ impl ObolibraryOntologyRegistry {
             obolib_client: ObolibraryClient::default(),
         }
     }
-
+    #[allow(dead_code)]
     pub fn with_ontology_prefix<T: Into<String>>(mut self, ontology_prefix: T) -> Self {
         self.ontology_prefix = ontology_prefix.into();
         self
     }
+    #[allow(dead_code)]
     pub fn with_registry_path<T: Into<PathBuf>>(mut self, registry_path: T) -> Self {
         self.registry_path = registry_path.into();
         self
     }
-
+    #[allow(dead_code)]
     pub fn with_file_name<T: Into<String>>(mut self, file_name: T) -> Self {
         self.file_name = Some(file_name.into());
         self
@@ -190,6 +189,7 @@ impl ObolibraryOntologyRegistry {
     ///
     /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
     /// project directories nor the `HOME` environment variable can be determined.
+    #[allow(dead_code)]
     pub fn default_hpoa_registry() -> Result<Self, RegistryError> {
         let hpo = "hp";
         let registry_path = Self::default_registry_path(hpo)?;

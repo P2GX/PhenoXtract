@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::ontology::error::ClientError;
 use crate::ontology::utils::get_cache_dir;
 use log::{debug, info};
