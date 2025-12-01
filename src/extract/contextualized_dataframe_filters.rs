@@ -1,4 +1,4 @@
-use crate::config::context::{AGE_CONTEXTS, Context, DISEASE_LABEL_OR_ID_CONTEXTS};
+use crate::config::context::Context;
 use crate::config::table_context::{CellValue, Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
@@ -42,32 +42,52 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_building_blocks_are(mut self, building_blocks: &'a [&str]) -> Self {
+        for building_block in building_blocks.iter() {
+            self.building_block.push(Filter::Is(building_block));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
         self.header_context.push(header_context);
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.header_context.push(Filter::Is(context));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
         self.data_context.push(data_context);
         self
     }
 
-    pub fn where_data_context_is_disease(mut self) -> Self {
-        for disease_context in DISEASE_LABEL_OR_ID_CONTEXTS.iter() {
-            self.data_context.push(Filter::Is(disease_context));
-        }
-        self
-    }
-
-    pub fn where_data_context_is_age(mut self) -> Self {
-        for age_context in AGE_CONTEXTS.iter() {
-            self.data_context.push(Filter::Is(age_context));
+    #[allow(dead_code)]
+    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.data_context.push(Filter::Is(context));
         }
         self
     }
 
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.fill_missing.push(fill_missing);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_fill_missings_are(mut self, fill_missings: &'a [CellValue]) -> Self {
+        for fill_missing in fill_missings.iter() {
+            self.fill_missing.push(Filter::Is(fill_missing));
+        }
         self
     }
 
@@ -129,7 +149,7 @@ impl<'a> SeriesContextFilter<'a> {
 pub struct ColumnFilter<'a> {
     items: &'a ContextualizedDataFrame,
     series_filter: SeriesContextFilter<'a>,
-    dtype: Vec<Filter<&'a DataType>>,
+    data_type: Vec<Filter<&'a DataType>>,
 }
 
 impl<'a> ColumnFilter<'a> {
@@ -137,54 +157,95 @@ impl<'a> ColumnFilter<'a> {
         Self {
             items,
             series_filter: SeriesContextFilter::new(items.series_contexts()),
-            dtype: Vec::new(),
+            data_type: Vec::new(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
         self.series_filter.identifier.push(identifier);
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_identifiers_are(mut self, identifiers: &'a [&Identifier]) -> Self {
+        for identifier in identifiers.iter() {
+            self.series_filter.identifier.push(Filter::Is(identifier));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
         self.series_filter.building_block.push(building_block);
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_building_blocks_are(mut self, building_blocks: &'a [&str]) -> Self {
+        for building_block in building_blocks.iter() {
+            self.series_filter
+                .building_block
+                .push(Filter::Is(building_block));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
         self.series_filter.header_context.push(header_context);
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.series_filter.header_context.push(Filter::Is(context));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
         self.series_filter.data_context.push(data_context);
         self
     }
 
-    pub fn where_data_context_is_disease(mut self) -> Self {
-        for disease_context in DISEASE_LABEL_OR_ID_CONTEXTS.iter() {
-            self.series_filter
-                .data_context
-                .push(Filter::Is(disease_context));
+    #[allow(dead_code)]
+    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.series_filter.data_context.push(Filter::Is(context));
         }
         self
     }
 
-    pub fn where_data_context_is_age(mut self) -> Self {
-        for age_context in AGE_CONTEXTS.iter() {
-            self.series_filter
-                .data_context
-                .push(Filter::Is(age_context));
-        }
-        self
-    }
-
+    #[allow(dead_code)]
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.series_filter.fill_missing.push(fill_missing);
         self
     }
-    pub fn where_dtype(mut self, data_type: Filter<&'a DataType>) -> Self {
-        self.dtype.push(data_type);
+
+    #[allow(dead_code)]
+    pub fn where_fill_missings_are(mut self, fill_missings: &'a [CellValue]) -> Self {
+        for fill_missing in fill_missings.iter() {
+            self.series_filter
+                .fill_missing
+                .push(Filter::Is(fill_missing));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_type(mut self, data_type: Filter<&'a DataType>) -> Self {
+        self.data_type.push(data_type);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_types_are(mut self, data_types: &'a [DataType]) -> Self {
+        for data_type in data_types.iter() {
+            self.data_type.push(Filter::Is(data_type));
+        }
         self
     }
 
@@ -203,8 +264,8 @@ impl<'a> ColumnFilter<'a> {
                     .get_columns(sc.get_identifier())
                     .into_iter()
                     .filter(|col| {
-                        self.dtype.is_empty()
-                            || self.dtype.iter().any(|f| match f {
+                        self.data_type.is_empty()
+                            || self.data_type.iter().any(|f| match f {
                                 Filter::Is(dtype) => *dtype == col.dtype(),
                                 Filter::IsNot(dtype) => *dtype != col.dtype(),
                                 Filter::IsSome => true, // Assuming col.dtype() is not an Option
@@ -365,7 +426,7 @@ mod tests {
         let series = vec![
             SeriesContext::default().with_data_context(Context::SubjectId),
             SeriesContext::default().with_data_context(Context::HpoLabelOrId),
-            SeriesContext::default().with_data_context(Context::SubjectAge),
+            SeriesContext::default().with_data_context(Context::AgeAtLastEncounter),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -381,35 +442,32 @@ mod tests {
     }
 
     #[rstest]
-    fn test_filter_data_context_by_disease() {
-        let ctx1 = Context::SubjectId;
-        let ctx2 = Context::OmimLabelOrId;
-        let ctx3 = Context::OrphanetLabelOrId;
-
+    fn test_where_data_contexts_are() {
         let series = vec![
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_data_context(ctx1.clone()),
+                .with_data_context(Context::SubjectId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_data_context(ctx2.clone()),
+                .with_data_context(Context::HpoLabelOrId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_data_context(ctx3.clone()),
+                .with_data_context(Context::SubjectId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id4".to_string()))
-                .with_data_context(ctx3.clone()),
+                .with_data_context(Context::VitalStatus.clone()),
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .where_data_context_is_disease()
+            .where_data_contexts_are(&[Context::SubjectId, Context::HpoLabelOrId])
             .collect();
 
         assert_eq!(result.len(), 3);
         assert!(
             result
                 .iter()
-                .all(|s| s.get_data_context() == &ctx2 || s.get_data_context() == &ctx3)
+                .all(|s| s.get_data_context() == &Context::SubjectId
+                    || s.get_data_context() == &Context::HpoLabelOrId)
         );
     }
 

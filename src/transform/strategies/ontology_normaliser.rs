@@ -2,7 +2,7 @@ use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
-use crate::transform::error::{MappingErrorInfo, StrategyError};
+use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
@@ -57,7 +57,7 @@ impl Strategy for OntologyNormaliserStrategy {
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context(Filter::Is(&self.data_context))
-                .where_dtype(Filter::Is(&DataType::String))
+                .where_data_type(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
         })
@@ -87,15 +87,12 @@ impl Strategy for OntologyNormaliserStrategy {
                         curie_id
                     } else {
                         if !cell_value.is_empty() {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: cell_value.to_string(),
-                                possible_mappings: vec![],
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                error_info.insert(mapping_error_info);
-                            }
+                            error_info.insert_error(
+                                col.name().to_string(),
+                                table.context().name().to_string(),
+                                cell_value.to_string(),
+                                vec![],
+                            );
                         }
                         cell_value
                     }
@@ -111,6 +108,7 @@ impl Strategy for OntologyNormaliserStrategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "Could not find ontology terms for these strings.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -218,10 +216,12 @@ mod tests {
 
         if let Err(StrategyError::MappingError {
             strategy_name,
+            message,
             info,
         }) = strat_result
         {
             assert_eq!(strategy_name, "OntologyNormaliserStrategy");
+            assert_eq!(message, "Could not find ontology terms for these strings.");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "phenotypic_features".to_string(),

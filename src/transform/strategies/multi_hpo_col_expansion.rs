@@ -29,7 +29,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context(Filter::Is(&Context::MultiHpoId))
-                .where_dtype(Filter::Is(&DataType::String))
+                .where_data_type(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
         })
@@ -53,13 +53,7 @@ impl Strategy for MultiHPOColExpansionStrategy {
             let table_name = table.context().name().to_string();
             info!("Applying MultiHPOColExpansion strategy to table: {table_name}");
 
-            let stringified_subject_id_col = table
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect()
-                .last()
-                .ok_or(DataProcessingError::EmptyFilteringError)?
-                .str()?;
+            let stringified_subject_id_col = table.get_subject_id_col().str()?;
             let mut inserts: Vec<(SeriesContext, Vec<Column>)> = Vec::new();
 
             let mut bb_ids = table
@@ -266,7 +260,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge),
+                    .with_data_context(Context::AgeAtLastEncounter),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Multi_HPOs_Block_A".to_string()))
                     .with_data_context(Context::MultiHpoId)
@@ -329,7 +323,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge),
+                    .with_data_context(Context::AgeAtLastEncounter),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "HP:1111111#A".to_string(),

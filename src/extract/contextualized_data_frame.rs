@@ -10,8 +10,9 @@ use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
-use polars::prelude::{Column, DataFrame, DataType, Series};
+use polars::prelude::{Column, DataFrame, DataType, PolarsError, Series};
 use regex::Regex;
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
 use validator::Validate;
@@ -159,6 +160,40 @@ impl ContextualizedDataFrame {
             .collect()[0]
     }
 
+    /// Given a column in a ContextualisedDataFrame, this function will create a patient_ID -> string data HashMap,
+    /// where the data is whatever is contained in the cells of the string column.
+    ///
+    /// If the column, does not already have String datatype, and attempt will be made to cast it to String datatype.
+    pub fn create_subject_id_string_data_hash_map(
+        &self,
+        col_name: &str,
+    ) -> Result<HashMap<String, Vec<String>>, PolarsError> {
+        let mut hm: HashMap<String, Vec<String>> = HashMap::new();
+        let stringified_subject_id_col = self
+            .get_subject_id_col()
+            .str()
+            .expect("SubjectID column should be of String data type.");
+        let col = self.data.column(col_name)?;
+        let cast_col = if col.dtype() != &DataType::String {
+            col.cast(&DataType::String)?
+        } else {
+            col.clone()
+        };
+        let string_data = cast_col.str()?;
+        for (subject_id_opt, data_val_opt) in
+            stringified_subject_id_col.iter().zip(string_data.iter())
+        {
+            let subject_id =
+                subject_id_opt.expect("There should be no gaps in the SubjectID column");
+            if let Some(data_val) = data_val_opt {
+                hm.entry(subject_id.to_string())
+                    .or_default()
+                    .push(data_val.to_string())
+            }
+        }
+        Ok(hm)
+    }
+
     /// Extracts a uniquely-defined value from matching contexts in a CDF.
     ///
     /// Hunts through the CDF for all values matching the specified data and header contexts,
@@ -301,7 +336,7 @@ mod tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge)
+                    .with_data_context(Context::AgeAtLastEncounter)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -432,6 +467,31 @@ mod tests {
         expected_bb_ids.insert("block_1");
 
         assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
+    }
+
+    #[rstest]
+    fn test_create_subject_id_string_data_hash_map_no_cast() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let patient_data_hash_map = cdf
+            .create_subject_id_string_data_hash_map("location (some stuff)")
+            .unwrap();
+        assert_eq!(patient_data_hash_map.len(), 2);
+        assert_eq!(patient_data_hash_map["Alice"], vec!["NY"]);
+        assert_eq!(patient_data_hash_map["Charlie"], vec!["LA"]);
+    }
+
+    #[rstest]
+    fn test_create_subject_id_string_data_hash_map_cast_ages() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let patient_data_hash_map = cdf.create_subject_id_string_data_hash_map("age").unwrap();
+        assert_eq!(patient_data_hash_map.len(), 3);
+        assert_eq!(patient_data_hash_map["Alice"], vec!["25"]);
+        assert_eq!(patient_data_hash_map["Bob"], vec!["30"]);
+        assert_eq!(patient_data_hash_map["Charlie"], vec!["40"]);
     }
 
     #[rstest]
@@ -681,6 +741,28 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
+    pub fn replace_header_contexts(self, header_context_hm: HashMap<Context, Context>) -> Self {
+        let scs = self.cdf.context.context_mut();
+        for sc in scs {
+            let dc = sc.get_header_context();
+            if header_context_hm.contains_key(dc) {
+                *sc.header_context_mut() = header_context_hm.get(dc).unwrap().clone();
+            }
+        }
+        self.mark_dirty()
+    }
+
+    pub fn replace_data_contexts(self, data_context_hm: HashMap<Context, Context>) -> Self {
+        let scs = self.cdf.context.context_mut();
+        for sc in scs {
+            let dc = sc.get_data_context();
+            if data_context_hm.contains_key(dc) {
+                *sc.data_context_mut() = data_context_hm.get(dc).unwrap().clone();
+            }
+        }
+        self.mark_dirty()
+    }
+
     pub fn cast(
         self,
         header_context: &Context,
@@ -768,7 +850,7 @@ mod builder_tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::SubjectAge)
+                    .with_data_context(Context::AgeAtLastEncounter)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -1028,12 +1110,100 @@ mod builder_tests {
     }
 
     #[rstest]
+    fn test_replace_header_contexts() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let keys = vec![Context::HpoLabelOrId];
+        let values = vec![Context::MondoLabelOrId];
+
+        let header_context_hm = keys.into_iter().zip(values.into_iter()).collect();
+
+        cdf.builder()
+            .replace_header_contexts(header_context_hm)
+            .build_dirty();
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .collect()
+                .len(),
+            0
+        );
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_header_context(Filter::Is(&Context::MondoLabelOrId))
+                .collect()
+                .len(),
+            2
+        );
+    }
+
+    #[rstest]
+    fn test_replace_data_contexts() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let keys = vec![Context::ObservationStatus, Context::AgeAtLastEncounter];
+        let values = vec![Context::DateOfBirth, Context::OmimLabelOrId];
+
+        let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
+
+        cdf.builder()
+            .replace_data_contexts(data_context_hm)
+            .build_dirty();
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::ObservationStatus))
+                .where_data_context(Filter::Is(&Context::AgeAtLastEncounter))
+                .collect()
+                .len(),
+            0
+        );
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::DateOfBirth))
+                .collect()
+                .len(),
+            2
+        );
+
+        assert_eq!(
+            cdf.filter_series_context()
+                .where_data_context(Filter::Is(&Context::OmimLabelOrId))
+                .collect()
+                .len(),
+            1
+        );
+    }
+
+    #[rstest]
+    fn test_get_subject_id_col() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        assert_eq!(
+            cdf.get_subject_id_col(),
+            &Column::new("user.name".into(), &["Alice", "Bob", "Charlie"])
+        );
+    }
+
+    #[rstest]
     fn test_cast() {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         cdf.builder()
-            .cast(&Context::None, &Context::SubjectAge, DataType::String)
+            .cast(
+                &Context::None,
+                &Context::AgeAtLastEncounter,
+                DataType::String,
+            )
             .unwrap()
             .build_dirty();
         let age_col = cdf.data().column("age").unwrap();

@@ -222,8 +222,16 @@ impl SeriesContext {
         &self.header_context
     }
 
+    pub fn header_context_mut(&mut self) -> &mut Context {
+        &mut self.header_context
+    }
+
     pub fn get_data_context(&self) -> &Context {
         &self.data_context
+    }
+
+    pub fn data_context_mut(&mut self) -> &mut Context {
+        &mut self.data_context
     }
 
     pub fn get_alias_map(&self) -> Option<&AliasMap> {

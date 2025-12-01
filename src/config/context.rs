@@ -6,7 +6,7 @@ use std::fmt::Display;
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
-#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize, Hash, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
     HpoLabelOrId,
@@ -23,7 +23,10 @@ pub enum Context {
     DateOfBirth,
     VitalStatus,
     SubjectAge,
+    AgeAtLastEncounter,
+    DateAtLastEncounter,
     WeightInKg,
+    DateOfDeath,
     AgeOfDeath,
     CauseOfDeath,
     SurvivalTimeDays,
@@ -48,5 +51,15 @@ pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
     Context::OrphanetLabelOrId,
 ];
 
-pub const AGE_CONTEXTS: [Context; 3] =
-    [Context::SubjectAge, Context::OnsetAge, Context::AgeOfDeath];
+pub const DATE_CONTEXTS: [Context; 4] = [
+    Context::DateOfBirth,
+    Context::DateAtLastEncounter,
+    Context::OnsetDateTime,
+    Context::DateOfDeath,
+];
+
+pub const AGE_CONTEXTS: [Context; 3] = [
+    Context::AgeAtLastEncounter,
+    Context::OnsetAge,
+    Context::AgeOfDeath,
+];

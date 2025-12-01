@@ -137,7 +137,7 @@ mod tests {
     fn sc_int_alias() -> SeriesContext {
         SeriesContext::default()
             .with_identifier(Identifier::Regex("age".to_string()))
-            .with_data_context(Context::SubjectAge)
+            .with_data_context(Context::AgeAtLastEncounter)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("11".to_string(), "22".to_string())]),
                 OutputDataType::Int64,

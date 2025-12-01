@@ -1,12 +1,12 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError::MappingError;
-use crate::transform::error::{MappingErrorInfo, StrategyError};
+use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::Context;
+use crate::config::context::{AGE_CONTEXTS, Context};
 use crate::transform::utils::is_iso8601_duration;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
@@ -51,7 +51,7 @@ impl Strategy for AgeToIso8601Strategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context_is_age()
+                .where_data_contexts_are(&AGE_CONTEXTS)
                 .collect()
                 .is_empty()
         })
@@ -73,7 +73,7 @@ impl Strategy for AgeToIso8601Strategy {
             let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context_is_age()
+                .where_data_contexts_are(&AGE_CONTEXTS)
                 .collect_owned_names();
 
             for col_name in column_names {
@@ -104,15 +104,12 @@ impl Strategy for AgeToIso8601Strategy {
                             .expect("Age was too high or too low")
                     } else {
                         if !cell_value.is_empty() {
-                            let mapping_error_info = MappingErrorInfo {
-                                column: col.name().to_string(),
-                                table: table.context().name().to_string(),
-                                old_value: cell_value.to_string(),
-                                possible_mappings: vec![],
-                            };
-                            if !error_info.contains(&mapping_error_info) {
-                                error_info.insert(mapping_error_info);
-                            }
+                            error_info.insert_error(
+                                col.name().to_string(),
+                                table.context().name().to_string(),
+                                cell_value.to_string(),
+                                vec![],
+                            );
                         }
                         cell_value
                     }
@@ -128,6 +125,7 @@ impl Strategy for AgeToIso8601Strategy {
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                message: "These cell values were neither ISO8601 nor years.".to_string(),
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -157,7 +155,7 @@ mod tests {
             .with_data_context(Context::SubjectId);
         let sc_age = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
-            .with_data_context(Context::SubjectAge);
+            .with_data_context(Context::AgeAtLastEncounter);
         TableContext::new("patient_data".to_string(), vec![sc_pid, sc_age])
     }
 
@@ -279,10 +277,12 @@ mod tests {
 
         if let Err(StrategyError::MappingError {
             strategy_name,
+            message,
             info,
         }) = result
         {
             assert_eq!(strategy_name, "AgeToIso8601Strategy");
+            assert_eq!(message, "These cell values were neither ISO8601 nor years.");
             let expected_error_info: Vec<MappingErrorInfo> = Vec::from([
                 MappingErrorInfo {
                     column: "age".to_string(),
