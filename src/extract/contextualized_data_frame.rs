@@ -159,13 +159,26 @@ impl ContextualizedDataFrame {
             .collect()[0]
     }
 
-    /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
-    /// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
-    /// this function will:
-    /// -find all values for that context
-    /// -throw an error if it finds multiple distinct values
-    /// return Ok(None) if it finds no values
-    /// return Ok(unique_val) if there is a single unique value
+    /// Extracts a uniquely-defined value from matching contexts in a CDF.
+    ///
+    /// Hunts through the CDF for all values matching the specified data and header contexts,
+    /// then enforces cardinality constraints: zero matches returns `None`, exactly one match
+    /// returns that value, but multiple distinct values trigger an error.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Extract a patient's date of birth from their CDF
+    /// let dob = patient_cdf.get_single_multiplicity_element(
+    ///     Context::DateOfBirth,
+    ///     Context::None
+    /// )?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `CollectorError::ExpectedSingleValue` when multiple distinct values are found
+    /// for the given context pair.
     pub(crate) fn get_single_multiplicity_element<'a>(
         &self,
         data_context: &'a Context,
