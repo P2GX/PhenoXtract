@@ -4,7 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use polars::datatypes::{DataType, StringChunked};
 use polars::error::PolarsError;
-use std::collections::HashSet;
+use polars::prelude::Column;
 
 /// Given a CDF, building block ID and data contexts
 /// this function will find all columns
@@ -72,37 +72,35 @@ pub(crate) fn collect_single_multiplicity_element<'a>(
     data_context: &'a Context,
     header_context: &'a Context,
 ) -> Result<Option<String>, CollectorError> {
-    let cols_of_element_type = patient_cdf
+    let cols_of_element_type: Vec<&Column> = patient_cdf
         .filter_columns()
         .where_data_context(Filter::Is(data_context))
         .where_header_context(Filter::Is(header_context))
         .collect();
 
-    let mut unique_values: HashSet<String> = HashSet::new();
-
-    for col in cols_of_element_type {
-        let stringified_col =
-            col.cast(&DataType::String)
-                .map_err(|_| DataProcessingError::CastingError {
-                    col_name: col.name().to_string(),
-                    from: col.dtype().clone(),
-                    to: DataType::String,
-                })?;
-
-        stringified_col.str()?.into_iter().for_each(|opt_val| {
-            if let Some(val) = opt_val {
-                unique_values.insert(val.to_string());
-            }
-        });
+    if cols_of_element_type.is_empty() {
+        return Ok(None);
     }
 
-    if unique_values.len() == 1 {
-        match unique_values.iter().next() {
-            Some(unique_val) => Ok(Some(unique_val.to_owned())),
-            None => Ok(None),
+    let mut combined_col = cols_of_element_type[0].clone();
+    for col in cols_of_element_type.iter().skip(1) {
+        combined_col.extend(col)?;
+    }
+
+    let unique_values = combined_col.drop_nulls().unique_stable()?;
+
+    match unique_values.len() {
+        0 => Ok(None),
+        1 => {
+            let cast_unique = unique_values.cast(&DataType::String)?;
+            let val = cast_unique.get(0)?;
+            Ok(Some(
+                val.extract_str()
+                    .expect("Should have been a string.")
+                    .to_string(),
+            ))
         }
-    } else if unique_values.len() > 1 {
-        Err(CollectorError::ExpectedSingleValue {
+        _ => Err(CollectorError::ExpectedSingleValue {
             table_name: patient_cdf.context().name().to_string(),
             patient_id: patient_cdf
                 .get_subject_id_col()
@@ -111,9 +109,7 @@ pub(crate) fn collect_single_multiplicity_element<'a>(
                 .to_string(),
             data_context: data_context.clone(),
             header_context: header_context.clone(),
-        })
-    } else {
-        Ok(None)
+        }),
     }
 }
 
