@@ -185,7 +185,7 @@ pub enum StrategyError {
         table_name: String,
     },
     #[error(
-        "Strategy '{strategy_name}' unable to map: \n {}",
+        "{message}. Strategy '{strategy_name}' unable to map: \n {}",
         format_grouped_errors(info)
     )]
     MappingError {

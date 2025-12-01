@@ -546,10 +546,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
-    pub fn change_header_contexts_via_hm(
-        self,
-        header_context_hm: HashMap<Context, Context>,
-    ) -> Self {
+    pub fn replace_header_contexts(self, header_context_hm: HashMap<Context, Context>) -> Self {
         let scs = self.cdf.context.context_mut();
         for sc in scs {
             let dc = sc.get_header_context();
@@ -560,7 +557,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
-    pub fn change_data_contexts_via_hm(self, data_context_hm: HashMap<Context, Context>) -> Self {
+    pub fn replace_data_contexts(self, data_context_hm: HashMap<Context, Context>) -> Self {
         let scs = self.cdf.context.context_mut();
         for sc in scs {
             let dc = sc.get_data_context();
@@ -918,7 +915,7 @@ mod builder_tests {
     }
 
     #[rstest]
-    fn test_change_header_contexts_via_hm() {
+    fn test_replace_header_contexts() {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
@@ -929,7 +926,7 @@ mod builder_tests {
         let header_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
         cdf.builder()
-            .change_header_contexts_via_hm(header_context_hm)
+            .replace_header_contexts(header_context_hm)
             .build_dirty();
 
         assert_eq!(
@@ -950,7 +947,7 @@ mod builder_tests {
     }
 
     #[rstest]
-    fn test_change_data_contexts_via_hm() {
+    fn test_replace_data_contexts() {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
@@ -961,7 +958,7 @@ mod builder_tests {
         let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
         cdf.builder()
-            .change_data_contexts_via_hm(data_context_hm)
+            .replace_data_contexts(data_context_hm)
             .build_dirty();
 
         assert_eq!(

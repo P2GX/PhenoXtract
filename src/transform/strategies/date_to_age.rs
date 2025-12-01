@@ -6,13 +6,19 @@ use log::{info, warn};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::{Context, DATE_CONTEXTS_WITHOUT_DOB, date_to_age_contexts_hash_map};
+use crate::config::context::{AGE_CONTEXTS, Context};
 use crate::utils::{try_parse_string_date, try_parse_string_datetime};
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
 use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
+
+const DATE_CONTEXTS_WITHOUT_DOB: [Context; 3] = [
+    Context::DateAtLastEncounter,
+    Context::OnsetDateTime,
+    Context::DateOfDeath,
+];
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -23,12 +29,6 @@ use std::collections::{HashMap, HashSet};
 /// yet there is a date corresponding to this patient,
 /// then an error will be thrown.
 pub struct DateToAgeStrategy;
-
-impl DateToAgeStrategy {
-    pub fn new() -> Self {
-        Self
-    }
-}
 
 impl Strategy for DateToAgeStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
@@ -69,7 +69,7 @@ impl Strategy for DateToAgeStrategy {
 
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-        let patient_dob_hash_map = Self::create_patient_dob_hash_map(tables)?;
+        let patient_dob_hash_map = Self::map_patient_to_dob(tables)?;
 
         for table in tables.iter_mut() {
             let stringified_subject_id_col = table.get_subject_id_col().str()?.clone();
@@ -123,7 +123,7 @@ impl Strategy for DateToAgeStrategy {
 
             let cdf_builder = table.builder();
             cdf_builder
-                .change_data_contexts_via_hm(date_to_age_contexts_hash_map())
+                .replace_data_contexts(Self::date_to_age_contexts_hash_map())
                 .build()?;
         }
 
@@ -144,7 +144,7 @@ impl Strategy for DateToAgeStrategy {
 impl DateToAgeStrategy {
     /// The date of birth column in the data will be found
     /// and a patient-DOB HashMap is constructed
-    fn create_patient_dob_hash_map(
+    fn map_patient_to_dob(
         tables: &[&mut ContextualizedDataFrame],
     ) -> Result<HashMap<String, String>, StrategyError> {
         let dob_table = tables.iter().find(|table|
@@ -163,39 +163,34 @@ impl DateToAgeStrategy {
             .name()
             .as_str();
 
-        let patient_dob_hash_map = Self::validate_and_flatten_patient_dob_hash_map(
+        let patient_dob_hash_map = Self::flatten_patient_dob_hash_map(
             &dob_table.create_subject_id_string_data_hash_map(dob_col_name)?,
         )?;
 
         Ok(patient_dob_hash_map)
     }
 
-    fn validate_and_flatten_patient_dob_hash_map(
+    fn flatten_patient_dob_hash_map(
         patient_dob_hash_map: &HashMap<String, Vec<String>>,
     ) -> Result<HashMap<String, String>, StrategyError> {
-        let patients_with_no_dob = patient_dob_hash_map
-            .iter()
-            .filter_map(|(p_id, dobs)| if dobs.is_empty() { Some(p_id) } else { None })
-            .collect::<Vec<&String>>();
-        let patients_with_duplicate_dobs = patient_dob_hash_map
-            .iter()
-            .filter_map(|(p_id, dobs)| if dobs.len() > 1 { Some(p_id) } else { None })
-            .collect::<Vec<&String>>();
-        if patients_with_no_dob.is_empty() && patients_with_duplicate_dobs.is_empty() {
-            Ok(patient_dob_hash_map
-                .iter()
-                .map(|(p_id, dobs)| (p_id.clone(), dobs.first().unwrap().clone()))
-                .collect())
+        let mut valid_dob = HashMap::with_capacity(patient_dob_hash_map.len());
+        let mut invalid_p_ids: Vec<String> = Vec::new();
+
+        for (p_id, dobs) in patient_dob_hash_map {
+            if dobs.len() != 1 {
+                invalid_p_ids.push(p_id.clone());
+            } else {
+                valid_dob.insert(p_id.to_string(), dobs.first().unwrap().to_string());
+            }
+        }
+
+        if invalid_p_ids.is_empty() {
+            Ok(valid_dob)
         } else {
-            let invalid_dob_patients = [patients_with_no_dob, patients_with_duplicate_dobs]
-                .concat()
-                .into_iter()
-                .cloned()
-                .collect();
             Err(StrategyError::MultiplicityError {
                 context: Context::DateOfBirth,
                 message: "These patients did not have exactly one date of birth.".to_string(),
-                patients: invalid_dob_patients,
+                patients: invalid_p_ids,
             })
         }
     }
@@ -240,6 +235,13 @@ impl DateToAgeStrategy {
             0f32,
         );
         Ok(dur.to_string())
+    }
+
+    fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
+        DATE_CONTEXTS_WITHOUT_DOB
+            .into_iter()
+            .zip(AGE_CONTEXTS)
+            .collect()
     }
 }
 
@@ -323,19 +325,24 @@ mod tests {
     }
 
     #[fixture]
-    fn dob_charlie_string() -> String {
+    fn dob_charlie_eu_string() -> String {
+        "08-01-1980".to_string()
+    }
+
+    #[fixture]
+    fn dob_charlie_us_string() -> String {
         "1980-01-08".to_string()
     }
 
     #[fixture]
     fn dob_charlie_date() -> i32 {
-        let date = NaiveDate::from_str(dob_charlie_string().as_str()).unwrap();
+        let date = NaiveDate::parse_from_str(dob_charlie_eu_string().as_str(), "%d-%m-%Y").unwrap();
         (date - epoch_date()).num_days() as i32
     }
 
     #[fixture]
     fn dob_charlie_datetime() -> i64 {
-        let datetime = NaiveDate::from_str(dob_charlie_string().as_str())
+        let datetime = NaiveDate::parse_from_str(dob_charlie_eu_string().as_str(), "%d-%m-%Y")
             .unwrap()
             .and_hms_opt(0, 0, 0)
             .unwrap();
@@ -343,8 +350,15 @@ mod tests {
     }
 
     #[fixture]
-    fn dob_charlie_datetime_str() -> String {
-        let mut datetime = dob_charlie_string();
+    fn dob_charlie_eu_datetime_str() -> String {
+        let mut datetime = dob_charlie_eu_string();
+        datetime.push_str(" 00:00:00.000");
+        datetime.to_string()
+    }
+
+    #[fixture]
+    fn dob_charlie_us_datetime_str() -> String {
+        let mut datetime = dob_charlie_us_string();
         datetime.push_str(" 00:00:00.000");
         datetime.to_string()
     }
@@ -363,7 +377,7 @@ mod tests {
     fn df_with_string_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
-        "DOB" => &[AnyValue::String(dob_alice_string().as_str()), AnyValue::String(dob_bob_string().as_str()), AnyValue::String(dob_charlie_string().as_str())],
+        "DOB" => &[AnyValue::String(dob_alice_string().as_str()), AnyValue::String(dob_bob_string().as_str()), AnyValue::String(dob_charlie_eu_string().as_str())],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         )
             .unwrap()
@@ -489,7 +503,7 @@ mod tests {
 
         let onset_age_charlie = DateToAgeStrategy::date_and_dob_to_age(
             "P001",
-            dob_charlie_string(),
+            dob_charlie_eu_string(),
             onset_charlie().as_str(),
         )
         .unwrap();
@@ -517,33 +531,43 @@ mod tests {
     }
 
     #[rstest]
-    #[case(df_with_string_dob())]
-    #[case(df_with_date_dob())]
-    fn test_create_patient_dob_hash_map_string_and_date(#[case] dob_df: DataFrame) {
-        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
+    fn test_map_patient_to_dob_string() {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_string_dob()).unwrap();
         let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
         let tables = [&mut cdf1, &mut cdf2];
-        let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
+        let patient_dob_hm = DateToAgeStrategy::map_patient_to_dob(&tables).unwrap();
         assert_eq!(patient_dob_hm.len(), 3);
         assert_eq!(patient_dob_hm["Alice"], dob_alice_string());
         assert_eq!(patient_dob_hm["Bob"], dob_bob_string());
-        assert_eq!(patient_dob_hm["Charlie"], dob_charlie_string());
+        assert_eq!(patient_dob_hm["Charlie"], dob_charlie_eu_string());
     }
 
     #[rstest]
-    fn test_create_patient_dob_hash_map_datetimes() {
+    fn test_map_patient_to_dob_date() {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_date_dob()).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
+        let tables = [&mut cdf1, &mut cdf2];
+        let patient_dob_hm = DateToAgeStrategy::map_patient_to_dob(&tables).unwrap();
+        assert_eq!(patient_dob_hm.len(), 3);
+        assert_eq!(patient_dob_hm["Alice"], dob_alice_string());
+        assert_eq!(patient_dob_hm["Bob"], dob_bob_string());
+        assert_eq!(patient_dob_hm["Charlie"], dob_charlie_us_string());
+    }
+
+    #[rstest]
+    fn test_map_patient_to_dob_datetimes() {
         let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_datetime_dob()).unwrap();
         let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
         let tables = [&mut cdf1, &mut cdf2];
-        let patient_dob_hm = DateToAgeStrategy::create_patient_dob_hash_map(&tables).unwrap();
+        let patient_dob_hm = DateToAgeStrategy::map_patient_to_dob(&tables).unwrap();
         assert_eq!(patient_dob_hm.len(), 3);
         assert_eq!(patient_dob_hm["Alice"], dob_alice_datetime_str());
         assert_eq!(patient_dob_hm["Bob"], dob_bob_datetime_str());
-        assert_eq!(patient_dob_hm["Charlie"], dob_charlie_datetime_str());
+        assert_eq!(patient_dob_hm["Charlie"], dob_charlie_us_datetime_str());
     }
 
     #[rstest]
-    fn test_validate_and_flatten_patient_dob_hash_map() {
+    fn test_flatten_patient_dob_hash_map() {
         let p_ids = [
             "Alice".to_string(),
             "Bob".to_string(),
@@ -552,20 +576,23 @@ mod tests {
         let dob_vecs = [
             vec![dob_alice_string()],
             vec![dob_bob_string()],
-            vec![dob_charlie_string()],
+            vec![dob_charlie_us_string()],
         ];
-        let dobs = [dob_alice_string(), dob_bob_string(), dob_charlie_string()];
+        let dobs = [
+            dob_alice_string(),
+            dob_bob_string(),
+            dob_charlie_us_string(),
+        ];
 
         let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
-        let flattened_hm =
-            DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).unwrap();
+        let flattened_hm = DateToAgeStrategy::flatten_patient_dob_hash_map(&hm).unwrap();
 
         let expected_flattened_hm: HashMap<String, String> = p_ids.into_iter().zip(dobs).collect();
         assert_eq!(flattened_hm, expected_flattened_hm);
     }
 
     #[rstest]
-    fn test_validate_and_flatten_patient_dob_hash_map_err_on_multiple() {
+    fn test_flatten_patient_dob_hash_map_err_on_multiple() {
         let p_ids = [
             "Alice".to_string(),
             "Bob".to_string(),
@@ -574,23 +601,39 @@ mod tests {
         let dob_vecs = [
             vec![dob_alice_string()],
             vec![dob_bob_string(), onset_bob()],
-            vec![dob_charlie_string()],
+            vec![dob_charlie_us_string()],
         ];
 
         let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
-        assert!(DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).is_err());
+        assert!(DateToAgeStrategy::flatten_patient_dob_hash_map(&hm).is_err());
     }
 
     #[rstest]
-    fn test_validate_and_flatten_patient_dob_hash_map_err_on_none() {
+    fn test_flatten_patient_dob_hash_map_err_on_none() {
         let p_ids = [
             "Alice".to_string(),
             "Bob".to_string(),
             "Charlie".to_string(),
         ];
-        let dob_vecs = [vec![], vec![dob_bob_string()], vec![dob_charlie_string()]];
+        let dob_vecs = [
+            vec![],
+            vec![dob_bob_string()],
+            vec![dob_charlie_us_string()],
+        ];
 
         let hm: HashMap<String, Vec<String>> = p_ids.clone().into_iter().zip(dob_vecs).collect();
-        assert!(DateToAgeStrategy::validate_and_flatten_patient_dob_hash_map(&hm).is_err());
+        assert!(DateToAgeStrategy::flatten_patient_dob_hash_map(&hm).is_err());
+    }
+
+    #[rstest]
+    fn test_date_to_age_contexts_hash_map() {
+        let hm = DateToAgeStrategy::date_to_age_contexts_hash_map();
+        assert_eq!(hm.len(), 3);
+        assert_eq!(
+            hm[&Context::DateAtLastEncounter],
+            Context::AgeAtLastEncounter
+        );
+        assert_eq!(hm[&Context::OnsetDateTime], Context::OnsetAge);
+        assert_eq!(hm[&Context::DateOfDeath], Context::AgeOfDeath);
     }
 }
