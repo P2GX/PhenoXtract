@@ -188,6 +188,14 @@ impl<'a> ColumnFilter<'a> {
         self
     }
 
+    #[allow(dead_code)]
+    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.series_filter.data_context.push(Filter::Is(context));
+        }
+        self
+    }
+
     pub fn collect(self) -> Vec<&'a Column> {
         let scs = self.series_filter.collect();
         scs.iter()

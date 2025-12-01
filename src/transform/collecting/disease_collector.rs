@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::collecting::utils;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
@@ -35,12 +34,8 @@ impl Collect for DiseaseCollector {
                 .map(|col| col.str())
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-            let stringified_linked_onset_col =
-                utils::get_single_stringified_column_with_data_contexts_in_bb(
-                    patient_cdf,
-                    bb_id,
-                    vec![&Context::OnsetAge, &Context::OnsetDateTime],
-                )?;
+            let stringified_linked_onset_col = patient_cdf
+                .get_single_linked_column(bb_id, &[Context::OnsetAge, Context::OnsetDateTime])?;
 
             for row_idx in 0..patient_cdf.data().height() {
                 for stringified_disease_col in stringified_disease_cols.iter() {

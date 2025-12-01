@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::collecting::utils;
 use crate::transform::error::CollectorError;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
@@ -40,12 +39,10 @@ impl Collect for PhenotypeCollector {
             let sc_id = hpo_sc.get_identifier();
             let hpo_cols = patient_cdf.get_columns(sc_id);
 
-            let stringified_linked_onset_col =
-                utils::get_single_stringified_column_with_data_contexts_in_bb(
-                    patient_cdf,
-                    hpo_sc.get_building_block_id(),
-                    vec![&Context::OnsetAge, &Context::OnsetDateTime],
-                )?;
+            let stringified_linked_onset_col = patient_cdf.get_single_linked_column(
+                hpo_sc.get_building_block_id(),
+                &[Context::OnsetAge, Context::OnsetDateTime],
+            )?;
 
             for hpo_col in hpo_cols {
                 if hpo_sc.get_header_context() == &Context::None

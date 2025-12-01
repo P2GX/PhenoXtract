@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
-use crate::transform::error::StrategyError;
+use crate::transform::error::{CollectorError, DataProcessingError, StrategyError};
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
@@ -9,6 +9,7 @@ use crate::validation::contextualised_dataframe_validation::validate_subject_id_
 use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
+use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Series};
 use regex::Regex;
 use std::mem::ManuallyDrop;
@@ -157,36 +158,134 @@ impl ContextualizedDataFrame {
             .where_data_context(Filter::Is(&Context::SubjectId))
             .collect()[0]
     }
+
+    /// Given a CDF corresponding to a single patient and a desired property (encoded by the variable context)
+    /// for which there can only be ONE value, e.g. Age, Vital Status, Sex, Gender...
+    /// this function will:
+    /// -find all values for that context
+    /// -throw an error if it finds multiple distinct values
+    /// return Ok(None) if it finds no values
+    /// return Ok(unique_val) if there is a single unique value
+    pub(crate) fn get_single_multiplicity_element<'a>(
+        &self,
+        data_context: &'a Context,
+        header_context: &'a Context,
+    ) -> Result<Option<String>, CollectorError> {
+        let cols_of_element_type: Vec<&Column> = self
+            .filter_columns()
+            .where_data_context(Filter::Is(data_context))
+            .where_header_context(Filter::Is(header_context))
+            .collect();
+
+        if cols_of_element_type.is_empty() {
+            return Ok(None);
+        }
+
+        let mut combined_col = cols_of_element_type[0].clone();
+        for col in cols_of_element_type.iter().skip(1) {
+            combined_col.extend(col)?;
+        }
+
+        let unique_values = combined_col.drop_nulls().unique_stable()?;
+
+        match unique_values.len() {
+            0 => Ok(None),
+            1 => {
+                let cast_unique = unique_values.cast(&DataType::String)?;
+                let val = cast_unique.get(0)?;
+                Ok(Some(
+                    val.extract_str()
+                        .expect("Should have been a string.")
+                        .to_string(),
+                ))
+            }
+            _ => Err(CollectorError::ExpectedSingleValue {
+                table_name: self.context().name().to_string(),
+                patient_id: self.get_subject_id_col().get(0)?.str_value().to_string(),
+                data_context: data_context.clone(),
+                header_context: header_context.clone(),
+            }),
+        }
+    }
+
+    /// Given a CDF, building block ID and data contexts
+    /// this function will find all columns
+    /// - within that building block
+    /// - and with data context in data_contexts
+    /// * if there are no such columns returns Ok(None)
+    /// * if there are several such columns returns CollectorError
+    /// * if there is exactly one such column,
+    ///   this column is converted to StringChunked and Ok(Some(StringChunked)) is returned
+    pub fn get_single_linked_column(
+        &self,
+        bb_id: Option<&str>,
+        data_contexts: &[Context],
+    ) -> Result<Option<StringChunked>, CollectorError> {
+        if let Some(bb_id) = bb_id {
+            let filter = self.filter_columns();
+            let filter = filter
+                .where_header_context(Filter::IsNone)
+                .where_building_block(Filter::Is(bb_id));
+
+            let linked_cols = filter.where_data_contexts_are(data_contexts).collect();
+
+            if linked_cols.len() == 1 {
+                let single_linked_col = linked_cols
+                    .first()
+                    .expect("Column empty despite len check.");
+
+                let cast_linked_col = single_linked_col.cast(&DataType::String).map_err(|_| {
+                    DataProcessingError::CastingError {
+                        col_name: single_linked_col.name().to_string(),
+                        from: single_linked_col.dtype().clone(),
+                        to: DataType::String,
+                    }
+                })?;
+                Ok(Some(cast_linked_col.str()?.clone()))
+            } else if linked_cols.is_empty() {
+                Ok(None)
+            } else {
+                Err(CollectorError::ExpectedAtMostOneLinkedColumnWithContexts {
+                    table_name: self.context().name().to_string(),
+                    bb_id: bb_id.to_string(),
+                    contexts: data_contexts.to_vec(),
+                    amount_found: linked_cols.len(),
+                })
+            }
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::context::Context;
+    use crate::test_utils::generate_patent_cdf_components;
     use polars::prelude::*;
     use regex::Regex;
-    use rstest::{fixture, rstest};
+    use rstest::rstest;
 
-    #[fixture]
     fn sample_df() -> DataFrame {
         df!(
-        "user.name" => &["Alice", "Bob", "Charlie"],
+        "subject_id" => &["P001", "P002", "P003"],
         "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
         "location (some stuff)" => &["NY", "SF", "LA"],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
+        "sex" => &["MALE", "FEMALE", "MALE"],
         )
         .unwrap()
     }
 
-    #[fixture]
     fn sample_ctx() -> TableContext {
         TableContext::new(
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec!["user.name".to_string()]))
+                    .with_identifier(Identifier::Multi(vec!["subject_id".to_string()]))
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
@@ -202,6 +301,10 @@ mod tests {
                     .with_identifier(Identifier::Regex("overweight".to_string()))
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("sex".to_string()))
+                    .with_data_context(Context::SubjectSex)
+                    .with_building_block_id(Some("block_1".to_string())), // BB is not realistic here, but it tests good with the test_get_single_linked_column
             ],
         )
     }
@@ -228,10 +331,9 @@ mod tests {
         let regex = Regex::new("a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
 
-        assert_eq!(cols.len(), 3);
-        assert_eq!(cols[0].name(), "user.name");
-        assert_eq!(cols[1].name(), "age");
-        assert_eq!(cols[2].name(), "location (some stuff)");
+        assert_eq!(cols.len(), 2);
+        assert_eq!(cols[0].name(), "age");
+        assert_eq!(cols[1].name(), "location (some stuff)");
     }
 
     #[rstest]
@@ -265,12 +367,13 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("^[a,u]{1}[a-z.]*".to_string());
+        let id = Identifier::Regex("^[a,s]{1}[a-z.]*".to_string());
         let cols = cdf.get_columns(&id);
 
-        assert_eq!(cols.len(), 2);
-        assert_eq!(cols[0].name(), "user.name");
+        assert_eq!(cols.len(), 3);
+        assert_eq!(cols[0].name(), "subject_id");
         assert_eq!(cols[1].name(), "age");
+        assert_eq!(cols[2].name(), "sex");
     }
 
     #[rstest]
@@ -279,11 +382,11 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Multi(vec!["user.name".to_string(), "age".to_string()]);
+        let id = Identifier::Multi(vec!["subject_id".to_string(), "age".to_string()]);
         let cols = cdf.get_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
-        assert_eq!(col_names, vec!["user.name", "age"]);
+        assert_eq!(col_names, vec!["subject_id", "age"]);
     }
 
     #[rstest]
@@ -319,6 +422,97 @@ mod tests {
         expected_bb_ids.insert("block_1");
 
         assert_eq!(cdf.get_building_block_ids(), expected_bb_ids);
+    }
+
+    #[rstest]
+    fn test_get_single_linked_column() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let bb = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::SubjectSex))
+            .collect()
+            .first()
+            .unwrap()
+            .get_building_block_id();
+
+        let extracted_col = cdf
+            .get_single_linked_column(bb, &[Context::SubjectSex])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(extracted_col.name().to_string(), "sex");
+    }
+
+    #[rstest]
+    fn test_get_single_linked_column_no_match() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let extracted_col = cdf
+            .get_single_linked_column(Some("Absent_BB"), &[Context::OrphanetLabelOrId])
+            .unwrap();
+
+        assert!(extracted_col.is_none());
+    }
+
+    #[rstest]
+    fn test_collect_single_multiplicity_element_multiple() {
+        let (subject_col, subject_tc) = generate_patent_cdf_components(1, 2);
+
+        let df = DataFrame::new(vec![
+            subject_col.clone(),
+            Column::new(
+                "sex".into(),
+                &[AnyValue::String("MALE"), AnyValue::String("MALE")],
+            ),
+        ])
+        .unwrap();
+
+        let context = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                subject_tc,
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("sex"))
+                    .with_data_context(Context::SubjectSex),
+            ],
+        );
+        let cdf = ContextualizedDataFrame::new(context, df).unwrap();
+
+        let sme = cdf
+            .get_single_multiplicity_element(&Context::SubjectSex, &Context::None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(sme, "MALE");
+    }
+
+    #[rstest]
+    fn test_collect_single_multiplicity_element_err() {
+        let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
+        let context = Context::SubjectAge;
+
+        let df = DataFrame::new(vec![
+            subject_col.clone(),
+            Column::new("age".into(), &[46, 22]),
+        ])
+        .unwrap();
+        let tc = TableContext::new(
+            "test_collect_single_multiplicity_element_err".to_string(),
+            vec![
+                subject_sc,
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("age"))
+                    .with_data_context(context.clone()),
+            ],
+        );
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
+
+        let sme = cdf.get_single_multiplicity_element(&context, &Context::None);
+        assert!(sme.is_err());
     }
 }
 
@@ -543,7 +737,7 @@ mod builder_tests {
     #[fixture]
     fn sample_df() -> DataFrame {
         df!(
-        "user.name" => &["Alice", "Bob", "Charlie"],
+        "subject_id" => &["Alice", "Bob", "Charlie"],
         "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
         "location (some stuff)" => &["NY", "SF", "LA"],
@@ -559,7 +753,7 @@ mod builder_tests {
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec!["user.name".to_string()]))
+                    .with_identifier(Identifier::Multi(vec!["subject_id".to_string()]))
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
@@ -805,14 +999,14 @@ mod builder_tests {
         let transformed_vec = vec![1001, 1002, 1003];
         cdf.builder()
             .replace_column(
-                "user.name",
-                Series::new("user.name".to_string().into(), transformed_vec),
+                "subject_id",
+                Series::new("subject_id".to_string().into(), transformed_vec),
             )
             .unwrap()
             .build_dirty();
 
         let expected_df = df!(
-        "user.name" => &[1001,1002,1003],
+        "subject_id" => &[1001,1002,1003],
         "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
         "location (some stuff)" => &["NY", "SF", "LA"],
