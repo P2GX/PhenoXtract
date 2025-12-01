@@ -21,6 +21,12 @@ impl Collect for PhenotypeCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
+        let patient_id = patient_cdf
+            .get_subject_id_col()
+            .get(0)
+            .expect("Patient CDF not found")
+            .to_string();
+
         let hpo_terms_in_cells_scs = patient_cdf
             .filter_series_context()
             .where_header_context(Filter::Is(&Context::None))
@@ -61,6 +67,7 @@ impl Collect for PhenotypeCollector {
                         phenopacket_id,
                         hpo_col,
                         stringified_linked_onset_col.as_ref(),
+                        &patient_id,
                     )?;
                 }
             }
@@ -116,8 +123,8 @@ impl PhenotypeCollector {
         phenopacket_id: &str,
         patient_hpo_col: &Column,
         stringified_onset_col: Option<&StringChunked>,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
-        let p_id = "TODO".to_owned();
         let hpo_id = HpoColMaker::new().decode_column_header(patient_hpo_col).0;
 
         let boolified_hpo_col = patient_hpo_col.bool()?;
@@ -156,13 +163,13 @@ impl PhenotypeCollector {
                 )?;
             } else if let Some(onset) = onset {
                 warn!(
-                    "Non-null onset {onset} found for null observation status for patient {p_id}."
+                    "Non-null onset {onset} found for null observation status for patient {patient_id}."
                 )
             }
         } else if seen_pairs.len() > 2 {
             return Err(CollectorError::ExpectedUniquePhenotypeData {
                 table_name: table_name.to_string(),
-                patient_id: p_id.to_string(),
+                patient_id: patient_id.to_string(),
                 phenotype: hpo_id.to_string(),
             });
         }
@@ -398,6 +405,7 @@ mod tests {
                 &pp_id,
                 &pneumonia_col,
                 Some(stringified_onset_col),
+                "P002",
             )
             .unwrap();
 
