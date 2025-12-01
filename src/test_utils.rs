@@ -1,26 +1,18 @@
-#![allow(unused)]
-
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::OntologyRef;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
-use phenopackets::schema::v1::core::Individual;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::{
-    OntologyClass, PhenotypicFeature, Resource, TimeElement, Update,
-};
+
 use polars::df;
-use polars::frame::DataFrame;
 use polars::prelude::Column;
 use pretty_assertions::assert_eq;
 use ratelimit::Ratelimiter;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tempfile::TempDir;
 
 pub(crate) fn generate_minimal_cdf(
     n_patients: i64,
@@ -28,7 +20,7 @@ pub(crate) fn generate_minimal_cdf(
 ) -> ContextualizedDataFrame {
     let mut patient_ids = Vec::new();
     for n_pat in 0..n_patients {
-        for n_entry in 0..n_entries_per_patient {
+        for _ in 0..n_entries_per_patient {
             patient_ids.push(format!("P{}", n_pat));
         }
     }
@@ -53,7 +45,7 @@ pub(crate) fn generate_patent_cdf_components(
 ) -> (Column, SeriesContext) {
     let mut patient_ids = Vec::new();
     for n_pat in 0..n_patients {
-        for n_entry in 0..n_entries_per_patient {
+        for _ in 0..n_entries_per_patient {
             patient_ids.push(format!("P{}", n_pat));
         }
     }
@@ -118,7 +110,6 @@ use crate::config::table_context::{Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use crate::ontology::traits::HasPrefixId;
 use crate::transform::PhenopacketBuilder;
-use validator::ValidateRequired;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     ONTOLOGY_FACTORY
