@@ -97,7 +97,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::skip_in_ci;
     use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_patent_cdf_components,
+        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf_components,
     };
     use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
     use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
@@ -249,7 +249,7 @@ mod tests {
         temp_dir: TempDir,
     ) {
         skip_in_ci!();
-        let (patient_col, patient_sc) = generate_patent_cdf_components(1, 1);
+        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
         let disease_col = Column::new(
             "diseases".into(),
             [AnyValue::String(

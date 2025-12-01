@@ -108,7 +108,7 @@ mod tests {
     use crate::extract::ContextualizedDataFrame;
     use crate::test_utils::{
         assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf,
-        generate_patent_cdf_components,
+        generate_minimal_cdf_components,
     };
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
@@ -230,7 +230,7 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let collector = HpoInHeaderCollector;
 
-        let (patient_col, sc) = generate_patent_cdf_components(1, 2);
+        let (patient_col, sc) = generate_minimal_cdf_components(1, 2);
 
         let mut fractured_nose_excluded = fractured_nose_pf.clone();
         fractured_nose_excluded.excluded = true;

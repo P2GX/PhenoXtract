@@ -8,15 +8,12 @@ use phenopackets::schema::v2::Phenopacket;
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
-    collector: CdfBroker,
+    broker: CdfBroker,
 }
 
 impl TransformerModule {
-    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: CdfBroker) -> Self {
-        TransformerModule {
-            strategies,
-            collector,
-        }
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, broker: CdfBroker) -> Self {
+        TransformerModule { strategies, broker }
     }
 
     pub fn add_strategy(&mut self, strategy: Box<dyn Strategy>) {
@@ -42,13 +39,13 @@ impl TransformerModule {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
 
-        Ok(self.collector.process(data)?)
+        Ok(self.broker.process(data)?)
     }
 }
 
 impl PartialEq for TransformerModule {
     fn eq(&self, other: &Self) -> bool {
-        self.collector == other.collector
+        self.broker == other.broker
             && self.strategies.len() == other.strategies.len()
             && self
                 .strategies

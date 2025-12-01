@@ -35,14 +35,14 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
-    use crate::test_utils::generate_patent_cdf_components;
+    use crate::test_utils::generate_minimal_cdf_components;
     use polars::prelude::{Column, DataFrame};
     use rstest::fixture;
 
     #[fixture]
     fn sex_cdf() -> ContextualizedDataFrame {
         let bb_id = "bb1";
-        let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
+        let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
         let df = DataFrame::new(vec![
             subject_col.clone(),
             Column::new("sex".into(), &["FEMALE", "MALE"]),

@@ -39,7 +39,7 @@ pub(crate) fn generate_minimal_cdf(
     ContextualizedDataFrame::new(table_context, df).unwrap()
 }
 
-pub(crate) fn generate_patent_cdf_components(
+pub(crate) fn generate_minimal_cdf_components(
     n_patients: i64,
     n_entries_per_patient: i64,
 ) -> (Column, SeriesContext) {

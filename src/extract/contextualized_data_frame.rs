@@ -262,7 +262,7 @@ impl ContextualizedDataFrame {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::test_utils::generate_patent_cdf_components;
+    use crate::test_utils::generate_minimal_cdf_components;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::rstest;
@@ -270,9 +270,7 @@ mod tests {
     fn sample_df() -> DataFrame {
         df!(
         "subject_id" => &["P001", "P002", "P003"],
-        "different" => &["Al", "Bobby", "Chaz"],
         "age" => &[25, 30, 40],
-        "location (some stuff)" => &["NY", "SF", "LA"],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
         "sex" => &["MALE", "FEMALE", "MALE"],
@@ -331,9 +329,8 @@ mod tests {
         let regex = Regex::new("a.*").unwrap();
         let cols = cdf.regex_match_column(&regex);
 
-        assert_eq!(cols.len(), 2);
+        assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name(), "age");
-        assert_eq!(cols[1].name(), "location (some stuff)");
     }
 
     #[rstest]
@@ -354,11 +351,11 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("location (some stuff)".to_string());
+        let id = Identifier::Regex("sex".to_string());
         let cols = cdf.get_columns(&id);
 
         assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "location (some stuff)");
+        assert_eq!(cols[0].name(), "sex");
     }
 
     #[rstest]
@@ -461,7 +458,7 @@ mod tests {
 
     #[rstest]
     fn test_collect_single_multiplicity_element_multiple() {
-        let (subject_col, subject_tc) = generate_patent_cdf_components(1, 2);
+        let (subject_col, subject_tc) = generate_minimal_cdf_components(1, 2);
 
         let df = DataFrame::new(vec![
             subject_col.clone(),
@@ -492,7 +489,7 @@ mod tests {
 
     #[rstest]
     fn test_collect_single_multiplicity_element_err() {
-        let (subject_col, subject_sc) = generate_patent_cdf_components(1, 2);
+        let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
         let context = Context::SubjectAge;
 
         let df = DataFrame::new(vec![
