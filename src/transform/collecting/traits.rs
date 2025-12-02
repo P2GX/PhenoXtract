@@ -1,7 +1,6 @@
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::error::CollectorError;
-use std::any::Any;
 use std::fmt::Debug;
 
 pub trait Collect: Debug {

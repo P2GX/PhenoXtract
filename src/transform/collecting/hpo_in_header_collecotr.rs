@@ -6,7 +6,6 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
-use std::any::Any;
 use std::collections::HashSet;
 
 #[derive(Debug)]

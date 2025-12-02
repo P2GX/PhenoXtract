@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use std::any::Any;
 #[derive(Debug)]
 pub struct IndividualCollector;
 
