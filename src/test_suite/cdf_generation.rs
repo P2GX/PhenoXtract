@@ -3,7 +3,7 @@ use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::df;
-use polars::prelude::{Column, Schema};
+use polars::prelude::Column;
 
 pub(crate) fn generate_minimal_cdf(
     n_patients: i64,

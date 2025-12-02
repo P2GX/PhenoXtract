@@ -107,7 +107,7 @@ mod tests {
     use phenopackets::schema::v2::core::TherapeuticActionability;
     use phenopackets::schema::v2::core::genomic_interpretation::Call;
     use phenopackets::schema::v2::core::{
-        Diagnosis, GenomicInterpretation, Interpretation, MetaData, OntologyClass, Resource,
+        Diagnosis, GenomicInterpretation, Interpretation, MetaData, OntologyClass,
         VariantInterpretation,
     };
     use polars::datatypes::AnyValue;
@@ -119,7 +119,7 @@ mod tests {
     #[fixture]
     fn dysostosis_interpretation() -> Interpretation {
         Interpretation {
-            id: "pp_1-MONDO:0000359".to_string(),
+            id: "Cohort-P0-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
                 disease: Some(default_disease_oc()),

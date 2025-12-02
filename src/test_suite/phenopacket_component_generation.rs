@@ -10,6 +10,7 @@ pub(crate) fn default_phenopacket_id() -> String {
     format!("Cohort-{}", patient_id)
 }
 
+#[allow(dead_code)]
 pub(crate) fn generate_disease(id: &str, onset: Option<TimeElement>) -> Disease {
     let label = MONDO_BIDICT
         .get(id)
@@ -81,14 +82,6 @@ pub(crate) fn default_timestamp_element() -> TimeElement {
     }
 }
 
-pub(crate) fn P12Y5M028D() -> TimeElement {
-    TimeElement {
-        element: Some(Element::Age(Age {
-            iso8601duration: "P12Y5M028D".to_string(),
-        })),
-    }
-}
-
 pub(crate) fn generate_phenotype(id: &str, onset: Option<TimeElement>) -> PhenotypicFeature {
     let label = HPO_DICT
         .get(id)
@@ -103,7 +96,7 @@ pub(crate) fn generate_phenotype(id: &str, onset: Option<TimeElement>) -> Phenot
         ..Default::default()
     }
 }
-
+#[allow(dead_code)]
 pub(crate) fn generate_phenotype_oc(id: &str) -> OntologyClass {
     let label = HPO_DICT
         .get(id)
@@ -122,23 +115,11 @@ pub(crate) fn default_phenotype() -> PhenotypicFeature {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn default_phenotype_with_age_onset() -> PhenotypicFeature {
     let mut default = default_phenotype();
     default.onset = Some(default_age_element());
     default
-}
-
-pub(crate) fn spasmus_nutans_pf_with_onset(spasmus_nutans_onset_age: Age) -> PhenotypicFeature {
-    PhenotypicFeature {
-        r#type: Some(OntologyClass {
-            id: "HP:0010533".to_string(),
-            label: "Spasmus nutans".to_string(),
-        }),
-        onset: Some(TimeElement {
-            element: Some(Element::Age(spasmus_nutans_onset_age)),
-        }),
-        ..Default::default()
-    }
 }
 
 pub(crate) fn default_phenotype_oc() -> OntologyClass {

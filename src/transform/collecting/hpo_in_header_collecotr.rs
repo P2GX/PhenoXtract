@@ -112,7 +112,7 @@ mod tests {
     use crate::test_suite::resource_references::hp_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::{Age, MetaData, OntologyClass, PhenotypicFeature};
+    use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
     use polars::datatypes::{AnyValue, DataType};
     use polars::prelude::{Column, DataFrame, IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};

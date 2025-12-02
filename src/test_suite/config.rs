@@ -59,6 +59,7 @@ data_sources:
         has_headers: true
         patients_are_rows: true
 "#;
+
 pub(crate) static PIPELINE_CONFIG: &[u8] = br#"
 pipeline:
   transform_strategies:
@@ -71,7 +72,7 @@ pipeline:
     cohort_name: "Arkham Asylum 2025"
     hp_ref:
       version: "2025-09-01"
-      prefix_id: "hp"
+      prefix_id: "HP"
 "#;
 
 /// Alternative: Get the combined config as bytes

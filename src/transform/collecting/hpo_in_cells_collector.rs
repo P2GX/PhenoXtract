@@ -76,10 +76,8 @@ mod tests {
     use crate::test_suite::resource_references::hp_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::time_element::Element;
-    use phenopackets::schema::v2::core::{
-        Age, MetaData, OntologyClass, PhenotypicFeature, Resource, TimeElement,
-    };
+
+    use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};

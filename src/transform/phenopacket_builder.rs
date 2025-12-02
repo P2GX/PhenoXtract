@@ -813,10 +813,11 @@ mod tests {
     fn test_upsert_phenotypic_feature_success(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenotype = default_phenotype_oc();
+        let pp_id = default_phenopacket_id();
 
         builder
             .upsert_phenotypic_feature(
-                default_patient_id().as_str(),
+                pp_id.as_str(),
                 &phenotype.label.to_string(),
                 None,
                 None,
@@ -828,11 +829,7 @@ mod tests {
             )
             .unwrap();
 
-        assert!(
-            builder
-                .subject_to_phenopacket
-                .contains_key(&default_phenopacket_id())
-        );
+        assert!(builder.subject_to_phenopacket.contains_key(&pp_id));
 
         let phenopacket = builder
             .subject_to_phenopacket
@@ -875,9 +872,11 @@ mod tests {
     fn test_multiple_phenotypic_features_same_phenopacket(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenotype = default_phenotype_oc();
+        let pp_id = default_phenopacket_id();
+
         builder
             .upsert_phenotypic_feature(
-                default_phenopacket_id().as_str(),
+                pp_id.as_str(),
                 &phenotype.id.to_string(),
                 None,
                 None,
@@ -891,7 +890,7 @@ mod tests {
 
         builder
             .upsert_phenotypic_feature(
-                default_patient_id().as_str(),
+                pp_id.as_str(),
                 "HP:0000234",
                 None,
                 None,
@@ -903,10 +902,7 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder
-            .subject_to_phenopacket
-            .get(&default_phenopacket_id())
-            .unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
@@ -995,10 +991,11 @@ mod tests {
     #[rstest]
     fn test_update_onset_of_phenotypic_feature(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = default_phenopacket_id();
 
         builder
             .upsert_phenotypic_feature(
-                default_phenopacket_id().as_str(),
+                pp_id.as_str(),
                 &default_phenotype_oc().id.to_string(),
                 None,
                 None,
@@ -1013,7 +1010,7 @@ mod tests {
         // Update the same feature
         builder
             .upsert_phenotypic_feature(
-                default_phenopacket_id().as_str(),
+                pp_id.as_str(),
                 &default_phenotype_oc().id.to_string(),
                 None,
                 None,
@@ -1025,10 +1022,7 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder
-            .subject_to_phenopacket
-            .get(&default_patient_id())
-            .unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
 
         let feature = &phenopacket.phenotypic_features[0];

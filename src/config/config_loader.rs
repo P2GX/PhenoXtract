@@ -78,7 +78,7 @@ mod tests {
         cohort_name: "Arkham Asylum 2025"
         hp_ref:
           version: "2025-09-01"
-          prefix_id: "hp"
+          prefix_id: "HP"
     "#;
 
     const TOML_DATA: &[u8] = br#"
@@ -109,7 +109,7 @@ mod tests {
 
         [pipeline.meta_data.hp_ref]
         version = "2025-09-01"
-        prefix_id = "hp"
+        prefix_id = "HP"
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -141,7 +141,7 @@ mod tests {
       "cohort_name": "Arkham Asylum 2025",
       "hp_ref": {
         "version": "2025-09-01",
-        "prefix_id": "hp"
+        "prefix_id": "HP"
       }
     }
   }
@@ -177,7 +177,7 @@ mod tests {
       cohort_name: "Arkham Asylum 2025",
       hp_ref: (
         version: "2025-09-01",
-        prefix_id: "hp",
+        prefix_id: "HP",
       ),
     ),
   ),
