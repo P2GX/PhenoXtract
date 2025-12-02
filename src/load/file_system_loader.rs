@@ -13,7 +13,6 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize)]
 pub struct FileSystemLoader {
     /// The path to the output directory where phenopacket files will be saved.
-    #[allow(unused)]
     out_path: PathBuf,
 }
 

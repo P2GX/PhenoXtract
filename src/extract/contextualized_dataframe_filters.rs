@@ -33,21 +33,10 @@ impl<'a> SeriesContextFilter<'a> {
         }
     }
 
-    #[allow(dead_code)]
     pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
         self.identifier.push(identifier);
         self
     }
-
-    #[allow(dead_code)]
-    pub fn where_identifiers_are(mut self, identifiers: &'a [&Identifier]) -> Self {
-        for identifier in identifiers.iter() {
-            self.identifier.push(Filter::Is(identifier));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
     pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
         self.building_block.push(building_block);
         self
@@ -89,7 +78,6 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.fill_missing.push(fill_missing);
         self

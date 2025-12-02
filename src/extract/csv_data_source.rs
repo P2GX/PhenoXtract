@@ -19,7 +19,6 @@ pub struct CSVDataSource {
 }
 
 impl CSVDataSource {
-    #[allow(dead_code)]
     pub fn new(
         source: PathBuf,
         separator: Option<char>,

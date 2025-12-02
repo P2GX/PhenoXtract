@@ -5,7 +5,6 @@ use validator::Validate;
 ///so that the extract function knows how to convert the data into a Polars data frame.
 #[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
 pub struct ExtractionConfig {
-    #[allow(unused)]
     ///If the data source contains multiple tables (a.k.a sheets) then this should
     ///be identical to the name of the relevant table/sheet.
     pub name: String,
@@ -18,7 +17,6 @@ pub struct ExtractionConfig {
 }
 
 impl ExtractionConfig {
-    #[allow(dead_code)]
     pub fn new(name: String, has_headers: bool, patients_are_rows: bool) -> Self {
         ExtractionConfig {
             name,

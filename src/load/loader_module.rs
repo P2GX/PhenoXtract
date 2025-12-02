@@ -7,6 +7,5 @@ use serde::Deserialize;
 #[serde(tag = "type")]
 #[allow(dead_code)]
 enum Loader {
-    #[allow(unused)]
     FileSystem(FileSystemLoader),
 }

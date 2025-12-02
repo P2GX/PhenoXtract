@@ -9,10 +9,10 @@ use crate::load::traits::Loadable;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
-use crate::transform::Collector;
+use crate::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
@@ -123,7 +123,10 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let tf_module = TransformerModule::new(
             strategies,
-            Collector::new(phenopacket_builder, config.meta_data.cohort_name.clone()),
+            CdfCollectorBroker::with_default_collectors(
+                phenopacket_builder,
+                config.meta_data.cohort_name.clone(),
+            ),
         );
         let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
 

@@ -3,10 +3,10 @@ use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
 use crate::transform::strategies::mapping::DefaultMapping;
+use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
     AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
 };
-use crate::transform::traits::Strategy;
 
 pub struct StrategyFactory {
     ontology_factory: CachedOntologyFactory,
@@ -16,7 +16,6 @@ impl StrategyFactory {
     pub fn new(ontology_factory: CachedOntologyFactory) -> Self {
         StrategyFactory { ontology_factory }
     }
-    #[allow(dead_code)]
     pub fn try_from_configs(
         &mut self,
         configs: &[StrategyConfig],
@@ -30,7 +29,6 @@ impl StrategyFactory {
             .collect()
     }
 
-    #[allow(dead_code)]
     pub fn try_from_config(
         &mut self,
         config: &StrategyConfig,

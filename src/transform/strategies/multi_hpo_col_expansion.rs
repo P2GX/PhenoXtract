@@ -3,7 +3,7 @@ use crate::config::table_context::{Identifier, SeriesContext};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use crate::transform::utils::HpoColMaker;
 use log::{info, warn};
 use ordermap::{OrderMap, OrderSet};
@@ -21,7 +21,6 @@ use regex::Regex;
 ///
 /// The old columns and contexts will be removed.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct MultiHPOColExpansionStrategy;
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {

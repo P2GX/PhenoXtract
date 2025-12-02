@@ -14,13 +14,11 @@ pub struct PipelineConfig {
     /// a specific transformation to be applied in order.
     pub transform_strategies: Vec<StrategyConfig>,
 
-    #[allow(unused)]
     /// The loader responsible for fetching the initial data.
     pub loader: String,
 }
 
 impl PipelineConfig {
-    #[allow(dead_code)]
     pub fn new(
         meta_data: MetaData,
         transform_strategies: Vec<StrategyConfig>,

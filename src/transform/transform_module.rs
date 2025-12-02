@@ -1,23 +1,19 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::collector::Collector;
+use crate::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
 use crate::transform::data_processing::preprocessor::CdfPreprocessor;
 use crate::transform::error::TransformError;
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use phenopackets::schema::v2::Phenopacket;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
-    collector: Collector,
+    broker: CdfCollectorBroker,
 }
 
 impl TransformerModule {
-    pub fn new(strategies: Vec<Box<dyn Strategy>>, collector: Collector) -> Self {
-        TransformerModule {
-            strategies,
-            collector,
-        }
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, broker: CdfCollectorBroker) -> Self {
+        TransformerModule { strategies, broker }
     }
 
     pub fn add_strategy(&mut self, strategy: Box<dyn Strategy>) {
@@ -43,13 +39,13 @@ impl TransformerModule {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
 
-        Ok(self.collector.collect(data)?)
+        Ok(self.broker.process(data)?)
     }
 }
 
 impl PartialEq for TransformerModule {
     fn eq(&self, other: &Self) -> bool {
-        self.collector == other.collector
+        self.broker == other.broker
             && self.strategies.len() == other.strategies.len()
             && self
                 .strategies

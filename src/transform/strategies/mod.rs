@@ -13,3 +13,4 @@ pub mod multi_hpo_col_expansion;
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;
 
 pub mod strategy_factory;
+pub mod traits;

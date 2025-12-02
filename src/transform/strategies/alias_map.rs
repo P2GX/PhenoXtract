@@ -2,7 +2,7 @@ use crate::config::table_context::{AliasMap, OutputDataType};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::data_processing::casting::polars_column_cast_specific;
 use crate::transform::error::{DataProcessingError, StrategyError};
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use log::info;
 use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::Column;
@@ -15,7 +15,6 @@ use std::borrow::Cow;
 /// then the strategy will apply those aliases to each cell.
 /// # NOTE
 /// This does not transform the headers of the Dataframe.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct AliasMapStrategy;
 
@@ -111,7 +110,7 @@ mod tests {
     };
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
-    use crate::transform::traits::Strategy;
+    use crate::transform::strategies::traits::Strategy;
     use polars::datatypes::DataType;
     use polars::frame::DataFrame;
     use polars::prelude::{AnyValue, Column};
@@ -165,7 +164,6 @@ mod tests {
     fn sc_bool_alias() -> SeriesContext {
         SeriesContext::default()
             .with_identifier(Identifier::Regex("smokes".to_string()))
-            .with_data_context(Context::SmokerBool)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("false".to_string(), "true".to_string())]),
                 OutputDataType::Boolean,

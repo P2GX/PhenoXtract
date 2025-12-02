@@ -3,7 +3,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -13,7 +13,6 @@ use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 /// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
 /// It is case-insensitive.
@@ -126,7 +125,7 @@ mod tests {
     use crate::test_utils::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
-    use crate::transform::traits::Strategy;
+    use crate::transform::strategies::traits::Strategy;
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;

@@ -3,7 +3,6 @@ use hgvs;
 use hgvs::parser::HgvsVariant;
 use std::str::FromStr;
 
-#[allow(unused)]
 #[deprecated]
 #[derive(Debug, Default, PartialEq)]
 pub struct VariantParser;
@@ -12,7 +11,6 @@ impl VariantParser {
     /// this function will try to parse var_string as a variant in different formats (currently only HGVS accepted)
     /// and then return the appropriate variant syntax
     /// if all attempts to parse var_string fail, then an error will be thrown
-    #[allow(unused)]
     pub fn try_parse_syntax(var_string: &str) -> Result<&str, PhenopacketBuilderError> {
         let hgvs = HgvsVariant::from_str(var_string).map_err(|e| {
             PhenopacketBuilderError::ParsingError {

@@ -1,23 +1,63 @@
-#![allow(unused)]
-
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::OntologyRef;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
-use phenopackets::schema::v1::core::Individual;
 use phenopackets::schema::v2::Phenopacket;
-use phenopackets::schema::v2::core::{
-    OntologyClass, PhenotypicFeature, Resource, TimeElement, Update,
-};
+
+use polars::df;
+use polars::prelude::Column;
 use pretty_assertions::assert_eq;
 use ratelimit::Ratelimiter;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tempfile::TempDir;
+
+pub(crate) fn generate_minimal_cdf(
+    n_patients: i64,
+    n_entries_per_patient: i64,
+) -> ContextualizedDataFrame {
+    let mut patient_ids = Vec::new();
+    for n_pat in 0..n_patients {
+        for _ in 0..n_entries_per_patient {
+            patient_ids.push(format!("P{}", n_pat));
+        }
+    }
+
+    let df = df!["subject_id" => patient_ids].unwrap();
+
+    let table_context = TableContext::new(
+        "Test",
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::from("subject_id"))
+                .with_data_context(Context::SubjectId),
+        ],
+    );
+
+    ContextualizedDataFrame::new(table_context, df).unwrap()
+}
+
+pub(crate) fn generate_minimal_cdf_components(
+    n_patients: i64,
+    n_entries_per_patient: i64,
+) -> (Column, SeriesContext) {
+    let mut patient_ids = Vec::new();
+    for n_pat in 0..n_patients {
+        for _ in 0..n_entries_per_patient {
+            patient_ids.push(format!("P{}", n_pat));
+        }
+    }
+
+    let column = Column::new("subject_id".into(), patient_ids);
+
+    let series_context = SeriesContext::default()
+        .with_identifier(Identifier::from("subject_id"))
+        .with_data_context(Context::SubjectId);
+
+    (column, series_context)
+}
 
 pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> =
     Lazy::new(|| Arc::new(Mutex::new(CachedOntologyFactory::default())));
@@ -64,9 +104,12 @@ pub(crate) static GENO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::geno_with_version("2025-07-25"));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::mondo_with_version("2025-10-07"));
+use crate::config::TableContext;
+use crate::config::context::Context;
+use crate::config::table_context::{Identifier, SeriesContext};
+use crate::extract::ContextualizedDataFrame;
 use crate::ontology::traits::HasPrefixId;
 use crate::transform::PhenopacketBuilder;
-use validator::ValidateRequired;
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     ONTOLOGY_FACTORY
@@ -233,7 +276,7 @@ pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
     .unwrap()
 }
 
-pub(crate) fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
+pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
     PhenopacketBuilder::new(build_test_dicts(), hgnc_client)
 }
