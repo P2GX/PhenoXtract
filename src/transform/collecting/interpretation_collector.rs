@@ -93,6 +93,7 @@ mod tests {
     use crate::skip_in_ci;
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_disease_oc;
     use crate::test_suite::resource_references::{
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
     };
@@ -114,20 +115,12 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn spondylocostal_dysostosis_term() -> OntologyClass {
-        OntologyClass {
-            id: "MONDO:0000359".to_string(),
-            label: "spondylocostal dysostosis".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn dysostosis_interpretation(spondylocostal_dysostosis_term: OntologyClass) -> Interpretation {
+    fn dysostosis_interpretation() -> Interpretation {
         Interpretation {
             id: "pp_1-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
-                disease: Some(spondylocostal_dysostosis_term),
+                disease: Some(default_disease_oc()),
                 genomic_interpretations: vec![GenomicInterpretation {
                     subject_or_biosample_id: "P0".to_string(),
                     interpretation_status: 0,
@@ -201,18 +194,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_interpretations(
-        dysostosis_interpretation: Interpretation,
-        spondylocostal_dysostosis_term: OntologyClass,
-        temp_dir: TempDir,
-    ) {
+    fn test_collect_interpretations(dysostosis_interpretation: Interpretation, temp_dir: TempDir) {
         skip_in_ci!();
         let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
         let disease_col = Column::new(
             "diseases".into(),
-            [AnyValue::String(
-                spondylocostal_dysostosis_term.label.as_str(),
-            )],
+            [AnyValue::String(default_disease_oc().label.as_str())],
         );
         let gene_col = Column::new("gene".into(), [AnyValue::String("ALMS1")]);
         let hgvs_col1 = Column::new(

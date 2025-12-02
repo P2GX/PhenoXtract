@@ -73,12 +73,12 @@ mod tests {
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_disease_with_age_onset, default_iso_age, platelet_defect,
+        default_disease_with_age_onset, default_iso_age, platelet_defect,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::{Age, MetaData, OntologyClass};
+    use phenopackets::schema::v2::core::MetaData;
     use polars::prelude::{AnyValue, Column};
     use rstest::{fixture, rstest};
     use tempfile::TempDir;
