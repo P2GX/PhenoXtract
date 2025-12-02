@@ -164,7 +164,7 @@ impl ContextualizedDataFrame {
     /// where the data is whatever is contained in the cells of the string column.
     ///
     /// If the column, does not already have String datatype, and attempt will be made to cast it to String datatype.
-    pub fn create_subject_id_string_data_hash_map(
+    pub fn group_column_by_subject_id(
         &self,
         col_name: &str,
     ) -> Result<HashMap<String, Vec<String>>, PolarsError> {
@@ -470,12 +470,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_create_subject_id_string_data_hash_map_no_cast() {
+    fn test_group_column_by_subject_id_no_cast() {
         let df = sample_df();
         let ctx = sample_ctx();
 
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-        let patient_data_hash_map = cdf.create_subject_id_string_data_hash_map("sex").unwrap();
+        let patient_data_hash_map = cdf.group_column_by_subject_id("sex").unwrap();
 
         assert_eq!(patient_data_hash_map.len(), 3);
         assert_eq!(patient_data_hash_map["P001"], vec!["MALE"]);
@@ -484,11 +484,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_create_subject_id_string_data_hash_map_cast_ages() {
+    fn test_group_column_by_subject_id_cast_ages() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-        let patient_data_hash_map = cdf.create_subject_id_string_data_hash_map("age").unwrap();
+        let patient_data_hash_map = cdf.group_column_by_subject_id("age").unwrap();
         assert_eq!(patient_data_hash_map.len(), 3);
         assert_eq!(patient_data_hash_map["P001"], vec!["25"]);
         assert_eq!(patient_data_hash_map["P002"], vec!["30"]);

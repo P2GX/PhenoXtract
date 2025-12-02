@@ -166,7 +166,7 @@ impl DateToAgeStrategy {
             .as_str();
 
         let patient_dob_hash_map = Self::flatten_patient_dob_hash_map(
-            &dob_table.create_subject_id_string_data_hash_map(dob_col_name)?,
+            &dob_table.group_column_by_subject_id(dob_col_name)?,
         )?;
 
         Ok(patient_dob_hash_map)
