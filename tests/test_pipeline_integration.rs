@@ -13,7 +13,7 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::collecting::cdf_broker::CdfCollectorsBroker;
+use phenoxtract::transform::collecting::cdf_collectors_broker::CdfCollectorsBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};

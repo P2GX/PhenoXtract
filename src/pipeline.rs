@@ -9,7 +9,7 @@ use crate::load::traits::Loadable;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
-use crate::transform::collecting::cdf_broker::CdfCollectorsBroker;
+use crate::transform::collecting::cdf_collectors_broker::CdfCollectorsBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::traits::Strategy;
