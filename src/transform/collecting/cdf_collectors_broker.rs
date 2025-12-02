@@ -94,12 +94,9 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_suite::cdf_generation::{
-        default_patient_id, generate_minimal_cdf, generate_patient_ids,
-    };
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use rstest::{fixture, rstest};
-    use std::any::Any;
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
@@ -169,7 +166,11 @@ mod tests {
             let mut seen = mock.seen_pps.borrow().clone();
             seen.sort();
 
-            let expected = ["cohort-1-P0", "cohort-1-P0", "cohort-1-P1"];
+            let expected = [
+                format!("{}-P0", cohort_name),
+                format!("{}-P0", cohort_name),
+                format!("{}-P1", cohort_name),
+            ];
             assert_eq!(seen, expected);
             assert_eq!(mock.seen_pps.borrow().len(), 3);
         }
