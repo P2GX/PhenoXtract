@@ -162,17 +162,16 @@ mod tests {
         broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
-            let any_collector: &dyn Any = &collector;
-            if let Some(mock) = any_collector.downcast_ref::<MockCollector>() {
-                assert_eq!(mock.call_count.get(), 3);
+            let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
 
-                let mut seen = mock.seen_pps.borrow().clone();
-                seen.sort();
+            assert_eq!(mock.call_count.get(), 3);
 
-                let expected = generate_patient_ids(3);
-                assert_eq!(seen, expected);
-                assert_eq!(mock.seen_pps.borrow().len(), 3);
-            }
+            let mut seen = mock.seen_pps.borrow().clone();
+            seen.sort();
+
+            let expected = ["cohort-1-P0", "cohort-1-P0", "cohort-1-P1"];
+            assert_eq!(seen, expected);
+            assert_eq!(mock.seen_pps.borrow().len(), 3);
         }
     }
 

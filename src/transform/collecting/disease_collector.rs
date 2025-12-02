@@ -6,6 +6,7 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct DiseaseCollector;
