@@ -5,7 +5,7 @@ use crate::transform::error::{
 
 use crate::config::context::Context;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use log::{debug, info};
 use phenopackets::schema::v2::core::Sex;
 use phenopackets::schema::v2::core::vital_status::Status;

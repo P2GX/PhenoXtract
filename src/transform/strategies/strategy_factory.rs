@@ -3,10 +3,10 @@ use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
 use crate::transform::strategies::mapping::DefaultMapping;
+use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
     AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
 };
-use crate::transform::traits::Strategy;
 
 pub struct StrategyFactory {
     ontology_factory: CachedOntologyFactory,

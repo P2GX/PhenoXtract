@@ -1,7 +1,6 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
-use crate::transform::traits::Strategy;
 use log::{info, warn};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -10,6 +9,7 @@ use crate::config::context::{AGE_CONTEXTS, Context};
 use crate::transform::data_processing::casting::{
     try_parse_string_date, try_parse_string_datetime,
 };
+use crate::transform::strategies::traits::Strategy;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
 use polars::prelude::{AnyValue, Column};

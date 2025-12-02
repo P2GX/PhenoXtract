@@ -2,7 +2,7 @@ use crate::config::table_context::{AliasMap, OutputDataType};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::data_processing::casting::polars_column_cast_specific;
 use crate::transform::error::{DataProcessingError, StrategyError};
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use log::info;
 use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::Column;
@@ -110,7 +110,7 @@ mod tests {
     };
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
-    use crate::transform::traits::Strategy;
+    use crate::transform::strategies::traits::Strategy;
     use polars::datatypes::DataType;
     use polars::frame::DataFrame;
     use polars::prelude::{AnyValue, Column};
