@@ -120,7 +120,7 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::HPO;
+    use crate::test_suite::ontology_mocking::HPO;
     use rstest::rstest;
 
     #[rstest]

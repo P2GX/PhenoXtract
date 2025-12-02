@@ -310,7 +310,7 @@ impl ContextualizedDataFrame {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::test_utils::generate_minimal_cdf_components;
+    use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::prelude::*;
     use regex::Regex;
     use rstest::rstest;

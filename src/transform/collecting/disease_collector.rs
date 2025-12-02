@@ -70,83 +70,26 @@ impl Collect for DiseaseCollector {
 mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
-    use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf,
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_age_element, default_disease_with_age_onset, default_iso_age, platelet_defect,
     };
+    use crate::test_suite::resource_references::mondo_meta_data_resource;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
-    use phenopackets::schema::v2::core::time_element::Element;
-    use phenopackets::schema::v2::core::{
-        Age, Disease, MetaData, OntologyClass, Resource, TimeElement,
-    };
+    use phenopackets::schema::v2::core::{Age, MetaData, OntologyClass};
     use polars::prelude::{AnyValue, Column};
     use rstest::{fixture, rstest};
     use tempfile::TempDir;
-
-    #[fixture]
-    fn platelet_defect() -> Disease {
-        Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn spondylocostal_dysostosis_disease_with_onset(
-        spondylocostal_dysostosis_term: OntologyClass,
-        spondylocostal_dysostosis_onset_age: Age,
-    ) -> Disease {
-        Disease {
-            term: Some(spondylocostal_dysostosis_term),
-            onset: Some(TimeElement {
-                element: Some(Element::Age(spondylocostal_dysostosis_onset_age)),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn spondylocostal_dysostosis_term() -> OntologyClass {
-        OntologyClass {
-            id: "MONDO:0000359".to_string(),
-            label: "spondylocostal dysostosis".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn spondylocostal_dysostosis_onset_age() -> Age {
-        Age {
-            iso8601duration: "P10Y4M21D".to_string(),
-        }
-    }
 
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    #[fixture]
-    fn mondo_meta_data_resource() -> Resource {
-        Resource {
-            id: "mondo".to_string(),
-            name: "Mondo Disease Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
-            version: "2025-10-07".to_string(),
-            namespace_prefix: "MONDO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
-        }
-    }
-
     #[rstest]
-    fn test_collect_diseases(
-        spondylocostal_dysostosis_disease_with_onset: Disease,
-        spondylocostal_dysostosis_onset_age: Age,
-        platelet_defect: Disease,
-        mondo_meta_data_resource: Resource,
-        temp_dir: TempDir,
-    ) {
+    fn test_collect_diseases(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = "cohort2019-P002".to_string();
 
@@ -155,21 +98,14 @@ mod tests {
         let disease_col = Column::new(
             "disease".into(),
             [
-                spondylocostal_dysostosis_disease_with_onset
-                    .clone()
-                    .term
-                    .unwrap()
-                    .label,
-                platelet_defect.clone().term.unwrap().id,
+                default_disease_with_age_onset().clone().term.unwrap().label,
+                platelet_defect().clone().term.unwrap().id,
             ],
         );
 
         let onset_col = Column::new(
             "onset".into(),
-            [
-                AnyValue::String(&spondylocostal_dysostosis_onset_age.iso8601duration),
-                AnyValue::Null,
-            ],
+            [AnyValue::String(&default_iso_age()), AnyValue::Null],
         );
 
         cdf.builder()
@@ -200,12 +136,9 @@ mod tests {
 
         let mut expected_phenopacket = Phenopacket {
             id: phenopacket_id.to_string(),
-            diseases: vec![
-                spondylocostal_dysostosis_disease_with_onset,
-                platelet_defect,
-            ],
+            diseases: vec![default_disease_with_age_onset(), platelet_defect()],
             meta_data: Some(MetaData {
-                resources: vec![mondo_meta_data_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()

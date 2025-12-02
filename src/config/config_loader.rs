@@ -47,7 +47,7 @@ mod tests {
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::OntologyRef;
-    use crate::test_utils::get_full_config_bytes;
+    use crate::test_suite::config::get_full_config_bytes;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;

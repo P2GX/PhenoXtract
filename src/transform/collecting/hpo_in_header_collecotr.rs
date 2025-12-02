@@ -101,10 +101,12 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
-    use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf,
-        generate_minimal_cdf_components,
+    use crate::test_suite::cdf_generation::{
+        generate_minimal_cdf, generate_minimal_cdf_components,
     };
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::resource_references::hp_meta_data_resource;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::{
@@ -158,18 +160,6 @@ mod tests {
     }
 
     #[fixture]
-    fn hp_meta_data_resource() -> Resource {
-        Resource {
-            id: "hp".to_string(),
-            name: "Human Phenotype Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/hp.json".to_string(),
-            version: "2025-09-01".to_string(),
-            namespace_prefix: "HP".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/HP_$1".to_string(),
-        }
-    }
-
-    #[fixture]
     fn phenotypes_in_rows_cdf(
         fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
@@ -218,7 +208,6 @@ mod tests {
     #[rstest]
     fn test_collect_hpo_in_header_col(
         fractured_nose_pf: PhenotypicFeature,
-        hp_meta_data_resource: Resource,
         pp_id: String,
         temp_dir: TempDir,
     ) {
@@ -269,7 +258,7 @@ mod tests {
             id: pp_id.to_string(),
             phenotypic_features: vec![fractured_nose_excluded],
             meta_data: Some(MetaData {
-                resources: vec![hp_meta_data_resource],
+                resources: vec![hp_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()

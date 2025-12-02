@@ -67,9 +67,13 @@ mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
-    use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf,
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_age_element, default_iso_age, default_phenotype, generate_phenotype,
     };
+    use crate::test_suite::resource_references::hp_meta_data_resource;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::{
@@ -81,35 +85,8 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn spasmus_nutans_onset_age() -> Age {
-        Age {
-            iso8601duration: "P12Y5M028D".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn spasmus_nutans_pf_with_onset(spasmus_nutans_onset_age: Age) -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0010533".to_string(),
-                label: "Spasmus nutans".to_string(),
-            }),
-            onset: Some(TimeElement {
-                element: Some(Element::Age(spasmus_nutans_onset_age)),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
-    fn fractured_nose_pf() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0041249".to_string(),
-                label: "Fractured nose".to_string(),
-            }),
-            ..Default::default()
-        }
+    fn spasmus_nutans_pf_with_onset() -> PhenotypicFeature {
+        generate_phenotype("HP:0010533", Some(default_age_element()))
     }
 
     #[fixture]
@@ -123,38 +100,21 @@ mod tests {
     }
 
     #[fixture]
-    fn hp_meta_data_resource() -> Resource {
-        Resource {
-            id: "hp".to_string(),
-            name: "Human Phenotype Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/hp.json".to_string(),
-            version: "2025-09-01".to_string(),
-            namespace_prefix: "HP".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/HP_$1".to_string(),
-        }
-    }
-
-    #[fixture]
     fn phenotypes_in_rows_cdf(
-        fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
-        spasmus_nutans_onset_age: Age,
     ) -> ContextualizedDataFrame {
         let mut patient_cdf = generate_minimal_cdf(1, 2);
         let phenotypes = Series::new(
             "phenotypes".into(),
             &[
-                fractured_nose_pf.clone().r#type.unwrap().label,
+                default_phenotype().clone().r#type.unwrap().label,
                 spasmus_nutans_pf_with_onset.clone().r#type.unwrap().label,
             ],
         );
 
         let onset = Series::new(
             "onset".into(),
-            &[
-                AnyValue::Null,
-                AnyValue::String(&spasmus_nutans_onset_age.iso8601duration),
-            ],
+            &[AnyValue::Null, AnyValue::String(&default_iso_age())],
         );
 
         patient_cdf
@@ -182,10 +142,8 @@ mod tests {
 
     #[rstest]
     fn test_collect_phenotypic_features(
-        fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         phenotypes_in_rows_cdf: ContextualizedDataFrame,
-        hp_meta_data_resource: Resource,
         pp_id: String,
         temp_dir: TempDir,
     ) {
@@ -199,9 +157,9 @@ mod tests {
 
         let mut expected_phenopacket = Phenopacket {
             id: pp_id.to_string(),
-            phenotypic_features: vec![fractured_nose_pf, spasmus_nutans_pf_with_onset],
+            phenotypic_features: vec![default_phenotype(), spasmus_nutans_pf_with_onset],
             meta_data: Some(MetaData {
-                resources: vec![hp_meta_data_resource],
+                resources: vec![hp_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()

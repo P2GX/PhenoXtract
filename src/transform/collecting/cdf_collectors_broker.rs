@@ -94,7 +94,8 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_utils::{build_test_phenopacket_builder, generate_minimal_cdf};
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
     use rstest::{fixture, rstest};
     use std::any::Any;
     use std::cell::{Cell, RefCell};

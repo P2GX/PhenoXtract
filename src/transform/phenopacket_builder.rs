@@ -753,7 +753,10 @@ mod tests {
     use super::*;
     use crate::ontology::DatabaseRef;
     use crate::skip_in_ci;
-    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::platelet_defect;
+    use crate::test_suite::resource_references::mondo_meta_data_resource;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::{Age, MetaData, Resource};
     use pretty_assertions::assert_eq;
@@ -784,17 +787,7 @@ mod tests {
     fn onset_age() -> Option<&'static str> {
         Some("P48Y4M21D")
     }
-    #[fixture]
-    fn mondo_resource() -> Resource {
-        Resource {
-            id: "mondo".to_string(),
-            name: "Mondo Disease Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
-            version: "2025-10-07".to_string(),
-            namespace_prefix: "MONDO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
-        }
-    }
+
     #[fixture]
     fn onset_age_te() -> Option<TimeElement> {
         Some(TimeElement {
@@ -1100,7 +1093,7 @@ mod tests {
     }
 
     #[fixture]
-    fn basic_pp_with_disease_info(mondo_resource: Resource) -> Phenopacket {
+    fn basic_pp_with_disease_info() -> Phenopacket {
         Phenopacket {
             id: "pp_001".to_string(),
             interpretations: vec![Interpretation {
@@ -1116,7 +1109,7 @@ mod tests {
                 ..Default::default()
             }],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1414,7 +1407,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_disease(mondo_resource: Resource, temp_dir: TempDir) {
+    fn test_insert_disease(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
@@ -1450,7 +1443,7 @@ mod tests {
                 ..Default::default()
             }],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1462,7 +1455,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_same_disease_twice(mondo_resource: Resource, temp_dir: TempDir) {
+    fn test_insert_same_disease_twice(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenopacket_id = "pp_001";
@@ -1496,22 +1489,11 @@ mod tests {
             )
             .unwrap();
 
-        let platelet_defect_disease_no_onset = Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            ..Default::default()
-        };
-
         let expected_pp = &mut Phenopacket {
             id: phenopacket_id.to_string(),
-            diseases: vec![
-                platelet_defect_disease_no_onset.clone(),
-                platelet_defect_disease_no_onset.clone(),
-            ],
+            diseases: vec![platelet_defect(), platelet_defect()],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
