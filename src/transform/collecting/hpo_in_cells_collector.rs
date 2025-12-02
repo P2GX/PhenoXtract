@@ -61,10 +61,6 @@ impl Collect for HpoInCellsCollector {
 
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 #[cfg(test)]

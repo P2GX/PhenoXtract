@@ -94,10 +94,6 @@ impl Collect for HpoInHeaderCollector {
 
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 #[cfg(test)]

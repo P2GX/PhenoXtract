@@ -1,5 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::collecting::cdf_broker::CdfBroker;
+use crate::transform::collecting::cdf_broker::CdfCollectorsBroker;
 use crate::transform::data_processing::preprocessor::CdfPreprocessor;
 use crate::transform::error::TransformError;
 use crate::transform::traits::Strategy;
@@ -8,11 +8,11 @@ use phenopackets::schema::v2::Phenopacket;
 #[derive(Debug)]
 pub struct TransformerModule {
     strategies: Vec<Box<dyn Strategy>>,
-    broker: CdfBroker,
+    broker: CdfCollectorsBroker,
 }
 
 impl TransformerModule {
-    pub fn new(strategies: Vec<Box<dyn Strategy>>, broker: CdfBroker) -> Self {
+    pub fn new(strategies: Vec<Box<dyn Strategy>>, broker: CdfCollectorsBroker) -> Self {
         TransformerModule { strategies, broker }
     }
 

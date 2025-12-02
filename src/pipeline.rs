@@ -9,7 +9,7 @@ use crate::load::traits::Loadable;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
-use crate::transform::collecting::cdf_broker::CdfBroker;
+use crate::transform::collecting::cdf_broker::CdfCollectorsBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::traits::Strategy;
@@ -123,7 +123,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let tf_module = TransformerModule::new(
             strategies,
-            CdfBroker::with_default_collectors(
+            CdfCollectorsBroker::with_default_collectors(
                 phenopacket_builder,
                 config.meta_data.cohort_name.clone(),
             ),

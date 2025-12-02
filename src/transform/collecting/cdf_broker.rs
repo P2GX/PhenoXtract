@@ -10,19 +10,19 @@ use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
 
 #[derive(Debug)]
-pub struct CdfBroker {
+pub struct CdfCollectorsBroker {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
     collectors: Vec<Box<dyn Collect>>,
 }
 
-impl CdfBroker {
+impl CdfCollectorsBroker {
     pub fn new(
         phenopacket_builder: PhenopacketBuilder,
         cohort_name: String,
         collectors: Vec<Box<dyn Collect>>,
     ) -> Self {
-        CdfBroker {
+        CdfCollectorsBroker {
             phenopacket_builder,
             cohort_name,
             collectors,
@@ -64,7 +64,7 @@ impl CdfBroker {
         phenopacket_builder: PhenopacketBuilder,
         cohort_name: String,
     ) -> Self {
-        CdfBroker::new(
+        CdfCollectorsBroker::new(
             phenopacket_builder,
             cohort_name,
             vec![
@@ -82,7 +82,7 @@ impl CdfBroker {
     }
 }
 
-impl PartialEq for CdfBroker {
+impl PartialEq for CdfCollectorsBroker {
     fn eq(&self, other: &Self) -> bool {
         self.phenopacket_builder == other.phenopacket_builder
             && self.cohort_name == other.cohort_name
@@ -132,17 +132,13 @@ mod tests {
 
             Ok(())
         }
-
-        fn as_any(&self) -> &dyn Any {
-            self
-        }
     }
 
-    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfBroker {
+    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorsBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
         let cohort_name = "cohort-1";
 
-        CdfBroker::new(
+        CdfCollectorsBroker::new(
             builder,
             cohort_name.to_string(),
             vec![
@@ -163,7 +159,8 @@ mod tests {
         broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
-            if let Some(mock) = collector.as_any().downcast_ref::<MockCollector>() {
+            let any_collector: &dyn Any = &collector;
+            if let Some(mock) = any_collector.downcast_ref::<MockCollector>() {
                 assert_eq!(mock.call_count.get(), 3);
 
                 let mut seen = mock.seen_pps.borrow().clone();

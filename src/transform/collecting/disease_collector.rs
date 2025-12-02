@@ -65,10 +65,6 @@ impl Collect for DiseaseCollector {
 
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 #[cfg(test)]

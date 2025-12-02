@@ -40,10 +40,6 @@ impl Collect for IndividualCollector {
         Self::collect_vitality_status(builder, patient_cdf, phenopacket_id)?;
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 impl IndividualCollector {

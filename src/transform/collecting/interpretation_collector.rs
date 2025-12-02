@@ -84,10 +84,6 @@ impl Collect for InterpretationCollector {
 
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 #[cfg(test)]
