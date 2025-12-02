@@ -91,9 +91,11 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::skip_in_ci;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::phenopacket_component_generation::default_disease_oc;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_disease_oc, default_phenopacket_id,
+    };
     use crate::test_suite::resource_references::{
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
     };
@@ -122,7 +124,7 @@ mod tests {
             diagnosis: Some(Diagnosis {
                 disease: Some(default_disease_oc()),
                 genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: "P0".to_string(),
+                    subject_or_biosample_id: default_patient_id(),
                     interpretation_status: 0,
                     call: Some(Call::VariantInterpretation(VariantInterpretation {
                         acmg_pathogenicity_classification:
@@ -247,7 +249,7 @@ mod tests {
         .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_1".to_string();
+        let phenopacket_id = default_phenopacket_id().to_string();
 
         InterpretationCollector
             .collect(&mut builder, &patient_cdf, &phenopacket_id)

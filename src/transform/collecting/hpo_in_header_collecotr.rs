@@ -106,7 +106,8 @@ mod tests {
     };
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_iso_age, generate_phenotype,
+        default_age_element, default_iso_age, default_phenopacket_id, default_phenotype,
+        generate_phenotype,
     };
     use crate::test_suite::resource_references::hp_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -123,36 +124,19 @@ mod tests {
     }
 
     #[fixture]
-    fn fractured_nose_pf() -> PhenotypicFeature {
-        PhenotypicFeature {
-            r#type: Some(OntologyClass {
-                id: "HP:0041249".to_string(),
-                label: "Fractured nose".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
-    #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[fixture]
-    fn pp_id() -> String {
-        "cohort2019-P002".to_string()
-    }
-
-    #[fixture]
     fn phenotypes_in_rows_cdf(
-        fractured_nose_pf: PhenotypicFeature,
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
     ) -> ContextualizedDataFrame {
         let mut patient_cdf = generate_minimal_cdf(1, 2);
         let phenotypes = Series::new(
             "phenotypes".into(),
             &[
-                fractured_nose_pf.clone().r#type.unwrap().label,
+                default_phenotype().clone().r#type.unwrap().label,
                 spasmus_nutans_pf_with_onset.clone().r#type.unwrap().label,
             ],
         );
@@ -186,17 +170,13 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_hpo_in_header_col(
-        fractured_nose_pf: PhenotypicFeature,
-        pp_id: String,
-        temp_dir: TempDir,
-    ) {
+    fn test_collect_hpo_in_header_col(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let collector = HpoInHeaderCollector;
 
         let (patient_col, sc) = generate_minimal_cdf_components(1, 2);
 
-        let mut fractured_nose_excluded = fractured_nose_pf.clone();
+        let mut fractured_nose_excluded = default_phenotype().clone();
         fractured_nose_excluded.excluded = true;
         let phenotype_col_name = format!(
             "{}#(block foo)",
@@ -230,6 +210,9 @@ mod tests {
             DataFrame::new(vec![patient_col, pneumonia_col, pneumonia_onset_col]).unwrap(),
         )
         .unwrap();
+
+        let pp_id = default_phenopacket_id();
+
         collector.collect(&mut builder, &cdf, &pp_id).unwrap();
 
         let mut phenopackets = builder.build();

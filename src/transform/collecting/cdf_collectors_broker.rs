@@ -94,7 +94,9 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{
+        default_patient_id, generate_minimal_cdf, generate_patient_ids,
+    };
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use rstest::{fixture, rstest};
     use std::any::Any;
@@ -167,11 +169,7 @@ mod tests {
                 let mut seen = mock.seen_pps.borrow().clone();
                 seen.sort();
 
-                let expected = vec![
-                    format!("{}-{}", cohort_name, "P0"),
-                    format!("{}-{}", cohort_name, "P0"),
-                    format!("{}-{}", cohort_name, "P1"),
-                ];
+                let expected = generate_patient_ids(3);
                 assert_eq!(seen, expected);
                 assert_eq!(mock.seen_pps.borrow().len(), 3);
             }
@@ -181,11 +179,11 @@ mod tests {
     #[rstest]
     fn test_generate_phenopacket_id(temp_dir: TempDir) {
         let broker = build_test_cdf_broker(temp_dir);
-        let p_id = "P001";
+        let p_id = default_patient_id();
         let cohort_name = broker.cohort_name.clone();
 
         assert_eq!(
-            broker.generate_phenopacket_id(p_id),
+            broker.generate_phenopacket_id(&p_id),
             format!("{}-{}", cohort_name, p_id)
         );
     }

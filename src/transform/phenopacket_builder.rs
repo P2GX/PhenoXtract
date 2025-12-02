@@ -758,7 +758,7 @@ mod tests {
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_disease, default_disease_oc, default_iso_age,
         default_phenopacket_id, default_phenotype_oc, default_timestamp, default_timestamp_element,
-        generate_phenotype, generate_phenotype_oc, platelet_defect,
+        generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -776,10 +776,12 @@ mod tests {
     #[rstest]
     fn test_build(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let patient_id = default_patient_id();
+
         let phenopacket = Phenopacket {
             id: default_phenopacket_id().clone(),
             subject: Some(Individual {
-                id: "subject_1".to_string(),
+                id: patient_id.to_string(),
                 ..Default::default()
             }),
             ..Default::default()
@@ -795,7 +797,7 @@ mod tests {
         assert_eq!(
             build_pp.subject,
             Some(Individual {
-                id: "subject_1".to_string(),
+                id: patient_id.to_string(),
                 ..Default::default()
             })
         );
@@ -969,7 +971,6 @@ mod tests {
             .subject_to_phenopacket
             .insert(default_phenopacket_id().clone(), existing_phenopacket);
 
-        // Add another feature
         builder
             .upsert_phenotypic_feature(
                 pp_id.as_str(),
