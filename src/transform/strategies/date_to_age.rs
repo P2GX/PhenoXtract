@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 
 const DATE_CONTEXTS_WITHOUT_DOB: [Context; 3] = [
     Context::DateAtLastEncounter,
-    Context::OnsetDateTime,
+    Context::OnsetDate,
     Context::DateOfDeath,
 ];
 
@@ -448,7 +448,7 @@ mod tests {
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier(Regex("onset".to_string()))
-                    .with_data_context(Context::OnsetDateTime),
+                    .with_data_context(Context::OnsetDate),
             ],
         )
     }
@@ -635,7 +635,7 @@ mod tests {
             hm[&Context::DateAtLastEncounter],
             Context::AgeAtLastEncounter
         );
-        assert_eq!(hm[&Context::OnsetDateTime], Context::OnsetAge);
+        assert_eq!(hm[&Context::OnsetDate], Context::OnsetAge);
         assert_eq!(hm[&Context::DateOfDeath], Context::AgeOfDeath);
     }
 }

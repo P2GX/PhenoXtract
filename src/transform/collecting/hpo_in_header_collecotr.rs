@@ -36,7 +36,7 @@ impl Collect for HpoInHeaderCollector {
 
             let stringified_linked_onset_col = patient_cdf.get_single_linked_column(
                 hpo_sc.get_building_block_id(),
-                &[Context::OnsetAge, Context::OnsetDateTime],
+                &[Context::OnsetAge, Context::OnsetDate],
             )?;
 
             for hpo_col in hpo_cols {

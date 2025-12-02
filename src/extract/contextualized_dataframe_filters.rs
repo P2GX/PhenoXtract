@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextType};
 use crate::config::table_context::{CellValue, Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
@@ -16,8 +16,8 @@ pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
     identifier: Vec<Filter<&'a Identifier>>,
     building_block: Vec<Filter<&'a str>>,
-    header_context: Vec<Filter<&'a Context>>,
-    data_context: Vec<Filter<&'a Context>>,
+    header_context: Vec<Filter<&'a ContextType>>,
+    data_context: Vec<Filter<&'a ContextType>>,
     fill_missing: Vec<Filter<&'a CellValue>>,
 }
 
@@ -51,13 +51,13 @@ impl<'a> SeriesContextFilter<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
+    pub fn where_header_context(mut self, header_context: Filter<&'a ContextType>) -> Self {
         self.header_context.push(header_context);
         self
     }
 
     #[allow(dead_code)]
-    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+    pub fn where_header_contexts_are(mut self, contexts: &'a [ContextType]) -> Self {
         for context in contexts.iter() {
             self.header_context.push(Filter::Is(context));
         }
@@ -65,13 +65,13 @@ impl<'a> SeriesContextFilter<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
+    pub fn where_data_context(mut self, data_context: Filter<&'a ContextType>) -> Self {
         self.data_context.push(data_context);
         self
     }
 
     #[allow(dead_code)]
-    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+    pub fn where_data_contexts_are(mut self, contexts: &'a [ContextType]) -> Self {
         for context in contexts.iter() {
             self.data_context.push(Filter::Is(context));
         }
@@ -113,16 +113,16 @@ impl<'a> SeriesContextFilter<'a> {
 
                 let header_context_match = self.header_context.is_empty()
                     || self.header_context.iter().any(|f| match f {
-                        Filter::Is(c) => sc.get_header_context() == *c,
-                        Filter::IsNot(c) => sc.get_header_context() != *c,
+                        Filter::Is(c) => ContextType::from(sc.get_header_context()) == **c,
+                        Filter::IsNot(c) => ContextType::from(sc.get_header_context()) != **c,
                         Filter::IsSome => sc.get_header_context() != &Context::None,
                         Filter::IsNone => sc.get_header_context() == &Context::None,
                     });
 
                 let data_context_match = self.data_context.is_empty()
                     || self.data_context.iter().any(|f| match f {
-                        Filter::Is(c) => sc.get_data_context() == *c,
-                        Filter::IsNot(c) => sc.get_data_context() != *c,
+                        Filter::Is(c) => ContextType::from(sc.get_data_context()) == **c,
+                        Filter::IsNot(c) => ContextType::from(sc.get_data_context()) != **c,
                         Filter::IsSome => sc.get_data_context() != &Context::None,
                         Filter::IsNone => sc.get_data_context() == &Context::None,
                     });
@@ -192,13 +192,13 @@ impl<'a> ColumnFilter<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
+    pub fn where_header_context(mut self, header_context: Filter<&'a ContextType>) -> Self {
         self.series_filter.header_context.push(header_context);
         self
     }
 
     #[allow(dead_code)]
-    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+    pub fn where_header_contexts_are(mut self, contexts: &'a [ContextType]) -> Self {
         for context in contexts.iter() {
             self.series_filter.header_context.push(Filter::Is(context));
         }
@@ -206,13 +206,13 @@ impl<'a> ColumnFilter<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
+    pub fn where_data_context(mut self, data_context: Filter<&'a ContextType>) -> Self {
         self.series_filter.data_context.push(data_context);
         self
     }
 
     #[allow(dead_code)]
-    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+    pub fn where_data_contexts_are(mut self, contexts: &'a [ContextType]) -> Self {
         for context in contexts.iter() {
             self.series_filter.data_context.push(Filter::Is(context));
         }

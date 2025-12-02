@@ -6,3 +6,4 @@ pub mod individual_collector;
 pub mod interpretation_collector;
 pub mod traits;
 pub(super) mod utils;
+mod measurement_collector;

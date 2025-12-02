@@ -27,7 +27,7 @@ impl Collect for HpoInCellsCollector {
 
             let onset_column = patient_cdf.get_single_linked_column(
                 hpo_sc.get_building_block_id(),
-                &[Context::OnsetAge, Context::OnsetDateTime],
+                &[Context::OnsetAge, Context::OnsetDate],
             )?;
 
             for hpo_col in hpo_cols {
