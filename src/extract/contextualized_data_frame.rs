@@ -473,13 +473,14 @@ mod tests {
     fn test_create_subject_id_string_data_hash_map_no_cast() {
         let df = sample_df();
         let ctx = sample_ctx();
+
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-        let patient_data_hash_map = cdf
-            .create_subject_id_string_data_hash_map("location (some stuff)")
-            .unwrap();
-        assert_eq!(patient_data_hash_map.len(), 2);
-        assert_eq!(patient_data_hash_map["Alice"], vec!["NY"]);
-        assert_eq!(patient_data_hash_map["Charlie"], vec!["LA"]);
+        let patient_data_hash_map = cdf.create_subject_id_string_data_hash_map("sex").unwrap();
+
+        assert_eq!(patient_data_hash_map.len(), 3);
+        assert_eq!(patient_data_hash_map["P001"], vec!["MALE"]);
+        assert_eq!(patient_data_hash_map["P002"], vec!["FEMALE"]);
+        assert_eq!(patient_data_hash_map["P003"], vec!["MALE"]);
     }
 
     #[rstest]
@@ -489,9 +490,9 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let patient_data_hash_map = cdf.create_subject_id_string_data_hash_map("age").unwrap();
         assert_eq!(patient_data_hash_map.len(), 3);
-        assert_eq!(patient_data_hash_map["Alice"], vec!["25"]);
-        assert_eq!(patient_data_hash_map["Bob"], vec!["30"]);
-        assert_eq!(patient_data_hash_map["Charlie"], vec!["40"]);
+        assert_eq!(patient_data_hash_map["P001"], vec!["25"]);
+        assert_eq!(patient_data_hash_map["P002"], vec!["30"]);
+        assert_eq!(patient_data_hash_map["P003"], vec!["40"]);
     }
 
     #[rstest]
