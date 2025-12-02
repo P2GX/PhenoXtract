@@ -10,19 +10,19 @@ use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
 
 #[derive(Debug)]
-pub struct CdfCollectorsBroker {
+pub struct CdfCollectorBroker {
     phenopacket_builder: PhenopacketBuilder,
     cohort_name: String,
     collectors: Vec<Box<dyn Collect>>,
 }
 
-impl CdfCollectorsBroker {
+impl CdfCollectorBroker {
     pub fn new(
         phenopacket_builder: PhenopacketBuilder,
         cohort_name: String,
         collectors: Vec<Box<dyn Collect>>,
     ) -> Self {
-        CdfCollectorsBroker {
+        CdfCollectorBroker {
             phenopacket_builder,
             cohort_name,
             collectors,
@@ -64,7 +64,7 @@ impl CdfCollectorsBroker {
         phenopacket_builder: PhenopacketBuilder,
         cohort_name: String,
     ) -> Self {
-        CdfCollectorsBroker::new(
+        CdfCollectorBroker::new(
             phenopacket_builder,
             cohort_name,
             vec![
@@ -82,7 +82,7 @@ impl CdfCollectorsBroker {
     }
 }
 
-impl PartialEq for CdfCollectorsBroker {
+impl PartialEq for CdfCollectorBroker {
     fn eq(&self, other: &Self) -> bool {
         self.phenopacket_builder == other.phenopacket_builder
             && self.cohort_name == other.cohort_name
@@ -134,11 +134,11 @@ mod tests {
         }
     }
 
-    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorsBroker {
+    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
         let cohort_name = "cohort-1";
 
-        CdfCollectorsBroker::new(
+        CdfCollectorBroker::new(
             builder,
             cohort_name.to_string(),
             vec![

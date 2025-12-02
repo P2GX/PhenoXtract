@@ -13,11 +13,11 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::collecting::cdf_collectors_broker::CdfCollectorsBroker;
+use phenoxtract::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
+use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
-use phenoxtract::transform::traits::Strategy;
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use ratelimit::Ratelimiter;
 use rstest::{fixture, rstest};
@@ -300,7 +300,7 @@ fn test_pipeline_integration(
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CdfCollectorsBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
+        CdfCollectorBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
     );
 
     let output_dir = assets_path.join("do_not_push");

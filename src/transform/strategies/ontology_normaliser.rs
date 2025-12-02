@@ -3,7 +3,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
-use crate::transform::traits::Strategy;
+use crate::transform::strategies::traits::Strategy;
 use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -125,7 +125,7 @@ mod tests {
     use crate::test_utils::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
-    use crate::transform::traits::Strategy;
+    use crate::transform::strategies::traits::Strategy;
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
