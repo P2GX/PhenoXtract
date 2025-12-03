@@ -5,9 +5,14 @@ use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::{Age, Disease, OntologyClass, PhenotypicFeature, TimeElement};
 use prost_types::Timestamp;
 
+pub(crate) fn default_cohort_id() -> String {
+    "Cohort-1".to_string()
+}
+
 pub(crate) fn default_phenopacket_id() -> String {
     let patient_id = default_patient_id();
-    format!("Cohort-{}", patient_id)
+    let cohort_id = default_cohort_id();
+    format!("{}-{}", cohort_id, patient_id)
 }
 
 #[allow(dead_code)]

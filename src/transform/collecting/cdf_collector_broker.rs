@@ -96,6 +96,7 @@ mod tests {
     use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_cohort_id;
     use rstest::{fixture, rstest};
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
@@ -136,11 +137,11 @@ mod tests {
 
     fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
-        let cohort_name = "cohort-1";
+        let cohort_id = default_cohort_id();
 
         CdfCollectorBroker::new(
             builder,
-            cohort_name.to_string(),
+            cohort_id.to_string(),
             vec![
                 Box::new(MockCollector::default()),
                 Box::new(MockCollector::default()),
@@ -152,7 +153,6 @@ mod tests {
     fn test_process(temp_dir: TempDir) {
         let mut broker = build_test_cdf_broker(temp_dir);
 
-        let cohort_name = broker.cohort_name.clone();
         let patient_cdf_1 = generate_minimal_cdf(2, 2);
         let patient_cdf_2 = generate_minimal_cdf(1, 5);
 
@@ -166,10 +166,12 @@ mod tests {
             let mut seen = mock.seen_pps.borrow().clone();
             seen.sort();
 
+            let expected_cohort_id = default_cohort_id();
+
             let expected = [
-                format!("{}-P0", cohort_name),
-                format!("{}-P0", cohort_name),
-                format!("{}-P1", cohort_name),
+                format!("{}-P0", expected_cohort_id),
+                format!("{}-P0", expected_cohort_id),
+                format!("{}-P1", expected_cohort_id),
             ];
             assert_eq!(seen, expected);
             assert_eq!(mock.seen_pps.borrow().len(), 3);
@@ -180,11 +182,10 @@ mod tests {
     fn test_generate_phenopacket_id(temp_dir: TempDir) {
         let broker = build_test_cdf_broker(temp_dir);
         let p_id = default_patient_id();
-        let cohort_name = broker.cohort_name.clone();
 
         assert_eq!(
             broker.generate_phenopacket_id(&p_id),
-            format!("{}-{}", cohort_name, p_id)
+            format!("{}-{}", default_cohort_id(), p_id)
         );
     }
 }
