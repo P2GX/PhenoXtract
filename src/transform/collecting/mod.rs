@@ -4,6 +4,6 @@ mod hpo_in_cells_collector;
 mod hpo_in_header_collecotr;
 pub mod individual_collector;
 pub mod interpretation_collector;
+mod measurement_collector;
 pub mod traits;
 pub(super) mod utils;
-mod measurement_collector;

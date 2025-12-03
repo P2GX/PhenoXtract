@@ -1,13 +1,31 @@
-use std::any::Any;
+use enum_try_as_inner::EnumTryAsInner;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use strum_macros::EnumDiscriminants;
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
 /// such as identifying a column as containing HPO IDs or subject's sex.
-#[derive(Debug, Clone, PartialEq, Deserialize, Default, Serialize, Hash, Eq)]
+///
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Deserialize,
+    Default,
+    Serialize,
+    Hash,
+    Eq,
+    EnumDiscriminants,
+    EnumTryAsInner,
+)]
+#[derive_err(Debug)]
+#[strum_discriminants(name(ContextKind))]
+#[strum_discriminants(
+    doc = "ContextKind is the same as Context, but all variants have their fields stripped. This is useful if you want to consider e.g. the QuantitativeMeasurement variant as a whole as opposed to a specific instance of it."
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
     // individual
@@ -57,88 +75,6 @@ pub enum Context {
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self:?}")
-    }
-}
-
-/// Identical to Context, except that the customisable fields from contexts are stripped
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Default)]
-pub enum ContextType {
-    // individual
-    SubjectId,
-    SubjectSex,
-    DateOfBirth,
-    VitalStatus,
-    DateAtLastEncounter,
-    AgeAtLastEncounter,
-    WeightInKg,
-    DateOfDeath,
-    AgeOfDeath,
-    CauseOfDeath,
-    SurvivalTimeDays,
-
-    // ontologies and databases
-    HpoLabelOrId,
-    OmimLabelOrId,
-    OrphanetLabelOrId,
-    MondoLabelOrId,
-    HgncSymbolOrId,
-    GenoLabelOrId,
-
-    // variants
-    Hgvs,
-
-    // measurements
-    QuantitativeMeasurement,
-    QualitativeMeasurement,
-
-    // other
-    ObservationStatus,
-    MultiHpoId,
-    OnsetDate,
-    OnsetAge,
-    #[default]
-    None,
-    //...
-}
-
-impl From<&Context> for ContextType {
-    fn from(context: &Context) -> Self {
-        match context {
-            // individual
-            Context::SubjectId => ContextType::SubjectId,
-            Context::SubjectSex => ContextType::SubjectSex,
-            Context::DateOfBirth => ContextType::DateOfBirth,
-            Context::VitalStatus => ContextType::VitalStatus,
-            Context::DateAtLastEncounter => ContextType::DateAtLastEncounter,
-            Context::AgeAtLastEncounter => ContextType::AgeAtLastEncounter,
-            Context::WeightInKg => ContextType::WeightInKg,
-            Context::DateOfDeath => ContextType::DateOfDeath,
-            Context::AgeOfDeath => ContextType::AgeOfDeath,
-            Context::CauseOfDeath => ContextType::CauseOfDeath,
-            Context::SurvivalTimeDays => ContextType::SurvivalTimeDays,
-
-            // ontologies and databases
-            Context::HpoLabelOrId => ContextType::HpoLabelOrId,
-            Context::OmimLabelOrId => ContextType::OmimLabelOrId,
-            Context::OrphanetLabelOrId => ContextType::OrphanetLabelOrId,
-            Context::MondoLabelOrId => ContextType::MondoLabelOrId,
-            Context::HgncSymbolOrId => ContextType::HgncSymbolOrId,
-            Context::GenoLabelOrId => ContextType::GenoLabelOrId,
-
-            // variants
-            Context::Hgvs => ContextType::Hgvs,
-
-            // measurements
-            Context::QuantitativeMeasurement { .. } => ContextType::QuantitativeMeasurement,
-            Context::QualitativeMeasurement { .. } => ContextType::QualitativeMeasurement,
-
-            // other
-            Context::ObservationStatus => ContextType::ObservationStatus,
-            Context::MultiHpoId => ContextType::MultiHpoId,
-            Context::OnsetDate => ContextType::OnsetDate,
-            Context::OnsetAge => ContextType::OnsetAge,
-            Context::None => ContextType::None,
-        }
     }
 }
 

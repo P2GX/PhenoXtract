@@ -1,4 +1,4 @@
- use crate::extract::ContextualizedDataFrame;
+use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;

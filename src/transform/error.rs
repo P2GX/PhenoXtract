@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextError};
 use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use polars::error::PolarsError;
@@ -271,6 +271,8 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
+    #[error(transparent)]
+    ContextError(#[from] ContextError),
 }
 
 impl From<DataProcessingError> for CollectorError {
