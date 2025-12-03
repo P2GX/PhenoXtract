@@ -26,7 +26,7 @@ impl Collect for QuantitativeMeasurementCollector {
 
         let quantitative_measurement_scs = patient_cdf
             .filter_series_context()
-            .where_data_context(Filter::Is(&Context::QuantitativeMeasurement { .. }))
+            .where_header_context_type(Filter::Is(&Context::QuantitativeMeasurement { loinc_id: "".to_string(), unit_ontology_id: "".to_string() }.to_string()))
             .collect();
 
         for hpo_sc in hpo_term_in_header_scs {

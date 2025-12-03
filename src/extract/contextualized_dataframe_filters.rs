@@ -16,8 +16,10 @@ pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
     identifier: Vec<Filter<&'a Identifier>>,
     building_block: Vec<Filter<&'a str>>,
-    header_context: Vec<Filter<&'a ContextType>>,
-    data_context: Vec<Filter<&'a ContextType>>,
+    header_context: Vec<Filter<&'a Context>>,
+    data_context: Vec<Filter<&'a Context>>,
+    header_context_type:  Vec<Filter<&'a str>>,
+    data_context_type: Vec<Filter<&'a str>>,
     fill_missing: Vec<Filter<&'a CellValue>>,
 }
 
@@ -51,13 +53,19 @@ impl<'a> SeriesContextFilter<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn where_header_context(mut self, header_context: Filter<&'a ContextType>) -> Self {
+    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
         self.header_context.push(header_context);
         self
     }
 
     #[allow(dead_code)]
-    pub fn where_header_contexts_are(mut self, contexts: &'a [ContextType]) -> Self {
+    pub fn where_header_context_type(mut self, header_context_type: Filter<&'a str>) -> Self {
+        self.header_context_type.push(header_context_type);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
         for context in contexts.iter() {
             self.header_context.push(Filter::Is(context));
         }
@@ -118,6 +126,14 @@ impl<'a> SeriesContextFilter<'a> {
                         Filter::IsSome => sc.get_header_context() != &Context::None,
                         Filter::IsNone => sc.get_header_context() == &Context::None,
                     });
+
+                let header_context_type_match = self.header_context_type.is_empty()
+                    || self.header_context_type.iter().any(|f| match f {
+                    Filter::Is(c) => sc.get_header_context().to_string() == **c,
+                    Filter::IsNot(c) => ContextType::from(sc.get_header_context()) != **c,
+                    Filter::IsSome => sc.get_header_context() != &Context::None,
+                    Filter::IsNone => sc.get_header_context() == &Context::None,
+                });
 
                 let data_context_match = self.data_context.is_empty()
                     || self.data_context.iter().any(|f| match f {
