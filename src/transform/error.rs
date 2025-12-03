@@ -271,8 +271,8 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
-    #[error(transparent)]
-    ContextError(#[from] ContextError),
+    #[error("Blah: {0}")]
+    ContextError(String),
 }
 
 impl From<DataProcessingError> for CollectorError {

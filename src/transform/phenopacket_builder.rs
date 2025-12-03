@@ -369,6 +369,34 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
+    pub(crate) fn insert_quantitative_measurement(
+        &mut self,
+        phenopacket_id: &str,
+        quant_measurement: f64,
+        time_observed: Option<&str>,
+        loinc_id: &str,
+        unit_ontology_id: &str,
+        reference_range_low: Option<&str>,
+        reference_range_high: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        // todo!
+
+        Ok(())
+    }
+
+    pub(crate) fn insert_qualitative_measurement(
+        &mut self,
+        phenopacket_id: &str,
+        qual_measurement: &str,
+        time_observed: Option<&str>,
+        loinc_id: &str,
+        unit_ontology_id: &str,
+    ) -> Result<(), PhenopacketBuilderError> {
+        // todo!
+
+        Ok(())
+    }
+
     fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
         self.subject_to_phenopacket
             .entry(phenopacket_id.to_string())

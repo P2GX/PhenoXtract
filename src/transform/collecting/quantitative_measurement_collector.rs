@@ -4,10 +4,6 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use crate::transform::utils::HpoColMaker;
-use log::warn;
-use polars::polars_utils::nulls::IsNull;
-use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct QuantitativeMeasurementCollector;
@@ -31,17 +27,18 @@ impl Collect for QuantitativeMeasurementCollector {
             .collect();
 
         for quant_measurement_sc in quantitative_measurement_scs {
-            let (loinc_id, unit_ontology_id) = quant_measurement_sc
+            let (loinc_id, unit_ontology_id, ref_low, ref_high) = quant_measurement_sc
                 .get_data_context()
-                .try_as_quantitative_measurement()?;
+                .try_as_quantitative_measurement()
+                .map_err(|err| CollectorError::ContextError(err.to_string()))?;
 
-            let quant_measurement_cols = patient_cdf.get_columns(quant_measurement_sc.get_identifier());
+            let quant_measurement_cols =
+                patient_cdf.get_columns(quant_measurement_sc.get_identifier());
 
-            let observation_time_col = patient_cdf.get_single_linked_column(
+            let time_observed_col = patient_cdf.get_single_linked_column(
                 quant_measurement_sc.get_building_block_id(),
                 &[Context::OnsetAge, Context::OnsetDate],
             )?;
-
 
             for quant_measurement_col in quant_measurement_cols {
                 let floatified_quant_measurement_col = quant_measurement_col.f64()?;
@@ -49,24 +46,21 @@ impl Collect for QuantitativeMeasurementCollector {
                 for row_idx in 0..floatified_quant_measurement_col.len() {
                     let quant_measurement = floatified_quant_measurement_col.get(row_idx);
                     if let Some(quant_measurement) = quant_measurement {
-                        let observation_time = if let Some(observation_time_col) = &observation_time_col {
-                            observation_time_col.get(row_idx)
+                        let time_observed = if let Some(time_observed_col) = &time_observed_col {
+                            time_observed_col.get(row_idx)
                         } else {
                             None
                         };
 
-                        /*builder.upsert_phenotypic_feature(
+                        builder.insert_quantitative_measurement(
                             phenopacket_id,
-                            hpo,
-                            None,
-                            None,
-                            None,
-                            None,
-                            hpo_onset,
-                            None,
-                            None,
-                        )?;*/
-                        //todo!
+                            quant_measurement,
+                            time_observed,
+                            loinc_id,
+                            unit_ontology_id,
+                            ref_low.as_deref(),
+                            ref_high.as_deref(),
+                        )?;
                     }
                 }
             }
