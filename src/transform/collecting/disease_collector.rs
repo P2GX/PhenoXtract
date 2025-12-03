@@ -73,7 +73,7 @@ mod tests {
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_with_age_onset, default_iso_age, platelet_defect,
+        default_disease_with_age_onset, default_iso_age, generate_disease,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -94,13 +94,17 @@ mod tests {
         let phenopacket_id = "cohort2019-P002".to_string();
 
         let mut cdf = generate_minimal_cdf(1, 2);
+        let diseases = vec![
+            default_disease_with_age_onset(),
+            generate_disease("MONDO:0008258", None),
+        ];
 
         let disease_col = Column::new(
             "disease".into(),
-            [
-                default_disease_with_age_onset().clone().term.unwrap().label,
-                platelet_defect().clone().term.unwrap().id,
-            ],
+            diseases
+                .iter()
+                .map(|s| s.term.clone().unwrap().id)
+                .collect::<Vec<String>>(),
         );
 
         let onset_col = Column::new(
@@ -136,7 +140,7 @@ mod tests {
 
         let mut expected_phenopacket = Phenopacket {
             id: phenopacket_id.to_string(),
-            diseases: vec![default_disease_with_age_onset(), platelet_defect()],
+            diseases,
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource()],
                 ..Default::default()

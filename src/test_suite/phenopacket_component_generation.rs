@@ -45,15 +45,6 @@ pub(crate) fn default_disease_with_age_onset() -> Disease {
 
     default_disease
 }
-pub(crate) fn platelet_defect() -> Disease {
-    Disease {
-        term: Some(OntologyClass {
-            id: "MONDO:0008258".to_string(),
-            label: "platelet signal processing defect".to_string(),
-        }),
-        ..Default::default()
-    }
-}
 
 pub(crate) fn default_age_element() -> TimeElement {
     TimeElement {
