@@ -72,7 +72,10 @@ mod tests {
       transform_strategies:
         - "alias_map"
         - "multi_hpo_col_expansion"
-      loader: "file_system"
+      loader:
+        file_system:
+            output_dir: "some/dir"
+            create_dir: true
       meta_data:
         created_by: Rouven Reuter
         submitted_by: Magnus Knut Hansen
@@ -83,34 +86,37 @@ mod tests {
     "#;
 
     const TOML_DATA: &[u8] = br#"
-        [[data_sources]]
-        type = "csv"
-        source = "test/path"
-        separator = ","
+[[data_sources]]
+type = "csv"
+source = "test/path"
+separator = ","
 
-        [data_sources.extraction_config]
-        name = "test_config"
-        has_headers = true
-        patients_are_rows = true
+[data_sources.extraction_config]
+name = "test_config"
+has_headers = true
+patients_are_rows = true
 
-        [data_sources.context]
-        name = "test_table"
+[data_sources.context]
+name = "test_table"
 
-        [pipeline]
-        transform_strategies = [
-            "alias_map",
-            "multi_hpo_col_expansion"
-        ]
-        loader = "file_system"
+[pipeline]
+transform_strategies = [
+    "alias_map",
+    "multi_hpo_col_expansion"
+]
 
-        [pipeline.meta_data]
-        created_by = "Rouven Reuter"
-        submitted_by = "Magnus Knut Hansen"
-        cohort_name = "Arkham Asylum 2025"
+[pipeline.loader.file_system]
+output_dir = "some/dir"
+create_dir = true
 
-        [pipeline.meta_data.hp_ref]
-        version = "2025-09-01"
-        prefix_id = "HP"
+[pipeline.meta_data]
+created_by = "Rouven Reuter"
+submitted_by = "Magnus Knut Hansen"
+cohort_name = "Arkham Asylum 2025"
+
+[pipeline.meta_data.hp_ref]
+version = "2025-09-01"
+prefix_id = "HP"
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -135,7 +141,12 @@ mod tests {
       "alias_map",
       "multi_hpo_col_expansion"
     ],
-    "loader": "file_system",
+    "loader": {
+      "file_system": {
+        "output_dir": "some/dir",
+        "create_dir": true
+      }
+    },
     "meta_data": {
       "created_by": "Rouven Reuter",
       "submitted_by": "Magnus Knut Hansen",
@@ -171,7 +182,12 @@ mod tests {
       "alias_map",
       "multi_hpo_col_expansion",
     ],
-    loader: "file_system",
+    loader: (
+      file_system: (
+        output_dir: "some/dir",
+        create_dir: true,
+      ),
+    ),
     meta_data: (
       created_by: "Rouven Reuter",
       submitted_by: "Magnus Knut Hansen",
@@ -247,7 +263,7 @@ mod tests {
                 ],
                 LoaderConfig::FileSystem {
                     output_dir: PathBuf::from("some/dir"),
-                    create_dir: false,
+                    create_dir: true,
                 },
             ),
             data_sources: vec![
