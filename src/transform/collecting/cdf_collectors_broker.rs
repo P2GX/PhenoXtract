@@ -2,7 +2,7 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;
-use crate::transform::collecting::hpo_in_header_collecotr::HpoInHeaderCollector;
+use crate::transform::collecting::hpo_in_header_collector::HpoInHeaderCollector;
 use crate::transform::collecting::individual_collector::IndividualCollector;
 use crate::transform::collecting::interpretation_collector::InterpretationCollector;
 use crate::transform::collecting::traits::Collect;
