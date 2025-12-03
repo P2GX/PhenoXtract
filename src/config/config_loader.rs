@@ -47,7 +47,7 @@ mod tests {
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::OntologyRef;
-    use crate::test_utils::get_full_config_bytes;
+    use crate::test_suite::config::get_full_config_bytes;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
@@ -78,7 +78,7 @@ mod tests {
         cohort_name: "Arkham Asylum 2025"
         hp_ref:
           version: "2025-09-01"
-          prefix_id: "hp"
+          prefix_id: "HP"
     "#;
 
     const TOML_DATA: &[u8] = br#"
@@ -109,7 +109,7 @@ mod tests {
 
         [pipeline.meta_data.hp_ref]
         version = "2025-09-01"
-        prefix_id = "hp"
+        prefix_id = "HP"
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -141,7 +141,7 @@ mod tests {
       "cohort_name": "Arkham Asylum 2025",
       "hp_ref": {
         "version": "2025-09-01",
-        "prefix_id": "hp"
+        "prefix_id": "HP"
       }
     }
   }
@@ -177,7 +177,7 @@ mod tests {
       cohort_name: "Arkham Asylum 2025",
       hp_ref: (
         version: "2025-09-01",
-        prefix_id: "hp",
+        prefix_id: "HP",
       ),
     ),
   ),

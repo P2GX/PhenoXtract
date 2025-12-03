@@ -283,7 +283,7 @@ impl Debug for HGNCClient {
 mod tests {
     use super::*;
     use crate::skip_in_ci;
-    use crate::test_utils::build_hgnc_test_client;
+    use crate::test_suite::component_building::build_hgnc_test_client;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use serial_test::serial;

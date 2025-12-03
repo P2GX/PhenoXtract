@@ -9,7 +9,7 @@ use crate::load::traits::Loadable;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
-use crate::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
+use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
@@ -166,7 +166,7 @@ impl TryFrom<PathBuf> for Pipeline {
 mod tests {
     use super::*;
     use crate::config::ConfigLoader;
-    use crate::test_utils::get_full_config_bytes;
+    use crate::test_suite::config::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
     use std::io::Write;

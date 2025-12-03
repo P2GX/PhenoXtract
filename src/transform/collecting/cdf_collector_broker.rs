@@ -2,7 +2,7 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;
-use crate::transform::collecting::hpo_in_header_collecotr::HpoInHeaderCollector;
+use crate::transform::collecting::hpo_in_header_collector::HpoInHeaderCollector;
 use crate::transform::collecting::individual_collector::IndividualCollector;
 use crate::transform::collecting::interpretation_collector::InterpretationCollector;
 use crate::transform::collecting::traits::Collect;
@@ -94,9 +94,10 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_utils::{build_test_phenopacket_builder, generate_minimal_cdf};
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_cohort_id;
     use rstest::{fixture, rstest};
-    use std::any::Any;
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
@@ -136,11 +137,11 @@ mod tests {
 
     fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
-        let cohort_name = "cohort-1";
+        let cohort_id = default_cohort_id();
 
         CdfCollectorBroker::new(
             builder,
-            cohort_name.to_string(),
+            cohort_id.to_string(),
             vec![
                 Box::new(MockCollector::default()),
                 Box::new(MockCollector::default()),
@@ -152,40 +153,39 @@ mod tests {
     fn test_process(temp_dir: TempDir) {
         let mut broker = build_test_cdf_broker(temp_dir);
 
-        let cohort_name = broker.cohort_name.clone();
         let patient_cdf_1 = generate_minimal_cdf(2, 2);
         let patient_cdf_2 = generate_minimal_cdf(1, 5);
 
         broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
-            let any_collector: &dyn Any = &collector;
-            if let Some(mock) = any_collector.downcast_ref::<MockCollector>() {
-                assert_eq!(mock.call_count.get(), 3);
+            let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
 
-                let mut seen = mock.seen_pps.borrow().clone();
-                seen.sort();
+            assert_eq!(mock.call_count.get(), 3);
 
-                let expected = vec![
-                    format!("{}-{}", cohort_name, "P0"),
-                    format!("{}-{}", cohort_name, "P0"),
-                    format!("{}-{}", cohort_name, "P1"),
-                ];
-                assert_eq!(seen, expected);
-                assert_eq!(mock.seen_pps.borrow().len(), 3);
-            }
+            let mut seen = mock.seen_pps.borrow().clone();
+            seen.sort();
+
+            let expected_cohort_id = default_cohort_id();
+
+            let expected = [
+                format!("{}-P0", expected_cohort_id),
+                format!("{}-P0", expected_cohort_id),
+                format!("{}-P1", expected_cohort_id),
+            ];
+            assert_eq!(seen, expected);
+            assert_eq!(mock.seen_pps.borrow().len(), 3);
         }
     }
 
     #[rstest]
     fn test_generate_phenopacket_id(temp_dir: TempDir) {
         let broker = build_test_cdf_broker(temp_dir);
-        let p_id = "P001";
-        let cohort_name = broker.cohort_name.clone();
+        let p_id = default_patient_id();
 
         assert_eq!(
-            broker.generate_phenopacket_id(p_id),
-            format!("{}-{}", cohort_name, p_id)
+            broker.generate_phenopacket_id(&p_id),
+            format!("{}-{}", default_cohort_id(), p_id)
         );
     }
 }

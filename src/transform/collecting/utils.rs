@@ -35,7 +35,7 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
-    use crate::test_utils::generate_minimal_cdf_components;
+    use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::prelude::{Column, DataFrame};
     use rstest::fixture;
 

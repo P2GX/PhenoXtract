@@ -91,9 +91,15 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::skip_in_ci;
-    use crate::test_utils::{
-        assert_phenopackets, build_test_phenopacket_builder, generate_minimal_cdf_components,
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_disease_oc, default_phenopacket_id,
     };
+    use crate::test_suite::resource_references::{
+        geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
+    };
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
     use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
     use phenopackets::schema::v2::Phenopacket;
@@ -101,7 +107,7 @@ mod tests {
     use phenopackets::schema::v2::core::TherapeuticActionability;
     use phenopackets::schema::v2::core::genomic_interpretation::Call;
     use phenopackets::schema::v2::core::{
-        Diagnosis, GenomicInterpretation, Interpretation, MetaData, OntologyClass, Resource,
+        Diagnosis, GenomicInterpretation, Interpretation, MetaData, OntologyClass,
         VariantInterpretation,
     };
     use polars::datatypes::AnyValue;
@@ -111,46 +117,14 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn spondylocostal_dysostosis_term() -> OntologyClass {
-        OntologyClass {
-            id: "MONDO:0000359".to_string(),
-            label: "spondylocostal dysostosis".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn mondo_meta_data_resource() -> Resource {
-        Resource {
-            id: "mondo".to_string(),
-            name: "Mondo Disease Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
-            version: "2025-10-07".to_string(),
-            namespace_prefix: "MONDO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn geno_meta_data_resource() -> Resource {
-        Resource {
-            id: "geno".to_string(),
-            name: "Genotype Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/geno.json".to_string(),
-            version: "2025-07-25".to_string(),
-            namespace_prefix: "GENO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/GENO_$1".to_string(),
-        }
-    }
-
-    #[fixture]
-    fn dysostosis_interpretation(spondylocostal_dysostosis_term: OntologyClass) -> Interpretation {
+    fn dysostosis_interpretation() -> Interpretation {
         Interpretation {
-            id: "pp_1-MONDO:0000359".to_string(),
+            id: "Cohort-P0-MONDO:0000359".to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
-                disease: Some(spondylocostal_dysostosis_term),
+                disease: Some(default_disease_oc()),
                 genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: "P0".to_string(),
+                    subject_or_biosample_id: default_patient_id(),
                     interpretation_status: 0,
                     call: Some(Call::VariantInterpretation(VariantInterpretation {
                         acmg_pathogenicity_classification:
@@ -217,39 +191,17 @@ mod tests {
     }
 
     #[fixture]
-    fn hgnc_meta_data_resource() -> Resource {
-        Resource {
-            id: "hgnc".to_string(),
-            name: "HUGO Gene Nomenclature Committee".to_string(),
-            url: "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn".to_string(),
-            version: "-".to_string(),
-            namespace_prefix: "hgnc".to_string(),
-            iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
-                .to_string(),
-        }
-    }
-
-    #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[rstest]
-    fn test_collect_interpretations(
-        dysostosis_interpretation: Interpretation,
-        mondo_meta_data_resource: Resource,
-        geno_meta_data_resource: Resource,
-        hgnc_meta_data_resource: Resource,
-        spondylocostal_dysostosis_term: OntologyClass,
-        temp_dir: TempDir,
-    ) {
+    fn test_collect_interpretations(dysostosis_interpretation: Interpretation, temp_dir: TempDir) {
         skip_in_ci!();
         let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
         let disease_col = Column::new(
             "diseases".into(),
-            [AnyValue::String(
-                spondylocostal_dysostosis_term.label.as_str(),
-            )],
+            [AnyValue::String(default_disease_oc().label.as_str())],
         );
         let gene_col = Column::new("gene".into(), [AnyValue::String("ALMS1")]);
         let hgvs_col1 = Column::new(
@@ -297,7 +249,7 @@ mod tests {
         .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_1".to_string();
+        let phenopacket_id = default_phenopacket_id().to_string();
 
         InterpretationCollector
             .collect(&mut builder, &patient_cdf, &phenopacket_id)
@@ -310,9 +262,9 @@ mod tests {
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
                 resources: vec![
-                    mondo_meta_data_resource,
-                    hgnc_meta_data_resource,
-                    geno_meta_data_resource,
+                    mondo_meta_data_resource(),
+                    hgnc_meta_data_resource(),
+                    geno_meta_data_resource(),
                 ],
                 ..Default::default()
             }),

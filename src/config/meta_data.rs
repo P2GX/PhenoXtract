@@ -108,7 +108,7 @@ mod tests {
     cohort_name: arkham 2025
     hp_ref:
       version: "2025-09-01"
-      prefix_id: "hp"
+      prefix_id: "HP"
     "#;
 
     #[fixture]

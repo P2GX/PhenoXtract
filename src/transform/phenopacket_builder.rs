@@ -753,7 +753,15 @@ mod tests {
     use super::*;
     use crate::ontology::DatabaseRef;
     use crate::skip_in_ci;
-    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
+    use crate::test_suite::cdf_generation::default_patient_id;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_age_element, default_disease, default_disease_oc, default_iso_age,
+        default_phenopacket_id, default_phenotype_oc, default_timestamp, default_timestamp_element,
+        generate_phenotype,
+    };
+    use crate::test_suite::resource_references::mondo_meta_data_resource;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::{Age, MetaData, Resource};
     use pretty_assertions::assert_eq;
@@ -761,87 +769,35 @@ mod tests {
     use tempfile::TempDir;
 
     #[fixture]
-    fn phenopacket_id() -> String {
-        "cohort_patient_001".to_string()
-    }
-
-    #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    #[fixture]
-    fn valid_phenotype() -> String {
-        "HP:0041249".to_string()
-    }
-
-    #[fixture]
-    fn another_phenotype() -> String {
-        "Seizure cluster".to_string()
-    }
-
-    #[fixture]
-    fn onset_age() -> Option<&'static str> {
-        Some("P48Y4M21D")
-    }
-    #[fixture]
-    fn mondo_resource() -> Resource {
-        Resource {
-            id: "mondo".to_string(),
-            name: "Mondo Disease Ontology".to_string(),
-            url: "http://purl.obolibrary.org/obo/mondo.json".to_string(),
-            version: "2025-10-07".to_string(),
-            namespace_prefix: "MONDO".to_string(),
-            iri_prefix: "http://purl.obolibrary.org/obo/MONDO_$1".to_string(),
-        }
-    }
-    #[fixture]
-    fn onset_age_te() -> Option<TimeElement> {
-        Some(TimeElement {
-            element: Some(Element::Age(Age {
-                iso8601duration: "P48Y4M21D".to_string(),
-            })),
-        })
-    }
-
-    #[fixture]
-    fn onset_timestamp() -> Option<&'static str> {
-        Some("2005-10-01T12:34:56Z")
-    }
-
-    #[fixture]
-    fn onset_timestamp_te() -> Option<TimeElement> {
-        Some(TimeElement {
-            element: Some(Element::Timestamp(Timestamp {
-                seconds: 1128170096,
-                nanos: 0,
-            })),
-        })
-    }
-
     #[rstest]
-    fn test_build(phenopacket_id: String, temp_dir: TempDir) {
+    fn test_build(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let patient_id = default_patient_id();
+
         let phenopacket = Phenopacket {
-            id: phenopacket_id.clone(),
+            id: default_phenopacket_id().clone(),
             subject: Some(Individual {
-                id: "subject_1".to_string(),
+                id: patient_id.to_string(),
                 ..Default::default()
             }),
             ..Default::default()
         };
         builder
             .subject_to_phenopacket
-            .insert(phenopacket_id.clone(), phenopacket);
+            .insert(default_phenopacket_id().clone(), phenopacket);
 
         let builds = builder.build();
         let build_pp = builds.first().unwrap();
 
-        assert_eq!(build_pp.id, phenopacket_id);
+        assert_eq!(build_pp.id, default_phenopacket_id());
         assert_eq!(
             build_pp.subject,
             Some(Individual {
-                id: "subject_1".to_string(),
+                id: patient_id.to_string(),
                 ..Default::default()
             })
         );
@@ -854,51 +810,51 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_success(
-        phenopacket_id: String,
-        valid_phenotype: String,
-        onset_age: Option<&str>,
-        onset_age_te: Option<TimeElement>,
-        temp_dir: TempDir,
-    ) {
+    fn test_upsert_phenotypic_feature_success(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenotype = default_phenotype_oc();
+        let pp_id = default_phenopacket_id();
+
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &valid_phenotype,
+                pp_id.as_str(),
+                &phenotype.label.to_string(),
                 None,
                 None,
                 None,
                 None,
-                onset_age,
+                Some(default_iso_age().as_str()),
                 None,
                 None,
             )
             .unwrap();
 
-        assert!(builder.subject_to_phenopacket.contains_key(&phenopacket_id));
+        assert!(builder.subject_to_phenopacket.contains_key(&pp_id));
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
 
         let feature = &phenopacket.phenotypic_features[0];
         assert!(feature.r#type.is_some());
 
         let ontology_class = feature.r#type.as_ref().unwrap();
-        assert_eq!(ontology_class.id, valid_phenotype);
-        assert_eq!(ontology_class.label, "Fractured nose");
+        assert_eq!(ontology_class.id, phenotype.id);
+        assert_eq!(ontology_class.label, phenotype.label);
 
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
-        assert_eq!(feature_onset, &onset_age_te.unwrap());
+        assert_eq!(feature_onset, &default_age_element());
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_invalid_term(phenopacket_id: String, temp_dir: TempDir) {
+    fn test_upsert_phenotypic_feature_invalid_term(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let result = builder.upsert_phenotypic_feature(
-            phenopacket_id.as_str(),
+            default_phenopacket_id().as_str(),
             "invalid_term",
             None,
             None,
@@ -913,18 +869,15 @@ mod tests {
     }
 
     #[rstest]
-    fn test_multiple_phenotypic_features_same_phenopacket(
-        phenopacket_id: String,
-        valid_phenotype: String,
-        another_phenotype: String,
-        temp_dir: TempDir,
-    ) {
+    fn test_multiple_phenotypic_features_same_phenopacket(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenotype = default_phenotype_oc();
+        let pp_id = default_phenopacket_id();
 
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &valid_phenotype,
+                pp_id.as_str(),
+                &phenotype.id.to_string(),
                 None,
                 None,
                 None,
@@ -937,8 +890,8 @@ mod tests {
 
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &another_phenotype,
+                pp_id.as_str(),
+                "HP:0000234",
                 None,
                 None,
                 None,
@@ -949,12 +902,12 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
     #[rstest]
-    fn test_different_phenopacket_ids(valid_phenotype: String, temp_dir: TempDir) {
+    fn test_different_phenopacket_ids(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
         let id1 = "pp_001".to_string();
@@ -963,7 +916,7 @@ mod tests {
         builder
             .upsert_phenotypic_feature(
                 id1.as_str(),
-                &valid_phenotype,
+                &default_phenotype_oc().id.to_string(),
                 None,
                 None,
                 None,
@@ -977,7 +930,7 @@ mod tests {
         builder
             .upsert_phenotypic_feature(
                 id2.as_str(),
-                &valid_phenotype,
+                &default_phenotype_oc().id.to_string(),
                 None,
                 None,
                 None,
@@ -994,29 +947,14 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_phenotypic_features(
-        phenopacket_id: String,
-        valid_phenotype: String,
-        temp_dir: TempDir,
-    ) {
+    fn test_update_phenotypic_features(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = default_phenopacket_id();
 
         let existing_phenopacket = Phenopacket {
-            id: phenopacket_id.clone(),
+            id: pp_id.clone(),
             subject: None,
-            phenotypic_features: vec![PhenotypicFeature {
-                description: "".to_string(),
-                r#type: Some(OntologyClass {
-                    id: "HP:0000001".to_string(),
-                    label: "All".to_string(),
-                }),
-                excluded: false,
-                severity: None,
-                modifiers: vec![],
-                onset: None,
-                resolution: None,
-                evidence: vec![],
-            }],
+            phenotypic_features: vec![generate_phenotype("HP:0000001", None)],
             measurements: vec![],
             biosamples: vec![],
             interpretations: vec![],
@@ -1027,13 +965,12 @@ mod tests {
         };
         builder
             .subject_to_phenopacket
-            .insert(phenopacket_id.clone(), existing_phenopacket);
+            .insert(default_phenopacket_id().clone(), existing_phenopacket);
 
-        // Add another feature
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &valid_phenotype,
+                pp_id.as_str(),
+                &default_phenotype_oc().id,
                 None,
                 None,
                 None,
@@ -1044,30 +981,27 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
     #[rstest]
-    fn test_update_onset_of_phenotypic_feature(
-        phenopacket_id: String,
-        onset_age: Option<&str>,
-        onset_timestamp: Option<&str>,
-        onset_timestamp_te: Option<TimeElement>,
-        valid_phenotype: String,
-        temp_dir: TempDir,
-    ) {
+    fn test_update_onset_of_phenotypic_feature(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = default_phenopacket_id();
 
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &valid_phenotype,
+                pp_id.as_str(),
+                &default_phenotype_oc().id.to_string(),
                 None,
                 None,
                 None,
                 None,
-                onset_age,
+                Some(default_iso_age().as_str()),
                 None,
                 None,
             )
@@ -1076,19 +1010,19 @@ mod tests {
         // Update the same feature
         builder
             .upsert_phenotypic_feature(
-                phenopacket_id.as_str(),
-                &valid_phenotype,
+                pp_id.as_str(),
+                &default_phenotype_oc().id.to_string(),
                 None,
                 None,
                 None,
                 None,
-                onset_timestamp,
+                Some(default_timestamp().to_string().as_str()),
                 None,
                 None,
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
 
         let feature = &phenopacket.phenotypic_features[0];
@@ -1096,27 +1030,27 @@ mod tests {
 
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
-        assert_eq!(feature_onset, &onset_timestamp_te.unwrap());
+        assert_eq!(feature_onset, &default_timestamp_element());
     }
 
     #[fixture]
-    fn basic_pp_with_disease_info(mondo_resource: Resource) -> Phenopacket {
+    fn basic_pp_with_disease_info() -> Phenopacket {
+        let disease = default_disease_oc();
+        let pp_id = default_phenopacket_id();
+
         Phenopacket {
-            id: "pp_001".to_string(),
+            id: pp_id.to_string(),
             interpretations: vec![Interpretation {
-                id: "pp_001-MONDO:0012145".to_string(),
+                id: format!("{}-{}", pp_id, disease.id),
                 progress_status: ProgressStatus::UnknownProgress.into(),
                 diagnosis: Some(Diagnosis {
-                    disease: Some(OntologyClass {
-                        id: "MONDO:0012145".to_string(),
-                        label: "macular degeneration, age-related, 3".to_string(),
-                    }),
+                    disease: Some(disease),
                     ..Default::default()
                 }),
                 ..Default::default()
             }],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1129,14 +1063,13 @@ mod tests {
         temp_dir: TempDir,
     ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
+        let disease_id = default_disease_oc().id.clone();
 
         builder
             .upsert_interpretation(
-                "P006",
-                phenopacket_id,
-                disease_id,
+                &default_patient_id(),
+                &default_phenopacket_id(),
+                &disease_id,
                 &PathogenicGeneVariantData::None,
             )
             .unwrap();
@@ -1151,8 +1084,8 @@ mod tests {
     fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
         skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
 
         let homozygous_variant = PathogenicGeneVariantData::HomozygousVariant {
             gene: "KIF21A".to_string(),
@@ -1160,7 +1093,12 @@ mod tests {
         };
 
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &homozygous_variant)
+            .upsert_interpretation(
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
+                &homozygous_variant,
+            )
             .unwrap();
 
         let pp = builder.subject_to_phenopacket.values().next().unwrap();
@@ -1208,8 +1146,8 @@ mod tests {
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
         skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
 
         let compound_heterozygous_pair =
             PathogenicGeneVariantData::CompoundHeterozygousVariantPair {
@@ -1220,9 +1158,9 @@ mod tests {
 
         builder
             .upsert_interpretation(
-                "P006",
-                phenopacket_id,
-                disease_id,
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
                 &compound_heterozygous_pair,
             )
             .unwrap();
@@ -1273,8 +1211,8 @@ mod tests {
     fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
         skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
 
         let heterozygous_variant = PathogenicGeneVariantData::HeterozygousVariant {
             gene: "KIF21A".to_string(),
@@ -1282,7 +1220,12 @@ mod tests {
         };
 
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &heterozygous_variant)
+            .upsert_interpretation(
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
+                &heterozygous_variant,
+            )
             .unwrap();
 
         let pp = builder.subject_to_phenopacket.values().next().unwrap();
@@ -1333,7 +1276,7 @@ mod tests {
     ) {
         skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
+        let phenopacket_id = default_phenopacket_id();
 
         let existing_pp = basic_pp_with_disease_info;
         builder
@@ -1347,9 +1290,9 @@ mod tests {
 
         builder
             .upsert_interpretation(
-                "P006",
-                phenopacket_id,
-                "macular degeneration, age-related, 3",
+                &default_patient_id(),
+                &phenopacket_id,
+                &default_disease_oc().label,
                 &heterozygous_variant,
             )
             .unwrap();
@@ -1372,13 +1315,18 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_single_gene(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
 
         let gene_data = PathogenicGeneVariantData::CausativeGene("KIF21A".to_string());
 
         builder
-            .upsert_interpretation("P006", phenopacket_id, disease_id, &gene_data)
+            .upsert_interpretation(
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
+                &gene_data,
+            )
             .unwrap();
 
         let pp = builder.subject_to_phenopacket.values().next().unwrap();
@@ -1414,19 +1362,19 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_disease(mondo_resource: Resource, temp_dir: TempDir) {
+    fn test_insert_disease(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0012145";
-        let onset_age = "P3Y4M";
+        let phenopacket_id = default_phenopacket_id();
+        let disease = default_disease_oc();
+        let onset_age = default_iso_age();
 
         builder
             .insert_disease(
-                phenopacket_id,
-                disease_id,
+                &phenopacket_id,
+                &disease.id,
                 None,
-                Some(onset_age),
+                Some(&onset_age),
                 None,
                 None,
                 None,
@@ -1438,19 +1386,12 @@ mod tests {
         let expected_pp = &mut Phenopacket {
             id: phenopacket_id.to_string(),
             diseases: vec![Disease {
-                term: Some(OntologyClass {
-                    id: disease_id.to_string(),
-                    label: "macular degeneration, age-related, 3".to_string(),
-                }),
-                onset: Some(TimeElement {
-                    element: Some(Element::Age(Age {
-                        iso8601duration: "P3Y4M".to_string(),
-                    })),
-                }),
+                term: Some(disease),
+                onset: Some(default_age_element()),
                 ..Default::default()
             }],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1462,16 +1403,16 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_same_disease_twice(mondo_resource: Resource, temp_dir: TempDir) {
+    fn test_insert_same_disease_twice(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = "pp_001";
-        let disease_id = "MONDO:0008258";
+        let phenopacket_id = default_phenopacket_id();
+        let disease = default_disease_oc();
 
         builder
             .insert_disease(
-                phenopacket_id,
-                disease_id,
+                &phenopacket_id,
+                &disease.id,
                 None,
                 None,
                 None,
@@ -1484,8 +1425,8 @@ mod tests {
 
         builder
             .insert_disease(
-                phenopacket_id,
-                disease_id,
+                &phenopacket_id,
+                &disease.id,
                 None,
                 None,
                 None,
@@ -1495,23 +1436,12 @@ mod tests {
                 None,
             )
             .unwrap();
-
-        let platelet_defect_disease_no_onset = Disease {
-            term: Some(OntologyClass {
-                id: "MONDO:0008258".to_string(),
-                label: "platelet signal processing defect".to_string(),
-            }),
-            ..Default::default()
-        };
 
         let expected_pp = &mut Phenopacket {
             id: phenopacket_id.to_string(),
-            diseases: vec![
-                platelet_defect_disease_no_onset.clone(),
-                platelet_defect_disease_no_onset.clone(),
-            ],
+            diseases: vec![default_disease(), default_disease()],
             meta_data: Some(MetaData {
-                resources: vec![mondo_resource],
+                resources: vec![mondo_meta_data_resource()],
                 ..Default::default()
             }),
             ..Default::default()
@@ -1526,14 +1456,13 @@ mod tests {
     fn test_upsert_individual(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = "pp_001";
-        let individual_id = "individual_001";
+        let phenopacket_id = default_phenopacket_id();
+        let individual_id = default_patient_id();
 
-        // Test just upserting the individual id
         builder
             .upsert_individual(
-                phenopacket_id,
-                individual_id,
+                &phenopacket_id,
+                &individual_id,
                 None,
                 None,
                 None,
@@ -1544,19 +1473,19 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
-        assert_eq!(individual.id, individual_id);
+        assert_eq!(individual.id, individual_id.clone());
         assert_eq!(individual.sex, 0);
         assert_eq!(individual.vital_status, None);
 
         // Test upserting the other entries
         builder
             .upsert_individual(
-                phenopacket_id,
-                individual_id,
+                &phenopacket_id,
+                &individual_id,
                 None,
-                Some("2001-01-29"),
+                Some("2001-01-29"), //TODO
                 None,
                 Some("MALE"),
                 None,
@@ -1565,7 +1494,7 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(individual.sex, Sex::Male as i32);
@@ -1582,24 +1511,26 @@ mod tests {
     fn test_upsert_vital_status(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = "pp_001";
+        let phenopacket_id = default_phenopacket_id();
 
         builder
-            .upsert_vital_status(phenopacket_id, "ALIVE", Some("P81Y5M13D"), None, Some(322))
+            .upsert_vital_status(
+                &phenopacket_id,
+                "ALIVE",
+                Some(&default_iso_age()),
+                None,
+                Some(322),
+            )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(phenopacket_id).unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(
             individual.vital_status,
             Some(VitalStatus {
                 status: Status::Alive.into(),
-                time_of_death: Some(TimeElement {
-                    element: Some(Element::Age(IndividualAge {
-                        iso8601duration: "P81Y5M13D".to_string()
-                    }))
-                }),
+                time_of_death: Some(default_age_element()),
                 cause_of_death: None,
                 survival_time_in_days: 322,
             })
@@ -1611,20 +1542,22 @@ mod tests {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
         // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
-        let result = builder.query_hpo_identifiers("Fractured nose").unwrap();
+        let phenotype = default_phenotype_oc();
+        let result = builder.query_hpo_identifiers(&phenotype.label).unwrap();
 
-        assert_eq!(result.label, "Fractured nose");
-        assert_eq!(result.id, "HP:0041249");
+        assert_eq!(result.label, phenotype.label);
+        assert_eq!(result.id, phenotype.id);
     }
 
     #[rstest]
     fn test_query_hpo_identifiers_with_valid_id(temp_dir: TempDir) {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let result = builder.query_hpo_identifiers("HP:0041249").unwrap();
+        let phenotype = default_phenotype_oc();
+        let result = builder.query_hpo_identifiers(&phenotype.id).unwrap();
 
-        assert_eq!(result.label, "Fractured nose");
-        assert_eq!(result.id, "HP:0041249");
+        assert_eq!(result.label, phenotype.label);
+        assert_eq!(result.id, phenotype.id);
     }
 
     #[rstest]
@@ -1638,15 +1571,8 @@ mod tests {
 
     #[rstest]
     fn test_parse_time_element_duration() {
-        let te = PhenopacketBuilder::try_parse_time_element("P81Y5M13D").unwrap();
-        assert_eq!(
-            te,
-            TimeElement {
-                element: Some(Element::Age(IndividualAge {
-                    iso8601duration: "P81Y5M13D".to_string()
-                }))
-            }
-        );
+        let te = PhenopacketBuilder::try_parse_time_element(&default_iso_age()).unwrap();
+        assert_eq!(te, default_age_element());
     }
 
     #[rstest]
@@ -1726,9 +1652,11 @@ mod tests {
     #[rstest]
     fn test_get_or_create_phenopacket(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_001";
-        builder.get_or_create_phenopacket(phenopacket_id);
-        let pp = builder.get_or_create_phenopacket(phenopacket_id);
+        let phenopacket_id = default_phenopacket_id();
+
+        builder.get_or_create_phenopacket(&phenopacket_id);
+        let pp = builder.get_or_create_phenopacket(&phenopacket_id);
+
         assert_eq!(pp.id, phenopacket_id);
         assert_eq!(builder.subject_to_phenopacket.len(), 1);
     }
@@ -1770,8 +1698,8 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_gi = builder
             .get_genomic_interpretation_from_data(
-                "test_cohort-P006",
-                "P006",
+                &default_phenopacket_id(),
+                &default_patient_id(),
                 "NM_001173464.1:c.2860C>T",
                 "KIF21A",
                 "HGNC:19349",
@@ -1796,54 +1724,5 @@ mod tests {
                 assert_eq!(coding_expressions[0].value, "NM_001173464.1:c.2860C>T");
             }
         }
-    }
-
-    #[rstest]
-    fn test_disease_query_priority(temp_dir: TempDir) {
-        //TDOD: Finish when omim is implemented
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let disease = "a sever disease, you do not want to have".to_string();
-        let omim_id = "OMIM:0099";
-        let mondo_ref = OntologyRef::mondo();
-        let _omim_ref = DatabaseRef::omim();
-        let label_to_id_mondo =
-            HashMap::from_iter([(disease.to_string(), "MONDO:0032".to_string())]);
-
-        let _label_to_id_omim: HashMap<String, String> =
-            HashMap::from_iter([(disease.to_string(), omim_id.to_string())]);
-        let custom_ontology_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
-            (
-                mondo_ref.prefix_id().to_string(),
-                Arc::new(OntologyBiDict::new(
-                    OntologyRef::mondo(),
-                    label_to_id_mondo.clone(),
-                    HashMap::from_iter(
-                        label_to_id_mondo
-                            .iter()
-                            .map(|(key, value)| (value.clone(), key.clone())),
-                    ),
-                    Default::default(),
-                )),
-            ),
-            /*(omim_ref.prefix_id()
-            ,BiDict::new(
-                DatabaseRef::omim(None),
-                label_to_id_omim.clone(),
-                 HashMap::from_iter(
-                        label_to_id_omim
-                            .iter()
-                            .map(|(key, value)| (value.clone(), key.clone())),
-                    ),
-                Default::default(),)
-            ),*/
-        ]);
-        builder.ontology_bidicts = custom_ontology_dicts;
-
-        let (onto_class, _resource_ref) = builder.query_disease_identifiers(&disease).unwrap();
-
-        assert_eq!(onto_class.label, disease);
-        //assert_eq!(onto_class.id, omim_id);
-
-        //assert_eq!(resource_ref.prefix_id(), omim_ref.prefix_id());
     }
 }

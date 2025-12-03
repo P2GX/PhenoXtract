@@ -80,7 +80,8 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
-    use crate::test_utils::{assert_phenopackets, build_test_phenopacket_builder};
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;

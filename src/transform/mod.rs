@@ -4,7 +4,7 @@ pub use phenopacket_builder::PhenopacketBuilder;
 pub(crate) mod cached_resource_resolver;
 
 pub mod collecting;
-mod data_processing;
+pub(crate) mod data_processing;
 pub mod pathogenic_gene_variant_info;
 pub mod strategies;
 pub mod transform_module;

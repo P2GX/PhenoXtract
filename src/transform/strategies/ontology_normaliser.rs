@@ -122,7 +122,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_utils::HPO_DICT;
+    use crate::test_suite::ontology_mocking::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
     use crate::transform::strategies::traits::Strategy;
