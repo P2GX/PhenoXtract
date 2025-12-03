@@ -35,6 +35,7 @@ impl ConfigLoader {
 mod tests {
     use super::*;
     use crate::config::context::Context;
+    use crate::config::loader_config::LoaderConfig;
     use crate::config::meta_data::MetaData;
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
@@ -244,7 +245,10 @@ mod tests {
                     StrategyConfig::AliasMap,
                     StrategyConfig::MultiHpoColExpansion,
                 ],
-                "file_system".to_string(),
+                LoaderConfig::FileSystem {
+                    output_dir: PathBuf::from("some/dir"),
+                    create_dir: false,
+                },
             ),
             data_sources: vec![
                 // First data source: CSV

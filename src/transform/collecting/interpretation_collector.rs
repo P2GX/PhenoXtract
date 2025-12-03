@@ -94,7 +94,7 @@ mod tests {
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_phenopacket_id,
+        default_cohort_id, default_disease_oc, default_phenopacket_id,
     };
     use crate::test_suite::resource_references::{
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
@@ -118,13 +118,16 @@ mod tests {
 
     #[fixture]
     fn dysostosis_interpretation() -> Interpretation {
+        let cohort_id = default_cohort_id();
+        let patient_id = default_patient_id();
+
         Interpretation {
-            id: "Cohort-P0-MONDO:0000359".to_string(),
+            id: format!("{}-{}-MONDO:0000359", cohort_id, patient_id).to_string(),
             progress_status: 0,
             diagnosis: Some(Diagnosis {
                 disease: Some(default_disease_oc()),
                 genomic_interpretations: vec![GenomicInterpretation {
-                    subject_or_biosample_id: default_patient_id(),
+                    subject_or_biosample_id: patient_id,
                     interpretation_status: 0,
                     call: Some(Call::VariantInterpretation(VariantInterpretation {
                         acmg_pathogenicity_classification:

@@ -3,9 +3,9 @@ use crate::config::{ConfigLoader, PhenoXtractorConfig};
 use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
-use crate::load::file_system_loader::FileSystemLoader;
 use crate::load::traits::Loadable;
 
+use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::{CachedOntologyFactory, HGNCClient};
@@ -30,11 +30,11 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new(
         transformer_module: TransformerModule,
-        loader_module: impl Loadable + 'static,
+        loader_module: Box<dyn Loadable>,
     ) -> Pipeline {
         Pipeline {
             transformer_module,
-            loader_module: Box::new(loader_module),
+            loader_module,
         }
     }
 
@@ -128,7 +128,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
                 config.meta_data.cohort_name.clone(),
             ),
         );
-        let loader_module = FileSystemLoader::new(PathBuf::from(config.loader));
+        let loader_module = LoaderFactory::try_from_config(config.loader)?;
 
         Ok(Pipeline::new(tf_module, loader_module))
     }

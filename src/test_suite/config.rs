@@ -65,7 +65,10 @@ pipeline:
   transform_strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
-  loader: "file_system"
+  loader:
+    file_system:
+        output_dir: "some/dir"
+        create_dir: true
   meta_data:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen

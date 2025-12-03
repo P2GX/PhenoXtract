@@ -1,3 +1,4 @@
+use crate::config::loader_config::LoaderConfig;
 use crate::config::meta_data::MetaData;
 use crate::config::strategy_config::StrategyConfig;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This struct holds the necessary information to define how data
 /// should be loaded and transformed.
-#[derive(Debug, Deserialize, Clone, Serialize, Default, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct PipelineConfig {
     /// Metadata the pipeline needs to configure itself. Like Ontology versions or resources.
     pub meta_data: MetaData,
@@ -15,14 +16,14 @@ pub struct PipelineConfig {
     pub transform_strategies: Vec<StrategyConfig>,
 
     /// The loader responsible for fetching the initial data.
-    pub loader: String,
+    pub loader: LoaderConfig,
 }
 
 impl PipelineConfig {
     pub fn new(
         meta_data: MetaData,
         transform_strategies: Vec<StrategyConfig>,
-        loader: String,
+        loader: LoaderConfig,
     ) -> Self {
         Self {
             meta_data,
