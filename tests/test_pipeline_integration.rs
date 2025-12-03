@@ -307,7 +307,7 @@ fn test_pipeline_integration(
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).unwrap();
     }
-    let loader = FileSystemLoader::new(output_dir.clone());
+    let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
