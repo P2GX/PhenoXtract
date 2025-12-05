@@ -56,13 +56,13 @@ pub enum Context {
     QuantitativeMeasurement {
         loinc_id: String,
         unit_ontology_id: String,
-        reference_range_low: Option<String>, // String should be parseable to f64
-        reference_range_high: Option<String>, // String should be parseable to f64
     },
     QualitativeMeasurement {
         loinc_id: String,
         unit_ontology_prefix: String,
     },
+    ReferenceRangeLow,
+    ReferenceRangeHigh,
 
     // other
     ObservationStatus,

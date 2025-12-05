@@ -27,7 +27,7 @@ impl Collect for QuantitativeMeasurementCollector {
             .collect();
 
         for quant_measurement_sc in quantitative_measurement_scs {
-            let (loinc_id, unit_ontology_id, ref_low, ref_high) = quant_measurement_sc
+            let (loinc_id, unit_ontology_id) = quant_measurement_sc
                 .get_data_context()
                 .try_as_quantitative_measurement()
                 .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -39,6 +39,18 @@ impl Collect for QuantitativeMeasurementCollector {
                 quant_measurement_sc.get_building_block_id(),
                 &[Context::OnsetAge, Context::OnsetDate],
             )?;
+            
+            let ref_low_col = patient_cdf.get_single_linked_column(
+                quant_measurement_sc.get_building_block_id(),
+                &[Context::ReferenceRangeLow],
+            )?;
+
+            let ref_high_col = patient_cdf.get_single_linked_column(
+                quant_measurement_sc.get_building_block_id(),
+                &[Context::ReferenceRangeHigh],
+            )?;
+            
+            //need to refactor get_single_linked_column so that it doesn't stringify!
 
             for quant_measurement_col in quant_measurement_cols {
                 let floatified_quant_measurement_col = quant_measurement_col.f64()?;
@@ -51,6 +63,17 @@ impl Collect for QuantitativeMeasurementCollector {
                         } else {
                             None
                         };
+                        let ref_low = if let Some(ref_low_col) = &ref_low_col {
+                            ref_low_col.get(row_idx)
+                        } else {
+                            None
+                        };
+                        let ref_high = if let Some(ref_high_col) = &ref_high_col {
+                            ref_high_col.get(row_idx)
+                        } else {
+                            None
+                        };
+                        
 
                         builder.insert_quantitative_measurement(
                             phenopacket_id,
@@ -58,8 +81,8 @@ impl Collect for QuantitativeMeasurementCollector {
                             time_observed,
                             loinc_id,
                             unit_ontology_id,
-                            ref_low.as_deref(),
-                            ref_high.as_deref(),
+                            ref_low,
+                            ref_high,
                         )?;
                     }
                 }

@@ -376,8 +376,8 @@ impl PhenopacketBuilder {
         time_observed: Option<&str>,
         loinc_id: &str,
         unit_ontology_id: &str,
-        reference_range_low: Option<&str>,
-        reference_range_high: Option<&str>,
+        reference_range_low: Option<f64>,
+        reference_range_high: Option<f64>,
     ) -> Result<(), PhenopacketBuilderError> {
         // todo!
 
