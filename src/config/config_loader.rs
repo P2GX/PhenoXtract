@@ -35,6 +35,7 @@ impl ConfigLoader {
 mod tests {
     use super::*;
     use crate::config::context::Context;
+    use crate::config::loader_config::LoaderConfig;
     use crate::config::meta_data::MetaData;
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
@@ -47,7 +48,7 @@ mod tests {
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::OntologyRef;
-    use crate::test_utils::get_full_config_bytes;
+    use crate::test_suite::config::get_full_config_bytes;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
@@ -71,45 +72,51 @@ mod tests {
       transform_strategies:
         - "alias_map"
         - "multi_hpo_col_expansion"
-      loader: "file_system"
+      loader:
+        file_system:
+            output_dir: "some/dir"
+            create_dir: true
       meta_data:
         created_by: Rouven Reuter
         submitted_by: Magnus Knut Hansen
         cohort_name: "Arkham Asylum 2025"
         hp_ref:
           version: "2025-09-01"
-          prefix_id: "hp"
+          prefix_id: "HP"
     "#;
 
     const TOML_DATA: &[u8] = br#"
-        [[data_sources]]
-        type = "csv"
-        source = "test/path"
-        separator = ","
+[[data_sources]]
+type = "csv"
+source = "test/path"
+separator = ","
 
-        [data_sources.extraction_config]
-        name = "test_config"
-        has_headers = true
-        patients_are_rows = true
+[data_sources.extraction_config]
+name = "test_config"
+has_headers = true
+patients_are_rows = true
 
-        [data_sources.context]
-        name = "test_table"
+[data_sources.context]
+name = "test_table"
 
-        [pipeline]
-        transform_strategies = [
-            "alias_map",
-            "multi_hpo_col_expansion"
-        ]
-        loader = "file_system"
+[pipeline]
+transform_strategies = [
+    "alias_map",
+    "multi_hpo_col_expansion"
+]
 
-        [pipeline.meta_data]
-        created_by = "Rouven Reuter"
-        submitted_by = "Magnus Knut Hansen"
-        cohort_name = "Arkham Asylum 2025"
+[pipeline.loader.file_system]
+output_dir = "some/dir"
+create_dir = true
 
-        [pipeline.meta_data.hp_ref]
-        version = "2025-09-01"
-        prefix_id = "hp"
+[pipeline.meta_data]
+created_by = "Rouven Reuter"
+submitted_by = "Magnus Knut Hansen"
+cohort_name = "Arkham Asylum 2025"
+
+[pipeline.meta_data.hp_ref]
+version = "2025-09-01"
+prefix_id = "HP"
     "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -134,14 +141,19 @@ mod tests {
       "alias_map",
       "multi_hpo_col_expansion"
     ],
-    "loader": "file_system",
+    "loader": {
+      "file_system": {
+        "output_dir": "some/dir",
+        "create_dir": true
+      }
+    },
     "meta_data": {
       "created_by": "Rouven Reuter",
       "submitted_by": "Magnus Knut Hansen",
       "cohort_name": "Arkham Asylum 2025",
       "hp_ref": {
         "version": "2025-09-01",
-        "prefix_id": "hp"
+        "prefix_id": "HP"
       }
     }
   }
@@ -170,14 +182,19 @@ mod tests {
       "alias_map",
       "multi_hpo_col_expansion",
     ],
-    loader: "file_system",
+    loader: (
+      file_system: (
+        output_dir: "some/dir",
+        create_dir: true,
+      ),
+    ),
     meta_data: (
       created_by: "Rouven Reuter",
       submitted_by: "Magnus Knut Hansen",
       cohort_name: "Arkham Asylum 2025",
       hp_ref: (
         version: "2025-09-01",
-        prefix_id: "hp",
+        prefix_id: "HP",
       ),
     ),
   ),
@@ -244,7 +261,10 @@ mod tests {
                     StrategyConfig::AliasMap,
                     StrategyConfig::MultiHpoColExpansion,
                 ],
-                "file_system".to_string(),
+                LoaderConfig::FileSystem {
+                    output_dir: PathBuf::from("some/dir"),
+                    create_dir: true,
+                },
             ),
             data_sources: vec![
                 // First data source: CSV

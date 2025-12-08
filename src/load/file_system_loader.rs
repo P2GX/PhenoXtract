@@ -3,6 +3,7 @@ use crate::load::traits::Loadable;
 use log::{debug, warn};
 use phenopackets::schema::v2::Phenopacket;
 use serde::Deserialize;
+use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -14,11 +15,16 @@ use std::path::PathBuf;
 pub struct FileSystemLoader {
     /// The path to the output directory where phenopacket files will be saved.
     out_path: PathBuf,
+    /// If true will create the full out path
+    create_dir: bool,
 }
 
 impl FileSystemLoader {
-    pub fn new(out_path: PathBuf) -> Self {
-        Self { out_path }
+    pub fn new(out_path: PathBuf, create_dir: bool) -> Self {
+        Self {
+            out_path,
+            create_dir,
+        }
     }
 }
 
@@ -41,6 +47,10 @@ impl Loadable for FileSystemLoader {
     /// * `Ok(())` if the operation completes (even if individual file writes fail).
     /// * `Err(LoadError)` if a file cannot be created due to an I/O error (e.g., permissions).
     fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), LoadError> {
+        if !phenopackets.is_empty() && self.create_dir {
+            fs::create_dir_all(self.out_path.as_path())?;
+        }
+
         for pp in phenopackets.iter() {
             let file = File::create(self.out_path.join(format!("{}.json", pp.id)))?;
             debug!("Storing file to: {:?}", file);
@@ -70,6 +80,7 @@ mod tests {
         let tmp_dir = tempdir().unwrap();
         let loader = FileSystemLoader {
             out_path: tmp_dir.path().to_path_buf(),
+            create_dir: true,
         };
 
         let phenopacket = Phenopacket {

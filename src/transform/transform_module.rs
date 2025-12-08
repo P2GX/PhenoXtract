@@ -1,5 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
+use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::data_processing::preprocessor::CdfPreprocessor;
 use crate::transform::error::TransformError;
 use crate::transform::strategies::traits::Strategy;

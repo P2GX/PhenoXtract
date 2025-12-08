@@ -13,7 +13,7 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
-use phenoxtract::transform::collecting::cdf_collectors_broker::CdfCollectorBroker;
+use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
@@ -307,7 +307,7 @@ fn test_pipeline_integration(
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).unwrap();
     }
-    let loader = FileSystemLoader::new(output_dir.clone());
+    let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
