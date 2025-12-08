@@ -15,12 +15,6 @@ impl Collect for QuantitativeMeasurementCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let patient_id = patient_cdf
-            .get_subject_id_col()
-            .get(0)
-            .expect("Should have one patient id")
-            .to_string();
-
         let quantitative_measurement_scs = patient_cdf
             .filter_series_context()
             .where_data_context_kind(Filter::Is(&ContextKind::QuantitativeMeasurement))
@@ -35,22 +29,20 @@ impl Collect for QuantitativeMeasurementCollector {
             let quant_measurement_cols =
                 patient_cdf.get_columns(quant_measurement_sc.get_identifier());
 
-            let time_observed_col = patient_cdf.get_single_linked_column(
+            let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                 quant_measurement_sc.get_building_block_id(),
                 &[Context::OnsetAge, Context::OnsetDate],
             )?;
-            
-            let ref_low_col = patient_cdf.get_single_linked_column(
+
+            let ref_low_col = patient_cdf.get_single_linked_column_as_float(
                 quant_measurement_sc.get_building_block_id(),
                 &[Context::ReferenceRangeLow],
             )?;
 
-            let ref_high_col = patient_cdf.get_single_linked_column(
+            let ref_high_col = patient_cdf.get_single_linked_column_as_float(
                 quant_measurement_sc.get_building_block_id(),
                 &[Context::ReferenceRangeHigh],
             )?;
-            
-            //need to refactor get_single_linked_column so that it doesn't stringify!
 
             for quant_measurement_col in quant_measurement_cols {
                 let floatified_quant_measurement_col = quant_measurement_col.f64()?;
@@ -73,7 +65,6 @@ impl Collect for QuantitativeMeasurementCollector {
                         } else {
                             None
                         };
-                        
 
                         builder.insert_quantitative_measurement(
                             phenopacket_id,

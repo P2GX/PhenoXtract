@@ -15,19 +15,13 @@ impl Collect for QualitativeMeasurementCollector {
         patient_cdf: &ContextualizedDataFrame,
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let patient_id = patient_cdf
-            .get_subject_id_col()
-            .get(0)
-            .expect("Should have one patient id")
-            .to_string();
-
         let qualitative_measurement_scs = patient_cdf
             .filter_series_context()
             .where_data_context_kind(Filter::Is(&ContextKind::QualitativeMeasurement))
             .collect();
 
         for qual_measurement_sc in qualitative_measurement_scs {
-            let (loinc_id, unit_ontology_id) = qual_measurement_sc
+            let (loinc_id, unit_ontology_prefix) = qual_measurement_sc
                 .get_data_context()
                 .try_as_qualitative_measurement()
                 .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -35,7 +29,7 @@ impl Collect for QualitativeMeasurementCollector {
             let qual_measurement_cols =
                 patient_cdf.get_columns(qual_measurement_sc.get_identifier());
 
-            let time_observed_col = patient_cdf.get_single_linked_column(
+            let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                 qual_measurement_sc.get_building_block_id(),
                 &[Context::OnsetAge, Context::OnsetDate],
             )?;
@@ -57,7 +51,7 @@ impl Collect for QualitativeMeasurementCollector {
                             qual_measurement,
                             time_observed,
                             loinc_id,
-                            unit_ontology_id,
+                            unit_ontology_prefix,
                         )?;
                     }
                 }

@@ -571,16 +571,12 @@ mod tests {
                 .with_header_context(Context::QuantitativeMeasurement {
                     loinc_id: "LOINC:12345-6".to_string(),
                     unit_ontology_id: "NCIT:12345".to_string(),
-                    reference_range_low: None,
-                    reference_range_high: None,
                 }),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id1".to_string()))
                 .with_header_context(Context::QuantitativeMeasurement {
                     loinc_id: "LOINC:98765-6".to_string(),
                     unit_ontology_id: "NCIT:9876".to_string(),
-                    reference_range_low: None,
-                    reference_range_high: None,
                 }),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id3".to_string()))
@@ -611,16 +607,12 @@ mod tests {
                 .with_header_context(Context::QuantitativeMeasurement {
                     loinc_id: "LOINC:12345-6".to_string(),
                     unit_ontology_id: "NCIT:12345".to_string(),
-                    reference_range_low: None,
-                    reference_range_high: None,
                 }),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id1".to_string()))
                 .with_header_context(Context::QuantitativeMeasurement {
                     loinc_id: "LOINC:98765-6".to_string(),
                     unit_ontology_id: "NCIT:9876".to_string(),
-                    reference_range_low: None,
-                    reference_range_high: None,
                 }),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id3".to_string()))

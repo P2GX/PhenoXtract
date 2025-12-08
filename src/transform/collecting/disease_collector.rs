@@ -34,7 +34,7 @@ impl Collect for DiseaseCollector {
                 .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
             let stringified_linked_onset_col = patient_cdf
-                .get_single_linked_column(bb_id, &[Context::OnsetAge, Context::OnsetDate])?;
+                .get_single_linked_column_as_str(bb_id, &[Context::OnsetAge, Context::OnsetDate])?;
 
             for row_idx in 0..patient_cdf.data().height() {
                 for stringified_disease_col in stringified_disease_cols.iter() {

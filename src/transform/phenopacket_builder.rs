@@ -390,7 +390,7 @@ impl PhenopacketBuilder {
         qual_measurement: &str,
         time_observed: Option<&str>,
         loinc_id: &str,
-        unit_ontology_id: &str,
+        unit_ontology_prefix: &str,
     ) -> Result<(), PhenopacketBuilderError> {
         // todo!
 
