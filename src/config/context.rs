@@ -2,6 +2,7 @@ use enum_try_as_inner::EnumTryAsInner;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use strum_macros::Display;
 use strum_macros::EnumDiscriminants;
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
@@ -23,6 +24,7 @@ use strum_macros::EnumDiscriminants;
 )]
 #[derive_err(Debug)]
 #[strum_discriminants(name(ContextKind))]
+#[strum_discriminants(derive(Display))]
 #[strum_discriminants(
     doc = "ContextKind is the same as Context, but all variants have their fields stripped. This is useful if you want to consider e.g. the QuantitativeMeasurement variant as a whole as opposed to a specific instance of it."
 )]

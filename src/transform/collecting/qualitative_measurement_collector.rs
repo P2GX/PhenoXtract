@@ -5,6 +5,7 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct QualitativeMeasurementCollector;
 

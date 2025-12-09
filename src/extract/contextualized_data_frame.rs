@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::{CollectorError, DataProcessingError, StrategyError};
@@ -250,8 +250,8 @@ impl ContextualizedDataFrame {
             _ => Err(CollectorError::ExpectedSingleValue {
                 table_name: self.context().name().to_string(),
                 patient_id: self.get_subject_id_col().get(0)?.str_value().to_string(),
-                data_context: data_context.clone(),
-                header_context: header_context.clone(),
+                data_context: ContextKind::from(data_context),
+                header_context: ContextKind::from(header_context),
             }),
         }
     }
