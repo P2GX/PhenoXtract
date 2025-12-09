@@ -11,3 +11,6 @@ mod test_suite;
 
 pub mod transform;
 mod validation;
+mod hgvs;
+pub mod caching;
+mod hgnc;
