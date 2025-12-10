@@ -6,9 +6,9 @@ use crate::extract::traits::Extractable;
 use crate::load::traits::Loadable;
 
 use crate::load::loader_factory::LoaderFactory;
+use crate::ontology::CachedOntologyFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
-use crate::ontology::{CachedOntologyFactory, HGNCClient};
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
@@ -16,6 +16,8 @@ use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
 use log::info;
 use phenopackets::schema::v2::Phenopacket;
+use pivot::hgnc::CachedHGNCClient;
+use pivot::hgvs::CachedHGVSClient;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -113,7 +115,11 @@ impl TryFrom<PipelineConfig> for Pipeline {
         ]);
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
-        let phenopacket_builder = PhenopacketBuilder::new(bi_dicts, HGNCClient::default());
+        let phenopacket_builder = PhenopacketBuilder::new(
+            bi_dicts,
+            CachedHGNCClient::default(),
+            CachedHGVSClient::default(),
+        );
 
         let strategies: Vec<Box<dyn Strategy>> = config
             .transform_strategies

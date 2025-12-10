@@ -11,21 +11,21 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenoxtract::error::PipelineError;
+use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
-use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
-use ratelimit::Ratelimiter;
+use pivot::hgnc::{CachedHGNCClient, HGNCClient};
+use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tempfile::TempDir;
 
 #[fixture]
@@ -196,18 +196,12 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
-fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
-    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
-        .max_tokens(10)
-        .build()
-        .expect("Building rate limiter failed");
+pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
+    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
+}
 
-    HGNCClient::new(
-        rate_limiter,
-        temp_dir.to_path_buf().join("hgnc_test_cache"),
-        "https://rest.genenames.org/".to_string(),
-    )
-    .unwrap()
+pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
+    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
 }
 
 #[rstest]
@@ -296,6 +290,7 @@ fn test_pipeline_integration(
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
         ]),
         build_hgnc_test_client(temp_dir.path()),
+        build_hgvs_test_client(temp_dir.path()),
     );
 
     let transformer_module = TransformerModule::new(
