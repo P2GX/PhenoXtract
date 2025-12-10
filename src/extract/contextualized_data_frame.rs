@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::{CollectorError, DataProcessingError, StrategyError};
@@ -10,7 +10,7 @@ use crate::validation::error::ValidationError;
 use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
-use polars::prelude::{Column, DataFrame, DataType, PolarsError, Series};
+use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
 use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -250,8 +250,8 @@ impl ContextualizedDataFrame {
             _ => Err(CollectorError::ExpectedSingleValue {
                 table_name: self.context().name().to_string(),
                 patient_id: self.get_subject_id_col().get(0)?.str_value().to_string(),
-                data_context: data_context.clone(),
-                header_context: header_context.clone(),
+                data_context: ContextKind::from(data_context),
+                header_context: ContextKind::from(header_context),
             }),
         }
     }
@@ -262,13 +262,12 @@ impl ContextualizedDataFrame {
     /// - and with data context in data_contexts
     /// * if there are no such columns returns Ok(None)
     /// * if there are several such columns returns CollectorError
-    /// * if there is exactly one such column,
-    ///   this column is converted to StringChunked and Ok(Some(StringChunked)) is returned
-    pub fn get_single_linked_column(
-        &self,
-        bb_id: Option<&str>,
-        data_contexts: &[Context],
-    ) -> Result<Option<StringChunked>, CollectorError> {
+    /// * if there is exactly one such column, Ok(Some(&column)) is returned
+    pub fn get_single_linked_column<'a>(
+        &'a self,
+        bb_id: Option<&'a str>,
+        data_contexts: &'a [Context],
+    ) -> Result<Option<&'a Column>, CollectorError> {
         if let Some(bb_id) = bb_id {
             let filter = self.filter_columns();
             let filter = filter
@@ -281,15 +280,7 @@ impl ContextualizedDataFrame {
                 let single_linked_col = linked_cols
                     .first()
                     .expect("Column empty despite len check.");
-
-                let cast_linked_col = single_linked_col.cast(&DataType::String).map_err(|_| {
-                    DataProcessingError::CastingError {
-                        col_name: single_linked_col.name().to_string(),
-                        from: single_linked_col.dtype().clone(),
-                        to: DataType::String,
-                    }
-                })?;
-                Ok(Some(cast_linked_col.str()?.clone()))
+                Ok(Some(single_linked_col))
             } else if linked_cols.is_empty() {
                 Ok(None)
             } else {
@@ -300,6 +291,62 @@ impl ContextualizedDataFrame {
                     amount_found: linked_cols.len(),
                 })
             }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Given a CDF, building block ID and data contexts
+    /// this function will find all columns
+    /// - within that building block
+    /// - and with data context in data_contexts
+    /// * if there are no such columns returns Ok(None)
+    /// * if there are several such columns returns CollectorError
+    /// * if there is exactly one such column,
+    ///   this column is converted to StringChunked and Ok(Some(StringChunked)) is returned
+    pub fn get_single_linked_column_as_str(
+        &self,
+        bb_id: Option<&str>,
+        data_contexts: &[Context],
+    ) -> Result<Option<StringChunked>, CollectorError> {
+        let possible_linked_col = self.get_single_linked_column(bb_id, data_contexts)?;
+        if let Some(linked_col) = possible_linked_col {
+            let cast_linked_col = linked_col.cast(&DataType::String).map_err(|_| {
+                DataProcessingError::CastingError {
+                    col_name: linked_col.name().to_string(),
+                    from: linked_col.dtype().clone(),
+                    to: DataType::String,
+                }
+            })?;
+            Ok(Some(cast_linked_col.str()?.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Given a CDF, building block ID and data contexts
+    /// this function will find all columns
+    /// - within that building block
+    /// - and with data context in data_contexts
+    /// * if there are no such columns returns Ok(None)
+    /// * if there are several such columns returns CollectorError
+    /// * if there is exactly one such column,
+    ///   this column is converted to Float64Chunked and Ok(Some(Float64Chunked)) is returned
+    pub fn get_single_linked_column_as_float(
+        &self,
+        bb_id: Option<&str>,
+        data_contexts: &[Context],
+    ) -> Result<Option<Float64Chunked>, CollectorError> {
+        let possible_linked_col = self.get_single_linked_column(bb_id, data_contexts)?;
+        if let Some(linked_col) = possible_linked_col {
+            let cast_linked_col = linked_col.cast(&DataType::Float64).map_err(|_| {
+                DataProcessingError::CastingError {
+                    col_name: linked_col.name().to_string(),
+                    from: linked_col.dtype().clone(),
+                    to: DataType::Float64,
+                }
+            })?;
+            Ok(Some(cast_linked_col.f64()?.clone()))
         } else {
             Ok(None)
         }
@@ -531,6 +578,50 @@ mod tests {
     }
 
     #[rstest]
+    fn test_get_single_linked_column_as_str() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let bb = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::SubjectSex))
+            .collect()
+            .first()
+            .unwrap()
+            .get_building_block_id();
+
+        let extracted_col = cdf
+            .get_single_linked_column_as_str(bb, &[Context::SubjectSex])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(extracted_col.name().to_string(), "sex");
+    }
+
+    #[rstest]
+    fn test_get_single_linked_column_as_float() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let bb = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::AgeAtLastEncounter))
+            .collect()
+            .first()
+            .unwrap()
+            .get_building_block_id();
+
+        let extracted_col = cdf
+            .get_single_linked_column_as_float(bb, &[Context::AgeAtLastEncounter])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(extracted_col.name().to_string(), "age");
+    }
+
+    #[rstest]
     fn test_collect_single_multiplicity_element_multiple() {
         let (subject_col, subject_tc) = generate_minimal_cdf_components(1, 2);
 
@@ -564,7 +655,7 @@ mod tests {
     #[rstest]
     fn test_collect_single_multiplicity_element_err() {
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let context = Context::SubjectAge;
+        let context = Context::AgeAtLastEncounter;
 
         let df = DataFrame::new(vec![
             subject_col.clone(),

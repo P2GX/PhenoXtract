@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::config::table_context::{CellValue, Identifier, SeriesContext};
 use crate::extract::ContextualizedDataFrame;
 use polars::prelude::{Column, DataType};
@@ -18,6 +18,8 @@ pub struct SeriesContextFilter<'a> {
     building_block: Vec<Filter<&'a str>>,
     header_context: Vec<Filter<&'a Context>>,
     data_context: Vec<Filter<&'a Context>>,
+    header_context_kind: Vec<Filter<&'a ContextKind>>,
+    data_context_kind: Vec<Filter<&'a ContextKind>>,
     fill_missing: Vec<Filter<&'a CellValue>>,
 }
 
@@ -29,6 +31,8 @@ impl<'a> SeriesContextFilter<'a> {
             building_block: Vec::new(),
             header_context: Vec::new(),
             data_context: Vec::new(),
+            header_context_kind: Vec::new(),
+            data_context_kind: Vec::new(),
             fill_missing: Vec::new(),
         }
     }
@@ -74,6 +78,37 @@ impl<'a> SeriesContextFilter<'a> {
     pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
         for context in contexts.iter() {
             self.data_context.push(Filter::Is(context));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_header_context_kind(
+        mut self,
+        header_context_kind: Filter<&'a ContextKind>,
+    ) -> Self {
+        self.header_context_kind.push(header_context_kind);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_header_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.header_context_kind.push(Filter::Is(context_kind));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_context_kind(mut self, data_context_kind: Filter<&'a ContextKind>) -> Self {
+        self.data_context_kind.push(data_context_kind);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.data_context_kind.push(Filter::Is(context_kind));
         }
         self
     }
@@ -127,6 +162,30 @@ impl<'a> SeriesContextFilter<'a> {
                         Filter::IsNone => sc.get_data_context() == &Context::None,
                     });
 
+                let header_context_kind_match = self.header_context_kind.is_empty()
+                    || self.header_context_kind.iter().any(|f| match f {
+                        Filter::Is(c) => ContextKind::from(sc.get_header_context()) == **c,
+                        Filter::IsNot(c) => ContextKind::from(sc.get_header_context()) != **c,
+                        Filter::IsSome => {
+                            ContextKind::from(sc.get_header_context()) != ContextKind::None
+                        }
+                        Filter::IsNone => {
+                            ContextKind::from(sc.get_header_context()) == ContextKind::None
+                        }
+                    });
+
+                let data_context_kind_match = self.data_context_kind.is_empty()
+                    || self.data_context_kind.iter().any(|f| match f {
+                        Filter::Is(c) => ContextKind::from(sc.get_data_context()) == **c,
+                        Filter::IsNot(c) => ContextKind::from(sc.get_data_context()) != **c,
+                        Filter::IsSome => {
+                            ContextKind::from(sc.get_data_context()) != ContextKind::None
+                        }
+                        Filter::IsNone => {
+                            ContextKind::from(sc.get_data_context()) == ContextKind::None
+                        }
+                    });
+
                 let fill_missing_match = self.fill_missing.is_empty()
                     || self.fill_missing.iter().any(|f| match f {
                         Filter::Is(fill) => sc.get_fill_missing() == Some(*fill),
@@ -140,6 +199,8 @@ impl<'a> SeriesContextFilter<'a> {
                     && building_block_match
                     && header_context_match
                     && data_context_match
+                    && data_context_kind_match
+                    && header_context_kind_match
                     && fill_missing_match
             })
             .collect()
@@ -220,6 +281,43 @@ impl<'a> ColumnFilter<'a> {
     }
 
     #[allow(dead_code)]
+    pub fn where_header_context_kind(
+        mut self,
+        header_context_kind: Filter<&'a ContextKind>,
+    ) -> Self {
+        self.series_filter
+            .header_context_kind
+            .push(header_context_kind);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_header_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.series_filter
+                .header_context_kind
+                .push(Filter::Is(context_kind));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_context_kind(mut self, data_context_kind: Filter<&'a ContextKind>) -> Self {
+        self.series_filter.data_context_kind.push(data_context_kind);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn where_data_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.series_filter
+                .data_context_kind
+                .push(Filter::Is(context_kind));
+        }
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
         self.series_filter.fill_missing.push(fill_missing);
         self
@@ -280,6 +378,7 @@ impl<'a> ColumnFilter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::ContextKind;
     use crate::config::table_context::{CellValue, Identifier, SeriesContext};
     use rstest::rstest;
 
@@ -461,6 +560,82 @@ mod tests {
                 .iter()
                 .all(|s| s.get_data_context() == &Context::SubjectId
                     || s.get_data_context() == &Context::HpoLabelOrId)
+        );
+    }
+
+    #[rstest]
+    fn test_filter_by_header_context_kind() {
+        let series = vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_header_context(Context::QuantitativeMeasurement {
+                    loinc_id: "LOINC:12345-6".to_string(),
+                    unit_ontology_id: "NCIT:12345".to_string(),
+                }),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_header_context(Context::QuantitativeMeasurement {
+                    loinc_id: "LOINC:98765-6".to_string(),
+                    unit_ontology_id: "NCIT:9876".to_string(),
+                }),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id3".to_string()))
+                .with_header_context(Context::HpoLabelOrId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id4".to_string()))
+                .with_header_context(Context::MondoLabelOrId),
+        ];
+
+        let result = SeriesContextFilter::new(&series)
+            .where_header_context_kind(Filter::Is(&ContextKind::QuantitativeMeasurement))
+            .collect();
+
+        assert_eq!(result.len(), 2);
+        assert!(
+            result
+                .iter()
+                .all(|s| ContextKind::from(s.get_header_context())
+                    == ContextKind::QuantitativeMeasurement)
+        );
+    }
+
+    #[rstest]
+    fn test_where_header_context_kinds_are() {
+        let series = vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_header_context(Context::QuantitativeMeasurement {
+                    loinc_id: "LOINC:12345-6".to_string(),
+                    unit_ontology_id: "NCIT:12345".to_string(),
+                }),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_header_context(Context::QuantitativeMeasurement {
+                    loinc_id: "LOINC:98765-6".to_string(),
+                    unit_ontology_id: "NCIT:9876".to_string(),
+                }),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id3".to_string()))
+                .with_header_context(Context::HpoLabelOrId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("id4".to_string()))
+                .with_header_context(Context::MondoLabelOrId),
+        ];
+
+        let result = SeriesContextFilter::new(&series)
+            .where_header_context_kinds_are(&[
+                ContextKind::HpoLabelOrId,
+                ContextKind::QuantitativeMeasurement,
+            ])
+            .collect();
+
+        assert_eq!(result.len(), 3);
+        assert!(
+            result
+                .iter()
+                .all(|s| ContextKind::from(s.get_header_context())
+                    == ContextKind::QuantitativeMeasurement
+                    || ContextKind::from(s.get_header_context()) == ContextKind::HpoLabelOrId)
         );
     }
 
