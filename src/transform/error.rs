@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
 use pivot::hgvs::HGVSError;
@@ -249,8 +249,8 @@ pub enum CollectorError {
     ExpectedSingleValue {
         table_name: String,
         patient_id: String,
-        data_context: Context,
-        header_context: Context,
+        data_context: ContextKind,
+        header_context: ContextKind,
     },
     #[error(
         "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
@@ -272,6 +272,8 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
+    #[error("Blah: {0}")]
+    ContextError(String),
 }
 
 impl From<DataProcessingError> for CollectorError {

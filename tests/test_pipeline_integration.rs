@@ -79,7 +79,7 @@ fn csv_context_2() -> TableContext {
                 .with_building_block_id(Some("A".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("Date of onset".to_string()))
-                .with_data_context(Context::OnsetDateTime)
+                .with_data_context(Context::OnsetDate)
                 .with_building_block_id(Some("A".to_string())),
         ],
     )
@@ -99,7 +99,7 @@ fn csv_context_3() -> TableContext {
                 .with_building_block_id(Some("B".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("Date of onset".to_string()))
-                .with_data_context(Context::OnsetDateTime)
+                .with_data_context(Context::OnsetDate)
                 .with_building_block_id(Some("B".to_string())),
         ],
     )
@@ -119,7 +119,7 @@ fn csv_context_4() -> TableContext {
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
-                .with_data_context(Context::OnsetDateTime)
+                .with_data_context(Context::OnsetDate)
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("gene".to_string()))
