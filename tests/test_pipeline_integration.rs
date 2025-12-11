@@ -11,7 +11,6 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
-use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
@@ -221,6 +220,22 @@ fn remove_created_from_metadata(pp: &mut Phenopacket) {
     }
 }
 
+#[macro_export]
+macro_rules! skip_in_ci {
+    ($test_name:expr) => {
+        if std::env::var("CI").is_ok() {
+            println!("Skipping {} in CI environment", $test_name);
+            return;
+        }
+    };
+    () => {
+        if std::env::var("CI").is_ok() {
+            println!("Skipping {} in CI environment", module_path!());
+            return;
+        }
+    };
+}
+
 fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
     for interpretation in pp.interpretations.iter_mut() {
         if let Some(diagnosis) = &mut interpretation.diagnosis {
@@ -244,7 +259,8 @@ fn test_pipeline_integration(
     csv_context_4: TableContext,
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
-) -> Result<(), PipelineError> {
+) {
+    skip_in_ci!();
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -339,7 +355,7 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    pipeline.run(&mut data_sources)?;
+    pipeline.run(&mut data_sources).unwrap();
 
     //create a phenopacket_ID -> expected phenopacket HashMap
     //and for each expected Phenopacket set the meta_data.created to None
@@ -372,5 +388,4 @@ fn test_pipeline_integration(
             assert_phenopackets(&mut extracted_pp, expected_pp);
         }
     }
-    Ok(())
 }

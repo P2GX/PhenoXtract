@@ -716,7 +716,6 @@ impl PartialEq for PhenopacketBuilder {
 mod tests {
     use super::*;
     use crate::ontology::DatabaseRef;
-    use crate::skip_in_ci;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
@@ -1047,7 +1046,6 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
-        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
@@ -1109,7 +1107,6 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
-        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
@@ -1174,7 +1171,6 @@ mod tests {
 
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
-        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
@@ -1239,7 +1235,6 @@ mod tests {
         basic_pp_with_disease_info: Phenopacket,
         temp_dir: TempDir,
     ) {
-        skip_in_ci!();
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id();
 
