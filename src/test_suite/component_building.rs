@@ -1,14 +1,13 @@
-use crate::ontology::HGNCClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY};
 use crate::test_suite::resource_references::{GENO_REF, HPO_REF};
 use crate::transform::PhenopacketBuilder;
-use ratelimit::Ratelimiter;
+use pivot::hgnc::{CachedHGNCClient, HGNCClient};
+use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
     let hpo_dict = ONTOLOGY_FACTORY
@@ -33,21 +32,16 @@ fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
     ])
 }
 
-pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
-    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
-        .max_tokens(10)
-        .build()
-        .expect("Building rate limiter failed");
+pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
+    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
+}
 
-    HGNCClient::new(
-        rate_limiter,
-        temp_dir.to_path_buf().join("hgnc_test_cache"),
-        "https://rest.genenames.org/".to_string(),
-    )
-    .unwrap()
+pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
+    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
 }
 
 pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
-    PhenopacketBuilder::new(build_test_dicts(), hgnc_client)
+    let hgvs_client = build_hgvs_test_client(temp_dir);
+    PhenopacketBuilder::new(build_test_dicts(), hgnc_client, hgvs_client)
 }
