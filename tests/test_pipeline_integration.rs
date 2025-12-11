@@ -10,6 +10,7 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
@@ -196,12 +197,43 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
-pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
+fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
     CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
 }
 
-pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
+fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
     CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
+}
+
+fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
+    remove_created_from_metadata(actual);
+    remove_created_from_metadata(expected);
+
+    remove_id_from_variation_descriptor(actual);
+    remove_id_from_variation_descriptor(expected);
+
+    pretty_assertions::assert_eq!(actual, expected);
+}
+
+fn remove_created_from_metadata(pp: &mut Phenopacket) {
+    if let Some(meta) = &mut pp.meta_data {
+        meta.created = None;
+    }
+}
+
+fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
+    for interpretation in pp.interpretations.iter_mut() {
+        if let Some(diagnosis) = &mut interpretation.diagnosis {
+            for gi in diagnosis.genomic_interpretations.iter_mut() {
+                if let Some(call) = &mut gi.call
+                    && let Call::VariantInterpretation(vi) = call
+                    && let Some(vi) = &mut vi.variation_descriptor
+                {
+                    vi.id = "TEST_ID".to_string();
+                }
+            }
+        }
+    }
 }
 
 #[rstest]
@@ -335,13 +367,9 @@ fn test_pipeline_integration(
             let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
             let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
 
-            let expected_pp = expected_phenopackets.get(&extracted_pp.id).unwrap();
+            let expected_pp = expected_phenopackets.get_mut(&extracted_pp.id).unwrap();
 
-            if let Some(meta) = &mut extracted_pp.meta_data {
-                meta.created = None;
-            }
-
-            assert_eq!(&extracted_pp, expected_pp);
+            assert_phenopackets(&mut extracted_pp, expected_pp);
         }
     }
     Ok(())

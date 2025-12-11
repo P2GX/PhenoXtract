@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_arguments)]
-use crate::ontology::OntologyRef;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
+use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
@@ -267,6 +267,8 @@ impl PhenopacketBuilder {
             let (symbol, id) = self
                 .hgnc_client
                 .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
+            self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
+
             let gi = GenomicInterpretation {
                 subject_or_biosample_id: patient_id.to_string(),
                 call: Some(Call::Gene(GeneDescriptor {
@@ -287,6 +289,11 @@ impl PhenopacketBuilder {
         ) {
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
+                self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
+                self.ensure_resource(
+                    phenopacket_id,
+                    &OntologyRef::geno().with_version("2025-07-25"),
+                );
 
                 if let Some(gene) = gene_variant_data.get_gene() {
                     validated_hgvs.validate_against_gene(gene)?;

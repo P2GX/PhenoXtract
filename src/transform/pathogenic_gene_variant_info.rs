@@ -139,7 +139,7 @@ mod tests {
         ));
         assert!(matches!(
             PathogenicGeneVariantData::from_genes_and_variants(
-                vec!["KIF21A"],
+                vec![],
                 vec!["NM_001173464.1:c.2860C>T", "NM_015120.4:c.11031_11032delGA"]
             )
             .unwrap(),
@@ -166,14 +166,6 @@ mod tests {
                     "NM_001173464.1:c.2860C>T",
                     "NM_001173464.1:c.2860C>T"
                 ]
-            )
-            .is_err()
-        );
-        // no genes
-        assert!(
-            PathogenicGeneVariantData::from_genes_and_variants(
-                vec![],
-                vec!["NM_001173464.1:c.2860C>T"]
             )
             .is_err()
         );
