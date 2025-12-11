@@ -90,7 +90,6 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
-    use crate::skip_in_ci;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
@@ -200,13 +199,12 @@ mod tests {
 
     #[rstest]
     fn test_collect_interpretations(dysostosis_interpretation: Interpretation, temp_dir: TempDir) {
-        skip_in_ci!();
         let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
         let disease_col = Column::new(
             "diseases".into(),
             [AnyValue::String(default_disease_oc().label.as_str())],
         );
-        let gene_col = Column::new("gene".into(), [AnyValue::String("ALMS1")]);
+        let gene_col = Column::new("gene".into(), [AnyValue::String("KIF21A")]);
         let hgvs_col1 = Column::new(
             "hgvs1".into(),
             [AnyValue::String("NM_001173464.1:c.2860C>T")],
