@@ -16,11 +16,14 @@ use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
+use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
+use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
     Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
-    OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange, Sex, TimeElement,
+    Value as ValueStruct, VitalStatus,
 };
 use pivot::hgnc::{CachedHGNCClient, GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, CachedHGVSClient, ChromosomalSex, HGVSData};
@@ -384,15 +387,61 @@ impl PhenopacketBuilder {
     #[allow(dead_code)]
     pub(crate) fn insert_quantitative_measurement(
         &mut self,
-        _phenopacket_id: &str,
-        _quant_measurement: f64,
-        _time_observed: Option<&str>,
-        _loinc_id: &str,
-        _unit_ontology_id: &str,
-        _reference_range_low: Option<f64>,
-        _reference_range_high: Option<f64>,
+        phenopacket_id: &str,
+        quant_measurement: f64,
+        time_observed: Option<&str>,
+        loinc_id: &str,
+        unit_ontology_id: &str,
+        reference_range_low: Option<f64>,
+        reference_range_high: Option<f64>,
     ) -> Result<(), PhenopacketBuilderError> {
-        // todo!
+        let unit_ontology_class = OntologyClass {
+            id: unit_ontology_id.to_string(),
+            label: "TODO".to_string(), //todo need to access the unit ontology and ensure the reference
+        };
+
+        let mut quantity = Quantity {
+            unit: Some(unit_ontology_class.clone()),
+            value: quant_measurement,
+            ..Default::default()
+        };
+
+        if reference_range_low.is_some() || reference_range_high.is_some() {
+            let mut reference_range = ReferenceRange {
+                unit: Some(unit_ontology_class),
+                ..Default::default()
+            };
+
+            if let Some(reference_range_low) = reference_range_low {
+                reference_range.low = reference_range_low
+            }
+
+            if let Some(reference_range_high) = reference_range_high {
+                reference_range.high = reference_range_high
+            }
+
+            quantity.reference_range = Some(reference_range);
+        }
+
+        let mut measurement_element = Measurement {
+            assay: Some(OntologyClass {
+                id: loinc_id.to_string(),
+                label: "TODO".to_string(), //todo need to access LOINC and ensure the reference
+            }),
+            measurement_value: Some(MeasurementValue::Value(ValueStruct {
+                value: Some(Value::Quantity(quantity)),
+            })),
+            ..Default::default()
+        };
+
+        if let Some(time_observed) = time_observed {
+            let time_observed_te = Self::try_parse_time_element(time_observed)?;
+            measurement_element.time_observed = Some(time_observed_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.measurements.push(measurement_element);
 
         Ok(())
     }
@@ -400,13 +449,38 @@ impl PhenopacketBuilder {
     #[allow(dead_code)]
     pub(crate) fn insert_qualitative_measurement(
         &mut self,
-        _phenopacket_id: &str,
-        _qual_measurement: &str,
-        _time_observed: Option<&str>,
-        _loinc_id: &str,
+        phenopacket_id: &str,
+        qual_measurement: &str,
+        time_observed: Option<&str>,
+        loinc_id: &str,
         _unit_ontology_prefix: &str,
     ) -> Result<(), PhenopacketBuilderError> {
         // todo!
+
+        let qual_value_ontology_class = OntologyClass {
+            id: "TODO".to_string(), //todo need to use the unit ontology prefix to access the ontology and get the ID. Could also arrange this so that the qual measurement can be the ID or the label by using a Bidict.
+            label: qual_measurement.to_string(),
+        };
+
+        let mut measurement_element = Measurement {
+            assay: Some(OntologyClass {
+                id: loinc_id.to_string(),
+                label: "TODO".to_string(), //todo need to access LOINC and ensure the reference
+            }),
+            measurement_value: Some(MeasurementValue::Value(ValueStruct {
+                value: Some(Value::OntologyClass(qual_value_ontology_class)),
+            })),
+            ..Default::default()
+        };
+
+        if let Some(time_observed) = time_observed {
+            let time_observed_te = Self::try_parse_time_element(time_observed)?;
+            measurement_element.time_observed = Some(time_observed_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.measurements.push(measurement_element);
 
         Ok(())
     }
