@@ -11,7 +11,6 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
-use phenoxtract::error::PipelineError;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
