@@ -5,8 +5,6 @@ pub(crate) mod obolibrary_client;
 pub(crate) mod obolibrary_ontology_registry;
 pub(crate) mod ontology_bidict;
 pub(crate) use obolibrary_ontology_registry::ObolibraryOntologyRegistry;
-mod hgnc_client;
-pub use hgnc_client::HGNCClient;
 pub mod ontology_factory;
 pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
