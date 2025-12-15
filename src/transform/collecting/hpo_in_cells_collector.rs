@@ -12,47 +12,49 @@ impl Collect for HpoInCellsCollector {
     fn collect(
         &self,
         builder: &mut PhenopacketBuilder,
-        patient_cdf: &ContextualizedDataFrame,
+        patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let hpo_terms_in_cells_scs = patient_cdf
-            .filter_series_context()
-            .where_header_context(Filter::Is(&Context::None))
-            .where_data_context(Filter::Is(&Context::HpoLabelOrId))
-            .collect();
+        for patient_cdf in patient_cdfs {
+            let hpo_terms_in_cells_scs = patient_cdf
+                .filter_series_context()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_context(Filter::Is(&Context::HpoLabelOrId))
+                .collect();
 
-        for hpo_sc in hpo_terms_in_cells_scs {
-            let sc_id = hpo_sc.get_identifier();
-            let hpo_cols = patient_cdf.get_columns(sc_id);
+            for hpo_sc in hpo_terms_in_cells_scs {
+                let sc_id = hpo_sc.get_identifier();
+                let hpo_cols = patient_cdf.get_columns(sc_id);
 
-            let onset_column = patient_cdf.get_single_linked_column_as_str(
-                hpo_sc.get_building_block_id(),
-                &[Context::OnsetAge, Context::OnsetDate],
-            )?;
+                let onset_column = patient_cdf.get_single_linked_column_as_str(
+                    hpo_sc.get_building_block_id(),
+                    &[Context::OnsetAge, Context::OnsetDate],
+                )?;
 
-            for hpo_col in hpo_cols {
-                let hpo_column = hpo_col.str()?;
+                for hpo_col in hpo_cols {
+                    let hpo_column = hpo_col.str()?;
 
-                for row_idx in 0..hpo_column.len() {
-                    let hpo = hpo_column.get(row_idx);
-                    if let Some(hpo) = hpo {
-                        let hpo_onset = if let Some(onset_col) = &onset_column {
-                            onset_col.get(row_idx)
-                        } else {
-                            None
-                        };
+                    for row_idx in 0..hpo_column.len() {
+                        let hpo = hpo_column.get(row_idx);
+                        if let Some(hpo) = hpo {
+                            let hpo_onset = if let Some(onset_col) = &onset_column {
+                                onset_col.get(row_idx)
+                            } else {
+                                None
+                            };
 
-                        builder.upsert_phenotypic_feature(
-                            phenopacket_id,
-                            hpo,
-                            None,
-                            None,
-                            None,
-                            None,
-                            hpo_onset,
-                            None,
-                            None,
-                        )?;
+                            builder.upsert_phenotypic_feature(
+                                phenopacket_id,
+                                hpo,
+                                None,
+                                None,
+                                None,
+                                None,
+                                hpo_onset,
+                                None,
+                                None,
+                            )?;
+                        }
                     }
                 }
             }
@@ -143,7 +145,7 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = default_phenopacket_id();
         HpoInCellsCollector
-            .collect(&mut builder, &phenotypes_in_rows_cdf, &pp_id)
+            .collect(&mut builder, &vec![phenotypes_in_rows_cdf], &pp_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

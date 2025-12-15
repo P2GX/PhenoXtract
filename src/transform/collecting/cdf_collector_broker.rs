@@ -10,6 +10,7 @@ use crate::transform::collecting::quantitative_measurement_collector::Quantitati
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CdfCollectorBroker {
@@ -35,6 +36,9 @@ impl CdfCollectorBroker {
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
+        let mut phenopacket_id_to_dfs: HashMap<String, Vec<ContextualizedDataFrame>> =
+            HashMap::new();
+
         for cdf in cdfs {
             let subject_id_col = cdf.get_subject_id_col();
 
@@ -49,13 +53,20 @@ impl CdfCollectorBroker {
                 let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
                 let phenopacket_id = self.generate_phenopacket_id(patient_id.as_ref());
 
-                for collector in &self.collectors {
-                    collector.collect(
-                        &mut self.phenopacket_builder,
-                        &patient_cdf,
-                        phenopacket_id.as_str(),
-                    )?;
-                }
+                phenopacket_id_to_dfs
+                    .entry(phenopacket_id)
+                    .or_default()
+                    .push(patient_cdf);
+            }
+        }
+
+        for (phenopacket_id, patient_cdfs) in phenopacket_id_to_dfs {
+            for collector in &mut self.collectors {
+                collector.collect(
+                    &mut self.phenopacket_builder,
+                    &patient_cdfs,
+                    phenopacket_id.as_str(),
+                )?;
             }
         }
 
@@ -96,8 +107,6 @@ impl PartialEq for CdfCollectorBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::Context;
-    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_cohort_id;
@@ -121,19 +130,11 @@ mod tests {
         fn collect(
             &self,
             _: &mut PhenopacketBuilder,
-            cdf: &ContextualizedDataFrame,
+            patient_cdfs: &[ContextualizedDataFrame],
             phenopacket_id: &str,
         ) -> Result<(), CollectorError> {
             self.call_count.set(self.call_count.get() + 1);
             self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
-
-            let subject_col = cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(&Context::SubjectId))
-                .collect();
-
-            let unique_patient_ids = subject_col.first().unwrap().unique()?;
-            assert_eq!(unique_patient_ids.str()?.len(), 1);
 
             Ok(())
         }

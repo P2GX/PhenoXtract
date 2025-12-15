@@ -243,10 +243,9 @@ pub enum CollectorError {
         amount_found: usize,
     },
     #[error(
-        "Found multiple values for context data: '{data_context}' header: '{header_context}' in table '{table_name}' for '{patient_id}' when there should only be one."
+        "Found multiple values for context data: '{data_context}' header: '{header_context}' for '{patient_id}' when there should only be one."
     )]
     ExpectedSingleValue {
-        table_name: String,
         patient_id: String,
         data_context: ContextKind,
         header_context: ContextKind,
