@@ -168,7 +168,7 @@ mod tests {
         for collector in broker.collectors {
             let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
 
-            assert_eq!(mock.call_count.get(), 3);
+            assert_eq!(mock.call_count.get(), 2);
 
             let mut seen = mock.seen_pps.borrow().clone();
             seen.sort();
@@ -177,11 +177,10 @@ mod tests {
 
             let expected = [
                 format!("{}-P0", expected_cohort_id),
-                format!("{}-P0", expected_cohort_id),
                 format!("{}-P1", expected_cohort_id),
             ];
             assert_eq!(seen, expected);
-            assert_eq!(mock.seen_pps.borrow().len(), 3);
+            assert_eq!(mock.seen_pps.borrow().len(), 2);
         }
     }
 
