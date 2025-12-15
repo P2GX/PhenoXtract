@@ -4,10 +4,12 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils;
+use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+
 #[derive(Debug)]
 pub struct InterpretationCollector;
 
@@ -18,6 +20,9 @@ impl Collect for InterpretationCollector {
         patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
+        let subject_sex =
+            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
+
         for patient_cdf in patient_cdfs {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
@@ -78,6 +83,7 @@ impl Collect for InterpretationCollector {
                                 phenopacket_id,
                                 disease,
                                 &gene_variant_data,
+                                subject_sex.clone(),
                             )?;
                         }
                     }
