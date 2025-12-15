@@ -4,6 +4,7 @@ use std::env::home_dir;
 use std::fs;
 use std::path::PathBuf;
 
+#[allow(unused)]
 pub(crate) fn get_cache_dir() -> Result<PathBuf, RegistryError> {
     let pkg_name = env!("CARGO_PKG_NAME");
 

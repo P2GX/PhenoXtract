@@ -78,7 +78,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "c2860CtoT_KIF21A_NM_001173464v1",
+                "id": "487b119d-d41b-4a6e-abb2-5d74752401e3",
                 "geneContext": {
                   "valueId": "HGNC:19349",
                   "symbol": "KIF21A"

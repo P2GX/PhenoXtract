@@ -1,4 +1,7 @@
 use crate::constants::ISO8601_DUR_PATTERN;
+use crate::transform::error::PhenopacketBuilderError;
+use phenopackets::schema::v2::core::Sex;
+use pivot::hgvs::ChromosomalSex;
 use polars::prelude::{AnyValue, Column};
 use regex::Regex;
 
@@ -39,6 +42,28 @@ impl HpoColMaker {
         let hpo_id = split_col_name[0];
         let block_id = split_col_name.get(1).copied();
         (hpo_id, block_id)
+    }
+}
+
+pub(crate) fn chromosomal_sex_from_str(
+    subject_sex: Option<String>,
+) -> Result<ChromosomalSex, PhenopacketBuilderError> {
+    match subject_sex {
+        None => Ok(ChromosomalSex::Unknown),
+        Some(sex) => {
+            if let Some(pp_sex) = Sex::from_str_name(&sex) {
+                match pp_sex {
+                    Sex::Male => Ok(ChromosomalSex::XY),
+                    Sex::Female => Ok(ChromosomalSex::XX),
+                    Sex::OtherSex | Sex::UnknownSex => Ok(ChromosomalSex::Unknown),
+                }
+            } else {
+                Err(PhenopacketBuilderError::ParsingError {
+                    what: "Subject Sex".to_string(),
+                    value: sex,
+                })
+            }
+        }
     }
 }
 
@@ -104,5 +129,34 @@ mod tests {
         assert!(!is_iso8601_duration("asd"));
         assert!(!is_iso8601_duration("123"));
         assert!(!is_iso8601_duration("47Y"));
+    }
+
+    #[rstest]
+    fn test_chromosomal_sex_from_str() {
+        assert_eq!(
+            chromosomal_sex_from_str(Some("MALE".to_string())).unwrap(),
+            ChromosomalSex::XY
+        );
+        assert_eq!(
+            chromosomal_sex_from_str(Some("FEMALE".to_string())).unwrap(),
+            ChromosomalSex::XX
+        );
+        assert_eq!(
+            chromosomal_sex_from_str(Some("UNKNOWN_SEX".to_string())).unwrap(),
+            ChromosomalSex::Unknown
+        );
+        assert_eq!(
+            chromosomal_sex_from_str(Some("OTHER_SEX".to_string())).unwrap(),
+            ChromosomalSex::Unknown
+        );
+        assert_eq!(
+            chromosomal_sex_from_str(None).unwrap(),
+            ChromosomalSex::Unknown
+        );
+    }
+
+    #[rstest]
+    fn test_chromosomal_sex_from_str_err() {
+        assert!(chromosomal_sex_from_str(Some("blah".to_string())).is_err());
     }
 }
