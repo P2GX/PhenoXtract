@@ -145,7 +145,7 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = default_phenopacket_id();
         HpoInCellsCollector
-            .collect(&mut builder, &vec![phenotypes_in_rows_cdf], &pp_id)
+            .collect(&mut builder, &[phenotypes_in_rows_cdf], &pp_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

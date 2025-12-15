@@ -215,7 +215,7 @@ mod tests {
 
         let pp_id = default_phenopacket_id();
 
-        collector.collect(&mut builder, &vec![cdf], &pp_id).unwrap();
+        collector.collect(&mut builder, &[cdf], &pp_id).unwrap();
 
         let mut phenopackets = builder.build();
 

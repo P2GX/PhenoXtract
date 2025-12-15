@@ -191,7 +191,7 @@ mod tests {
         let phenopacket_id = "pp_id".to_string();
 
         IndividualCollector
-            .collect(&mut builder, &vec![individual_info_cdf], &phenopacket_id)
+            .collect(&mut builder, &[individual_info_cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

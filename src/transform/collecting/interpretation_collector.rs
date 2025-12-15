@@ -257,7 +257,7 @@ mod tests {
         let phenopacket_id = default_phenopacket_id().to_string();
 
         InterpretationCollector
-            .collect(&mut builder, &vec![patient_cdf], &phenopacket_id)
+            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

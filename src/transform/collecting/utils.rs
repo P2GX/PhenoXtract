@@ -158,7 +158,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(context, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&vec![cdf], Context::SubjectSex, Context::None)
+        let sme = get_single_multiplicity_element(&[cdf], Context::SubjectSex, Context::None)
             .unwrap()
             .unwrap();
         assert_eq!(sme, "MALE");
@@ -185,7 +185,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&vec![cdf], context, Context::None);
+        let sme = get_single_multiplicity_element(&[cdf], context, Context::None);
         assert!(sme.is_err());
     }
 }

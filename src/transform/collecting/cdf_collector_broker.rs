@@ -130,11 +130,13 @@ mod tests {
         fn collect(
             &self,
             _: &mut PhenopacketBuilder,
-            patient_cdfs: &[ContextualizedDataFrame],
+            _patient_cdfs: &[ContextualizedDataFrame],
             phenopacket_id: &str,
         ) -> Result<(), CollectorError> {
             self.call_count.set(self.call_count.get() + 1);
             self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
+
+            //is this correct?
 
             Ok(())
         }

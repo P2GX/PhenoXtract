@@ -138,7 +138,7 @@ mod tests {
             .unwrap();
 
         DiseaseCollector
-            .collect(&mut builder, &vec![cdf], &phenopacket_id)
+            .collect(&mut builder, &[cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
