@@ -6,15 +6,15 @@ pub(crate) enum PathogenicGeneVariantData {
     None,
     CausativeGene(String),
     HeterozygousVariant {
-        gene: String,
+        gene: Option<String>,
         var: String,
     },
     HomozygousVariant {
-        gene: String,
+        gene: Option<String>,
         var: String,
     },
     CompoundHeterozygousVariantPair {
-        gene: String,
+        gene: Option<String>,
         var1: String,
         var2: String,
     },
@@ -27,9 +27,9 @@ impl PathogenicGeneVariantData {
     ///
     /// - **No genes or variants** → `None`
     /// - **A single gene with no variants** → `CausativeGene`
-    /// - **A single gene with a single heterozygous variant** → `HeterozygousVariant`
-    /// - **A single gene with a pair of identical variants** → `HomozygousVariant`
-    /// - **A single gene with a pair of distinct, heterozygous variants** → `CompoundHeterozygousVariantPair`
+    /// - **A single heterozygous variant, possibly alongside a gene** → `HeterozygousVariant`
+    /// - **A pair of identical variants, possibly alongside a gene** → `HomozygousVariant`
+    /// - **A pair of distinct, heterozygous variants, possibly alongside a gene** → `CompoundHeterozygousVariantPair`
     ///
     /// All other configurations are considered **invalid**.
     ///
@@ -46,19 +46,19 @@ impl PathogenicGeneVariantData {
             (1, 0) => Ok(PathogenicGeneVariantData::CausativeGene(
                 genes[0].to_string(),
             )),
-            (1, 1) => Ok(PathogenicGeneVariantData::HeterozygousVariant {
-                gene: genes[0].to_string(),
+            (0, 1) | (1, 1) => Ok(PathogenicGeneVariantData::HeterozygousVariant {
+                gene: genes.first().map(|s| s.to_string()),
                 var: variants[0].to_string(),
             }),
-            (1, 2) => {
+            (0, 2) | (1, 2) => {
                 if variants[0] == variants[1] {
                     Ok(PathogenicGeneVariantData::HomozygousVariant {
-                        gene: genes[0].to_string(),
+                        gene: genes.first().map(|s| s.to_string()),
                         var: variants[0].to_string(),
                     })
                 } else {
                     Ok(PathogenicGeneVariantData::CompoundHeterozygousVariantPair {
-                        gene: genes[0].to_string(),
+                        gene: genes.first().map(|s| s.to_string()),
                         var1: variants[0].to_string(),
                         var2: variants[1].to_string(),
                     })
@@ -85,10 +85,12 @@ impl PathogenicGeneVariantData {
     pub fn get_gene(&self) -> Option<&str> {
         match self {
             PathogenicGeneVariantData::None => None,
-            PathogenicGeneVariantData::CausativeGene(gene)
-            | PathogenicGeneVariantData::HeterozygousVariant { gene, .. }
+            PathogenicGeneVariantData::CausativeGene(gene) => Some(gene),
+            PathogenicGeneVariantData::HeterozygousVariant { gene, .. }
             | PathogenicGeneVariantData::HomozygousVariant { gene, .. }
-            | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { gene, .. } => Some(gene),
+            | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { gene, .. } => {
+                gene.as_deref()
+            }
         }
     }
 
@@ -137,7 +139,7 @@ mod tests {
         ));
         assert!(matches!(
             PathogenicGeneVariantData::from_genes_and_variants(
-                vec!["KIF21A"],
+                vec![],
                 vec!["NM_001173464.1:c.2860C>T", "NM_015120.4:c.11031_11032delGA"]
             )
             .unwrap(),
@@ -164,14 +166,6 @@ mod tests {
                     "NM_001173464.1:c.2860C>T",
                     "NM_001173464.1:c.2860C>T"
                 ]
-            )
-            .is_err()
-        );
-        // no genes
-        assert!(
-            PathogenicGeneVariantData::from_genes_and_variants(
-                vec![],
-                vec!["NM_001173464.1:c.2860C>T"]
             )
             .is_err()
         );
