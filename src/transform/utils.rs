@@ -1,10 +1,48 @@
 use crate::constants::ISO8601_DUR_PATTERN;
+use crate::transform::data_processing::parsing::{
+    try_parse_string_date, try_parse_string_datetime,
+};
+use chrono::{TimeZone, Utc};
+use phenopackets::schema::v2::core::time_element::Element;
+use phenopackets::schema::v2::core::{Age as IndividualAge, TimeElement};
 use polars::prelude::{AnyValue, Column};
+use prost_types::Timestamp;
 use regex::Regex;
 
-pub fn is_iso8601_duration(dur_string: &str) -> bool {
+pub(crate) fn is_iso8601_duration(dur_string: &str) -> bool {
     let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
     re.is_match(dur_string)
+}
+
+pub(crate) fn try_parse_timestamp(ts_string: &str) -> Option<Timestamp> {
+    try_parse_string_datetime(ts_string)
+        .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
+        .map(|naive| Utc.from_utc_datetime(&naive))
+        .map(|utc_dt| {
+            let seconds = utc_dt.timestamp();
+            let nanos = utc_dt.timestamp_subsec_nanos() as i32;
+            Timestamp { seconds, nanos }
+        })
+}
+
+pub(crate) fn try_parse_time_element(te_string: &str) -> Option<TimeElement> {
+    if let Some(ts) = try_parse_timestamp(te_string) {
+        let datetime_te = TimeElement {
+            element: Some(Element::Timestamp(ts)),
+        };
+        return Some(datetime_te);
+    }
+
+    if is_iso8601_duration(te_string) {
+        let dur_te = TimeElement {
+            element: Some(Element::Age(IndividualAge {
+                iso8601duration: te_string.to_string(),
+            })),
+        };
+        return Some(dur_te);
+    }
+
+    None
 }
 
 /// A struct for creating columns which have HPO IDs in the header
@@ -45,6 +83,9 @@ impl HpoColMaker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_age_element, default_iso_age,
+    };
     use rstest::rstest;
 
     #[rstest]
@@ -104,5 +145,69 @@ mod tests {
         assert!(!is_iso8601_duration("asd"));
         assert!(!is_iso8601_duration("123"));
         assert!(!is_iso8601_duration("47Y"));
+    }
+
+    #[rstest]
+    fn test_parse_time_element_duration() {
+        let te = try_parse_time_element(&default_iso_age()).unwrap();
+        pretty_assertions::assert_eq!(te, default_age_element());
+    }
+
+    #[rstest]
+    fn test_parse_time_element_datetime() {
+        let te_date = try_parse_time_element("2001-01-29").unwrap();
+        pretty_assertions::assert_eq!(
+            te_date,
+            TimeElement {
+                element: Some(Element::Timestamp(Timestamp {
+                    seconds: 980726400,
+                    nanos: 0,
+                })),
+            }
+        );
+        let te_datetime = try_parse_time_element("2015-06-05T09:17:39Z").unwrap();
+        pretty_assertions::assert_eq!(
+            te_datetime,
+            TimeElement {
+                element: Some(Element::Timestamp(Timestamp {
+                    seconds: 1433495859,
+                    nanos: 0,
+                })),
+            }
+        );
+    }
+
+    #[rstest]
+    #[case("P81D5M13Y")]
+    #[case("8D5M13Y")]
+    #[case("09:17:39Z")]
+    #[case("2020-20-15T09:17:39Z")]
+    fn test_parse_time_element_invalid(#[case] date_str: &str) {
+        let result = try_parse_time_element(date_str);
+        assert!(result.is_none());
+    }
+
+    #[rstest]
+    fn test_parse_timestamp() {
+        let ts_date = try_parse_timestamp("2001-01-29").unwrap();
+        pretty_assertions::assert_eq!(
+            ts_date,
+            Timestamp {
+                seconds: 980726400,
+                nanos: 0,
+            }
+        );
+        let ts_datetime = try_parse_timestamp("2015-06-05T09:17:39Z").unwrap();
+        pretty_assertions::assert_eq!(
+            ts_datetime,
+            Timestamp {
+                seconds: 1433495859,
+                nanos: 0,
+            }
+        );
+        let result = try_parse_timestamp("09:17:39Z");
+        assert!(result.is_none());
+        let result = try_parse_timestamp("2020-20-15T09:17:39Z");
+        assert!(result.is_none());
     }
 }
