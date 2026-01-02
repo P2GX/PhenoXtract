@@ -43,5 +43,9 @@ pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
 pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
     let hgvs_client = build_hgvs_test_client(temp_dir);
-    PhenopacketBuilder::new(build_test_dicts(), hgnc_client, hgvs_client)
+    PhenopacketBuilder::new(
+        build_test_dicts(),
+        Box::new(hgnc_client),
+        Box::new(hgvs_client),
+    )
 }

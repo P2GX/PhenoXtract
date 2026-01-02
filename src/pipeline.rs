@@ -117,8 +117,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(
             bi_dicts,
-            CachedHGNCClient::default(),
-            CachedHGVSClient::default(),
+            Box::new(CachedHGNCClient::default()),
+            Box::new(CachedHGVSClient::default()),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
