@@ -621,8 +621,7 @@ mod tests {
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
-    use phenopackets::schema::v2::core::time_element::Element;
-    use phenopackets::schema::v2::core::{Age, MetaData, Resource};
+    use phenopackets::schema::v2::core::{MetaData, Resource};
     use pretty_assertions::assert_eq;
     use prost_types::Timestamp;
     use rstest::*;
