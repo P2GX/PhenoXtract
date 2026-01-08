@@ -1,3 +1,4 @@
+#![allow(unused_assignments)]
 use enum_try_as_inner::EnumTryAsInner;
 use serde::{Deserialize, Serialize};
 use std::fmt;
