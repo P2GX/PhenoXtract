@@ -14,15 +14,12 @@ use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
-use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
-    Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange, Sex, TimeElement,
-    Value as ValueStruct, VitalStatus,
-    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass,
-    PhenotypicFeature, Sex, VitalStatus,
+    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, Measurement,
+    OntologyClass, PhenotypicFeature, Quantity, ReferenceRange, Sex, Value as ValueStruct,
+    VitalStatus,
 };
 use pivot::hgnc::{GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, ChromosomalSex, HGVSData};
@@ -444,7 +441,12 @@ impl PhenopacketBuilder {
         };
 
         if let Some(time_observed) = time_observed {
-            let time_observed_te = Self::try_parse_time_element(time_observed)?;
+            let time_observed_te = try_parse_time_element(time_observed).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: time_observed.to_string(),
+                }
+            })?;
             measurement_element.time_observed = Some(time_observed_te);
         }
 
@@ -483,7 +485,12 @@ impl PhenopacketBuilder {
         };
 
         if let Some(time_observed) = time_observed {
-            let time_observed_te = Self::try_parse_time_element(time_observed)?;
+            let time_observed_te = try_parse_time_element(time_observed).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: time_observed.to_string(),
+                }
+            })?;
             measurement_element.time_observed = Some(time_observed_te);
         }
 
