@@ -6,8 +6,7 @@ use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
-use crate::transform::utils::{chromosomal_sex_from_str, is_iso8601_duration};
-use chrono::{TimeZone, Utc};
+use crate::transform::utils::chromosomal_sex_from_str;
 use crate::transform::utils::{try_parse_time_element, try_parse_timestamp};
 use chrono::Utc;
 use log::warn;
@@ -20,11 +19,8 @@ use phenopackets::schema::v2::core::{
     Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass,
     PhenotypicFeature, Sex, VitalStatus,
 };
-use pivot::hgnc::{CachedHGNCClient, GeneQuery, HGNCData};
-use pivot::hgvs::{AlleleCount, CachedHGVSClient, HGVSData};
-use prost_types::Timestamp;
 use pivot::hgnc::{GeneQuery, HGNCData};
-use pivot::hgvs::{AlleleCount, ChromosomalSex, HGVSData};
+use pivot::hgvs::{AlleleCount, HGVSData};
 use std::collections::HashMap;
 use std::sync::Arc;
 
