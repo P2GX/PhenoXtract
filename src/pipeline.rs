@@ -172,7 +172,6 @@ impl TryFrom<PathBuf> for Pipeline {
 mod tests {
     use super::*;
     use crate::config::ConfigLoader;
-    use crate::skip_in_ci;
     use crate::test_suite::config::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
