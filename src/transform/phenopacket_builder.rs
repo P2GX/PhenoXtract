@@ -4,51 +4,46 @@ use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
-use crate::transform::data_processing::parsing::{
-    try_parse_string_date, try_parse_string_datetime,
-};
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
-use crate::transform::utils::is_iso8601_duration;
-use chrono::{TimeZone, Utc};
+use crate::transform::utils::{try_parse_time_element, try_parse_timestamp};
+use chrono::Utc;
 use log::warn;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
-use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Age as IndividualAge, Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation,
-    OntologyClass, PhenotypicFeature, Sex, TimeElement, VitalStatus,
+    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass,
+    PhenotypicFeature, Sex, VitalStatus,
 };
-use pivot::hgnc::{CachedHGNCClient, GeneQuery, HGNCData};
-use pivot::hgvs::{AlleleCount, CachedHGVSClient, ChromosomalSex, HGVSData};
-use prost_types::Timestamp;
+use pivot::hgnc::{GeneQuery, HGNCData};
+use pivot::hgvs::{AlleleCount, ChromosomalSex, HGVSData};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
-    hgnc_client: CachedHGNCClient,
-    hgvs_client: CachedHGVSClient,
+    hgnc_client: Box<dyn HGNCData>,
+    hgvs_client: Box<dyn HGVSData>,
     resource_resolver: CachedResourceResolver,
 }
 
 impl PhenopacketBuilder {
     pub fn new(
         ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
-        hgnc_client: CachedHGNCClient,
-        hgvs_client: CachedHGVSClient,
-    ) -> PhenopacketBuilder {
-        PhenopacketBuilder {
-            subject_to_phenopacket: Default::default(),
+        hgnc_client: Box<dyn HGNCData>,
+        hgvs_client: Box<dyn HGVSData>,
+    ) -> Self {
+        Self {
+            subject_to_phenopacket: HashMap::new(),
             ontology_bidicts,
             hgnc_client,
             hgvs_client,
-            resource_resolver: Default::default(),
+            resource_resolver: CachedResourceResolver::default(),
         }
     }
 
@@ -60,7 +55,7 @@ impl PhenopacketBuilder {
         phenopackets.iter_mut().for_each(|pp| {
             let metadata = pp.meta_data.get_or_insert(Default::default());
             metadata.created = Some(
-                Self::try_parse_timestamp(&now)
+                try_parse_timestamp(&now)
                     .expect("Failed to parse current timestamp for phenopacket metadata"),
             )
         });
@@ -102,7 +97,13 @@ impl PhenopacketBuilder {
         individual.id = individual_id.to_string();
 
         if let Some(date_of_birth) = date_of_birth {
-            individual.date_of_birth = Some(Self::try_parse_timestamp(date_of_birth)?);
+            individual.date_of_birth =
+                Some(try_parse_timestamp(date_of_birth).ok_or_else(|| {
+                    PhenopacketBuilderError::ParsingError {
+                        what: "TimeStamp".to_string(),
+                        value: date_of_birth.to_string(),
+                    }
+                })?);
         }
 
         if let Some(sex) = sex {
@@ -134,7 +135,12 @@ impl PhenopacketBuilder {
         })? as i32;
 
         let time_of_death = match time_of_death {
-            Some(tod_string) => Some(Self::try_parse_time_element(tod_string)?),
+            Some(tod_string) => Some(try_parse_time_element(tod_string).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: tod_string.to_string(),
+                }
+            })?),
             None => None,
         };
 
@@ -234,7 +240,12 @@ impl PhenopacketBuilder {
         }
 
         if let Some(onset) = onset {
-            let onset_te = Self::try_parse_time_element(onset)?;
+            let onset_te = try_parse_time_element(onset).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: onset.to_string(),
+                }
+            })?;
             feature.onset = Some(onset_te);
         }
         self.ensure_resource(
@@ -301,7 +312,7 @@ impl PhenopacketBuilder {
 
                 let vi = validated_hgvs.create_variant_interpretation(
                     AlleleCount::try_from(gene_variant_data.get_allelic_count() as u8)?,
-                    ChromosomalSex::Unknown,
+                    &ChromosomalSex::Unknown,
                 )?;
 
                 let gi = GenomicInterpretation {
@@ -368,7 +379,12 @@ impl PhenopacketBuilder {
         };
 
         if let Some(onset) = onset {
-            let onset_te = Self::try_parse_time_element(onset)?;
+            let onset_te = try_parse_time_element(onset).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: onset.to_string(),
+                }
+            })?;
             disease_element.onset = Some(onset_te);
         }
 
@@ -543,53 +559,6 @@ impl PhenopacketBuilder {
             })?
     }
 
-    fn try_parse_time_element(te_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
-        if let Ok(ts) = Self::try_parse_timestamp(te_string) {
-            let datetime_te = TimeElement {
-                element: Some(Element::Timestamp(ts)),
-            };
-            return Ok(datetime_te);
-        }
-
-        if let Ok(dur) = Self::try_parse_iso8601duration(te_string) {
-            return Ok(dur);
-        }
-
-        Err(PhenopacketBuilderError::ParsingError {
-            what: "TimeElement".to_string(),
-            value: te_string.to_string(),
-        })
-    }
-
-    fn try_parse_timestamp(ts_string: &str) -> Result<Timestamp, PhenopacketBuilderError> {
-        let utc_dt = try_parse_string_datetime(ts_string)
-            .or_else(|| try_parse_string_date(ts_string).and_then(|date| date.and_hms_opt(0, 0, 0)))
-            .map(|naive| Utc.from_utc_datetime(&naive))
-            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
-                what: "Timestamp".to_string(),
-                value: ts_string.to_string(),
-            })?;
-
-        let seconds = utc_dt.timestamp();
-        let nanos = utc_dt.timestamp_subsec_nanos() as i32;
-        Ok(Timestamp { seconds, nanos })
-    }
-
-    fn try_parse_iso8601duration(dur_string: &str) -> Result<TimeElement, PhenopacketBuilderError> {
-        if is_iso8601_duration(dur_string) {
-            Ok(TimeElement {
-                element: Some(Element::Age(IndividualAge {
-                    iso8601duration: dur_string.to_string(),
-                })),
-            })
-        } else {
-            Err(PhenopacketBuilderError::ParsingError {
-                what: "Iso8601Duration".to_string(),
-                value: dur_string.to_string(),
-            })
-        }
-    }
-
     fn ensure_resource(
         &mut self,
         phenopacket_id: &str,
@@ -652,9 +621,9 @@ mod tests {
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
-    use phenopackets::schema::v2::core::time_element::Element;
-    use phenopackets::schema::v2::core::{Age, MetaData, Resource};
+    use phenopackets::schema::v2::core::{MetaData, Resource};
     use pretty_assertions::assert_eq;
+    use prost_types::Timestamp;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -1453,86 +1422,6 @@ mod tests {
         let result = builder.query_hpo_identifiers("NonexistentTerm");
 
         assert!(result.is_err());
-    }
-
-    #[rstest]
-    fn test_parse_time_element_duration() {
-        let te = PhenopacketBuilder::try_parse_time_element(&default_iso_age()).unwrap();
-        assert_eq!(te, default_age_element());
-    }
-
-    #[rstest]
-    fn test_parse_time_element_datetime() {
-        let te_date = PhenopacketBuilder::try_parse_time_element("2001-01-29").unwrap();
-        assert_eq!(
-            te_date,
-            TimeElement {
-                element: Some(Element::Timestamp(Timestamp {
-                    seconds: 980726400,
-                    nanos: 0,
-                })),
-            }
-        );
-        let te_datetime =
-            PhenopacketBuilder::try_parse_time_element("2015-06-05T09:17:39Z").unwrap();
-        assert_eq!(
-            te_datetime,
-            TimeElement {
-                element: Some(Element::Timestamp(Timestamp {
-                    seconds: 1433495859,
-                    nanos: 0,
-                })),
-            }
-        );
-    }
-
-    #[rstest]
-    #[case("P81D5M13Y")]
-    #[case("8D5M13Y")]
-    #[case("09:17:39Z")]
-    #[case("2020-20-15T09:17:39Z")]
-    fn test_parse_time_element_invalid(#[case] date_str: &str) {
-        let result = PhenopacketBuilder::try_parse_time_element(date_str);
-        assert!(result.is_err());
-    }
-
-    #[rstest]
-    fn test_parse_timestamp() {
-        let ts_date = PhenopacketBuilder::try_parse_timestamp("2001-01-29").unwrap();
-        assert_eq!(
-            ts_date,
-            Timestamp {
-                seconds: 980726400,
-                nanos: 0,
-            }
-        );
-        let ts_datetime = PhenopacketBuilder::try_parse_timestamp("2015-06-05T09:17:39Z").unwrap();
-        assert_eq!(
-            ts_datetime,
-            Timestamp {
-                seconds: 1433495859,
-                nanos: 0,
-            }
-        );
-        let result = PhenopacketBuilder::try_parse_timestamp("09:17:39Z");
-        assert!(result.is_err());
-        let result = PhenopacketBuilder::try_parse_timestamp("2020-20-15T09:17:39Z");
-        assert!(result.is_err());
-    }
-
-    #[rstest]
-    fn test_try_parse_iso8601duration() {
-        let te = PhenopacketBuilder::try_parse_iso8601duration("P47Y5M").unwrap();
-        assert_eq!(
-            te,
-            TimeElement {
-                element: Some(Element::Age(Age {
-                    iso8601duration: "P47Y5M".to_string()
-                }))
-            }
-        );
-        let parse_fail = PhenopacketBuilder::try_parse_iso8601duration("47Y5M");
-        assert!(parse_fail.is_err());
     }
 
     #[rstest]

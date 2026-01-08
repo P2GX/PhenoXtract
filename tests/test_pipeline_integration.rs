@@ -260,7 +260,6 @@ fn test_pipeline_integration(
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
-    skip_in_ci!();
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -337,8 +336,8 @@ fn test_pipeline_integration(
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
         ]),
-        build_hgnc_test_client(temp_dir.path()),
-        build_hgvs_test_client(temp_dir.path()),
+        Box::new(build_hgnc_test_client(temp_dir.path())),
+        Box::new(build_hgvs_test_client(temp_dir.path())),
     );
 
     let transformer_module = TransformerModule::new(

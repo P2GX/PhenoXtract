@@ -117,8 +117,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(
             bi_dicts,
-            CachedHGNCClient::default(),
-            CachedHGVSClient::default(),
+            Box::new(CachedHGNCClient::default()),
+            Box::new(CachedHGVSClient::default()),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
@@ -172,7 +172,6 @@ impl TryFrom<PathBuf> for Pipeline {
 mod tests {
     use super::*;
     use crate::config::ConfigLoader;
-    use crate::skip_in_ci;
     use crate::test_suite::config::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
@@ -186,7 +185,6 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
-        skip_in_ci!();
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(get_full_config_bytes().as_slice()).unwrap();

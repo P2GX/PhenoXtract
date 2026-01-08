@@ -33,7 +33,7 @@ iso8601-duration = "0.2.0"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 enum-try-as-inner = "0.1.1"
-pivot = { git = "https://github.com/psnairne/PIVOT" }
+pivot = { git = "https://github.com/psnairne/PIVOT", tag = "v0.1.3"}
 
 [dev-dependencies]
 rstest = "0.26.1"
