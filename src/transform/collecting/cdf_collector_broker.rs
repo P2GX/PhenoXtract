@@ -136,8 +136,6 @@ mod tests {
             self.call_count.set(self.call_count.get() + 1);
             self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
 
-            //is this correct?
-
             Ok(())
         }
     }

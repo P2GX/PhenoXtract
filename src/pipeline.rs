@@ -104,15 +104,26 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
-        let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
-        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
-        let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
 
-        let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
-            (hp_dict.ontology.prefix_id().to_string(), hp_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
-        ]);
+        let mut bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::new();
+
+        if let Some(hp_ref) = &config.meta_data.hp_ref {
+            let hp_dict = ontology_factory.build_bidict(hp_ref, None)?;
+            bi_dicts.insert(hp_dict.ontology.prefix_id().to_string(), hp_dict);
+        }
+
+        if let Some(disease_ref) = &config.meta_data.disease_ref {
+            let disease_dict = ontology_factory.build_bidict(disease_ref, None)?;
+            bi_dicts.insert(disease_dict.ontology.prefix_id().to_string(), disease_dict);
+        }
+
+        if let Some(unit_ontology_ref) = &config.meta_data.unit_ontology_ref {
+            let unit_ontology_dict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
+            bi_dicts.insert(
+                unit_ontology_dict.ontology.prefix_id().to_string(),
+                unit_ontology_dict,
+            );
+        }
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(

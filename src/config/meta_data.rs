@@ -9,21 +9,18 @@ pub struct MetaData {
     pub created_by: String,
     #[serde(default = "default_creator")]
     pub submitted_by: String,
-    #[serde(default = "crate::ontology::OntologyRef::hp")]
-    pub hp_ref: OntologyRef,
-    #[serde(default = "crate::ontology::OntologyRef::mondo")]
-    pub mondo_ref: OntologyRef,
-    #[serde(default = "crate::ontology::OntologyRef::geno")]
-    pub geno_ref: OntologyRef,
+    pub hp_ref: Option<OntologyRef>,
+    pub disease_ref: Option<OntologyRef>,
+    pub unit_ontology_ref: Option<OntologyRef>,
 }
 impl MetaData {
     pub fn new(
         created_by: Option<&str>,
         submitted_by: Option<&str>,
         cohort_name: &str,
-        hpo_version: Option<&OntologyRef>,
-        mondo_version: Option<&OntologyRef>,
-        geno_version: Option<&OntologyRef>,
+        hp_ref: Option<&OntologyRef>,
+        disease_ref: Option<&OntologyRef>,
+        unit_ontology_ref: Option<&OntologyRef>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -35,18 +32,9 @@ impl MetaData {
                 Some(s) => s.to_owned(),
             },
             cohort_name: cohort_name.to_owned(),
-            hp_ref: match hpo_version {
-                None => OntologyRef::hp(),
-                Some(s) => s.to_owned(),
-            },
-            mondo_ref: match mondo_version {
-                None => OntologyRef::mondo(),
-                Some(s) => s.to_owned(),
-            },
-            geno_ref: match geno_version {
-                None => OntologyRef::geno(),
-                Some(s) => s.to_owned(),
-            },
+            hp_ref: hp_ref.cloned(),
+            disease_ref: disease_ref.cloned(),
+            unit_ontology_ref: unit_ontology_ref.cloned(),
         }
     }
 }
@@ -57,9 +45,9 @@ impl Default for MetaData {
             created_by: default_creator(),
             submitted_by: default_creator(),
             cohort_name: "unnamed_cohort".to_string(),
-            hp_ref: OntologyRef::hp(),
-            mondo_ref: OntologyRef::mondo(),
-            geno_ref: OntologyRef::geno(),
+            hp_ref: Some(OntologyRef::hp()),
+            disease_ref: Some(OntologyRef::mondo()),
+            unit_ontology_ref: None,
         }
     }
 }
@@ -98,9 +86,9 @@ mod tests {
         assert_eq!(metadata.created_by, expected_creator);
         assert_eq!(metadata.submitted_by, expected_creator);
         assert_eq!(metadata.cohort_name, expected_cohort);
-        assert_eq!(metadata.hp_ref, OntologyRef::hp());
-        assert_eq!(metadata.mondo_ref, OntologyRef::mondo());
-        assert_eq!(metadata.geno_ref, OntologyRef::geno());
+        assert_eq!(metadata.hp_ref.unwrap(), OntologyRef::hp());
+        assert_eq!(metadata.disease_ref.unwrap(), OntologyRef::mondo());
+        assert_eq!(metadata.unit_ontology_ref, None);
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -109,6 +97,9 @@ mod tests {
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
+    unit_ontology_ref:
+      version: "2023-05-25"
+      prefix_id: "UO"
     "#;
 
     #[fixture]
@@ -136,10 +127,13 @@ mod tests {
         );
         assert_eq!(default_meta_data.cohort_name, "arkham 2025");
         assert_eq!(
-            default_meta_data.hp_ref,
+            default_meta_data.hp_ref.unwrap(),
             OntologyRef::hp_with_version("2025-09-01")
         );
-        assert_eq!(default_meta_data.mondo_ref, OntologyRef::mondo());
-        assert_eq!(default_meta_data.geno_ref, OntologyRef::geno());
+        assert_eq!(default_meta_data.disease_ref, None);
+        assert_eq!(
+            default_meta_data.unit_ontology_ref.unwrap(),
+            OntologyRef::new("UO".to_string(), Some("2023-05-25".to_string()))
+        );
     }
 }
