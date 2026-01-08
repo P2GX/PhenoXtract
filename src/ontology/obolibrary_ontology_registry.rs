@@ -1,6 +1,5 @@
-use crate::ontology::traits::OntologyRegistry;
-
 use crate::ontology::error::RegistryError;
+use crate::ontology::traits::OntologyRegistry;
 
 use crate::ontology::BioRegistryClient;
 use crate::ontology::obolibrary_client::ObolibraryClient;

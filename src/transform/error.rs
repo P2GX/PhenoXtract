@@ -1,6 +1,7 @@
 use crate::config::context::{Context, ContextKind};
-use crate::ontology::error::ClientError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
+use pivot::hgnc::HGNCError;
+use pivot::hgvs::HGVSError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::{HashMap, HashSet};
@@ -287,13 +288,7 @@ pub enum PhenopacketBuilderError {
     #[error("Missing BiDict for {0}")]
     MissingBiDict(String),
     #[error(transparent)]
-    HgncClient(#[from] ClientError),
-    #[error("Error validating HGVS variant: {0}")]
-    VariantValidation(String),
-    #[error("No (gene_symbol, hgnc_id) pair found via HGNC for gene {gene}.")]
-    HgncGeneInfoRequest { gene: String },
-    #[error(
-        "The HGVS variant {variant} for patient {patient} did not have the correct reference:transcript format."
-    )]
-    HgvsFormat { patient: String, variant: String },
+    HgvsError(#[from] HGVSError),
+    #[error(transparent)]
+    HgncError(#[from] HGNCError),
 }

@@ -10,22 +10,22 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
-use phenoxtract::error::PipelineError;
+use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
-use phenoxtract::ontology::{CachedOntologyFactory, HGNCClient};
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
-use ratelimit::Ratelimiter;
+use pivot::hgnc::{CachedHGNCClient, HGNCClient};
+use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tempfile::TempDir;
 
 #[fixture]
@@ -196,18 +196,59 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
-fn build_hgnc_test_client(temp_dir: &Path) -> HGNCClient {
-    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(1))
-        .max_tokens(10)
-        .build()
-        .expect("Building rate limiter failed");
+fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
+    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
+}
 
-    HGNCClient::new(
-        rate_limiter,
-        temp_dir.to_path_buf().join("hgnc_test_cache"),
-        "https://rest.genenames.org/".to_string(),
-    )
-    .unwrap()
+fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
+    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
+}
+
+fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
+    remove_created_from_metadata(actual);
+    remove_created_from_metadata(expected);
+
+    remove_id_from_variation_descriptor(actual);
+    remove_id_from_variation_descriptor(expected);
+
+    pretty_assertions::assert_eq!(actual, expected);
+}
+
+fn remove_created_from_metadata(pp: &mut Phenopacket) {
+    if let Some(meta) = &mut pp.meta_data {
+        meta.created = None;
+    }
+}
+
+#[macro_export]
+macro_rules! skip_in_ci {
+    ($test_name:expr) => {
+        if std::env::var("CI").is_ok() {
+            println!("Skipping {} in CI environment", $test_name);
+            return;
+        }
+    };
+    () => {
+        if std::env::var("CI").is_ok() {
+            println!("Skipping {} in CI environment", module_path!());
+            return;
+        }
+    };
+}
+
+fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
+    for interpretation in pp.interpretations.iter_mut() {
+        if let Some(diagnosis) = &mut interpretation.diagnosis {
+            for gi in diagnosis.genomic_interpretations.iter_mut() {
+                if let Some(call) = &mut gi.call
+                    && let Call::VariantInterpretation(vi) = call
+                    && let Some(vi) = &mut vi.variation_descriptor
+                {
+                    vi.id = "TEST_ID".to_string();
+                }
+            }
+        }
+    }
 }
 
 #[rstest]
@@ -218,7 +259,7 @@ fn test_pipeline_integration(
     csv_context_4: TableContext,
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
-) -> Result<(), PipelineError> {
+) {
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -295,7 +336,8 @@ fn test_pipeline_integration(
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
         ]),
-        build_hgnc_test_client(temp_dir.path()),
+        Box::new(build_hgnc_test_client(temp_dir.path())),
+        Box::new(build_hgvs_test_client(temp_dir.path())),
     );
 
     let transformer_module = TransformerModule::new(
@@ -312,7 +354,7 @@ fn test_pipeline_integration(
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    pipeline.run(&mut data_sources)?;
+    pipeline.run(&mut data_sources).unwrap();
 
     //create a phenopacket_ID -> expected phenopacket HashMap
     //and for each expected Phenopacket set the meta_data.created to None
@@ -340,14 +382,9 @@ fn test_pipeline_integration(
             let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
             let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
 
-            let expected_pp = expected_phenopackets.get(&extracted_pp.id).unwrap();
+            let expected_pp = expected_phenopackets.get_mut(&extracted_pp.id).unwrap();
 
-            if let Some(meta) = &mut extracted_pp.meta_data {
-                meta.created = None;
-            }
-
-            assert_eq!(&extracted_pp, expected_pp);
+            assert_phenopackets(&mut extracted_pp, expected_pp);
         }
     }
-    Ok(())
 }
