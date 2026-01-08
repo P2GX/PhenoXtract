@@ -73,8 +73,7 @@ impl Collect for QuantitativeMeasurementCollector {
                             time_observed,
                             loinc_id,
                             unit_ontology_id,
-                            ref_low,
-                            ref_high,
+                            ref_low.zip(ref_high),
                         )?;
                     }
                 }

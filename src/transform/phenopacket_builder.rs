@@ -304,7 +304,7 @@ impl PhenopacketBuilder {
 
                 let vi = validated_hgvs.create_variant_interpretation(
                     AlleleCount::try_from(gene_variant_data.get_allelic_count() as u8)?,
-                    ChromosomalSex::Unknown,
+                    &ChromosomalSex::Unknown,
                 )?;
 
                 let gi = GenomicInterpretation {
@@ -392,8 +392,7 @@ impl PhenopacketBuilder {
         time_observed: Option<&str>,
         loinc_id: &str,
         unit_ontology_id: &str,
-        reference_range_low: Option<f64>,
-        reference_range_high: Option<f64>,
+        reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
         let unit_ontology_class = OntologyClass {
             id: unit_ontology_id.to_string(),
@@ -406,21 +405,12 @@ impl PhenopacketBuilder {
             ..Default::default()
         };
 
-        if reference_range_low.is_some() || reference_range_high.is_some() {
-            let mut reference_range = ReferenceRange {
+        if let Some(reference_range) = reference_range {
+            quantity.reference_range = Some(ReferenceRange {
                 unit: Some(unit_ontology_class),
-                ..Default::default()
-            };
-
-            if let Some(reference_range_low) = reference_range_low {
-                reference_range.low = reference_range_low
-            }
-
-            if let Some(reference_range_high) = reference_range_high {
-                reference_range.high = reference_range_high
-            }
-
-            quantity.reference_range = Some(reference_range);
+                low: reference_range.0,
+                high: reference_range.1,
+            });
         }
 
         let mut measurement_element = Measurement {
