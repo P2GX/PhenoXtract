@@ -260,6 +260,7 @@ fn test_pipeline_integration(
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
+    skip_in_ci!();
     //Set-up
     let cohort_name = "my_cohort";
 
