@@ -47,7 +47,7 @@ pub(crate) fn geno_meta_data_resource() -> Resource {
         name: "Genotype Ontology".to_string(),
         url: "http://purl.obolibrary.org/obo/geno.json".to_string(),
         version: "2025-07-25".to_string(),
-        namespace_prefix: "geno".to_string(),
+        namespace_prefix: "GENO".to_string(),
         iri_prefix: "http://purl.obolibrary.org/obo/GENO_$1".to_string(),
     }
 }
