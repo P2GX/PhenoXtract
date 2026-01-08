@@ -139,36 +139,6 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
-    /// Creates a default `ObolibraryOntologyRegistry` configured for the Genotype Ontology (GENO).
-    ///
-    /// This is a convenience constructor that sets up a registry with standard settings
-    /// for downloading GENO in JSON format.
-    ///
-    /// # Configuration
-    /// - **Ontology Prefix:** `"geno"`
-    /// - **File Name:** `"geno.json"`
-    /// - **Storage Path:**
-    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/geno` on Linux)
-    ///   - Fallback: `$HOME/.<crate_name>/geno` if platform directories are unavailable
-    ///
-    /// The storage location is determined using the `directories` crate's project
-    /// directories, with a fallback to the home directory if that fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
-    /// project directories nor the `HOME` environment variable can be determined.
-    pub fn default_geno_registry() -> Result<Self, RegistryError> {
-        let geno_id = "geno";
-        let registry_path = Self::default_registry_path(geno_id)?;
-
-        Ok(ObolibraryOntologyRegistry::new(
-            registry_path,
-            Some("geno.json"),
-            geno_id,
-        ))
-    }
-
     /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO) annotations.
     ///
     /// This is a convenience constructor that sets up a registry with standard settings
@@ -433,22 +403,6 @@ mod tests {
         // assert!(registry.registry_path.to_str().unwrap().contains("mondo"));
         assert_eq!(registry.file_name, Some("mondo.json".to_string()));
         assert_eq!(registry.ontology_prefix, "mondo");
-    }
-
-    #[rstest]
-    fn test_default_geno_registry() {
-        let registry = ObolibraryOntologyRegistry::default_geno_registry().unwrap();
-        /*
-        assert!(
-            registry
-                .registry_path
-                .to_str()
-                .unwrap()
-                .to_lowercase()
-                .contains(env!("CARGO_PKG_NAME"))
-        );*/
-        assert_eq!(registry.file_name, Some("geno.json".to_string()));
-        assert_eq!(registry.ontology_prefix, "geno");
     }
 
     #[rstest]

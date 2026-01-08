@@ -104,7 +104,6 @@ impl CachedOntologyFactory {
         let mut registry = match ontology.prefix_id() {
             OntologyRef::HPO_PREFIX => ObolibraryOntologyRegistry::default_hpo_registry(),
             OntologyRef::MONDO_PREFIX => ObolibraryOntologyRegistry::default_mondo_registry(),
-            OntologyRef::GENO_PREFIX => ObolibraryOntologyRegistry::default_geno_registry(),
             _ => {
                 let registry_path =
                     ObolibraryOntologyRegistry::default_registry_path(ontology.prefix_id())
@@ -286,58 +285,6 @@ impl CachedOntologyFactory {
         self.build_bidict(&onto_ref, None)
     }
 
-    /// Loads the Genotype Ontology (GENO).
-    ///
-    /// Convenience method for loading the GENO ontology.
-    ///
-    /// # Arguments
-    ///
-    /// * `version` - Optional version string. If `None`, loads the latest version.
-    ///
-    /// # Returns
-    ///
-    /// Returns an `Arc<FullCsrOntology>` containing the GENO ontology.
-    ///
-    /// # Errors
-    ///
-    /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
-    pub fn geno(
-        &mut self,
-        version: Option<String>,
-    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
-        let onto_ref = match version {
-            None => OntologyRef::geno(),
-            Some(v) => OntologyRef::geno_with_version(&v),
-        };
-        self.build_ontology(&onto_ref, None)
-    }
-
-    /// Loads the bidirectional dictionary for the Genotype Ontology (GENO).
-    ///
-    /// Convenience method for loading the GENO bidict.
-    ///
-    /// # Arguments
-    ///
-    /// * `version` - Optional version string. If `None`, uses the latest version.
-    ///
-    /// # Returns
-    ///
-    /// Returns an `Arc<OntologyBiDict>` for the GENO ontology.
-    ///
-    /// # Errors
-    ///
-    /// Returns `OntologyFactoryError` if the ontology or bidict cannot be created.
-    pub fn geno_bi_dict(
-        &mut self,
-        version: Option<String>,
-    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
-        let onto_ref = match version {
-            None => OntologyRef::geno(),
-            Some(v) => OntologyRef::geno_with_version(&v),
-        };
-        self.build_bidict(&onto_ref, None)
-    }
-
     fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
@@ -363,7 +310,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontology_success() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::geno_with_version("2025-07-25");
+        let ontology = OntologyRef::new("geno".to_string(),Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_ontology(&ontology, None)?;
@@ -380,7 +327,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::geno_with_version("2025-07-25");
+        let ontology = OntologyRef::new("geno".to_string(),Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_bidict(&ontology, None)?;

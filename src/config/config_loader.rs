@@ -255,7 +255,7 @@ prefix_id = "HP"
                     "Arkham Asylum 2025",
                     Some(&OntologyRef::hp_with_version("2025-09-01")),
                     None,
-                    Some(&OntologyRef::geno()),
+                    None,
                 ),
                 vec![
                     StrategyConfig::AliasMap,
