@@ -5,7 +5,7 @@
 pub(crate) enum PathogenicGeneVariantData {
     None,
     CausativeGene(String),
-    HeterozygousVariant {
+    SingleVariant {
         gene: Option<String>,
         var: String,
     },
@@ -46,7 +46,7 @@ impl PathogenicGeneVariantData {
             (1, 0) => Ok(PathogenicGeneVariantData::CausativeGene(
                 genes[0].to_string(),
             )),
-            (0, 1) | (1, 1) => Ok(PathogenicGeneVariantData::HeterozygousVariant {
+            (0, 1) | (1, 1) => Ok(PathogenicGeneVariantData::SingleVariant {
                 gene: genes.first().map(|s| s.to_string()),
                 var: variants[0].to_string(),
             }),
@@ -76,7 +76,7 @@ impl PathogenicGeneVariantData {
         match self {
             PathogenicGeneVariantData::None => 0,
             PathogenicGeneVariantData::CausativeGene(_) => 0,
-            PathogenicGeneVariantData::HeterozygousVariant { .. } => 1,
+            PathogenicGeneVariantData::SingleVariant { .. } => 1,
             PathogenicGeneVariantData::HomozygousVariant { .. } => 2,
             PathogenicGeneVariantData::CompoundHeterozygousVariantPair { .. } => 1,
         }
@@ -86,7 +86,7 @@ impl PathogenicGeneVariantData {
         match self {
             PathogenicGeneVariantData::None => None,
             PathogenicGeneVariantData::CausativeGene(gene) => Some(gene),
-            PathogenicGeneVariantData::HeterozygousVariant { gene, .. }
+            PathogenicGeneVariantData::SingleVariant { gene, .. }
             | PathogenicGeneVariantData::HomozygousVariant { gene, .. }
             | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { gene, .. } => {
                 gene.as_deref()
@@ -98,7 +98,7 @@ impl PathogenicGeneVariantData {
         match self {
             PathogenicGeneVariantData::None | PathogenicGeneVariantData::CausativeGene(_) => vec![],
             PathogenicGeneVariantData::HomozygousVariant { var, .. }
-            | PathogenicGeneVariantData::HeterozygousVariant { var, .. } => vec![var],
+            | PathogenicGeneVariantData::SingleVariant { var, .. } => vec![var],
             PathogenicGeneVariantData::CompoundHeterozygousVariantPair { var1, var2, .. } => {
                 vec![var1, var2]
             }
@@ -127,7 +127,7 @@ mod tests {
                 vec!["NM_001173464.1:c.2860C>T"]
             )
             .unwrap(),
-            PathogenicGeneVariantData::HeterozygousVariant { .. }
+            PathogenicGeneVariantData::SingleVariant { .. }
         ));
         assert!(matches!(
             PathogenicGeneVariantData::from_genes_and_variants(
