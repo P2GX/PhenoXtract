@@ -310,7 +310,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontology_success() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::new("geno".to_string(),Some("2025-07-25".to_string()));
+        let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_ontology(&ontology, None)?;
@@ -327,7 +327,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict() -> Result<(), OntologyFactoryError> {
-        let ontology = OntologyRef::new("geno".to_string(),Some("2025-07-25".to_string()));
+        let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
         let result = factory.build_bidict(&ontology, None)?;

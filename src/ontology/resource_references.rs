@@ -74,7 +74,6 @@ impl OntologyRef {
     pub fn mondo_with_version(version: &str) -> Self {
         Self::new(Self::MONDO_PREFIX.to_string(), Some(version.to_string()))
     }
-    
 }
 
 impl HasVersion for OntologyRef {
