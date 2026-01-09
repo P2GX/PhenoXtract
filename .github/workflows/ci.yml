@@ -21,7 +21,22 @@ jobs:
       matrix:
         toolchain:
           - stable
+    env:
+      LOINC_USERNAME: ${{ secrets.LOINC_USERNAME }}
+      LOINC_PASSWORD: ${{ secrets.LOINC_PASSWORD }}
+
     steps:
+      - name: Verify Secret Presence
+        run: |
+          if [ -z "LOINC_PASSWORD" ]; then
+            echo "Secret is empty"
+            exit 1
+          else
+            echo "Secret is set and has a length of ${#LOINC_PASSWORD} characters"
+          fi
+        env:
+          MY_PASSWORD: ${{ secrets.LOINC_PASSWORD }}
+
       - name: Check out Repo
         uses: actions/checkout@v4
         with:
