@@ -41,9 +41,9 @@ impl ObolibraryClient {
         version: &str,
     ) -> Result<Response, ClientError> {
         let url = match version {
-            "latest" => format!("{}{}", self.base_url, file_name),
+            "latest" => format!("{}/{}", self.base_url, file_name),
             _ => format!(
-                "{}{}/releases/{}/{}",
+                "{}/{}/releases/{}/{}",
                 self.base_url, ontology_prefix, version, file_name
             ),
         };
@@ -60,7 +60,7 @@ impl ObolibraryClient {
 impl Default for ObolibraryClient {
     fn default() -> Self {
         ObolibraryClient {
-            base_url: "https://purl.obolibrary.org/obo/".to_string(),
+            base_url: "https://purl.obolibrary.org/obo".to_string(),
         }
     }
 }
