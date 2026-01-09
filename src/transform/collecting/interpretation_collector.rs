@@ -4,10 +4,12 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils;
+use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+
 #[derive(Debug)]
 pub struct InterpretationCollector;
 
@@ -15,67 +17,75 @@ impl Collect for InterpretationCollector {
     fn collect(
         &self,
         builder: &mut PhenopacketBuilder,
-        patient_cdf: &ContextualizedDataFrame,
+        patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let disease_in_cells_scs = patient_cdf
-            .filter_series_context()
-            .where_header_context(Filter::Is(&Context::None))
-            .where_data_contexts_are(DISEASE_LABEL_OR_ID_CONTEXTS.as_slice())
-            .collect();
+        let subject_sex =
+            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
 
-        for disease_sc in disease_in_cells_scs {
-            let sc_id = disease_sc.get_identifier();
-            let bb_id = disease_sc.get_building_block_id();
+        for patient_cdf in patient_cdfs {
+            let disease_in_cells_scs = patient_cdf
+                .filter_series_context()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_contexts_are(DISEASE_LABEL_OR_ID_CONTEXTS.as_slice())
+                .collect();
 
-            let stringified_disease_cols = patient_cdf
-                .get_columns(sc_id)
-                .iter()
-                .map(|col| col.str())
-                .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
+            for disease_sc in disease_in_cells_scs {
+                let sc_id = disease_sc.get_identifier();
+                let bb_id = disease_sc.get_building_block_id();
 
-            let stringified_linked_hgnc_cols = utils::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::HgncSymbolOrId,
-                &Context::None,
-            )?;
-            let stringified_linked_hgvs_cols = utils::get_stringified_cols_with_data_context_in_bb(
-                patient_cdf,
-                bb_id,
-                &Context::Hgvs,
-                &Context::None,
-            )?;
-
-            for row_idx in 0..patient_cdf.data().height() {
-                let genes = stringified_linked_hgnc_cols
+                let stringified_disease_cols = patient_cdf
+                    .get_columns(sc_id)
                     .iter()
-                    .filter_map(|hgnc_col| hgnc_col.get(row_idx))
-                    .collect::<Vec<&str>>();
-                let variants = stringified_linked_hgvs_cols
-                    .iter()
-                    .filter_map(|hgvs_col| hgvs_col.get(row_idx))
-                    .collect::<Vec<&str>>();
+                    .map(|col| col.str())
+                    .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-                let gene_variant_data =
-                    PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
-                        .map_err(CollectorError::GeneVariantData)?;
+                let stringified_linked_hgnc_cols =
+                    utils::get_stringified_cols_with_data_context_in_bb(
+                        patient_cdf,
+                        bb_id,
+                        &Context::HgncSymbolOrId,
+                        &Context::None,
+                    )?;
+                let stringified_linked_hgvs_cols =
+                    utils::get_stringified_cols_with_data_context_in_bb(
+                        patient_cdf,
+                        bb_id,
+                        &Context::Hgvs,
+                        &Context::None,
+                    )?;
 
-                for stringified_disease_col in stringified_disease_cols.iter() {
-                    let disease = stringified_disease_col.get(row_idx);
-                    if let Some(disease) = disease {
-                        let subject_id = patient_cdf
-                            .get_subject_id_col()
-                            .str()?
-                            .get(0)
-                            .expect("subject_id missing");
+                for row_idx in 0..patient_cdf.data().height() {
+                    let genes = stringified_linked_hgnc_cols
+                        .iter()
+                        .filter_map(|hgnc_col| hgnc_col.get(row_idx))
+                        .collect::<Vec<&str>>();
+                    let variants = stringified_linked_hgvs_cols
+                        .iter()
+                        .filter_map(|hgvs_col| hgvs_col.get(row_idx))
+                        .collect::<Vec<&str>>();
 
-                        builder.upsert_interpretation(
-                            subject_id,
-                            phenopacket_id,
-                            disease,
-                            &gene_variant_data,
-                        )?;
+                    let gene_variant_data =
+                        PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
+                            .map_err(CollectorError::GeneVariantData)?;
+
+                    for stringified_disease_col in stringified_disease_cols.iter() {
+                        let disease = stringified_disease_col.get(row_idx);
+                        if let Some(disease) = disease {
+                            let subject_id = patient_cdf
+                                .get_subject_id_col()
+                                .str()?
+                                .get(0)
+                                .expect("subject_id missing");
+
+                            builder.upsert_interpretation(
+                                subject_id,
+                                phenopacket_id,
+                                disease,
+                                &gene_variant_data,
+                                subject_sex.clone(),
+                            )?;
+                        }
                     }
                 }
             }
@@ -253,7 +263,7 @@ mod tests {
         let phenopacket_id = default_phenopacket_id().to_string();
 
         InterpretationCollector
-            .collect(&mut builder, &patient_cdf, &phenopacket_id)
+            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
