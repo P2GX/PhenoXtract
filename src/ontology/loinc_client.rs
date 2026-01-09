@@ -184,18 +184,6 @@ mod tests {
         let password =
             env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
 
-        if !user_name.is_empty() {
-            println!("Using user_name: {}", user_name);
-        } else {
-            println!("user_name is empty");
-        }
-
-        if !password.is_empty() {
-            println!("Using password");
-        } else {
-            println!("Password is empty");
-        }
-
         LoincClient::new(&user_name, &password)
     }
 
