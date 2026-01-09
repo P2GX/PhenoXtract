@@ -76,6 +76,9 @@ pipeline:
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
+    mondo_ref:
+      version: 2025-11-04
+      prefix_id: "MONDO"
 "#;
 
 /// Alternative: Get the combined config as bytes
