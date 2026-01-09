@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::ontology::traits::BIDict;
 use reqwest::blocking::Client;
 
