@@ -1,8 +1,10 @@
 #![allow(unused)]
+
 use crate::ontology::traits::BIDict;
 use reqwest::blocking::Client;
-
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -24,7 +26,7 @@ pub struct ResponseSummary {
     pub query_duration: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoincResult {
     #[serde(rename = "LOINC_NUM")]
     pub loinc_num: String,
@@ -82,24 +84,31 @@ pub(crate) struct LoincClient {
     base_url: String,
     user_name: String,
     password: String,
-    //TODO: Add cache
+    cache: RwLock<HashMap<String, Vec<LoincResult>>>,
 }
 
 impl LoincClient {
     const LOINC_PREFIX: &'static str = "LOINC:";
     pub fn new(user_name: &str, password: &str) -> Self {
-        let client = Client::new();
         Self {
-            client,
+            client: Client::new(),
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
             user_name: user_name.to_string(),
             password: password.to_string(),
+            cache: RwLock::new(HashMap::new()),
         }
     }
 
-    fn query(&self, id_or_lable: &str) -> Option<Vec<LoincResult>> {
+    fn query(&self, id_or_label: &str) -> Option<Vec<LoincResult>> {
+        {
+            let cache_read = self.cache.read().ok()?;
+            if let Some(value) = cache_read.get(id_or_label) {
+                return Some(value.to_vec());
+            }
+        }
+
         let url = format!("{}loincs", self.base_url);
-        let params = [("query", id_or_lable), ("rows", "10")];
+        let params = [("query", id_or_label), ("rows", "10")];
 
         let loinc_response: LoincResponse = self
             .client
@@ -110,6 +119,10 @@ impl LoincClient {
             .ok()?
             .json()
             .ok()?;
+
+        if let Ok(mut cache_write) = self.cache.write() {
+            cache_write.insert(id_or_label.to_string(), loinc_response.results.clone());
+        }
 
         Some(loinc_response.results)
     }
