@@ -126,12 +126,20 @@ impl LoincClient {
 
         if let Ok(mut cache_write) = self.cache.write() {
             cache_write.insert(id_or_label.to_string(), loinc_response.results.clone());
+
+            if self.is_loinc_curie(id_or_label) {
+                let loinc_number = id_or_label.split(":").last().unwrap().to_string();
+                cache_write.insert(loinc_number, loinc_response.results.clone());
+            } else if self.loinc_id_regex.is_match(id_or_label.as_bytes()) {
+                let loinc_curie = Self::format_loinc_curie(id_or_label);
+                cache_write.insert(loinc_curie, loinc_response.results.clone());
+            }
         }
 
         Some(loinc_response.results)
     }
 
-    fn format_loinc_number(loinc_numer: &str) -> String {
+    fn format_loinc_curie(loinc_numer: &str) -> String {
         format!("{}{}", Self::LOINC_PREFIX, loinc_numer)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
@@ -172,7 +180,7 @@ impl BIDict for LoincClient {
 
         for loinc_result in loinc_search_results {
             if loinc_result.long_common_name.to_lowercase() == term.to_lowercase() {
-                return Some(Self::format_loinc_number(&loinc_result.loinc_num));
+                return Some(Self::format_loinc_curie(&loinc_result.loinc_num));
             }
         }
 
