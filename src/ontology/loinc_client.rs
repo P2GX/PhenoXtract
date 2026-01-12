@@ -1,9 +1,11 @@
 #![allow(unused)]
 
 use crate::ontology::traits::BIDict;
+use regex::bytes::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,6 +87,7 @@ pub(crate) struct LoincClient {
     user_name: String,
     password: String,
     cache: RwLock<HashMap<String, Vec<LoincResult>>>,
+    loinc_id_regex: Regex,
 }
 
 impl LoincClient {
@@ -96,6 +99,7 @@ impl LoincClient {
             user_name: user_name.to_string(),
             password: password.to_string(),
             cache: RwLock::new(HashMap::new()),
+            loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
         }
     }
 
@@ -130,15 +134,20 @@ impl LoincClient {
     fn format_loinc_number(loinc_numer: &str) -> String {
         format!("{}{}", Self::LOINC_PREFIX, loinc_numer)
     }
-    fn is_loinc_curie(query: &str) -> bool {
-        query.starts_with(Self::LOINC_PREFIX)
+    fn is_loinc_curie(&self, query: &str) -> bool {
+        match query.split(':').next_back() {
+            None => false,
+            Some(loinc_number) => {
+                query.starts_with(Self::LOINC_PREFIX)
+                    && self.loinc_id_regex.is_match(loinc_number.as_bytes())
+            }
+        }
     }
 }
 
 impl BIDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Option<String> {
-        if Self::is_loinc_curie(id_or_label) || id_or_label.replace("-", "").parse::<i32>().is_ok()
-        {
+        if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
             self.get_term(id_or_label)
         } else {
             self.get_id(id_or_label)
@@ -192,7 +201,7 @@ mod tests {
         let loinc_client = setup_client();
 
         let res = loinc_client.get_term("LOINC:97062-4");
-        assert!(res.is_some());
+        assert_eq!(res.unwrap(), "History of High blood glucose");
     }
 
     #[test]
