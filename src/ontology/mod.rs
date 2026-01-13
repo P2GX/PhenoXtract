@@ -10,5 +10,6 @@ pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
 pub use resource_references::DatabaseRef;
 pub use resource_references::OntologyRef;
+pub(crate) mod loinc_client;
 pub mod traits;
 mod utils;

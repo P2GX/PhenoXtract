@@ -21,6 +21,10 @@ jobs:
       matrix:
         toolchain:
           - stable
+    env:
+      LOINC_USERNAME: ${{ secrets.LOINC_USERNAME }}
+      LOINC_PASSWORD: ${{ secrets.LOINC_PASSWORD }}
+
     steps:
       - name: Check out Repo
         uses: actions/checkout@v4
