@@ -139,8 +139,8 @@ impl LoincClient {
         Some(loinc_response.results)
     }
 
-    fn format_loinc_curie(loinc_numer: &str) -> String {
-        format!("{}{}", Self::LOINC_PREFIX, loinc_numer)
+    fn format_loinc_curie(loinc_number: &str) -> String {
+        format!("{}{}", Self::LOINC_PREFIX, loinc_number)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
         match query.split(':').next_back() {
