@@ -121,7 +121,7 @@ mod tests {
             .insert_columns_with_series_context(
                 SeriesContext::default()
                     .with_identifier("disease".into())
-                    .with_data_context(Context::MondoLabelOrId)
+                    .with_data_context(Context::DiseaseLabelOrId)
                     .with_building_block_id(Some("disease_1".to_string())),
                 vec![disease_col].as_ref(),
             )

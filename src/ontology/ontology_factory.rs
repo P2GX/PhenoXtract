@@ -107,7 +107,7 @@ impl CachedOntologyFactory {
             _ => {
                 let registry_path =
                     ObolibraryOntologyRegistry::default_registry_path(ontology.prefix_id())
-                        .map_err(|err| Self::wrap_error(err, ontology))?;
+                        .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
                 Ok(ObolibraryOntologyRegistry::new(
                     registry_path,
                     file_name,
@@ -115,14 +115,14 @@ impl CachedOntologyFactory {
                 ))
             }
         }
-        .map_err(|err| Self::wrap_error(err, ontology))?;
+        .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
         let ontology_path = registry
             .register(ontology.version())
-            .map_err(|err| Self::wrap_error(err, ontology))?;
+            .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
         let ontology_build =
-            Self::init_ontolius(ontology_path).map_err(|err| Self::wrap_error(err, ontology))?;
+            Self::init_ontolius(ontology_path).map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
         self.cache.insert(
             cache_key,
@@ -285,14 +285,14 @@ impl CachedOntologyFactory {
         self.build_bidict(&onto_ref, None)
     }
 
-    fn init_ontolius(hpo_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
+    fn init_ontolius(ontology_path: PathBuf) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
-        let ontolius = loader.load_from_path(hpo_path.clone())?;
+        let ontolius = loader.load_from_path(ontology_path.clone())?;
         Ok(Arc::new(ontolius))
     }
 
-    fn wrap_error<E: Into<Box<dyn StdError + Send + Sync>>>(
+    fn cant_build_err_wrap<E: Into<Box<dyn StdError + Send + Sync>>>(
         err: E,
         ontology: &OntologyRef,
     ) -> OntologyFactoryError {

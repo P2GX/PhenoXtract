@@ -114,6 +114,8 @@ mod tests {
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
+    use crate::config::context::Context;
+    use crate::extract::contextualized_dataframe_filters::Filter;
 
     #[fixture]
     fn temp_dir() -> TempDir {
@@ -130,11 +132,20 @@ mod tests {
         fn collect(
             &self,
             _: &mut PhenopacketBuilder,
-            _patient_cdfs: &[ContextualizedDataFrame],
+            patient_cdfs: &[ContextualizedDataFrame],
             phenopacket_id: &str,
         ) -> Result<(), CollectorError> {
             self.call_count.set(self.call_count.get() + 1);
             self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
+
+            for cdf in patient_cdfs {
+                let subject_col = cdf
+                    .filter_columns()
+                    .where_data_context(Filter::Is(&Context::SubjectId))
+                    .collect();
+                let unique_patient_ids = subject_col.first().unwrap().unique()?;
+                assert_eq!(unique_patient_ids.str()?.len(), 1);
+            }
 
             Ok(())
         }
