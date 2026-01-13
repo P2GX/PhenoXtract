@@ -146,12 +146,12 @@ impl OutputDataType {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AliasMap {
-    hash_map: HashMap<String, String>,
+    hash_map: HashMap<String, Option<String>>,
     output_dtype: OutputDataType,
 }
 
 impl AliasMap {
-    pub fn new(hash_map: HashMap<String, String>, output_dtype: OutputDataType) -> Self {
+    pub fn new(hash_map: HashMap<String, Option<String>>, output_dtype: OutputDataType) -> Self {
         AliasMap {
             hash_map,
             output_dtype,
@@ -162,7 +162,7 @@ impl AliasMap {
         &self.output_dtype
     }
 
-    pub fn get_hash_map(&self) -> &HashMap<String, String> {
+    pub fn get_hash_map(&self) -> &HashMap<String, Option<String>> {
         &self.hash_map
     }
 }

@@ -35,9 +35,9 @@ fn temp_dir() -> TempDir {
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
-    let mut vs_hash_map: HashMap<String, String> = HashMap::default();
-    vs_hash_map.insert("Yes".to_string(), "ALIVE".to_string());
-    vs_hash_map.insert("No".to_string(), "DECEASED".to_string());
+    let mut vs_hash_map: HashMap<String, Option<String>> = HashMap::default();
+    vs_hash_map.insert("Yes".to_string(), Some("ALIVE".to_string()));
+    vs_hash_map.insert("No".to_string(), Some("DECEASED".to_string()));
     AliasMap::new(vs_hash_map, OutputDataType::String)
 }
 
