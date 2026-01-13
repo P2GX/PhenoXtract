@@ -42,7 +42,14 @@ fn vital_status_aliases() -> AliasMap {
 }
 
 #[fixture]
-fn csv_context() -> TableContext {
+fn no_info_alias() -> AliasMap {
+    let mut no_info_hash_map: HashMap<String, Option<String>> = HashMap::default();
+    no_info_hash_map.insert("no_info".to_string(), None);
+    AliasMap::new(no_info_hash_map, OutputDataType::String)
+}
+
+#[fixture]
+fn csv_context(no_info_alias: AliasMap) -> TableContext {
     TableContext::new(
         "CSV_Table".to_string(),
         vec![
@@ -50,11 +57,9 @@ fn csv_context() -> TableContext {
                 .with_identifier(Identifier::Regex("0".to_string()))
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("1".to_string()))
-                .with_data_context(Context::HpoLabelOrId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("2".to_string()))
-                .with_data_context(Context::HpoLabelOrId),
+                .with_identifier(Identifier::Multi(vec!["1".to_string(), "2".to_string()]))
+                .with_data_context(Context::HpoLabelOrId)
+                .with_alias_map(Some(no_info_alias)),
         ],
     )
 }
