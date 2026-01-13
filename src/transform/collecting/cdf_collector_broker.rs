@@ -107,6 +107,8 @@ impl PartialEq for CdfCollectorBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::Context;
+    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_cohort_id;
@@ -114,8 +116,6 @@ mod tests {
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
-    use crate::config::context::Context;
-    use crate::extract::contextualized_dataframe_filters::Filter;
 
     #[fixture]
     fn temp_dir() -> TempDir {

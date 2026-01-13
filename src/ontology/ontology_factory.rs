@@ -121,8 +121,8 @@ impl CachedOntologyFactory {
             .register(ontology.version())
             .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
-        let ontology_build =
-            Self::init_ontolius(ontology_path).map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
+        let ontology_build = Self::init_ontolius(ontology_path)
+            .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
         self.cache.insert(
             cache_key,
