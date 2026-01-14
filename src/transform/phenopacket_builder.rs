@@ -26,6 +26,7 @@ use pivot::hgnc::{GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, HGVSData};
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::ontology::loinc_client::LoincClient;
 
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
@@ -33,6 +34,7 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
+    loinc_client: LoincClient,
     resource_resolver: CachedResourceResolver,
 }
 
