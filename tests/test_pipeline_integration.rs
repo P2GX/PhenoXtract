@@ -275,7 +275,7 @@ fn test_pipeline_integration(
         .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
         .unwrap();
     let mondo_dict = onto_factory
-        .build_bidict(&OntologyRef::mondo(), None)
+        .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
         .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
