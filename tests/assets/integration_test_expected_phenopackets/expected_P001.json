@@ -31,15 +31,6 @@
     },
     {
       "type": {
-        "id": "HP:0012373",
-        "label": "Abnormal eye physiology"
-      },
-      "onset": {
-        "timestamp": "1998-04-25T00:00:00Z"
-      }
-    },
-    {
-      "type": {
         "id": "HP:0002090",
         "label": "Pneumonia"
       },
@@ -58,6 +49,15 @@
         "age": {
           "iso8601duration": "P15Y12M6D"
         }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0012373",
+        "label": "Abnormal eye physiology"
+      },
+      "onset": {
+        "timestamp": "1998-04-25T00:00:00Z"
       }
     }
   ],
@@ -150,7 +150,7 @@
         "id": "mondo",
         "name": "Mondo Disease Ontology",
         "url": "http://purl.obolibrary.org/obo/mondo.json",
-        "version": "2025-12-02",
+        "version": "2026-01-06",
         "namespacePrefix": "MONDO",
         "iriPrefix": "http://purl.obolibrary.org/obo/MONDO_$1"
       },

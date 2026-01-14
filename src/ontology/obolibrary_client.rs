@@ -60,7 +60,7 @@ impl ObolibraryClient {
 impl Default for ObolibraryClient {
     fn default() -> Self {
         ObolibraryClient {
-            base_url: "https://purl.obolibrary.org/obo/".to_string(),
+            base_url: "https://purl.obolibrary.org/obo".to_string(),
         }
     }
 }

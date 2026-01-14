@@ -6,6 +6,7 @@ use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
+use crate::transform::utils::chromosomal_sex_from_str;
 use crate::transform::utils::{try_parse_time_element, try_parse_timestamp};
 use chrono::Utc;
 use log::warn;
@@ -22,7 +23,7 @@ use phenopackets::schema::v2::core::{
     VitalStatus,
 };
 use pivot::hgnc::{GeneQuery, HGNCData};
-use pivot::hgvs::{AlleleCount, ChromosomalSex, HGVSData};
+use pivot::hgvs::{AlleleCount, HGVSData};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -271,6 +272,7 @@ impl PhenopacketBuilder {
         phenopacket_id: &str,
         disease: &str,
         gene_variant_data: &PathogenicGeneVariantData,
+        subject_sex: Option<String>,
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
@@ -297,10 +299,12 @@ impl PhenopacketBuilder {
 
         if matches!(
             gene_variant_data,
-            PathogenicGeneVariantData::HeterozygousVariant { .. }
+            PathogenicGeneVariantData::SingleVariant { .. }
                 | PathogenicGeneVariantData::HomozygousVariant { .. }
                 | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { .. }
         ) {
+            let chromosomal_sex = chromosomal_sex_from_str(subject_sex)?;
+
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
                 self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
@@ -315,7 +319,7 @@ impl PhenopacketBuilder {
 
                 let vi = validated_hgvs.create_variant_interpretation(
                     AlleleCount::try_from(gene_variant_data.get_allelic_count() as u8)?,
-                    &ChromosomalSex::Unknown,
+                    &chromosomal_sex,
                 )?;
 
                 let gi = GenomicInterpretation {
@@ -1004,6 +1008,7 @@ mod tests {
                 &default_phenopacket_id(),
                 &disease_id,
                 &PathogenicGeneVariantData::None,
+                Some("MALE".to_string()),
             )
             .unwrap();
 
@@ -1030,6 +1035,7 @@ mod tests {
                 &phenopacket_id,
                 &disease_id,
                 &homozygous_variant,
+                Some("FEMALE".to_string()),
             )
             .unwrap();
 
@@ -1093,6 +1099,7 @@ mod tests {
                 &phenopacket_id,
                 &disease_id,
                 &compound_heterozygous_pair,
+                Some("FEMALE".to_string()),
             )
             .unwrap();
 
@@ -1139,12 +1146,12 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_variant(temp_dir: TempDir) {
+    fn test_upsert_interpretation_autosomal_heterozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
-        let heterozygous_variant = PathogenicGeneVariantData::HeterozygousVariant {
+        let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
             gene: Some("KIF21A".to_string()),
             var: "NM_001173464.1:c.2860C>T".to_string(),
         };
@@ -1155,6 +1162,7 @@ mod tests {
                 &phenopacket_id,
                 &disease_id,
                 &heterozygous_variant,
+                None,
             )
             .unwrap();
 
@@ -1200,6 +1208,130 @@ mod tests {
     }
 
     #[rstest]
+    fn test_upsert_interpretation_hemizygous_x_variant(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
+
+        let single_variant = PathogenicGeneVariantData::SingleVariant {
+            gene: None,
+            var: "NM_000132.4:c.3637A>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation(
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
+                &single_variant,
+                Some("MALE".to_string()),
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
+        );
+
+        let pp_gi = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations[0];
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "hemizygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "F8");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_000132.4:c.3637A>T");
+            }
+        }
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_heterozygous_x_variant(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = default_phenopacket_id();
+        let disease_id = default_disease_oc().id.clone();
+
+        let single_variant = PathogenicGeneVariantData::SingleVariant {
+            gene: None,
+            var: "NM_000132.4:c.3637A>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation(
+                &default_patient_id(),
+                &phenopacket_id,
+                &disease_id,
+                &single_variant,
+                Some("FEMALE".to_string()),
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        let pp_interpretation = &pp.interpretations[0];
+
+        assert_eq!(
+            pp_interpretation
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            1
+        );
+
+        let pp_gi = &pp_interpretation
+            .clone()
+            .diagnosis
+            .unwrap()
+            .genomic_interpretations[0];
+
+        match pp_gi.clone().call.unwrap() {
+            Call::Gene(_) => {
+                panic!("Call should be a VariantInterpretation!")
+            }
+            Call::VariantInterpretation(vi) => {
+                let vd = vi.variation_descriptor.unwrap();
+                assert_eq!(vd.allelic_state.unwrap().label, "heterozygous");
+                assert_eq!(vd.gene_context.unwrap().symbol, "F8");
+                let coding_expressions = vd
+                    .expressions
+                    .iter()
+                    .filter(|exp| exp.syntax == "hgvs.c")
+                    .collect::<Vec<&Expression>>();
+                assert_eq!(coding_expressions.len(), 1);
+                assert_eq!(coding_expressions[0].value, "NM_000132.4:c.3637A>T");
+            }
+        }
+    }
+
+    #[rstest]
     fn test_upsert_interpretation_update(
         basic_pp_with_disease_info: Phenopacket,
         temp_dir: TempDir,
@@ -1212,7 +1344,7 @@ mod tests {
             .subject_to_phenopacket
             .insert(phenopacket_id.to_string(), existing_pp.clone());
 
-        let heterozygous_variant = PathogenicGeneVariantData::HeterozygousVariant {
+        let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
             gene: Some("KIF21A".to_string()),
             var: "NM_001173464.1:c.2860C>T".to_string(),
         };
@@ -1223,6 +1355,7 @@ mod tests {
                 &phenopacket_id,
                 &default_disease_oc().label,
                 &heterozygous_variant,
+                None,
             )
             .unwrap();
 
@@ -1255,6 +1388,7 @@ mod tests {
                 &phenopacket_id,
                 &disease_id,
                 &gene_data,
+                None,
             )
             .unwrap();
 

@@ -18,15 +18,6 @@
   "phenotypicFeatures": [
     {
       "type": {
-        "id": "HP:0031417",
-        "label": "Rhinorrhea"
-      },
-      "onset": {
-        "timestamp": "2021-02-23T00:00:00Z"
-      }
-    },
-    {
-      "type": {
         "id": "HP:0000256",
         "label": "Macrocephaly"
       },
@@ -40,6 +31,15 @@
       "type": {
         "id": "HP:0002099",
         "label": "Asthma"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0031417",
+        "label": "Rhinorrhea"
+      },
+      "onset": {
+        "timestamp": "2021-02-23T00:00:00Z"
       }
     }
   ],
@@ -93,7 +93,7 @@
         "id": "mondo",
         "name": "Mondo Disease Ontology",
         "url": "http://purl.obolibrary.org/obo/mondo.json",
-        "version": "2025-12-02",
+        "version": "2026-01-06",
         "namespacePrefix": "MONDO",
         "iriPrefix": "http://purl.obolibrary.org/obo/MONDO_$1"
       },

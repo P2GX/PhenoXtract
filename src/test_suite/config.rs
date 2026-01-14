@@ -12,7 +12,7 @@ data_sources:
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
             hash_map:
-              "null": "Primary peritoneal carcinoma"
+              "null": null
               "M": "Male"
               "102": "High quantity"
               "169.5": "Very high quantity"
@@ -76,6 +76,9 @@ pipeline:
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
+    mondo_ref:
+      version: 2025-11-04
+      prefix_id: "MONDO"
 "#;
 
 /// Alternative: Get the combined config as bytes

@@ -14,49 +14,54 @@ impl Collect for DiseaseCollector {
     fn collect(
         &self,
         builder: &mut PhenopacketBuilder,
-        patient_cdf: &ContextualizedDataFrame,
+        patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
-        let disease_in_cells_scs = patient_cdf
-            .filter_series_context()
-            .where_header_context(Filter::Is(&Context::None))
-            .where_data_contexts_are(DISEASE_LABEL_OR_ID_CONTEXTS.as_slice())
-            .collect();
+        for patient_cdf in patient_cdfs {
+            let disease_in_cells_scs = patient_cdf
+                .filter_series_context()
+                .where_header_context(Filter::Is(&Context::None))
+                .where_data_contexts_are(DISEASE_LABEL_OR_ID_CONTEXTS.as_slice())
+                .collect();
 
-        for disease_sc in disease_in_cells_scs {
-            let sc_id = disease_sc.get_identifier();
-            let bb_id = disease_sc.get_building_block_id();
+            for disease_sc in disease_in_cells_scs {
+                let sc_id = disease_sc.get_identifier();
+                let bb_id = disease_sc.get_building_block_id();
 
-            let stringified_disease_cols = patient_cdf
-                .get_columns(sc_id)
-                .iter()
-                .map(|col| col.str())
-                .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
+                let stringified_disease_cols = patient_cdf
+                    .get_columns(sc_id)
+                    .iter()
+                    .map(|col| col.str())
+                    .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-            let stringified_linked_onset_col = patient_cdf
-                .get_single_linked_column_as_str(bb_id, &[Context::OnsetAge, Context::OnsetDate])?;
+                let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
+                    bb_id,
+                    &[Context::OnsetAge, Context::OnsetDate],
+                )?;
 
-            for row_idx in 0..patient_cdf.data().height() {
-                for stringified_disease_col in stringified_disease_cols.iter() {
-                    let disease = stringified_disease_col.get(row_idx);
-                    if let Some(disease) = disease {
-                        let disease_onset = if let Some(onset_col) = &stringified_linked_onset_col {
-                            onset_col.get(row_idx)
-                        } else {
-                            None
-                        };
+                for row_idx in 0..patient_cdf.data().height() {
+                    for stringified_disease_col in stringified_disease_cols.iter() {
+                        let disease = stringified_disease_col.get(row_idx);
+                        if let Some(disease) = disease {
+                            let disease_onset =
+                                if let Some(onset_col) = &stringified_linked_onset_col {
+                                    onset_col.get(row_idx)
+                                } else {
+                                    None
+                                };
 
-                        builder.insert_disease(
-                            phenopacket_id,
-                            disease,
-                            None,
-                            disease_onset,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                        )?;
+                            builder.insert_disease(
+                                phenopacket_id,
+                                disease,
+                                None,
+                                disease_onset,
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                            )?;
+                        }
                     }
                 }
             }
@@ -133,7 +138,7 @@ mod tests {
             .unwrap();
 
         DiseaseCollector
-            .collect(&mut builder, &cdf, &phenopacket_id)
+            .collect(&mut builder, &[cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

@@ -2,6 +2,7 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
+use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 #[derive(Debug)]
 pub struct IndividualCollector;
@@ -10,16 +11,16 @@ impl Collect for IndividualCollector {
     fn collect(
         &self,
         builder: &mut PhenopacketBuilder,
-        patient_cdf: &ContextualizedDataFrame,
+        patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
         let date_of_birth =
-            patient_cdf.get_single_multiplicity_element(&Context::DateOfBirth, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, Context::DateOfBirth, Context::None)?;
 
         let subject_sex =
-            patient_cdf.get_single_multiplicity_element(&Context::SubjectSex, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
 
-        let subject_id = patient_cdf
+        let subject_id = patient_cdfs[0]
             .get_subject_id_col()
             .str()?
             .get(0)
@@ -36,7 +37,9 @@ impl Collect for IndividualCollector {
             None,
             None,
         )?;
-        Self::collect_vitality_status(builder, patient_cdf, phenopacket_id)?;
+
+        Self::collect_vitality_status(builder, patient_cdfs, phenopacket_id)?;
+
         Ok(())
     }
 }
@@ -44,21 +47,28 @@ impl Collect for IndividualCollector {
 impl IndividualCollector {
     fn collect_vitality_status(
         builder: &mut PhenopacketBuilder,
-        patient_cdf: &ContextualizedDataFrame,
+        patient_cdfs: &[ContextualizedDataFrame],
         phenopacket_id: &str,
     ) -> Result<(), CollectorError> {
         let status =
-            patient_cdf.get_single_multiplicity_element(&Context::VitalStatus, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, Context::VitalStatus, Context::None)?;
 
         if let Some(status) = status {
-            let time_of_death = patient_cdf
-                .get_single_multiplicity_element(&Context::AgeOfDeath, &Context::None)?;
+            let time_of_death =
+                get_single_multiplicity_element(patient_cdfs, Context::AgeOfDeath, Context::None)?;
 
-            let cause_of_death = patient_cdf
-                .get_single_multiplicity_element(&Context::CauseOfDeath, &Context::None)?;
+            let cause_of_death = get_single_multiplicity_element(
+                patient_cdfs,
+                Context::CauseOfDeath,
+                Context::None,
+            )?;
 
-            let survival_time_days = patient_cdf
-                .get_single_multiplicity_element(&Context::SurvivalTimeDays, &Context::None)?;
+            let survival_time_days = get_single_multiplicity_element(
+                patient_cdfs,
+                Context::SurvivalTimeDays,
+                Context::None,
+            )?;
+
             let survival_time_days = survival_time_days
                 .map(|str| str.parse::<u32>())
                 .transpose()?;
@@ -181,7 +191,7 @@ mod tests {
         let phenopacket_id = "pp_id".to_string();
 
         IndividualCollector
-            .collect(&mut builder, &individual_info_cdf, &phenopacket_id)
+            .collect(&mut builder, &[individual_info_cdf], &phenopacket_id)
             .unwrap();
 
         let mut phenopackets = builder.build();

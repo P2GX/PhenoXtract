@@ -35,14 +35,21 @@ fn temp_dir() -> TempDir {
 
 #[fixture]
 fn vital_status_aliases() -> AliasMap {
-    let mut vs_hash_map: HashMap<String, String> = HashMap::default();
-    vs_hash_map.insert("Yes".to_string(), "ALIVE".to_string());
-    vs_hash_map.insert("No".to_string(), "DECEASED".to_string());
+    let mut vs_hash_map: HashMap<String, Option<String>> = HashMap::default();
+    vs_hash_map.insert("Yes".to_string(), Some("ALIVE".to_string()));
+    vs_hash_map.insert("No".to_string(), Some("DECEASED".to_string()));
     AliasMap::new(vs_hash_map, OutputDataType::String)
 }
 
 #[fixture]
-fn csv_context() -> TableContext {
+fn no_info_alias() -> AliasMap {
+    let mut no_info_hash_map: HashMap<String, Option<String>> = HashMap::default();
+    no_info_hash_map.insert("no_info".to_string(), None);
+    AliasMap::new(no_info_hash_map, OutputDataType::String)
+}
+
+#[fixture]
+fn csv_context(no_info_alias: AliasMap) -> TableContext {
     TableContext::new(
         "CSV_Table".to_string(),
         vec![
@@ -50,11 +57,9 @@ fn csv_context() -> TableContext {
                 .with_identifier(Identifier::Regex("0".to_string()))
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("1".to_string()))
-                .with_data_context(Context::HpoLabelOrId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("2".to_string()))
-                .with_data_context(Context::HpoLabelOrId),
+                .with_identifier(Identifier::Multi(vec!["1".to_string(), "2".to_string()]))
+                .with_data_context(Context::HpoLabelOrId)
+                .with_alias_map(Some(no_info_alias)),
         ],
     )
 }
@@ -270,7 +275,7 @@ fn test_pipeline_integration(
         .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
         .unwrap();
     let mondo_dict = onto_factory
-        .build_bidict(&OntologyRef::mondo(), None)
+        .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
         .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
