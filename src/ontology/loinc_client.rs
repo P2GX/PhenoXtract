@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use crate::config::credentials::LoincCredentials;
 use crate::ontology::traits::BIDict;
 use regex::bytes::Regex;
 use reqwest::blocking::Client;
@@ -81,6 +82,7 @@ pub struct LoincResult {
     pub version_first_released: Option<String>,
 }
 
+#[derive(Debug)]
 pub(crate) struct LoincClient {
     client: Client,
     base_url: String,
@@ -92,12 +94,12 @@ pub(crate) struct LoincClient {
 
 impl LoincClient {
     const LOINC_PREFIX: &'static str = "LOINC:";
-    pub fn new(user_name: &str, password: &str) -> Self {
+    pub fn new(loinc_credentials: LoincCredentials) -> Self {
         Self {
             client: Client::new(),
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
-            user_name: user_name.to_string(),
-            password: password.to_string(),
+            user_name: loinc_credentials.username,
+            password: loinc_credentials.password,
             cache: RwLock::new(HashMap::new()),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
         }
@@ -194,19 +196,9 @@ mod tests {
     use dotenvy::dotenv;
     use std::env;
 
-    fn setup_client() -> LoincClient {
-        dotenv().ok();
-        let user_name =
-            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
-        let password =
-            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
-
-        LoincClient::new(&user_name, &password)
-    }
-
     #[test]
     fn test_get_term() {
-        let loinc_client = setup_client();
+        let loinc_client = LoincClient::new(LoincCredentials::default());
 
         let res = loinc_client.get_term("LOINC:97062-4");
         assert_eq!(res.unwrap(), "History of High blood glucose");
@@ -214,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_get_id() {
-        let loinc_client = setup_client();
+        let loinc_client = LoincClient::new(LoincCredentials::default());
 
         let term = "Glucose [Measurement] in Urine";
         let res = loinc_client.get_id(term);
@@ -228,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_get_id_prefix() {
-        let loinc_client = setup_client();
+        let loinc_client = LoincClient::new(LoincCredentials::default());
 
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
@@ -240,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_get_term_id_prefix() {
-        let loinc_client = setup_client();
+        let loinc_client = LoincClient::new(LoincCredentials::default());
 
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
@@ -252,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_get_bidirectional() {
-        let loinc_client = setup_client();
+        let loinc_client = LoincClient::new(LoincCredentials::default());
 
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);

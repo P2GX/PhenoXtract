@@ -11,6 +11,7 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use phenoxtract::config::credentials::LoincCredentials;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
@@ -24,8 +25,8 @@ use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use tempfile::TempDir;
 
 #[fixture]
@@ -344,6 +345,7 @@ fn test_pipeline_integration(
         ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
+        LoincCredentials::default(),
     );
 
     let transformer_module = TransformerModule::new(

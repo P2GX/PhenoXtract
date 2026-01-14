@@ -79,6 +79,10 @@ pipeline:
     mondo_ref:
       version: 2025-11-04
       prefix_id: "MONDO"
+  credentials:
+    loinc_credentials:
+      username: "loinc_username"
+      password: "loinc_password"
 "#;
 
 /// Alternative: Get the combined config as bytes
