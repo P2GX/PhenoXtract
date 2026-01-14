@@ -12,7 +12,7 @@ data_sources:
           fill_missing: "Zollinger-Ellison syndrome"
           alias_map:
             hash_map:
-              "null": "Primary peritoneal carcinoma"
+              "null": null
               "M": "Male"
               "102": "High quantity"
               "169.5": "Very high quantity"
