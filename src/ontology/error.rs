@@ -13,6 +13,8 @@ pub enum RegistryError {
     CantEstablishRegistryDir,
     #[error("Not Registered: {0}")]
     NotRegistered(String),
+    #[error("Ontology {0} does not offer a json version")]
+    JsonFileMissing(String),
     #[error("Cant resolve version: {0} for file {1:?}")]
     UnableToResolveVersion(String, Option<String>),
     #[error("Client error: {0}")]
