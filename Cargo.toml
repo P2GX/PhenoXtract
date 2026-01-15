@@ -33,7 +33,6 @@ strum = "0.27.2"
 strum_macros = "0.27.2"
 enum-try-as-inner = "0.1.1"
 pivot = { git = "https://github.com/psnairne/PIVOT", tag = "v0.1.3" }
-dotenvy = "0.15"
 shellexpand = "3.1.1"
 
 [dev-dependencies]
@@ -44,3 +43,4 @@ mockito = "1.7.0"
 once_cell = "1.21.3"
 serial_test = "3.2.0"
 pretty_assertions = "1.4.1"
+dotenvy = "0.15"

@@ -10,6 +10,7 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use dotenvy::dotenv;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenoxtract::config::credentials::LoincCredentials;
 use phenoxtract::ontology::CachedOntologyFactory;
@@ -337,6 +338,9 @@ fn test_pipeline_integration(
     ];
 
     //Create the pipeline
+
+    // load variables in .env into environment. This is needed for the default LoincCredentials.
+    dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
         HashMap::from_iter([

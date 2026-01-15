@@ -194,20 +194,23 @@ impl BIDict for LoincClient {
 mod tests {
     use super::*;
     use dotenvy::dotenv;
+    use rstest::{fixture, rstest};
     use std::env;
 
-    #[test]
-    fn test_get_term() {
-        let loinc_client = LoincClient::new(LoincCredentials::default());
+    #[fixture]
+    fn loinc_client() -> LoincClient {
+        dotenv().ok();
+        LoincClient::new(LoincCredentials::default())
+    }
 
+    #[rstest]
+    fn test_get_term(loinc_client: LoincClient) {
         let res = loinc_client.get_term("LOINC:97062-4");
         assert_eq!(res.unwrap(), "History of High blood glucose");
     }
 
-    #[test]
-    fn test_get_id() {
-        let loinc_client = LoincClient::new(LoincCredentials::default());
-
+    #[rstest]
+    fn test_get_id(loinc_client: LoincClient) {
         let term = "Glucose [Measurement] in Urine";
         let res = loinc_client.get_id(term);
 
@@ -218,10 +221,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_get_id_prefix() {
-        let loinc_client = LoincClient::new(LoincCredentials::default());
-
+    #[rstest]
+    fn test_get_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
@@ -230,10 +231,8 @@ mod tests {
         assert_eq!(label_res, label_res_with_prefix);
     }
 
-    #[test]
-    fn test_get_term_id_prefix() {
-        let loinc_client = LoincClient::new(LoincCredentials::default());
-
+    #[rstest]
+    fn test_get_term_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
@@ -242,10 +241,8 @@ mod tests {
         assert_eq!(label_res, label_res_with_prefix);
     }
 
-    #[test]
-    fn test_get_bidirectional() {
-        let loinc_client = LoincClient::new(LoincCredentials::default());
-
+    #[rstest]
+    fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
         let label_res = loinc_client.get(&id_input_with_prefix);

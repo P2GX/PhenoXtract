@@ -4,6 +4,7 @@ use crate::ontology::traits::HasPrefixId;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY};
 use crate::test_suite::resource_references::{GENO_REF, HPO_REF};
 use crate::transform::PhenopacketBuilder;
+use dotenvy::dotenv;
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use std::collections::HashMap;
@@ -44,6 +45,8 @@ pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
 pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
     let hgvs_client = build_hgvs_test_client(temp_dir);
+
+    dotenv().ok();
 
     PhenopacketBuilder::new(
         build_test_dicts(),

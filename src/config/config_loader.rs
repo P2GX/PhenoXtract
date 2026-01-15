@@ -1,5 +1,4 @@
 use config::{Config, ConfigError, File, FileFormat};
-use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -19,8 +18,6 @@ impl ConfigLoader {
                     "File format not supported. File needs to end with .yaml, .json, .toml or .ron. {file_path:?}"
                 ))),
             }?;
-
-            dotenv().ok();
 
             let config_str =
                 fs::read_to_string(&file_path).expect("Could not read config file to string.");
@@ -300,7 +297,7 @@ password = "your_loinc_password"
                     create_dir: true,
                 },
                 Credentials {
-                    loinc_credentials: LoincCredentials {
+                    loinc: LoincCredentials {
                         username: "loinc_username".to_string(),
                         password: "loinc_password".to_string(),
                     },

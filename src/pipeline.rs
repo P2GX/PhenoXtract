@@ -119,7 +119,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             bi_dicts,
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
-            config.credentials.loinc_credentials,
+            config.credentials.loinc,
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
