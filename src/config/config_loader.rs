@@ -254,7 +254,7 @@ prefix_id = "HP"
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
                     Some(&OntologyRef::hp_with_version("2025-09-01")),
-                    None,
+                    Some(&OntologyRef::mondo_with_version("2025-11-04")),
                     None,
                 ),
                 vec![
@@ -285,14 +285,11 @@ prefix_id = "HP"
                             Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                             Some(AliasMap::new(
                                 HashMap::from([
-                                    (
-                                        "null".to_string(),
-                                        "Primary peritoneal carcinoma".to_string(),
-                                    ),
-                                    ("M".to_string(), "Male".to_string()),
-                                    ("102".to_string(), "High quantity".to_string()),
-                                    ("169.5".to_string(), "Very high quantity".to_string()),
-                                    ("true".to_string(), "smoker".to_string()),
+                                    ("null".to_string(), None),
+                                    ("M".to_string(), Some("Male".to_string())),
+                                    ("102".to_string(), Some("High quantity".to_string())),
+                                    ("169.5".to_string(), Some("Very high quantity".to_string())),
+                                    ("true".to_string(), Some("smoker".to_string())),
                                 ]),
                                 OutputDataType::String,
                             )),
@@ -326,8 +323,8 @@ prefix_id = "HP"
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
                                     HashMap::from([
-                                        ("neoplasma".to_string(), "4".to_string()),
-                                        ("height".to_string(), "1.85".to_string()),
+                                        ("neoplasma".to_string(), Some("4".to_string())),
+                                        ("height".to_string(), Some("1.85".to_string())),
                                     ]),
                                     OutputDataType::Float64,
                                 )),
@@ -347,7 +344,10 @@ prefix_id = "HP"
                                 Context::HpoLabelOrId,
                                 Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
                                 Some(AliasMap::new(
-                                    HashMap::from([("smoker".to_string(), "true".to_string())]),
+                                    HashMap::from([(
+                                        "smoker".to_string(),
+                                        Some("true".to_string()),
+                                    )]),
                                     OutputDataType::Boolean,
                                 )),
                                 None,

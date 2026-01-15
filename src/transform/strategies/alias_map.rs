@@ -5,7 +5,7 @@ use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use log::info;
 use polars::datatypes::{DataType, PlSmallStr};
-use polars::prelude::Column;
+use polars::prelude::{ChunkApply, Column};
 use std::borrow::Cow;
 
 /// Given a collection of contextualised dataframes, this strategy will apply all the aliases
@@ -14,7 +14,9 @@ use std::borrow::Cow;
 /// and a ToString AliasMap which converts "M" to "Male" and "F" to "Female"
 /// then the strategy will apply those aliases to each cell.
 /// # NOTE
-/// This does not transform the headers of the Dataframe.
+/// - This does not transform the headers of the Dataframe.
+/// - Only non-null cells may be aliased.
+/// - Non-null cells may be aliased to null.
 #[derive(Debug)]
 pub struct AliasMapStrategy;
 
@@ -70,14 +72,12 @@ impl Strategy for AliasMapStrategy {
 
                 let hash_map = alias_map.get_hash_map();
 
-                let aliased_string_chunked = stringified_col.str()?.apply_mut(|s| {
-                    if s.is_empty() {
-                        return s;
-                    }
-                    match hash_map.get(s) {
-                        Some(alias) => alias,
-                        None => s,
-                    }
+                let aliased_string_chunked = stringified_col.str()?.apply(|opt_s| match opt_s {
+                    Some(s) => match hash_map.get(s) {
+                        Some(alias) => alias.as_deref().map(Cow::Borrowed),
+                        None => Some(Cow::Borrowed(s)),
+                    },
+                    None => None,
                 });
 
                 let aliased_col = Column::new(col_name.clone(), aliased_string_chunked);
@@ -124,10 +124,10 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([
-                    ("P001".to_string(), "patient_1".to_string()),
-                    ("P002".to_string(), "patient_2".to_string()),
-                    ("P003".to_string(), "patient_3".to_string()),
-                    ("P004".to_string(), "patient_4".to_string()),
+                    ("P001".to_string(), Some("patient_1".to_string())),
+                    ("P002".to_string(), Some("patient_2".to_string())),
+                    ("P003".to_string(), Some("patient_3".to_string())),
+                    ("P004".to_string(), Some("patient_4".to_string())),
                 ]),
                 OutputDataType::String,
             )))
@@ -139,7 +139,7 @@ mod tests {
             .with_identifier(Identifier::Regex("age".to_string()))
             .with_data_context(Context::AgeAtLastEncounter)
             .with_alias_map(Some(AliasMap::new(
-                HashMap::from([("11".to_string(), "22".to_string())]),
+                HashMap::from([("11".to_string(), Some("22".to_string()))]),
                 OutputDataType::Int64,
             )))
     }
@@ -151,21 +151,21 @@ mod tests {
             .with_data_context(Context::WeightInKg)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([
-                    ("10.1".to_string(), "20.2".to_string()),
-                    ("20.2".to_string(), "40.4".to_string()),
-                    ("30.3".to_string(), "60.6".to_string()),
-                    ("40.4".to_string(), "80.8".to_string()),
+                    ("10.1".to_string(), Some("20.2".to_string())),
+                    ("20.2".to_string(), Some("40.4".to_string())),
+                    ("30.3".to_string(), Some("60.6".to_string())),
+                    ("40.4".to_string(), Some("80.8".to_string())),
                 ]),
                 OutputDataType::Float64,
             )))
     }
 
     #[fixture]
-    fn sc_bool_alias() -> SeriesContext {
+    fn sc_bool_alias_to_none() -> SeriesContext {
         SeriesContext::default()
             .with_identifier(Identifier::Regex("smokes".to_string()))
             .with_alias_map(Some(AliasMap::new(
-                HashMap::from([("false".to_string(), "true".to_string())]),
+                HashMap::from([("false".to_string(), None)]),
                 OutputDataType::Boolean,
             )))
     }
@@ -176,7 +176,7 @@ mod tests {
             .with_identifier(Identifier::Regex("patient_id".to_string()))
             .with_data_context(Context::SubjectId)
             .with_alias_map(Some(AliasMap::new(
-                HashMap::from([("P001".to_string(), "1001".to_string())]),
+                HashMap::from([("P001".to_string(), Some("1001".to_string()))]),
                 OutputDataType::Int64,
             )))
     }
@@ -188,10 +188,10 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([
-                    ("P001".to_string(), "1001".to_string()),
-                    ("P002".to_string(), "1002".to_string()),
-                    ("P003".to_string(), "1003".to_string()),
-                    ("P004".to_string(), "1004".to_string()),
+                    ("P001".to_string(), Some("1001".to_string())),
+                    ("P002".to_string(), Some("1002".to_string())),
+                    ("P003".to_string(), Some("1003".to_string())),
+                    ("P004".to_string(), Some("1004".to_string())),
                 ]),
                 OutputDataType::Int64,
             )))
@@ -202,7 +202,7 @@ mod tests {
         sc_string_aliases: SeriesContext,
         sc_int_alias: SeriesContext,
         sc_float_aliases: SeriesContext,
-        sc_bool_alias: SeriesContext,
+        sc_bool_alias_to_none: SeriesContext,
     ) -> TableContext {
         TableContext::new(
             "patient_data".to_string(),
@@ -210,7 +210,7 @@ mod tests {
                 sc_string_aliases,
                 sc_int_alias,
                 sc_float_aliases,
-                sc_bool_alias,
+                sc_bool_alias_to_none,
             ],
         )
     }
@@ -343,11 +343,27 @@ mod tests {
         );
         assert_eq!(
             cdf_aliasing.clone().data().column("smokes1").unwrap(),
-            &Column::new("smokes1".into(), [true, true, true, true])
+            &Column::new(
+                "smokes1".into(),
+                [
+                    AnyValue::Boolean(true),
+                    AnyValue::Boolean(true),
+                    AnyValue::Null,
+                    AnyValue::Null
+                ]
+            )
         );
         assert_eq!(
             cdf_aliasing.clone().data().column("smokes2").unwrap(),
-            &Column::new("smokes2".into(), [true, true, true, true])
+            &Column::new(
+                "smokes2".into(),
+                [
+                    AnyValue::Boolean(true),
+                    AnyValue::Boolean(true),
+                    AnyValue::Null,
+                    AnyValue::Null
+                ]
+            )
         );
     }
 
@@ -412,8 +428,8 @@ mod tests {
                 [
                     AnyValue::Boolean(true),
                     AnyValue::Null,
-                    AnyValue::Boolean(true),
-                    AnyValue::Boolean(true)
+                    AnyValue::Null,
+                    AnyValue::Null
                 ]
             )
         );
@@ -463,7 +479,7 @@ mod tests {
         sc_string_aliases: SeriesContext,
         sc_int_alias: SeriesContext,
         sc_float_aliases: SeriesContext,
-        sc_bool_alias: SeriesContext,
+        sc_bool_alias_to_none: SeriesContext,
     ) {
         let df = cdf_aliasing.data().clone();
         let col_string = df.column("patient_id").unwrap().name().clone();
@@ -479,8 +495,14 @@ mod tests {
             ),
             (col_int, sc_int_alias.get_alias_map().unwrap().clone()),
             (col_float, sc_float_aliases.get_alias_map().unwrap().clone()),
-            (col_bool1, sc_bool_alias.get_alias_map().unwrap().clone()),
-            (col_bool2, sc_bool_alias.get_alias_map().unwrap().clone()),
+            (
+                col_bool1,
+                sc_bool_alias_to_none.get_alias_map().unwrap().clone(),
+            ),
+            (
+                col_bool2,
+                sc_bool_alias_to_none.get_alias_map().unwrap().clone(),
+            ),
         ];
 
         let extracted_col_name_alias_map_pairs =

@@ -6,7 +6,7 @@ use phenopackets::schema::v2::core::Resource;
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::hp_with_version("2025-09-01"));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::mondo_with_version("2025-10-07"));
+    Lazy::new(|| OntologyRef::mondo_with_version("2026-01-06"));
 
 pub(crate) fn mondo_meta_data_resource() -> Resource {
     Resource {
