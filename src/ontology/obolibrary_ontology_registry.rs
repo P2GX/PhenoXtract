@@ -191,11 +191,12 @@ impl ObolibraryOntologyRegistry {
         };
 
         if self.file_name.is_none() {
-            self.file_name = metadata
-                .download_json
-                .or(metadata.download_owl)
-                .or(metadata.download_obo)
-                .map(|url| url.split("/").last().unwrap().to_string());
+            // we only check the json file, because ontolius only supports json.
+            if let Some(json_file_url) = metadata.download_json {
+                self.file_name = Some(json_file_url.split("/").last().unwrap().to_string());
+            } else {
+                return Err(RegistryError::JsonFileMissing(metadata.prefix));
+            }
         }
 
         Ok(resolved_version)
