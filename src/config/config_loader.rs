@@ -96,7 +96,7 @@ pipeline:
       version: "2025-09-01"
       prefix_id: "HP"
   credentials:
-    loinc_credentials:
+    loinc:
       username: "your_loinc_username"
       password: "your_loinc_password"
 "#;
@@ -134,7 +134,7 @@ cohort_name = "Arkham Asylum 2025"
 version = "2025-09-01"
 prefix_id = "HP"
 
-[pipeline.credentials.loinc_credentials]
+[pipeline.credentials.loinc]
 username = "your_loinc_username"
 password = "your_loinc_password"
 "#;
@@ -177,7 +177,7 @@ password = "your_loinc_password"
       }
     },
     "credentials": {
-      "loinc_credentials": {
+      "loinc": {
         "username": "your_loinc_username",
         "password": "your_loinc_password"
       }
@@ -224,7 +224,7 @@ password = "your_loinc_password"
       ),
     ),
     credentials: (
-      loinc_credentials: (
+      loinc: (
         username: "your_loinc_username",
         password: "your_loinc_password",
       ),
