@@ -76,9 +76,6 @@ pipeline:
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
-    mondo_ref:
-      version: 2025-11-04
-      prefix_id: "MONDO"
     unit_ontology_ref:
       version: "2026-01-09"
       prefix_id: "UO"
