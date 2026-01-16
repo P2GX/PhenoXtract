@@ -234,7 +234,7 @@ fn test_complete_keio(temp_dir: TempDir) {
 
     // Loader + Pipeline
 
-    let output_dir = assets_path.join("irud").join("do_not_push");
+    let output_dir = assets_path.join("irud").join("phenopackets");
     fs::create_dir_all(&output_dir).unwrap();
     let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
 
