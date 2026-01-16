@@ -201,10 +201,8 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
-    fn resolve_filename_and_version(&mut self, version: &str) -> Result<String, RegistryError> {
-        let needs_metadata = version == "latest" || self.file_name.is_none();
-
-        if !needs_metadata {
+    fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
+        if version != "latest" {
             return Ok(version.to_string());
         }
 
@@ -212,24 +210,30 @@ impl ObolibraryOntologyRegistry {
             .bio_registry_client
             .get_resource(self.ontology_prefix.as_str())?;
 
-        let resolved_version = if version == "latest" {
-            metadata.version.ok_or_else(|| {
-                RegistryError::UnableToResolveVersion(version.to_string(), self.file_name.clone())
-            })?
-        } else {
-            version.to_string()
-        };
-
-        if self.file_name.is_none() {
-            // we only check the json file, because ontolius only supports json.
-            if let Some(json_file_url) = metadata.download_json {
-                self.file_name = Some(json_file_url.split("/").last().unwrap().to_string());
-            } else {
-                return Err(RegistryError::JsonFileMissing(metadata.prefix));
-            }
-        }
+        let resolved_version = metadata.version.ok_or_else(|| {
+            RegistryError::UnableToResolveVersion(version.to_string(), self.file_name.clone())
+        })?;
 
         Ok(resolved_version)
+    }
+
+    fn resolve_file_name(&mut self) -> Result<(), RegistryError> {
+        if self.file_name.is_some() {
+            return Ok(());
+        }
+
+        let metadata = self
+            .bio_registry_client
+            .get_resource(self.ontology_prefix.as_str())?;
+
+        // we only check the json file, because ontolius only supports json.
+        if let Some(json_file_url) = metadata.download_json {
+            self.file_name = Some(json_file_url.split("/").last().unwrap().to_string());
+        } else {
+            return Err(RegistryError::JsonFileMissing(metadata.prefix));
+        }
+
+        Ok(())
     }
 
     fn construct_file_name(&self, version: &str) -> String {
@@ -278,7 +282,8 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
         if !self.registry_path.exists() {
             std::fs::create_dir_all(&self.registry_path)?;
         }
-        let resolved_version = self.resolve_filename_and_version(version)?;
+        let resolved_version = self.resolve_version(version)?;
+        self.resolve_file_name()?;
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
@@ -315,7 +320,9 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
 
     fn deregister(&mut self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_filename_and_version(version)?;
+        let resolved_version = self.resolve_version(version)?;
+        self.resolve_file_name()?;
+
         let file_path = self
             .registry_path
             .clone()
@@ -332,7 +339,9 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
 
     fn get_location(&mut self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_filename_and_version(version).ok()?;
+        let resolved_version = self.resolve_version(version).ok()?;
+        self.resolve_file_name().ok()?;
+
         let file_path = self
             .registry_path
             .clone()
