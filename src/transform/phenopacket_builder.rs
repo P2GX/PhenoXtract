@@ -28,7 +28,6 @@ use pivot::hgnc::{GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, HGVSData};
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::ontology::loinc_client::LoincClient;
 
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
