@@ -1,4 +1,6 @@
 #![allow(clippy::too_many_arguments)]
+use crate::config::credentials::LoincCredentials;
+use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
@@ -34,7 +36,7 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
-    loinc_client: LoincClient,
+    _loinc_client: LoincClient,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -43,12 +45,14 @@ impl PhenopacketBuilder {
         ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
+        loinc_credentials: LoincCredentials,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
             ontology_bidicts,
             hgnc_client,
             hgvs_client,
+            _loinc_client: LoincClient::new(loinc_credentials),
             resource_resolver: CachedResourceResolver::default(),
         }
     }
