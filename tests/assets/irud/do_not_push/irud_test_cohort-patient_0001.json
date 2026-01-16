@@ -1,0 +1,122 @@
+{
+  "id": "irud_test_cohort-patient_0001",
+  "subject": {
+    "id": "patient_0001",
+    "sex": "FEMALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0001410",
+        "label": "Decreased liver function"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0001396",
+        "label": "Cholestasis"
+      }
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "irud_test_cohort-patient_0001-MONDO:0019571",
+      "progressStatus": "UNKNOWN_PROGRESS",
+      "diagnosis": {
+        "disease": {
+          "id": "MONDO:0019571",
+          "label": "autosomal dominant cutis laxa"
+        },
+        "genomicInterpretations": [
+          {
+            "subjectOrBiosampleId": "patient_0001",
+            "interpretationStatus": "UNKNOWN_STATUS",
+            "variantInterpretation": {
+              "acmgPathogenicityClassification": "PATHOGENIC",
+              "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
+              "variationDescriptor": {
+                "id": "1fab5ddc-2c33-4701-a2db-2e7f15878b45",
+                "geneContext": {
+                  "valueId": "HGNC:3327",
+                  "symbol": "ELN"
+                },
+                "expressions": [
+                  {
+                    "syntax": "hgvs.c",
+                    "value": "NM_000501.3:c.1949del"
+                  },
+                  {
+                    "syntax": "hgvs.g",
+                    "value": "NC_000007.14:g.74063651del"
+                  },
+                  {
+                    "syntax": "hgvs.p",
+                    "value": "NP_000492.2:p.(Leu650ProfsTer37)"
+                  }
+                ],
+                "vcfRecord": {
+                  "genomeAssembly": "hg38",
+                  "chrom": "chr7",
+                  "pos": 74063650,
+                  "ref": "CT",
+                  "alt": "C"
+                },
+                "moleculeContext": "genomic",
+                "allelicState": {
+                  "id": "GENO:0000135",
+                  "label": "heterozygous"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "diseases": [
+    {
+      "term": {
+        "id": "MONDO:0019571",
+        "label": "autosomal dominant cutis laxa"
+      }
+    }
+  ],
+  "metaData": {
+    "created": "2026-01-16T18:46:05.217559Z",
+    "resources": [
+      {
+        "id": "hp",
+        "name": "Human Phenotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/hp.json",
+        "version": "2025-09-01",
+        "namespacePrefix": "HP",
+        "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      },
+      {
+        "id": "mondo",
+        "name": "Mondo Disease Ontology",
+        "url": "http://purl.obolibrary.org/obo/mondo.json",
+        "version": "2026-01-06",
+        "namespacePrefix": "MONDO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/MONDO_$1"
+      },
+      {
+        "id": "hgnc",
+        "name": "HUGO Gene Nomenclature Committee",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn",
+        "version": "-",
+        "namespacePrefix": "hgnc",
+        "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
+      },
+      {
+        "id": "geno",
+        "name": "Genotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/geno.json",
+        "version": "2025-07-25",
+        "namespacePrefix": "GENO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/GENO_$1"
+      }
+    ]
+  }
+}
