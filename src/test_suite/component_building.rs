@@ -52,6 +52,6 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_dicts(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
-        LoincCredentials::default(),
+        Some(LoincCredentials::default()),
     )
 }
