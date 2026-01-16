@@ -39,7 +39,6 @@ pub struct OntologyRef(ResourceRef);
 impl OntologyRef {
     pub const HPO_PREFIX: &'static str = "HP";
     pub const MONDO_PREFIX: &'static str = "MONDO";
-    pub const GENO_PREFIX: &'static str = "GENO";
 
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
@@ -74,13 +73,6 @@ impl OntologyRef {
 
     pub fn mondo_with_version(version: &str) -> Self {
         Self::new(Self::MONDO_PREFIX.to_string(), Some(version.to_string()))
-    }
-
-    pub fn geno() -> Self {
-        Self::new(Self::GENO_PREFIX.to_string(), None)
-    }
-    pub fn geno_with_version(version: &str) -> Self {
-        Self::new(Self::GENO_PREFIX.to_string(), Some(version.to_string()))
     }
 }
 
