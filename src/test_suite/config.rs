@@ -81,8 +81,8 @@ pipeline:
       prefix_id: "MONDO"
   credentials:
     loinc:
-      username: "loinc_username"
-      password: "loinc_password"
+      username: ${LOINC_USERNAME}
+      password: ${LOINC_PASSWORD}
 "#;
 
 /// Alternative: Get the combined config as bytes

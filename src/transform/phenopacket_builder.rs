@@ -32,7 +32,7 @@ pub struct PhenopacketBuilder {
     ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
-    _loinc_client: LoincClient,
+    _loinc_client: Option<LoincClient>,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -41,14 +41,14 @@ impl PhenopacketBuilder {
         ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
-        loinc_credentials: LoincCredentials,
+        loinc_credentials: Option<LoincCredentials>,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
             ontology_bidicts,
             hgnc_client,
             hgvs_client,
-            _loinc_client: LoincClient::new(loinc_credentials),
+            _loinc_client: loinc_credentials.map(LoincClient::new),
             resource_resolver: CachedResourceResolver::default(),
         }
     }

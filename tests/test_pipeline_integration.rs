@@ -349,7 +349,7 @@ fn test_pipeline_integration(
         ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
-        LoincCredentials::default(),
+        Some(LoincCredentials::default()),
     );
 
     let transformer_module = TransformerModule::new(

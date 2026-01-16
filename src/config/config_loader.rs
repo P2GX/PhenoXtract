@@ -61,9 +61,11 @@ mod tests {
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::OntologyRef;
     use crate::test_suite::config::get_full_config_bytes;
+    use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
+    use std::env;
     use std::fs::File as StdFile;
     use std::io::Write;
     use std::str::FromStr;
@@ -272,11 +274,18 @@ password = "your_loinc_password"
 
     #[rstest]
     fn test_load_complete_config(temp_dir: TempDir) {
+        dotenv().ok();
+
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(get_full_config_bytes().as_slice()).unwrap();
 
         let config: PhenoXtractConfig = ConfigLoader::load(file_path).unwrap();
+
+        let loinc_username =
+            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
+        let loinc_password =
+            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
 
         let expected_config = PhenoXtractConfig {
             pipeline: PipelineConfig::new(
@@ -297,10 +306,10 @@ password = "your_loinc_password"
                     create_dir: true,
                 },
                 Credentials {
-                    loinc: LoincCredentials {
-                        username: "loinc_username".to_string(),
-                        password: "loinc_password".to_string(),
-                    },
+                    loinc: Some(LoincCredentials {
+                        username: loinc_username,
+                        password: loinc_password,
+                    }),
                 },
             ),
             data_sources: vec![
