@@ -112,12 +112,12 @@ impl TryFrom<PipelineConfig> for Pipeline {
             bi_dicts.insert(hp_dict.ontology.prefix_id().to_string(), hp_dict);
         }
 
-        if let Some(disease_ref) = &config.meta_data.disease_ref {
+        for disease_ref in &config.meta_data.disease_refs {
             let disease_dict = ontology_factory.build_bidict(disease_ref, None)?;
             bi_dicts.insert(disease_dict.ontology.prefix_id().to_string(), disease_dict);
         }
 
-        if let Some(unit_ontology_ref) = &config.meta_data.unit_ontology_ref {
+        for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
             let unit_ontology_dict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
             bi_dicts.insert(
                 unit_ontology_dict.ontology.prefix_id().to_string(),

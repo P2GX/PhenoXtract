@@ -253,12 +253,12 @@ prefix_id = "HP"
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
-                    Some(&OntologyRef::hp_with_version("2025-09-01")),
-                    None,
-                    Some(&OntologyRef::new(
+                    Some(OntologyRef::hp_with_version("2025-09-01")),
+                    vec![],
+                    vec![OntologyRef::new(
                         "UO".to_string(),
                         Some("2026-01-09".to_string()),
-                    )),
+                    )],
                 ),
                 vec![
                     StrategyConfig::AliasMap,
