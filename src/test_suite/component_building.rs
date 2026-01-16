@@ -9,20 +9,19 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
-    let hpo_dict = ONTOLOGY_FACTORY
+pub(crate) fn build_test_hpo_bidict() -> Arc<OntologyBiDict> {
+    ONTOLOGY_FACTORY
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .build_bidict(&HPO_REF.clone(), None)
-        .unwrap();
+        .unwrap()
+}
 
-    HashMap::from_iter(vec![
-        (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-        (
-            MONDO_BIDICT.ontology.prefix_id().to_string(),
-            MONDO_BIDICT.clone(),
-        ),
-    ])
+pub(crate) fn build_test_mondo_bidict() -> HashMap<String, Arc<OntologyBiDict>> {
+    HashMap::from_iter(vec![(
+        MONDO_BIDICT.ontology.prefix_id().to_string(),
+        MONDO_BIDICT.clone(),
+    )])
 }
 
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
@@ -37,8 +36,10 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     let hgnc_client = build_hgnc_test_client(temp_dir);
     let hgvs_client = build_hgvs_test_client(temp_dir);
     PhenopacketBuilder::new(
-        build_test_dicts(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
+        Some(build_test_hpo_bidict()),
+        build_test_mondo_bidict(),
+        HashMap::new(),
     )
 }

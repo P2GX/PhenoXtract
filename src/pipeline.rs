@@ -105,21 +105,23 @@ impl TryFrom<PipelineConfig> for Pipeline {
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
 
-        let mut bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::new();
+        let hpo_bidict = if let Some(hp_ref) = &config.meta_data.hp_ref {
+            Some(ontology_factory.build_bidict(hp_ref, None)?)
+        } else {
+            None
+        };
 
-        if let Some(hp_ref) = &config.meta_data.hp_ref {
-            let hp_dict = ontology_factory.build_bidict(hp_ref, None)?;
-            bi_dicts.insert(hp_dict.ontology.prefix_id().to_string(), hp_dict);
-        }
+        let mut disease_bidicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::new();
+        let mut unit_ontology_bidicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::new();
 
         for disease_ref in &config.meta_data.disease_refs {
             let disease_dict = ontology_factory.build_bidict(disease_ref, None)?;
-            bi_dicts.insert(disease_dict.ontology.prefix_id().to_string(), disease_dict);
+            disease_bidicts.insert(disease_dict.ontology.prefix_id().to_string(), disease_dict);
         }
 
         for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
             let unit_ontology_dict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
-            bi_dicts.insert(
+            unit_ontology_bidicts.insert(
                 unit_ontology_dict.ontology.prefix_id().to_string(),
                 unit_ontology_dict,
             );
@@ -127,9 +129,11 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(
-            bi_dicts,
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
+            hpo_bidict,
+            disease_bidicts,
+            unit_ontology_bidicts,
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config

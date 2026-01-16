@@ -337,12 +337,11 @@ fn test_pipeline_integration(
     //Create the pipeline
 
     let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-        ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
+        Some(hpo_dict),
+        HashMap::from_iter([(mondo_dict.ontology.prefix_id().to_string(), mondo_dict)]),
+        HashMap::new(),
     );
 
     let transformer_module = TransformerModule::new(

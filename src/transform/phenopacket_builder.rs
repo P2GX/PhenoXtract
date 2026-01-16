@@ -27,23 +27,29 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
-    ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
+    hpo_bidict: Option<Arc<OntologyBiDict>>,
+    disease_bidicts: HashMap<String, Arc<OntologyBiDict>>,
+    unit_ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     resource_resolver: CachedResourceResolver,
 }
 
 impl PhenopacketBuilder {
     pub fn new(
-        ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
+        hpo_bidict: Option<Arc<OntologyBiDict>>,
+        disease_bidicts: HashMap<String, Arc<OntologyBiDict>>,
+        unit_ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
-            ontology_bidicts,
             hgnc_client,
             hgvs_client,
+            hpo_bidict,
+            disease_bidicts,
+            unit_ontology_bidicts,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -229,8 +235,19 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let phenotype = self.query_hpo_identifiers(phenotype)?;
-        let feature = self.get_or_create_phenotypic_feature(phenopacket_id, phenotype);
+        let (hpo_term, hpo_ref) = if let Some(hpo_bidict) = &self.hpo_bidict {
+            self.query_bidicts(
+                &HashMap::from([("hp".to_string(), Arc::clone(hpo_bidict))]),
+                phenotype,
+            )?
+        } else {
+            return Err(PhenopacketBuilderError::ParsingError {
+                what: "No HPO bidict provided.".to_string(),
+                value: phenotype.to_string(),
+            });
+        };
+
+        let feature = self.get_or_create_phenotypic_feature(phenopacket_id, hpo_term);
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
@@ -249,17 +266,8 @@ impl PhenopacketBuilder {
             })?;
             feature.onset = Some(onset_te);
         }
-        self.ensure_resource(
-            phenopacket_id,
-            &self
-                .ontology_bidicts
-                .get(OntologyRef::HPO_PREFIX)
-                .ok_or_else(|| {
-                    PhenopacketBuilderError::MissingBiDict(OntologyRef::HPO_PREFIX.to_string())
-                })?
-                .ontology
-                .clone(),
-        );
+
+        self.ensure_resource(phenopacket_id, &hpo_ref);
         Ok(())
     }
 
@@ -273,7 +281,7 @@ impl PhenopacketBuilder {
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
-        let (term, res_ref) = self.query_disease_identifiers(disease)?;
+        let (disease_term, res_ref) = self.query_bidicts(&self.disease_bidicts, disease)?;
         self.ensure_resource(phenopacket_id, &res_ref);
 
         if let PathogenicGeneVariantData::CausativeGene(gene) = gene_variant_data {
@@ -329,7 +337,7 @@ impl PhenopacketBuilder {
             }
         }
 
-        let interpretation_id = format!("{}-{}", phenopacket_id, term.id);
+        let interpretation_id = format!("{}-{}", phenopacket_id, disease_term.id);
 
         let interpretation =
             self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
@@ -337,7 +345,7 @@ impl PhenopacketBuilder {
         interpretation.progress_status = ProgressStatus::UnknownProgress.into();
 
         interpretation.diagnosis = Some(Diagnosis {
-            disease: Some(term),
+            disease: Some(disease_term),
             genomic_interpretations,
         });
 
@@ -375,7 +383,7 @@ impl PhenopacketBuilder {
             warn!("laterality disease not implemented yet");
         }
 
-        let (disease_term, res_ref) = self.query_disease_identifiers(disease)?;
+        let (disease_term, res_ref) = self.query_bidicts(&self.disease_bidicts, disease)?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -490,77 +498,49 @@ impl PhenopacketBuilder {
         }
     }
 
-    pub(crate) fn query_disease_identifiers(
+    pub(crate) fn query_bidicts(
         &self,
+        bidicts: &HashMap<String, Arc<OntologyBiDict>>,
         query: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
-        for prefix in [
-            // TODO: add 'DatabaseRef::OMIM_PREFIX,', when OMIM is part of the project
-            OntologyRef::MONDO_PREFIX,
-        ] {
-            let bi_dict = self
-                .ontology_bidicts
-                .get(prefix)
-                .expect("Disease prefix was missing from Ontology Bidicts.");
-            let Some(term) = bi_dict.get(query) else {
-                continue;
-            };
-
-            let corresponding_label_or_id = bi_dict.get(term).unwrap_or_else(|| {
-                panic!(
-                    "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
-                    bi_dict.ontology.clone().into_inner()
-                )
+        if bidicts.is_empty() {
+            return Err(PhenopacketBuilderError::ParsingError {
+                what: "No bidicts provided".to_string(),
+                value: query.to_string(),
             });
-
-            let (label, id) = if bi_dict.is_primary_label(term) {
-                (term, corresponding_label_or_id)
-            } else {
-                (corresponding_label_or_id, term)
-            };
-
-            return Ok((
-                OntologyClass {
-                    id: id.to_string(),
-                    label: label.to_string(),
-                },
-                bi_dict.ontology.clone().into_inner(),
-            ));
         }
 
+        for bidict in bidicts.values() {
+            if let Some(term) = bidict.get(query) {
+                let corresponding_label_or_id = bidict.get(term).unwrap_or_else(|| {
+                    panic!(
+                        "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
+                        bidict.ontology.clone().into_inner()
+                    )
+                });
+
+                let (label, id) = if bidict.is_primary_label(term) {
+                    (term, corresponding_label_or_id)
+                } else {
+                    (corresponding_label_or_id, term)
+                };
+
+                return Ok((
+                    OntologyClass {
+                        id: id.to_string(),
+                        label: label.to_string(),
+                    },
+                    bidict.ontology.clone().into_inner(),
+                ));
+            }
+        }
+
+        let bidict_prefixes = bidicts.keys().collect::<Vec<&String>>();
+
         Err(PhenopacketBuilderError::ParsingError {
-            what: "disease query".to_string(),
+            what: format!("Query of bidicts: {bidict_prefixes:?}"),
             value: query.to_string(),
         })
-    }
-    fn query_hpo_identifiers(
-        &self,
-        hpo_query: &str,
-    ) -> Result<OntologyClass, PhenopacketBuilderError> {
-        let hpo_dict = self
-            .ontology_bidicts
-            .get(OntologyRef::HPO_PREFIX)
-            .ok_or_else(|| {
-                PhenopacketBuilderError::MissingBiDict(OntologyRef::HPO_PREFIX.to_string())
-            })?;
-
-        hpo_dict
-            .get(hpo_query)
-            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
-                what: "hpo query".to_string(),
-                value: hpo_query.to_string(),
-            })
-            .map(|found| {
-                let corresponding_label_or_id = hpo_dict
-                    .get(found)
-                    .unwrap_or_else(|| panic!("Could not find hpo label or id from {}", found));
-                let (label, id) = if hpo_dict.is_primary_label(found) {
-                    (found.to_string(), corresponding_label_or_id.to_string())
-                } else {
-                    (corresponding_label_or_id.to_string(), found.to_string())
-                };
-                Ok(OntologyClass { id, label })
-            })?
     }
 
     fn ensure_resource(
@@ -599,10 +579,19 @@ impl PhenopacketBuilder {
 impl PartialEq for PhenopacketBuilder {
     fn eq(&self, other: &Self) -> bool {
         self.subject_to_phenopacket == other.subject_to_phenopacket
-            && self.ontology_bidicts.len() == other.ontology_bidicts.len()
-            && self.ontology_bidicts.iter().all(|(key, value)| {
+            && self.hpo_bidict == other.hpo_bidict
+            && self.disease_bidicts.len() == other.disease_bidicts.len()
+            && self.disease_bidicts.iter().all(|(key, value)| {
                 other
-                    .ontology_bidicts
+                    .disease_bidicts
+                    .get(key)
+                    .map(|other_value| Arc::ptr_eq(value, other_value) || **value == **other_value)
+                    .unwrap_or(false)
+            })
+            && self.unit_ontology_bidicts.len() == other.unit_ontology_bidicts.len()
+            && self.unit_ontology_bidicts.iter().all(|(key, value)| {
+                other
+                    .unit_ontology_bidicts
                     .get(key)
                     .map(|other_value| Arc::ptr_eq(value, other_value) || **value == **other_value)
                     .unwrap_or(false)
@@ -616,7 +605,9 @@ mod tests {
     use super::*;
     use crate::ontology::DatabaseRef;
     use crate::test_suite::cdf_generation::default_patient_id;
-    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::component_building::{
+        build_test_hpo_bidict, build_test_mondo_bidict, build_test_phenopacket_builder,
+    };
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_disease, default_disease_oc, default_iso_age,
         default_phenopacket_id, default_phenotype_oc, default_timestamp, default_timestamp_element,
@@ -1527,33 +1518,43 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_hpo_identifiers_with_valid_label(temp_dir: TempDir) {
-        let builder = build_test_phenopacket_builder(temp_dir.path());
-
-        // Known HPO label from test_utils::HPO_DICT: "Seizure" <-> "HP:0001250"
-        let phenotype = default_phenotype_oc();
-        let result = builder.query_hpo_identifiers(&phenotype.label).unwrap();
-
-        assert_eq!(result.label, phenotype.label);
-        assert_eq!(result.id, phenotype.id);
-    }
-
-    #[rstest]
-    fn test_query_hpo_identifiers_with_valid_id(temp_dir: TempDir) {
+    fn test_query_bidicts_with_valid_label(temp_dir: TempDir) {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
         let phenotype = default_phenotype_oc();
-        let result = builder.query_hpo_identifiers(&phenotype.id).unwrap();
+        let result = builder
+            .query_bidicts(
+                &HashMap::from([("hp".to_string(), build_test_hpo_bidict())]),
+                &phenotype.id,
+            )
+            .unwrap();
 
-        assert_eq!(result.label, phenotype.label);
-        assert_eq!(result.id, phenotype.id);
+        assert_eq!(result.0.label, phenotype.label);
+        assert_eq!(result.0.id, phenotype.id);
     }
 
     #[rstest]
-    fn test_query_hpo_identifiers_invalid_query(temp_dir: TempDir) {
+    fn test_query_bidicts_with_valid_id(temp_dir: TempDir) {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let result = builder.query_hpo_identifiers("NonexistentTerm");
+        let phenotype = default_phenotype_oc();
+
+        let result = builder
+            .query_bidicts(
+                &HashMap::from([("hp".to_string(), build_test_hpo_bidict())]),
+                &phenotype.id,
+            )
+            .unwrap();
+
+        assert_eq!(result.0.label, phenotype.label);
+        assert_eq!(result.0.id, phenotype.id);
+    }
+
+    #[rstest]
+    fn test_query_bidicts_invalid_query(temp_dir: TempDir) {
+        let builder = build_test_phenopacket_builder(temp_dir.path());
+
+        let result = builder.query_bidicts(&build_test_mondo_bidict(), "NonexistentTerm");
 
         assert!(result.is_err());
     }
