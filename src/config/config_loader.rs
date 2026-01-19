@@ -1,5 +1,6 @@
 use config::{Config, ConfigError, File, FileFormat};
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::PathBuf;
 
 pub struct ConfigLoader;
@@ -18,9 +19,19 @@ impl ConfigLoader {
                 ))),
             }?;
 
+            let config_str =
+                fs::read_to_string(&file_path).expect("Could not read config file to string.");
+
+            // this interprets anything after a $ (within certain rules) as an environment variable
+            // and it will look in the environment to find it.
+            // Therefore all $ symbols must be escaped with a backslash: \$
+            let config_str_with_env_vars = shellexpand::env(&config_str)
+                .expect("Shell expansion of config file failed. Environment variables not found?");
+
             let config = Config::builder()
-                .add_source(File::new(file_path.to_str().unwrap(), file_format))
+                .add_source(File::from_str(&config_str_with_env_vars, file_format))
                 .build()?;
+
             let settings_struct: T = config.try_deserialize()?;
             Ok(settings_struct)
         } else {
@@ -35,6 +46,7 @@ impl ConfigLoader {
 mod tests {
     use super::*;
     use crate::config::context::Context;
+    use crate::config::credentials::{Credentials, LoincCredentials};
     use crate::config::loader_config::LoaderConfig;
     use crate::config::meta_data::MetaData;
     use crate::config::strategy_config::StrategyConfig;
@@ -42,48 +54,54 @@ mod tests {
     use crate::config::table_context::{
         AliasMap, CellValue, OutputDataType, SeriesContext, TableContext,
     };
-    use crate::config::{PhenoXtractorConfig, PipelineConfig};
+    use crate::config::{PhenoXtractConfig, PipelineConfig};
     use crate::extract::csv_data_source::CSVDataSource;
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::OntologyRef;
     use crate::test_suite::config::get_full_config_bytes;
+    use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
+    use std::env;
     use std::fs::File as StdFile;
     use std::io::Write;
     use std::str::FromStr;
     use tempfile::TempDir;
 
     const YAML_DATA: &[u8] = br#"
-    data_sources:
-      - type: "csv"
-        source: "test/path"
-        separator: ","
-        extraction_config:
-            name: "test_config"
-            has_headers: true
-            patients_are_rows: true
-        context:
-          name: "test_table"
-    pipeline:
-      transform_strategies:
-        - "alias_map"
-        - "multi_hpo_col_expansion"
-      loader:
-        file_system:
-            output_dir: "some/dir"
-            create_dir: true
-      meta_data:
-        created_by: Rouven Reuter
-        submitted_by: Magnus Knut Hansen
-        cohort_name: "Arkham Asylum 2025"
-        hp_ref:
-          version: "2025-09-01"
-          prefix_id: "HP"
-    "#;
+data_sources:
+  - type: "csv"
+    source: "test/path"
+    separator: ","
+    extraction_config:
+      name: "test_config"
+      has_headers: true
+      patients_are_rows: true
+    context:
+      name: "test_table"
+pipeline:
+  transform_strategies:
+    - "alias_map"
+    - "multi_hpo_col_expansion"
+  loader:
+    file_system:
+      output_dir: "some/dir"
+      create_dir: true
+  meta_data:
+    created_by: Rouven Reuter
+    submitted_by: Magnus Knut Hansen
+    cohort_name: "Arkham Asylum 2025"
+    hp_ref:
+      version: "2025-09-01"
+      prefix_id: "HP"
+  credentials:
+    loinc:
+      username: "your_loinc_username"
+      password: "your_loinc_password"
+"#;
 
     const TOML_DATA: &[u8] = br#"
 [[data_sources]]
@@ -117,7 +135,11 @@ cohort_name = "Arkham Asylum 2025"
 [pipeline.meta_data.hp_ref]
 version = "2025-09-01"
 prefix_id = "HP"
-    "#;
+
+[pipeline.credentials.loinc]
+username = "your_loinc_username"
+password = "your_loinc_password"
+"#;
 
     const JSON_DATA: &[u8] = br#"
 {
@@ -155,10 +177,16 @@ prefix_id = "HP"
         "version": "2025-09-01",
         "prefix_id": "HP"
       }
+    },
+    "credentials": {
+      "loinc": {
+        "username": "your_loinc_username",
+        "password": "your_loinc_password"
+      }
     }
   }
 }
-    "#;
+"#;
 
     const RON_DATA: &[u8] = br#"
 (
@@ -197,6 +225,12 @@ prefix_id = "HP"
         prefix_id: "HP",
       ),
     ),
+    credentials: (
+      loinc: (
+        username: "your_loinc_username",
+        password: "your_loinc_password",
+      ),
+    ),
   ),
 )
 "#;
@@ -219,10 +253,8 @@ prefix_id = "HP"
         let file_path = temp_dir.path().join(format!("config.{extension}"));
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(data).unwrap();
-
-        let mut phenoxtractor_config: PhenoXtractorConfig = ConfigLoader::load(file_path).unwrap();
-        let source = phenoxtractor_config.data_sources.pop().unwrap();
-
+        let mut phenoxtract_config: PhenoXtractConfig = ConfigLoader::load(file_path).unwrap();
+        let source = phenoxtract_config.data_sources.pop().unwrap();
         match source {
             DataSource::Csv(data) => {
                 assert_eq!(data.separator, Some(','));
@@ -236,18 +268,26 @@ prefix_id = "HP"
     #[rstest]
     fn test_load_config_unsupported_file_format() {
         let file_path = PathBuf::from_str("test/path/config.exe").unwrap();
-        let err: Result<PhenoXtractorConfig, _> = ConfigLoader::load(file_path);
+        let err: Result<PhenoXtractConfig, _> = ConfigLoader::load(file_path);
         assert!(err.is_err());
     }
 
     #[rstest]
     fn test_load_complete_config(temp_dir: TempDir) {
+        dotenv().ok();
+
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(get_full_config_bytes().as_slice()).unwrap();
-        let config: PhenoXtractorConfig = ConfigLoader::load(file_path).unwrap();
 
-        let expected_config = PhenoXtractorConfig {
+        let config: PhenoXtractConfig = ConfigLoader::load(file_path).unwrap();
+
+        let loinc_username =
+            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
+        let loinc_password =
+            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
+
+        let expected_config = PhenoXtractConfig {
             pipeline: PipelineConfig::new(
                 MetaData::new(
                     Some("Rouven Reuter"),
@@ -264,6 +304,12 @@ prefix_id = "HP"
                 LoaderConfig::FileSystem {
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
+                },
+                Credentials {
+                    loinc: Some(LoincCredentials {
+                        username: loinc_username,
+                        password: loinc_password,
+                    }),
                 },
             ),
             data_sources: vec![
