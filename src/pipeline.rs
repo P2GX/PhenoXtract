@@ -7,6 +7,7 @@ use crate::load::traits::Loadable;
 
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
+use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
@@ -119,7 +120,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             bi_dicts,
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
-            config.credentials.loinc,
+            config.credentials.loinc.map(LoincClient::new),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config

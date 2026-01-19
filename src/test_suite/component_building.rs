@@ -1,4 +1,5 @@
 use crate::config::credentials::LoincCredentials;
+use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY};
@@ -52,6 +53,6 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_dicts(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
-        Some(LoincCredentials::default()),
+        Some(LoincClient::default()),
     )
 }

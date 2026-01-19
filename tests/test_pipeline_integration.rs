@@ -12,8 +12,8 @@ use phenoxtract::ontology::resource_references::OntologyRef;
 
 use dotenvy::dotenv;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
-use phenoxtract::config::credentials::LoincCredentials;
 use phenoxtract::ontology::CachedOntologyFactory;
+use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::ontology::traits::HasPrefixId;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
@@ -349,7 +349,7 @@ fn test_pipeline_integration(
         ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
-        Some(LoincCredentials::default()),
+        Some(LoincClient::default()),
     );
 
     let transformer_module = TransformerModule::new(
