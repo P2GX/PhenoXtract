@@ -84,7 +84,6 @@ impl PartialEq for BiDictLibrary {
 mod tests {
     use crate::test_suite::component_building::{
         build_test_hpo_bidict_library, build_test_mondo_bidict_library,
-        build_test_phenopacket_builder,
     };
     use crate::test_suite::phenopacket_component_generation::default_phenotype_oc;
     use pretty_assertions::assert_eq;
