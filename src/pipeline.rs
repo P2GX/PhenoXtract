@@ -106,6 +106,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
+        let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
 
         if let Some(hp_ref) = &config.meta_data.hp_ref {
             let hpo_bidict = ontology_factory.build_bidict(hp_ref, None)?;
@@ -117,9 +118,15 @@ impl TryFrom<PipelineConfig> for Pipeline {
             disease_bidict_library.add_bidict(disease_bidict);
         }
 
-        for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
+        for unit_ontology_ref in &config.meta_data.unit_refs {
             let unit_bidict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
             unit_bidict_library.add_bidict(unit_bidict);
+        }
+
+        for qualitative_measurement_ontology_ref in &config.meta_data.qualitative_measurement_refs {
+            let qual_bidict =
+                ontology_factory.build_bidict(qualitative_measurement_ontology_ref, None)?;
+            qualitative_measurement_bidict_library.add_bidict(qual_bidict);
         }
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
@@ -129,6 +136,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             hpo_bidict_library,
             disease_bidict_library,
             unit_bidict_library,
+            qualitative_measurement_bidict_library,
             config.credentials.loinc.map(LoincClient::new),
         );
 

@@ -62,7 +62,6 @@ pub enum Context {
     },
     QualitativeMeasurement {
         loinc_id: String,
-        unit_ontology_prefix: String,
     },
     ReferenceRangeLow,
     ReferenceRangeHigh,

@@ -284,8 +284,8 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
-    #[error("Missing BiDict for {0}")]
-    MissingBiDict(String),
+    #[error("No {bidict_type} BiDict was found, despite being called.")]
+    MissingBiDict { bidict_type: String },
     #[error("LoincClient was missing. It was needed to interpret the LOINC ID {loinc_id}.")]
     MissingLoincClient { loinc_id: String },
     #[error(transparent)]

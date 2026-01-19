@@ -347,6 +347,7 @@ fn test_pipeline_integration(
         BiDictLibrary::new("HPO", vec![hpo_dict]),
         BiDictLibrary::new("MONDO", vec![mondo_dict]),
         BiDictLibrary::empty_with_name("UNIT"),
+        BiDictLibrary::empty_with_name("QUAL"),
         Some(LoincClient::default()),
     );
 

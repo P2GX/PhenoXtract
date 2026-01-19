@@ -41,7 +41,8 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         Box::new(hgvs_client),
         build_test_hpo_bidict_library(),
         build_test_mondo_bidict_library(),
-        BiDictLibrary::default(),
+        BiDictLibrary::empty_with_name("UNIT"),
+        BiDictLibrary::empty_with_name("QUAL"),
         Some(LoincClient::default()),
     )
 }

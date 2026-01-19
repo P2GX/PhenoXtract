@@ -23,7 +23,7 @@ impl Collect for QualitativeMeasurementCollector {
                 .collect();
 
             for qual_measurement_sc in qualitative_measurement_scs {
-                let (loinc_id, unit_ontology_prefix) = qual_measurement_sc
+                let loinc_id = qual_measurement_sc
                     .get_data_context()
                     .try_as_qualitative_measurement()
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -54,7 +54,6 @@ impl Collect for QualitativeMeasurementCollector {
                                 qual_measurement,
                                 time_observed,
                                 loinc_id,
-                                unit_ontology_prefix,
                             )?;
                         }
                     }

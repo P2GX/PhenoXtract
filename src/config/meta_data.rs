@@ -14,7 +14,9 @@ pub struct MetaData {
     #[serde(default)]
     pub disease_refs: Vec<OntologyRef>,
     #[serde(default)]
-    pub unit_ontology_refs: Vec<OntologyRef>,
+    pub unit_refs: Vec<OntologyRef>,
+    #[serde(default)]
+    pub qualitative_measurement_refs: Vec<OntologyRef>,
 }
 impl MetaData {
     pub fn new(
@@ -23,7 +25,8 @@ impl MetaData {
         cohort_name: &str,
         hp_ref: Option<OntologyRef>,
         disease_refs: Vec<OntologyRef>,
-        unit_ontology_refs: Vec<OntologyRef>,
+        unit_refs: Vec<OntologyRef>,
+        qualitative_measurement_refs: Vec<OntologyRef>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -37,7 +40,8 @@ impl MetaData {
             cohort_name: cohort_name.to_owned(),
             hp_ref,
             disease_refs,
-            unit_ontology_refs,
+            unit_refs,
+            qualitative_measurement_refs,
         }
     }
 }
@@ -50,7 +54,8 @@ impl Default for MetaData {
             cohort_name: "unnamed_cohort".to_string(),
             hp_ref: None,
             disease_refs: vec![],
-            unit_ontology_refs: vec![],
+            unit_refs: vec![],
+            qualitative_measurement_refs: vec![],
         }
     }
 }
@@ -91,7 +96,7 @@ mod tests {
         assert_eq!(metadata.cohort_name, expected_cohort);
         assert_eq!(metadata.hp_ref, None);
         assert_eq!(metadata.disease_refs, vec![]);
-        assert_eq!(metadata.unit_ontology_refs, vec![]);
+        assert_eq!(metadata.unit_refs, vec![]);
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -131,6 +136,6 @@ mod tests {
             OntologyRef::hp_with_version("2025-09-01")
         );
         assert_eq!(default_meta_data.disease_refs, vec![]);
-        assert_eq!(default_meta_data.unit_ontology_refs, vec![]);
+        assert_eq!(default_meta_data.unit_refs, vec![]);
     }
 }

@@ -296,6 +296,7 @@ password = "your_loinc_password"
                     Some(OntologyRef::hp_with_version("2025-09-01")),
                     vec![],
                     vec![OntologyRef::uo_with_version("2026-01-09")],
+                    vec![],
                 ),
                 vec![
                     StrategyConfig::AliasMap,
