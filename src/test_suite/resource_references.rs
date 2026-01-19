@@ -5,8 +5,6 @@ use phenopackets::schema::v2::core::Resource;
 
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::hp_with_version("2025-09-01"));
-pub(crate) static GENO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::geno_with_version("2025-07-25"));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::mondo_with_version("2026-01-06"));
 
@@ -45,11 +43,11 @@ pub(crate) fn hgnc_meta_data_resource() -> Resource {
 
 pub(crate) fn geno_meta_data_resource() -> Resource {
     Resource {
-        id: GENO_REF.prefix_id().to_lowercase(),
+        id: "geno".to_string(),
         name: "Genotype Ontology".to_string(),
         url: "http://purl.obolibrary.org/obo/geno.json".to_string(),
-        version: GENO_REF.version().to_string(),
-        namespace_prefix: GENO_REF.prefix_id().to_string(),
+        version: "2025-07-25".to_string(),
+        namespace_prefix: "GENO".to_string(),
         iri_prefix: "http://purl.obolibrary.org/obo/GENO_$1".to_string(),
     }
 }

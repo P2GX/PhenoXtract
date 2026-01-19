@@ -107,6 +107,8 @@ impl PartialEq for CdfCollectorBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::Context;
+    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_cohort_id;
@@ -130,13 +132,20 @@ mod tests {
         fn collect(
             &self,
             _: &mut PhenopacketBuilder,
-            _patient_cdfs: &[ContextualizedDataFrame],
+            patient_cdfs: &[ContextualizedDataFrame],
             phenopacket_id: &str,
         ) -> Result<(), CollectorError> {
             self.call_count.set(self.call_count.get() + 1);
             self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
 
-            //is this correct?
+            for cdf in patient_cdfs {
+                let subject_col = cdf
+                    .filter_columns()
+                    .where_data_context(Filter::Is(&Context::SubjectId))
+                    .collect();
+                let unique_patient_ids = subject_col.first().unwrap().unique()?;
+                assert_eq!(unique_patient_ids.str()?.len(), 1);
+            }
 
             Ok(())
         }

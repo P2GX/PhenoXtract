@@ -583,7 +583,7 @@ mod tests {
                 .with_header_context(Context::HpoLabelOrId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id4".to_string()))
-                .with_header_context(Context::MondoLabelOrId),
+                .with_header_context(Context::DiseaseLabelOrId),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -619,7 +619,7 @@ mod tests {
                 .with_header_context(Context::HpoLabelOrId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("id4".to_string()))
-                .with_header_context(Context::MondoLabelOrId),
+                .with_header_context(Context::DiseaseLabelOrId),
         ];
 
         let result = SeriesContextFilter::new(&series)

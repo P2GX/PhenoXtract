@@ -105,15 +105,26 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
-        let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
-        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
-        let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
 
-        let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
-            (hp_dict.ontology.prefix_id().to_string(), hp_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
-        ]);
+        let mut bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::new();
+
+        if let Some(hp_ref) = &config.meta_data.hp_ref {
+            let hp_dict = ontology_factory.build_bidict(hp_ref, None)?;
+            bi_dicts.insert(hp_dict.ontology.prefix_id().to_string(), hp_dict);
+        }
+
+        for disease_ref in &config.meta_data.disease_refs {
+            let disease_dict = ontology_factory.build_bidict(disease_ref, None)?;
+            bi_dicts.insert(disease_dict.ontology.prefix_id().to_string(), disease_dict);
+        }
+
+        for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
+            let unit_ontology_dict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
+            bi_dicts.insert(
+                unit_ontology_dict.ontology.prefix_id().to_string(),
+                unit_ontology_dict,
+            );
+        }
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(
@@ -174,7 +185,6 @@ impl TryFrom<PathBuf> for Pipeline {
 mod tests {
     use super::*;
     use crate::config::ConfigLoader;
-    use crate::skip_in_ci;
     use crate::test_suite::config::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
@@ -188,7 +198,6 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
-        skip_in_ci!();
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(get_full_config_bytes().as_slice()).unwrap();

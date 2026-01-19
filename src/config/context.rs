@@ -48,7 +48,7 @@ pub enum Context {
     HpoLabelOrId,
     OmimLabelOrId,
     OrphanetLabelOrId,
-    MondoLabelOrId,
+    DiseaseLabelOrId,
     HgncSymbolOrId,
     GenoLabelOrId,
 
@@ -86,7 +86,7 @@ impl Display for Context {
 // context constants
 
 pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
-    Context::MondoLabelOrId,
+    Context::DiseaseLabelOrId,
     Context::OmimLabelOrId,
     Context::OrphanetLabelOrId,
 ];

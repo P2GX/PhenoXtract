@@ -311,7 +311,7 @@ impl PhenopacketBuilder {
                 self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
                 self.ensure_resource(
                     phenopacket_id,
-                    &OntologyRef::geno().with_version("2025-07-25"),
+                    &OntologyRef::new("geno".to_string(), None).with_version("2025-07-25"),
                 );
 
                 if let Some(gene) = gene_variant_data.get_gene() {

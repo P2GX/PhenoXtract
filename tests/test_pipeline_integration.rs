@@ -122,7 +122,7 @@ fn csv_context_4() -> TableContext {
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("diseases".to_string()))
-                .with_data_context(Context::MondoLabelOrId)
+                .with_data_context(Context::DiseaseLabelOrId)
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
@@ -267,7 +267,6 @@ fn test_pipeline_integration(
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
-    skip_in_ci!();
     //Set-up
     let cohort_name = "my_cohort";
 
