@@ -1,4 +1,3 @@
-use crate::config::credentials::LoincCredentials;
 use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::HasPrefixId;
