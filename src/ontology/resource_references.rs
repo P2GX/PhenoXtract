@@ -42,6 +42,8 @@ impl OntologyRef {
 
     pub const UO_PREFIX: &'static str = "UO";
 
+    pub const PATO_PREFIX: &'static str = "PATO";
+
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
             prefix_id,
@@ -83,6 +85,14 @@ impl OntologyRef {
 
     pub fn uo_with_version(version: &str) -> Self {
         Self::new(Self::UO_PREFIX.to_string(), Some(version.to_string()))
+    }
+
+    pub fn pato() -> Self {
+        Self::new(Self::PATO_PREFIX.to_string(), None)
+    }
+
+    pub fn pato_with_version(version: &str) -> Self {
+        Self::new(Self::PATO_PREFIX.to_string(), Some(version.to_string()))
     }
 }
 
@@ -130,6 +140,7 @@ pub struct DatabaseRef(ResourceRef);
 impl DatabaseRef {
     pub const OMIM_PREFIX: &'static str = "omim";
     pub const HGNC_PREFIX: &'static str = "hgnc";
+    pub const LOINC_PREFIX: &'static str = "loinc";
 
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         DatabaseRef(ResourceRef {
@@ -159,6 +170,9 @@ impl DatabaseRef {
     }
     pub fn hgnc_with_version(version: &str) -> Self {
         Self::new(Self::HGNC_PREFIX.to_string(), Some(version.to_string()))
+    }
+    pub fn loinc() -> Self {
+        Self::new(Self::LOINC_PREFIX.to_string(), None)
     }
 }
 

@@ -211,8 +211,8 @@ mod tests {
 
     #[rstest]
     fn test_get_label(loinc_client: LoincClient) {
-        let res = loinc_client.get_label("LOINC:97062-4");
-        assert_eq!(res.unwrap(), "History of High blood glucose");
+        let res = loinc_client.get_label("LOINC:8302-2");
+        assert_eq!(res.unwrap(), "Body height".to_string());
     }
 
     #[rstest]

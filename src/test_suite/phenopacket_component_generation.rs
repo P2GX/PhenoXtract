@@ -1,8 +1,13 @@
 use crate::test_suite::cdf_generation::default_patient_id;
-use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT};
+use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use crate::transform::data_processing::parsing::try_parse_string_datetime;
+use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
-use phenopackets::schema::v2::core::{Age, Disease, OntologyClass, PhenotypicFeature, TimeElement};
+use phenopackets::schema::v2::core::value::Value;
+use phenopackets::schema::v2::core::{
+    Age, Disease, Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange,
+    TimeElement, Value as ValueStruct,
+};
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
@@ -81,7 +86,7 @@ pub(crate) fn default_timestamp_element() -> TimeElement {
 pub(crate) fn generate_phenotype(id: &str, onset: Option<TimeElement>) -> PhenotypicFeature {
     let label = HPO_DICT
         .get(id)
-        .expect("Not HP label found for id in bidict");
+        .expect("No HP label found for id in bidict");
 
     PhenotypicFeature {
         r#type: Some(OntologyClass {
@@ -92,6 +97,61 @@ pub(crate) fn generate_phenotype(id: &str, onset: Option<TimeElement>) -> Phenot
         ..Default::default()
     }
 }
+
+pub(crate) fn default_quant_loinc() -> OntologyClass {
+    OntologyClass {
+        id: "LOINC:8302-2".to_string(),
+        label: "Body height".to_string(),
+    }
+}
+
+pub(crate) fn default_uo_term() -> OntologyClass {
+    OntologyClass {
+        id: "UO:0000015".to_string(),
+        label: "centimeter".to_string(),
+    }
+}
+
+pub(crate) fn generate_quant_measurement(
+    loinc_term: OntologyClass,
+    quant_measurement: f64,
+    unit_id: &str,
+    time_observed: Option<TimeElement>,
+    reference_range: Option<(f64, f64)>,
+) -> Measurement {
+    let unit_label = UO_DICT
+        .get(unit_id)
+        .expect("No UO label found for id in bidict");
+
+    let unit_ontology_term = OntologyClass {
+        id: unit_id.to_string(),
+        label: unit_label.to_string(),
+    };
+
+    let mut quantity = Quantity {
+        unit: Some(unit_ontology_term.clone()),
+        value: quant_measurement,
+        ..Default::default()
+    };
+
+    if let Some(reference_range) = reference_range {
+        quantity.reference_range = Some(ReferenceRange {
+            unit: Some(unit_ontology_term),
+            low: reference_range.0,
+            high: reference_range.1,
+        });
+    };
+
+    Measurement {
+        assay: Some(loinc_term),
+        measurement_value: Some(MeasurementValue::Value(ValueStruct {
+            value: Some(Value::Quantity(quantity)),
+        })),
+        time_observed,
+        ..Default::default()
+    }
+}
+
 #[allow(dead_code)]
 pub(crate) fn generate_phenotype_oc(id: &str) -> OntologyClass {
     let label = HPO_DICT

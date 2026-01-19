@@ -86,3 +86,140 @@ impl Collect for QuantitativeMeasurementCollector {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::table_context::SeriesContext;
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_age_element, default_iso_age, default_phenopacket_id, default_quant_loinc,
+        default_uo_term, generate_quant_measurement,
+    };
+    use crate::test_suite::resource_references::{loinc_meta_data_resource, uo_meta_data_resource};
+    use crate::test_suite::utils::assert_phenopackets;
+    use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::MetaData;
+    use polars::datatypes::AnyValue;
+    use polars::prelude::{IntoColumn, NamedFrom, Series};
+    use rstest::{fixture, rstest};
+    use tempfile::TempDir;
+
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    #[fixture]
+    fn measurements() -> [f64; 2] {
+        [1.1, 2.2]
+    }
+
+    #[fixture]
+    fn ref_range() -> (f64, f64) {
+        (0.0, 3.3)
+    }
+
+    #[fixture]
+    fn quant_measurement_cdf() -> ContextualizedDataFrame {
+        let mut patient_cdf = generate_minimal_cdf(1, 2);
+        let measurements = Series::new("height".into(), measurements());
+
+        let time_observed = Series::new(
+            "time_observed".into(),
+            &[AnyValue::Null, AnyValue::String(&default_iso_age())],
+        );
+
+        let ref_low = Series::new(
+            "ref_low".into(),
+            &[AnyValue::Null, AnyValue::Float64(ref_range().0)],
+        );
+
+        let ref_high = Series::new(
+            "ref_high".into(),
+            &[AnyValue::Null, AnyValue::Float64(ref_range().1)],
+        );
+
+        patient_cdf
+            .builder()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("height".into())
+                    .with_data_context(Context::QuantitativeMeasurement {
+                        loinc_id: default_quant_loinc().id,
+                        unit_ontology_id: default_uo_term().id,
+                    })
+                    .with_building_block_id(Some("height_measurement".to_string())),
+                vec![measurements.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("time_observed".into())
+                    .with_data_context(Context::OnsetAge)
+                    .with_building_block_id(Some("height_measurement".to_string())),
+                vec![time_observed.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("ref_low".into())
+                    .with_data_context(Context::ReferenceRangeLow)
+                    .with_building_block_id(Some("height_measurement".to_string())),
+                vec![ref_low.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("ref_high".into())
+                    .with_data_context(Context::ReferenceRangeHigh)
+                    .with_building_block_id(Some("height_measurement".to_string())),
+                vec![ref_high.into_column()].as_ref(),
+            )
+            .unwrap()
+            .build()
+            .unwrap()
+            .clone()
+    }
+
+    #[rstest]
+    fn test_collect_quantitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = default_phenopacket_id();
+        QuantitativeMeasurementCollector
+            .collect(&mut builder, &[quant_measurement_cdf()], &pp_id)
+            .unwrap();
+
+        let mut phenopackets = builder.build();
+
+        let measurement1 = generate_quant_measurement(
+            default_quant_loinc(),
+            measurements()[0],
+            default_uo_term().id.as_str(),
+            None,
+            None,
+        );
+
+        let measurement2 = generate_quant_measurement(
+            default_quant_loinc(),
+            measurements()[1],
+            default_uo_term().id.as_str(),
+            Some(default_age_element()),
+            Some(ref_range()),
+        );
+
+        let mut expected_phenopacket = Phenopacket {
+            id: pp_id,
+            measurements: vec![measurement1, measurement2],
+            meta_data: Some(MetaData {
+                resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        pretty_assertions::assert_eq!(phenopackets.len(), 1);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_phenopacket);
+    }
+}

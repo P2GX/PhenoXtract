@@ -1,5 +1,5 @@
 use crate::ontology::loinc_client::LoincClient;
-use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY};
+use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY, PATO_DICT, UO_DICT};
 use crate::test_suite::resource_references::HPO_REF;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
@@ -22,6 +22,14 @@ pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("MONDO", vec![MONDO_BIDICT.clone()])
 }
 
+pub(crate) fn build_test_uo_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("UO", vec![UO_DICT.clone()])
+}
+
+pub(crate) fn build_test_pato_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("PATO", vec![PATO_DICT.clone()])
+}
+
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
     CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
 }
@@ -41,8 +49,8 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         Box::new(hgvs_client),
         build_test_hpo_bidict_library(),
         build_test_mondo_bidict_library(),
-        BiDictLibrary::empty_with_name("UNIT"),
-        BiDictLibrary::empty_with_name("QUAL"),
+        build_test_uo_bidict_library(),
+        build_test_pato_bidict_library(),
         Some(LoincClient::default()),
     )
 }
