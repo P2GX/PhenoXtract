@@ -14,7 +14,7 @@ use dotenvy::dotenv;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::loinc_client::LoincClient;
-use phenoxtract::ontology::traits::HasPrefixId;
+use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
@@ -342,12 +342,11 @@ fn test_pipeline_integration(
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-        ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
+        BiDictLibrary::new("HPO", vec![hpo_dict]),
+        BiDictLibrary::new("MONDO", vec![mondo_dict]),
+        BiDictLibrary::empty_with_name("UNIT"),
         Some(LoincClient::default()),
     );
 

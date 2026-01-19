@@ -1,30 +1,25 @@
 use crate::ontology::loinc_client::LoincClient;
-use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::traits::HasPrefixId;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY};
 use crate::test_suite::resource_references::HPO_REF;
 use crate::transform::PhenopacketBuilder;
+use crate::transform::bidict_library::BiDictLibrary;
 use dotenvy::dotenv;
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 
-fn build_test_dicts() -> HashMap<String, Arc<OntologyBiDict>> {
-    let hpo_dict = ONTOLOGY_FACTORY
+pub(crate) fn build_test_hpo_bidict_library() -> BiDictLibrary {
+    let hpo_bidict = ONTOLOGY_FACTORY
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .build_bidict(&HPO_REF.clone(), None)
         .unwrap();
 
-    HashMap::from_iter(vec![
-        (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-        (
-            MONDO_BIDICT.ontology.prefix_id().to_string(),
-            MONDO_BIDICT.clone(),
-        ),
-    ])
+    BiDictLibrary::new("HPO", vec![hpo_bidict])
+}
+
+pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("MONDO", vec![MONDO_BIDICT.clone()])
 }
 
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
@@ -42,9 +37,11 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     dotenv().ok();
 
     PhenopacketBuilder::new(
-        build_test_dicts(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
+        build_test_hpo_bidict_library(),
+        build_test_mondo_bidict_library(),
+        BiDictLibrary::default(),
         Some(LoincClient::default()),
     )
 }
