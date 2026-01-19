@@ -164,13 +164,13 @@ impl Default for LoincClient {
 impl BIDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Option<String> {
         if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
-            self.get_term(id_or_label)
+            self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
         }
     }
 
-    fn get_term(&self, id: &str) -> Option<String> {
+    fn get_label(&self, id: &str) -> Option<String> {
         let loinc_search_results = self.query(id)?;
 
         if loinc_search_results.len() == 1 {
@@ -210,8 +210,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_term(loinc_client: LoincClient) {
-        let res = loinc_client.get_term("LOINC:97062-4");
+    fn test_get_label(loinc_client: LoincClient) {
+        let res = loinc_client.get_label("LOINC:97062-4");
         assert_eq!(res.unwrap(), "History of High blood glucose");
     }
 
@@ -242,8 +242,8 @@ mod tests {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
-        let label_res = loinc_client.get_term(id_input);
-        let label_res_with_prefix = loinc_client.get_term(&id_input_with_prefix);
+        let label_res = loinc_client.get_label(id_input);
+        let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
         assert_eq!(label_res, label_res_with_prefix);
     }
 

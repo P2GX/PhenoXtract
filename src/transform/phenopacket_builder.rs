@@ -2,7 +2,7 @@
 use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::{HasPrefixId, HasVersion};
+use crate::ontology::traits::{BIDict, HasPrefixId, HasVersion};
 use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
@@ -36,7 +36,7 @@ pub struct PhenopacketBuilder {
     hpo_bidict: Option<Arc<OntologyBiDict>>,
     disease_bidicts: HashMap<String, Arc<OntologyBiDict>>,
     unit_ontology_bidicts: HashMap<String, Arc<OntologyBiDict>>,
-    _loinc_client: Option<LoincClient>,
+    loinc_client: Option<LoincClient>,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -56,7 +56,7 @@ impl PhenopacketBuilder {
             hpo_bidict,
             disease_bidicts,
             unit_ontology_bidicts,
-            _loinc_client: loinc_client,
+            loinc_client,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -416,7 +416,6 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub(crate) fn insert_quantitative_measurement(
         &mut self,
         phenopacket_id: &str,
@@ -426,29 +425,39 @@ impl PhenopacketBuilder {
         unit_ontology_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let unit_ontology_class = OntologyClass {
-            id: unit_ontology_id.to_string(),
-            label: "TODO".to_string(), //todo need to access the unit ontology and ensure the reference
-        };
+        let (unit_ontology_term, unit_ontology_ref) =
+            self.query_bidicts(&self.unit_ontology_bidicts, unit_ontology_id)?;
 
         let mut quantity = Quantity {
-            unit: Some(unit_ontology_class.clone()),
+            unit: Some(unit_ontology_term.clone()),
             value: quant_measurement,
             ..Default::default()
         };
 
         if let Some(reference_range) = reference_range {
             quantity.reference_range = Some(ReferenceRange {
-                unit: Some(unit_ontology_class),
+                unit: Some(unit_ontology_term),
                 low: reference_range.0,
                 high: reference_range.1,
             });
         }
 
+        let loinc_client = self.loinc_client.as_ref().ok_or_else(|| {
+            PhenopacketBuilderError::MissingLoincClient {
+                loinc_id: loinc_id.to_string(),
+            }
+        })?;
+        let loinc_label = loinc_client.get_label(loinc_id).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "LOINC label".to_string(),
+                value: loinc_id.to_string(),
+            }
+        })?;
+
         let mut measurement_element = Measurement {
             assay: Some(OntologyClass {
                 id: loinc_id.to_string(),
-                label: "TODO".to_string(), //todo need to access LOINC and ensure the reference
+                label: loinc_label,
             }),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::Quantity(quantity)),
@@ -470,10 +479,13 @@ impl PhenopacketBuilder {
 
         pp.measurements.push(measurement_element);
 
+        let loinc_ref = ResourceRef::new("LOINC".to_string(), "latest".to_string());
+        self.ensure_resource(phenopacket_id, &unit_ontology_ref);
+        self.ensure_resource(phenopacket_id, &loinc_ref);
+
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub(crate) fn insert_qualitative_measurement(
         &mut self,
         phenopacket_id: &str,
@@ -489,10 +501,22 @@ impl PhenopacketBuilder {
             label: qual_measurement.to_string(),
         };
 
+        let loinc_client = self.loinc_client.as_ref().ok_or_else(|| {
+            PhenopacketBuilderError::MissingLoincClient {
+                loinc_id: loinc_id.to_string(),
+            }
+        })?;
+        let loinc_label = loinc_client.get_label(loinc_id).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "LOINC label".to_string(),
+                value: loinc_id.to_string(),
+            }
+        })?;
+
         let mut measurement_element = Measurement {
             assay: Some(OntologyClass {
                 id: loinc_id.to_string(),
-                label: "TODO".to_string(), //todo need to access LOINC and ensure the reference
+                label: loinc_label,
             }),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::OntologyClass(qual_value_ontology_class)),

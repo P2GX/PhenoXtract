@@ -18,6 +18,6 @@ pub trait HasVersion {
 // TODO: Implement for BIDicts
 pub trait BIDict {
     fn get(&self, id_or_label: &str) -> Option<String>;
-    fn get_term(&self, id: &str) -> Option<String>;
+    fn get_label(&self, id: &str) -> Option<String>;
     fn get_id(&self, term: &str) -> Option<String>;
 }
