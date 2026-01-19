@@ -9,13 +9,13 @@ use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
 #[derive(Debug, Deserialize, Serialize, Validate, Clone, PartialEq)]
-pub struct PhenoXtractorConfig {
+pub struct PhenoXtractConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     pub data_sources: Vec<DataSource>,
     pub pipeline: PipelineConfig,
 }
 
-impl PhenoXtractorConfig {
+impl PhenoXtractConfig {
     pub fn pipeline_config(&self) -> PipelineConfig {
         self.pipeline.clone()
     }
@@ -24,7 +24,7 @@ impl PhenoXtractorConfig {
     }
 }
 
-impl TryFrom<PathBuf> for PhenoXtractorConfig {
+impl TryFrom<PathBuf> for PhenoXtractConfig {
     type Error = ConstructionError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {

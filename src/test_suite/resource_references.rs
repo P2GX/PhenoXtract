@@ -34,7 +34,7 @@ pub(crate) fn hgnc_meta_data_resource() -> Resource {
     Resource {
         id: DatabaseRef::hgnc().prefix_id().to_lowercase(),
         name: "HUGO Gene Nomenclature Committee".to_string(),
-        url: "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn".to_string(),
+        url: "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn".to_string(),
         version: "-".to_string(),
         namespace_prefix: DatabaseRef::hgnc().prefix_id().to_string(),
         iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1".to_string(),
