@@ -79,6 +79,10 @@ pipeline:
     unit_ontology_refs:
       - version: "2026-01-09"
         prefix_id: "UO"
+  credentials:
+    loinc:
+      username: ${LOINC_USERNAME}
+      password: ${LOINC_PASSWORD}
 "#;
 
 /// Alternative: Get the combined config as bytes
