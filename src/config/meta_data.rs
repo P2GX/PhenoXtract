@@ -9,18 +9,21 @@ pub struct MetaData {
     pub created_by: String,
     #[serde(default = "default_creator")]
     pub submitted_by: String,
+    #[serde(default)]
     pub hp_ref: Option<OntologyRef>,
-    pub disease_ref: Option<OntologyRef>,
-    pub unit_ontology_ref: Option<OntologyRef>,
+    #[serde(default)]
+    pub disease_refs: Vec<OntologyRef>,
+    #[serde(default)]
+    pub unit_ontology_refs: Vec<OntologyRef>,
 }
 impl MetaData {
     pub fn new(
         created_by: Option<&str>,
         submitted_by: Option<&str>,
         cohort_name: &str,
-        hp_ref: Option<&OntologyRef>,
-        disease_ref: Option<&OntologyRef>,
-        unit_ontology_ref: Option<&OntologyRef>,
+        hp_ref: Option<OntologyRef>,
+        disease_refs: Vec<OntologyRef>,
+        unit_ontology_refs: Vec<OntologyRef>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -32,9 +35,9 @@ impl MetaData {
                 Some(s) => s.to_owned(),
             },
             cohort_name: cohort_name.to_owned(),
-            hp_ref: hp_ref.cloned(),
-            disease_ref: disease_ref.cloned(),
-            unit_ontology_ref: unit_ontology_ref.cloned(),
+            hp_ref,
+            disease_refs,
+            unit_ontology_refs,
         }
     }
 }
@@ -45,9 +48,9 @@ impl Default for MetaData {
             created_by: default_creator(),
             submitted_by: default_creator(),
             cohort_name: "unnamed_cohort".to_string(),
-            hp_ref: Some(OntologyRef::hp()),
-            disease_ref: Some(OntologyRef::mondo()),
-            unit_ontology_ref: None,
+            hp_ref: None,
+            disease_refs: vec![],
+            unit_ontology_refs: vec![],
         }
     }
 }
@@ -86,9 +89,9 @@ mod tests {
         assert_eq!(metadata.created_by, expected_creator);
         assert_eq!(metadata.submitted_by, expected_creator);
         assert_eq!(metadata.cohort_name, expected_cohort);
-        assert_eq!(metadata.hp_ref.unwrap(), OntologyRef::hp());
-        assert_eq!(metadata.disease_ref.unwrap(), OntologyRef::mondo());
-        assert_eq!(metadata.unit_ontology_ref, None);
+        assert_eq!(metadata.hp_ref, None);
+        assert_eq!(metadata.disease_refs, vec![]);
+        assert_eq!(metadata.unit_ontology_refs, vec![]);
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -97,9 +100,6 @@ mod tests {
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
-    unit_ontology_ref:
-      version: "2023-05-25"
-      prefix_id: "UO"
     "#;
 
     #[fixture]
@@ -130,10 +130,7 @@ mod tests {
             default_meta_data.hp_ref.unwrap(),
             OntologyRef::hp_with_version("2025-09-01")
         );
-        assert_eq!(default_meta_data.disease_ref, None);
-        assert_eq!(
-            default_meta_data.unit_ontology_ref.unwrap(),
-            OntologyRef::new("UO".to_string(), Some("2023-05-25".to_string()))
-        );
+        assert_eq!(default_meta_data.disease_refs, vec![]);
+        assert_eq!(default_meta_data.unit_ontology_refs, vec![]);
     }
 }

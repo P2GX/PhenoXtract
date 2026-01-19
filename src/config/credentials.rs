@@ -3,7 +3,7 @@ use std::env;
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Default)]
 pub struct Credentials {
-    pub loinc: LoincCredentials,
+    pub loinc: Option<LoincCredentials>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]

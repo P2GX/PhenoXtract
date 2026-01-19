@@ -83,7 +83,7 @@ pub struct LoincResult {
 }
 
 #[derive(Debug)]
-pub(crate) struct LoincClient {
+pub struct LoincClient {
     client: Client,
     base_url: String,
     user_name: String,
@@ -152,6 +152,12 @@ impl LoincClient {
                     && self.loinc_id_regex.is_match(loinc_number.as_bytes())
             }
         }
+    }
+}
+
+impl Default for LoincClient {
+    fn default() -> Self {
+        Self::new(LoincCredentials::default())
     }
 }
 

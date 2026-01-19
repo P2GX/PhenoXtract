@@ -40,6 +40,8 @@ impl OntologyRef {
     pub const HPO_PREFIX: &'static str = "HP";
     pub const MONDO_PREFIX: &'static str = "MONDO";
 
+    pub const UO_PREFIX: &'static str = "UO";
+
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
             prefix_id,
@@ -73,6 +75,14 @@ impl OntologyRef {
 
     pub fn mondo_with_version(version: &str) -> Self {
         Self::new(Self::MONDO_PREFIX.to_string(), Some(version.to_string()))
+    }
+
+    pub fn uo() -> Self {
+        Self::new(Self::UO_PREFIX.to_string(), None)
+    }
+
+    pub fn uo_with_version(version: &str) -> Self {
+        Self::new(Self::UO_PREFIX.to_string(), Some(version.to_string()))
     }
 }
 

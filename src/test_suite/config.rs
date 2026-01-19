@@ -76,13 +76,13 @@ pipeline:
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
-    unit_ontology_ref:
-      version: "2026-01-09"
-      prefix_id: "UO"
+    unit_ontology_refs:
+      - version: "2026-01-09"
+        prefix_id: "UO"
   credentials:
     loinc:
-      username: "loinc_username"
-      password: "loinc_password"
+      username: ${LOINC_USERNAME}
+      password: ${LOINC_PASSWORD}
 "#;
 
 /// Alternative: Get the combined config as bytes
