@@ -105,6 +105,13 @@ pub(crate) fn default_quant_loinc() -> OntologyClass {
     }
 }
 
+pub(crate) fn default_qual_loinc() -> OntologyClass {
+    OntologyClass {
+        id: "LOINC:5802-4".to_string(),
+        label: "Nitrite [Presence] in Urine by Test strip".to_string(),
+    }
+}
+
 pub(crate) fn default_uo_term() -> OntologyClass {
     OntologyClass {
         id: "UO:0000015".to_string(),
@@ -146,6 +153,21 @@ pub(crate) fn generate_quant_measurement(
         assay: Some(loinc_term),
         measurement_value: Some(MeasurementValue::Value(ValueStruct {
             value: Some(Value::Quantity(quantity)),
+        })),
+        time_observed,
+        ..Default::default()
+    }
+}
+
+pub(crate) fn generate_qual_measurement(
+    loinc_term: OntologyClass,
+    qual_measurement_term: OntologyClass,
+    time_observed: Option<TimeElement>,
+) -> Measurement {
+    Measurement {
+        assay: Some(loinc_term),
+        measurement_value: Some(MeasurementValue::Value(ValueStruct {
+            value: Some(Value::OntologyClass(qual_measurement_term)),
         })),
         time_observed,
         ..Default::default()

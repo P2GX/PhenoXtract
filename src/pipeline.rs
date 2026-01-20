@@ -153,6 +153,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
                 config.meta_data.cohort_name.clone(),
             ),
         );
+
         let loader_module = LoaderFactory::try_from_config(config.loader)?;
 
         Ok(Pipeline::new(tf_module, loader_module))

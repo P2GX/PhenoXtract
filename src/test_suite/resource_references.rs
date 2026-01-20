@@ -78,3 +78,14 @@ pub(crate) fn loinc_meta_data_resource() -> Resource {
         iri_prefix: "https://loinc.org/$1".to_string(),
     }
 }
+
+pub(crate) fn pato_meta_data_resource() -> Resource {
+    Resource {
+        id: PATO_REF.prefix_id().to_lowercase(),
+        name: "Phenotype And Trait Ontology".to_string(),
+        url: "http://purl.obolibrary.org/obo/pato.json".to_string(),
+        version: PATO_REF.version().to_string(),
+        namespace_prefix: PATO_REF.prefix_id().to_string(),
+        iri_prefix: "http://purl.obolibrary.org/obo/PATO_$1".to_string(),
+    }
+}
