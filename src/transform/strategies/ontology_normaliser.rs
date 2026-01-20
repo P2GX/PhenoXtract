@@ -8,6 +8,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
+use crate::ontology::traits::BIDict;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
 use std::collections::HashSet;
@@ -81,10 +82,10 @@ impl Strategy for OntologyNormaliserStrategy {
             for col_name in column_names {
                 let col = table.data().column(&col_name)?;
                 let mapped_column = col.str()?.apply_mut(|cell_value| {
-                    if self.ontology_dict.is_id(cell_value) {
+                    if self.ontology_dict.get_label(cell_value).is_ok() {
                         cell_value
-                    } else if let Some(curie_id) = self.ontology_dict.get(cell_value) {
-                        curie_id
+                    } else if let Ok(curie_id) = self.ontology_dict.get(cell_value) {
+                        &curie_id
                     } else {
                         if !cell_value.is_empty() {
                             error_info.insert_error(

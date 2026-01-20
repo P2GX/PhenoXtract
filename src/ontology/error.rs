@@ -46,3 +46,13 @@ pub enum OntologyFactoryError {
         ontology: OntologyRef,
     },
 }
+
+#[derive(Debug, Error)]
+pub enum BiDictError {
+    #[error("Could not find entry for {0}")]
+    NotFound(String),
+    #[error("Request error: {0}")]
+    Request(#[from] reqwest::Error),
+    #[error("Cache error: {reason}")]
+    Caching { reason: String },
+}
