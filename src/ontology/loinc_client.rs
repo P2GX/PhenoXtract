@@ -153,7 +153,7 @@ impl LoincClient {
             None => false,
             Some(loinc_number) => {
                 query.starts_with(Self::LOINC_PREFIX)
-                    && self.loinc_id_regex.is_match(loinc_number.as_bytes())
+                    & self.loinc_id_regex.is_match(loinc_number.as_bytes())
             }
         }
     }
@@ -184,11 +184,11 @@ impl BIDict for LoincClient {
         if loinc_search_results.len() == 1 {
             let loinc_result = loinc_search_results.first().unwrap();
             self.cache_write(id, loinc_result.long_common_name.as_str());
-            Ok(Box::leak(
-                loinc_result.long_common_name.clone().into_boxed_str(),
-            ))
-        } else {
-            Err(BiDictError::NotFound(id.into()))
+        }
+
+        match self.cache_read(id) {
+            None => Err(BiDictError::NotFound(id.into())),
+            Some(label) => Ok(label),
         }
     }
 
@@ -203,15 +203,13 @@ impl BIDict for LoincClient {
 
         for loinc_result in loinc_search_results {
             if loinc_result.long_common_name.to_lowercase() == term.to_lowercase() {
-                return Ok(Box::leak(
-                    Self::format_loinc_curie(&loinc_result.loinc_num)
-                        .clone()
-                        .into_boxed_str(),
-                ));
+                self.cache_write(term, &Self::format_loinc_curie(&loinc_result.loinc_num));
             }
         }
-
-        Err(BiDictError::NotFound(term.into()))
+        match self.cache_read(term) {
+            None => Err(BiDictError::NotFound(term.into())),
+            Some(id) => Ok(id),
+        }
     }
 }
 
