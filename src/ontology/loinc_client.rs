@@ -131,15 +131,15 @@ impl LoincClient {
             }
         }
     }
-    fn cache_write(&self, id_or_label: &str, entry: &str) {
+    fn cache_write(&self, key: &str, entry: &str) {
         if let Ok(mut cache_write) = self.cache.write() {
-            cache_write.insert(id_or_label.to_string(), entry.to_string());
+            cache_write.insert(key.to_string(), entry.to_string());
 
-            if self.is_loinc_curie(id_or_label) {
-                let loinc_number = id_or_label.split(":").last().unwrap().to_string();
+            if self.is_loinc_curie(key) {
+                let loinc_number = key.split(":").last().unwrap().to_string();
                 cache_write.insert(loinc_number, entry.to_string());
-            } else if self.loinc_id_regex.is_match(id_or_label.as_bytes()) {
-                let loinc_curie = Self::format_loinc_curie(id_or_label);
+            } else if self.loinc_id_regex.is_match(key.as_bytes()) {
+                let loinc_curie = Self::format_loinc_curie(key);
                 cache_write.insert(loinc_curie, entry.to_string());
             }
         }
