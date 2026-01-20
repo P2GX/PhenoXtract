@@ -1,4 +1,4 @@
-use crate::ontology::error::RegistryError;
+use crate::ontology::error::{BiDictError, RegistryError};
 use std::path::PathBuf;
 
 pub trait OntologyRegistry {
@@ -15,9 +15,8 @@ pub trait HasVersion {
     fn version(&self) -> &str;
 }
 
-// TODO: Implement for BIDicts
 pub trait BIDict {
-    fn get(&self, id_or_label: &str) -> Option<String>;
-    fn get_term(&self, id: &str) -> Option<String>;
-    fn get_id(&self, term: &str) -> Option<String>;
+    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError>;
+    fn get_label(&self, id: &str) -> Result<&str, BiDictError>;
+    fn get_id(&self, term: &str) -> Result<&str, BiDictError>;
 }
