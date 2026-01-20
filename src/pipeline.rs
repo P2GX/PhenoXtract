@@ -213,16 +213,19 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
-        dotenv().ok().unwrap();
+        dotenv().ok().expect("Could not load .env");
         let file_path = temp_dir.path().join("config.yaml");
-        let mut file = StdFile::create(&file_path).unwrap();
-        file.write_all(get_full_config_bytes().as_slice()).unwrap();
-        let config: PhenoXtractConfig = ConfigLoader::load(file_path.clone()).unwrap();
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(get_full_config_bytes().as_slice())
+            .expect("Failed to write config file");
+        let config: PhenoXtractConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
 
         let configs_from_sources = [
-            Pipeline::try_from(config.clone()).unwrap(),
-            Pipeline::try_from(config.pipeline.clone()).unwrap(),
-            Pipeline::try_from(file_path).unwrap(),
+            Pipeline::try_from(config.clone()).expect("Failed to convert config from config"),
+            Pipeline::try_from(config.pipeline.clone())
+                .expect("Failed to convert config from pipeline"),
+            Pipeline::try_from(file_path).expect("Failed to convert config from path"),
         ];
 
         let expected_config = configs_from_sources.first().unwrap();
