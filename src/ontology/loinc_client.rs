@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use crate::config::credentials::LoincCredentials;
+use crate::ontology::error::BiDictError;
 use crate::ontology::traits::BIDict;
 use regex::bytes::Regex;
 use reqwest::blocking::Client;
@@ -88,7 +89,7 @@ pub struct LoincClient {
     base_url: String,
     user_name: String,
     password: String,
-    cache: RwLock<HashMap<String, Vec<LoincResult>>>,
+    cache: RwLock<HashMap<String, String>>,
     loinc_id_regex: Regex,
 }
 
@@ -105,14 +106,7 @@ impl LoincClient {
         }
     }
 
-    fn query(&self, id_or_label: &str) -> Option<Vec<LoincResult>> {
-        {
-            let cache_read = self.cache.read().ok()?;
-            if let Some(value) = cache_read.get(id_or_label) {
-                return Some(value.to_vec());
-            }
-        }
-
+    fn query(&self, id_or_label: &str) -> Result<Vec<LoincResult>, BiDictError> {
         let url = format!("{}loincs", self.base_url);
         let params = [("query", id_or_label), ("rows", "10")];
 
@@ -121,24 +115,34 @@ impl LoincClient {
             .get(url)
             .basic_auth(self.user_name.clone(), Some(self.password.clone()))
             .query(&params)
-            .send()
-            .ok()?
-            .json()
-            .ok()?;
+            .send()?
+            .json()?;
 
+        Ok(loinc_response.results)
+    }
+
+    fn cache_read(&self, key: &str) -> Option<&str> {
+        {
+            let cache_read = self.cache.read().ok()?;
+            if let Some(value) = cache_read.get(key) {
+                Some(Box::leak(value.clone().into_boxed_str()))
+            } else {
+                None
+            }
+        }
+    }
+    fn cache_write(&self, id_or_label: &str, entry: &str) {
         if let Ok(mut cache_write) = self.cache.write() {
-            cache_write.insert(id_or_label.to_string(), loinc_response.results.clone());
+            cache_write.insert(id_or_label.to_string(), entry.to_string());
 
             if self.is_loinc_curie(id_or_label) {
                 let loinc_number = id_or_label.split(":").last().unwrap().to_string();
-                cache_write.insert(loinc_number, loinc_response.results.clone());
+                cache_write.insert(loinc_number, entry.to_string());
             } else if self.loinc_id_regex.is_match(id_or_label.as_bytes()) {
                 let loinc_curie = Self::format_loinc_curie(id_or_label);
-                cache_write.insert(loinc_curie, loinc_response.results.clone());
+                cache_write.insert(loinc_curie, entry.to_string());
             }
         }
-
-        Some(loinc_response.results)
     }
 
     fn format_loinc_curie(loinc_number: &str) -> String {
@@ -162,37 +166,52 @@ impl Default for LoincClient {
 }
 
 impl BIDict for LoincClient {
-    fn get(&self, id_or_label: &str) -> Option<String> {
+    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
-            self.get_term(id_or_label)
+            self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
         }
     }
 
-    fn get_term(&self, id: &str) -> Option<String> {
+    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+        if let Some(loinc_number) = self.cache_read(id) {
+            return Ok(&loinc_number);
+        }
+
         let loinc_search_results = self.query(id)?;
 
         if loinc_search_results.len() == 1 {
             let loinc_result = loinc_search_results.first().unwrap();
-            Some(loinc_result.long_common_name.clone())
+            self.cache_write(id, loinc_result.long_common_name.as_str());
+            Ok(Box::leak(
+                loinc_result.long_common_name.clone().into_boxed_str(),
+            ))
         } else {
-            None
+            Err(BiDictError::NotFound(id.into()))
         }
     }
 
-    fn get_id(&self, term: &str) -> Option<String> {
+    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+        if let Some(loinc_number) = self.cache_read(term) {
+            return Ok(loinc_number);
+        }
+
         let cleaned: String = term.chars().filter(|c| !c.is_ascii_punctuation()).collect();
 
         let loinc_search_results = self.query(&cleaned)?;
 
         for loinc_result in loinc_search_results {
             if loinc_result.long_common_name.to_lowercase() == term.to_lowercase() {
-                return Some(Self::format_loinc_curie(&loinc_result.loinc_num));
+                return Ok(Box::leak(
+                    Self::format_loinc_curie(&loinc_result.loinc_num)
+                        .clone()
+                        .into_boxed_str(),
+                ));
             }
         }
 
-        None
+        Err(BiDictError::NotFound(term.into()))
     }
 }
 
@@ -211,7 +230,7 @@ mod tests {
 
     #[rstest]
     fn test_get_term(loinc_client: LoincClient) {
-        let res = loinc_client.get_term("LOINC:97062-4");
+        let res = loinc_client.get_label("LOINC:97062-4");
         assert_eq!(res.unwrap(), "History of High blood glucose");
     }
 
@@ -220,7 +239,7 @@ mod tests {
         let term = "Glucose [Measurement] in Urine";
         let res = loinc_client.get_id(term);
 
-        assert!(res.is_some(), "Should find an ID for term: {}", term);
+        assert!(res.is_ok(), "Should find an ID for term: {}", term);
         assert!(
             res.unwrap().starts_with("LOINC:"),
             "ID should have the LOINC: prefix"
@@ -234,7 +253,7 @@ mod tests {
 
         let label_res = loinc_client.get(id_input);
         let label_res_with_prefix = loinc_client.get(&id_input_with_prefix);
-        assert_eq!(label_res, label_res_with_prefix);
+        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
     }
 
     #[rstest]
@@ -242,9 +261,9 @@ mod tests {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
-        let label_res = loinc_client.get_term(id_input);
-        let label_res_with_prefix = loinc_client.get_term(&id_input_with_prefix);
-        assert_eq!(label_res, label_res_with_prefix);
+        let label_res = loinc_client.get_label(id_input);
+        let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
+        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
     }
 
     #[rstest]
@@ -253,11 +272,19 @@ mod tests {
         let id_input_with_prefix = format!("LOINC:{}", id_input);
         let label_res = loinc_client.get(&id_input_with_prefix);
 
-        assert!(label_res.is_some());
+        assert!(
+            label_res.is_ok(),
+            "Should find an ID for input: {}",
+            id_input
+        );
         let found_label = label_res.unwrap();
 
         let id_res = loinc_client.get(&found_label);
-        assert!(id_res.is_some());
+        assert!(
+            id_res.is_ok(),
+            "Should find an ID for output: {}",
+            found_label
+        );
 
         assert_eq!(id_res.unwrap(), id_input_with_prefix);
     }
