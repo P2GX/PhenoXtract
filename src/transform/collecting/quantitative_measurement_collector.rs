@@ -94,8 +94,8 @@ mod tests {
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_iso_age, default_phenopacket_id, default_quant_loinc,
-        default_uo_term, generate_quant_measurement,
+        default_iso_age, default_phenopacket_id, default_quant_loinc, default_quant_measurement,
+        default_quant_value, default_reference_range, default_uo_term, generate_quant_measurement,
     };
     use crate::test_suite::resource_references::{loinc_meta_data_resource, uo_meta_data_resource};
     use crate::test_suite::utils::assert_phenopackets;
@@ -113,12 +113,7 @@ mod tests {
 
     #[fixture]
     fn measurements() -> [f64; 2] {
-        [1.1, 2.2]
-    }
-
-    #[fixture]
-    fn ref_range() -> (f64, f64) {
-        (0.0, 3.3)
+        [default_quant_value(), 2.2]
     }
 
     #[fixture]
@@ -128,17 +123,23 @@ mod tests {
 
         let time_observed = Series::new(
             "time_observed".into(),
-            &[AnyValue::Null, AnyValue::String(&default_iso_age())],
+            &[AnyValue::String(&default_iso_age()), AnyValue::Null],
         );
 
         let ref_low = Series::new(
             "ref_low".into(),
-            &[AnyValue::Null, AnyValue::Float64(ref_range().0)],
+            &[
+                AnyValue::Float64(default_reference_range().0),
+                AnyValue::Null,
+            ],
         );
 
         let ref_high = Series::new(
             "ref_high".into(),
-            &[AnyValue::Null, AnyValue::Float64(ref_range().1)],
+            &[
+                AnyValue::Float64(default_reference_range().1),
+                AnyValue::Null,
+            ],
         );
 
         patient_cdf
@@ -193,20 +194,14 @@ mod tests {
 
         let mut phenopackets = builder.build();
 
-        let measurement1 = generate_quant_measurement(
-            default_quant_loinc(),
-            measurements()[0],
-            default_uo_term().id.as_str(),
-            None,
-            None,
-        );
+        let measurement1 = default_quant_measurement();
 
         let measurement2 = generate_quant_measurement(
             default_quant_loinc(),
             measurements()[1],
+            None,
             default_uo_term().id.as_str(),
-            Some(default_age_element()),
-            Some(ref_range()),
+            None,
         );
 
         let mut expected_phenopacket = Phenopacket {

@@ -702,11 +702,7 @@ mod tests {
     use crate::ontology::DatabaseRef;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_disease, default_disease_oc, default_iso_age,
-        default_phenopacket_id, default_phenotype_oc, default_timestamp, default_timestamp_element,
-        generate_phenotype,
-    };
+    use crate::test_suite::phenopacket_component_generation::{default_age_element, default_disease, default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc, default_qual_measurement, default_quant_loinc, default_quant_measurement, default_reference_range, default_timestamp, default_timestamp_element, default_uo_term, generate_phenotype};
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
@@ -1609,6 +1605,56 @@ mod tests {
                 survival_time_in_days: 322,
             })
         );
+    }
+
+    #[rstest]
+    fn test_insert_quantitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+
+        let phenopacket_id = default_phenopacket_id();
+        let measurement_val = 1.1;
+
+        builder
+            .insert_quantitative_measurement(
+                phenopacket_id.as_str(),
+                measurement_val,
+                Some(default_iso_age().as_str()),
+                default_quant_loinc().id.as_str(),
+                default_uo_term().id.as_str(),
+                Some(default_reference_range()),
+            )
+            .unwrap();
+
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let measurements = phenopacket.measurements.clone();
+        assert_eq!(measurements.len(), 1);
+
+        let quant_measurement = measurements.first().unwrap();
+        assert_eq!(quant_measurement, &default_quant_measurement());
+    }
+
+    #[rstest]
+    fn test_insert_qualitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+
+        let phenopacket_id = default_phenopacket_id();
+        let measurement_val = "Present";
+
+        builder
+            .insert_qualitative_measurement(
+                phenopacket_id.as_str(),
+                measurement_val,
+                Some(default_iso_age().as_str()),
+                default_qual_loinc().id.as_str(),
+            )
+            .unwrap();
+
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let measurements = phenopacket.measurements.clone();
+        assert_eq!(measurements.len(), 1);
+
+        let qual_measurement = measurements.first().unwrap();
+        assert_eq!(qual_measurement, &default_qual_measurement());
     }
 
     #[rstest]

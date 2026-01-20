@@ -72,8 +72,8 @@ mod tests {
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_iso_age, default_phenopacket_id, default_qual_loinc,
-        generate_qual_measurement,
+        default_iso_age, default_pato_qual_measurement, default_phenopacket_id, default_qual_loinc,
+        default_qual_measurement, generate_qual_measurement,
     };
     use crate::test_suite::resource_references::{
         loinc_meta_data_resource, pato_meta_data_resource,
@@ -92,14 +92,6 @@ mod tests {
     }
 
     #[fixture]
-    fn pato_present() -> OntologyClass {
-        OntologyClass {
-            id: "PATO:0000467".to_string(),
-            label: "present".to_string(),
-        }
-    }
-
-    #[fixture]
     fn pato_absent() -> OntologyClass {
         OntologyClass {
             id: "PATO:0000462".to_string(),
@@ -112,7 +104,7 @@ mod tests {
         let mut patient_cdf = generate_minimal_cdf(1, 2);
         let measurements = Series::new(
             "nitrate in urine".into(),
-            vec![pato_present().label, pato_absent().label],
+            vec![default_pato_qual_measurement().label, pato_absent().label],
         );
 
         let time_observed = Series::new(
@@ -155,13 +147,9 @@ mod tests {
 
         let mut phenopackets = builder.build();
 
-        let measurement1 = generate_qual_measurement(default_qual_loinc(), pato_present(), None);
+        let measurement1 = default_qual_measurement();
 
-        let measurement2 = generate_qual_measurement(
-            default_qual_loinc(),
-            pato_absent(),
-            Some(default_age_element()),
-        );
+        let measurement2 = generate_qual_measurement(default_qual_loinc(), pato_absent(), None);
 
         let mut expected_phenopacket = Phenopacket {
             id: pp_id,

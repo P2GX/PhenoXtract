@@ -119,11 +119,44 @@ pub(crate) fn default_uo_term() -> OntologyClass {
     }
 }
 
+pub(crate) fn default_reference_range() -> (f64, f64) {
+    (0.0, 3.3)
+}
+
+pub(crate) fn default_quant_value() -> f64 {
+    1.1
+}
+
+pub(crate) fn default_pato_qual_measurement() -> OntologyClass {
+    OntologyClass {
+        id: "PATO:0000467".to_string(),
+        label: "present".to_string(),
+    }
+}
+
+pub(crate) fn default_quant_measurement() -> Measurement {
+    generate_quant_measurement(
+        default_quant_loinc(),
+        default_quant_value(),
+        Some(default_age_element()),
+        default_uo_term().id.as_str(),
+        Some(default_reference_range()),
+    )
+}
+
+pub(crate) fn default_qual_measurement() -> Measurement {
+    generate_qual_measurement(
+        default_qual_loinc(),
+        default_pato_qual_measurement(),
+        Some(default_age_element()),
+    )
+}
+
 pub(crate) fn generate_quant_measurement(
     loinc_term: OntologyClass,
     quant_measurement: f64,
-    unit_id: &str,
     time_observed: Option<TimeElement>,
+    unit_id: &str,
     reference_range: Option<(f64, f64)>,
 ) -> Measurement {
     let unit_label = UO_DICT
