@@ -191,22 +191,20 @@ fn test_complete_keio(temp_dir: TempDir) {
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
         ]),
-        Box::new(build_hgnc_test_client(temp_dir.path())),  
-        Box::new(build_hgvs_test_client(temp_dir.path())),  
+        Box::new(build_hgnc_test_client(temp_dir.path())),
+        Box::new(build_hgvs_test_client(temp_dir.path())),
     );
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CdfCollectorBroker::with_default_collectors(
-            phenopacket_builder, cohort_name.to_owned()),
+        CdfCollectorBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
     );
 
     // Loader + Pipeline
 
     let output_dir = assets_path.join("irud").join("phenopackets");
     fs::create_dir_all(&output_dir).unwrap();
-    let loader = Box::new(
-        FileSystemLoader::new(output_dir.clone(), true));
+    let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
     pipeline.run(&mut data_sources).unwrap();
