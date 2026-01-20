@@ -226,7 +226,7 @@ mod tests {
 
         let diseases_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("diseases".to_string()))
-            .with_data_context(Context::MondoLabelOrId)
+            .with_data_context(Context::DiseaseLabelOrId)
             .with_building_block_id(Some("Block_3".to_string()));
 
         let gene_sc = SeriesContext::default()

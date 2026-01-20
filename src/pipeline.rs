@@ -1,5 +1,5 @@
 use crate::config::pipeline_config::PipelineConfig;
-use crate::config::{ConfigLoader, PhenoXtractorConfig};
+use crate::config::{ConfigLoader, PhenoXtractConfig};
 use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
@@ -7,8 +7,8 @@ use crate::load::traits::Loadable;
 
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
-use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::traits::HasPrefixId;
+use crate::ontology::loinc_client::LoincClient;
+use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
@@ -18,9 +18,7 @@ use log::info;
 use phenopackets::schema::v2::Phenopacket;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use validator::Validate;
 
 #[derive(Debug)]
@@ -104,21 +102,34 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
         let mut ontology_factory = CachedOntologyFactory::default();
-        let hp_dict = ontology_factory.build_bidict(&config.meta_data.hp_ref, None)?;
-        let mondo_dict = ontology_factory.build_bidict(&config.meta_data.mondo_ref, None)?;
-        let geno_dict = ontology_factory.build_bidict(&config.meta_data.geno_ref, None)?;
 
-        let bi_dicts: HashMap<String, Arc<OntologyBiDict>> = HashMap::from_iter([
-            (hp_dict.ontology.prefix_id().to_string(), hp_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-            (geno_dict.ontology.prefix_id().to_string(), geno_dict),
-        ]);
+        let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
+        let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
+        let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
+
+        if let Some(hp_ref) = &config.meta_data.hp_ref {
+            let hpo_bidict = ontology_factory.build_bidict(hp_ref, None)?;
+            hpo_bidict_library.add_bidict(hpo_bidict);
+        };
+
+        for disease_ref in &config.meta_data.disease_refs {
+            let disease_bidict = ontology_factory.build_bidict(disease_ref, None)?;
+            disease_bidict_library.add_bidict(disease_bidict);
+        }
+
+        for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
+            let unit_bidict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
+            unit_bidict_library.add_bidict(unit_bidict);
+        }
 
         let mut strategy_factory = StrategyFactory::new(ontology_factory);
         let phenopacket_builder = PhenopacketBuilder::new(
-            bi_dicts,
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
+            hpo_bidict_library,
+            disease_bidict_library,
+            unit_bidict_library,
+            config.credentials.loinc.map(LoincClient::new),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
@@ -147,10 +158,10 @@ impl PartialEq for Pipeline {
     }
 }
 
-impl TryFrom<PhenoXtractorConfig> for Pipeline {
+impl TryFrom<PhenoXtractConfig> for Pipeline {
     type Error = ConstructionError;
 
-    fn try_from(config: PhenoXtractorConfig) -> Result<Self, Self::Error> {
+    fn try_from(config: PhenoXtractConfig) -> Result<Self, Self::Error> {
         Pipeline::try_from(config.pipeline)
     }
 }
@@ -162,7 +173,7 @@ impl TryFrom<PathBuf> for Pipeline {
         if !path.exists() {
             return Err(ConstructionError::NoConfigFileFound(path));
         }
-        let config: PhenoXtractorConfig = ConfigLoader::load(path.clone()).unwrap();
+        let config: PhenoXtractConfig = ConfigLoader::load(path.clone()).unwrap();
 
         Pipeline::try_from(config)
     }
@@ -172,7 +183,6 @@ impl TryFrom<PathBuf> for Pipeline {
 mod tests {
     use super::*;
     use crate::config::ConfigLoader;
-    use crate::skip_in_ci;
     use crate::test_suite::config::get_full_config_bytes;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
@@ -186,11 +196,10 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
-        skip_in_ci!();
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(get_full_config_bytes().as_slice()).unwrap();
-        let config: PhenoXtractorConfig = ConfigLoader::load(file_path.clone()).unwrap();
+        let config: PhenoXtractConfig = ConfigLoader::load(file_path.clone()).unwrap();
 
         let configs_from_sources = [
             Pipeline::try_from(config.clone()).unwrap(),

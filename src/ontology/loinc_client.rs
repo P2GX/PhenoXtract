@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use crate::config::credentials::LoincCredentials;
 use crate::ontology::traits::BIDict;
 use regex::bytes::Regex;
 use reqwest::blocking::Client;
@@ -81,7 +82,8 @@ pub struct LoincResult {
     pub version_first_released: Option<String>,
 }
 
-pub(crate) struct LoincClient {
+#[derive(Debug)]
+pub struct LoincClient {
     client: Client,
     base_url: String,
     user_name: String,
@@ -92,12 +94,12 @@ pub(crate) struct LoincClient {
 
 impl LoincClient {
     const LOINC_PREFIX: &'static str = "LOINC:";
-    pub fn new(user_name: &str, password: &str) -> Self {
+    pub fn new(loinc_credentials: LoincCredentials) -> Self {
         Self {
             client: Client::new(),
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
-            user_name: user_name.to_string(),
-            password: password.to_string(),
+            user_name: loinc_credentials.username,
+            password: loinc_credentials.password,
             cache: RwLock::new(HashMap::new()),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
         }
@@ -153,6 +155,12 @@ impl LoincClient {
     }
 }
 
+impl Default for LoincClient {
+    fn default() -> Self {
+        Self::new(LoincCredentials::default())
+    }
+}
+
 impl BIDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Option<String> {
         if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
@@ -192,30 +200,23 @@ impl BIDict for LoincClient {
 mod tests {
     use super::*;
     use dotenvy::dotenv;
+    use rstest::{fixture, rstest};
     use std::env;
 
-    fn setup_client() -> LoincClient {
+    #[fixture]
+    fn loinc_client() -> LoincClient {
         dotenv().ok();
-        let user_name =
-            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
-        let password =
-            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
-
-        LoincClient::new(&user_name, &password)
+        LoincClient::new(LoincCredentials::default())
     }
 
-    #[test]
-    fn test_get_term() {
-        let loinc_client = setup_client();
-
+    #[rstest]
+    fn test_get_term(loinc_client: LoincClient) {
         let res = loinc_client.get_term("LOINC:97062-4");
         assert_eq!(res.unwrap(), "History of High blood glucose");
     }
 
-    #[test]
-    fn test_get_id() {
-        let loinc_client = setup_client();
-
+    #[rstest]
+    fn test_get_id(loinc_client: LoincClient) {
         let term = "Glucose [Measurement] in Urine";
         let res = loinc_client.get_id(term);
 
@@ -226,10 +227,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_get_id_prefix() {
-        let loinc_client = setup_client();
-
+    #[rstest]
+    fn test_get_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
@@ -238,10 +237,8 @@ mod tests {
         assert_eq!(label_res, label_res_with_prefix);
     }
 
-    #[test]
-    fn test_get_term_id_prefix() {
-        let loinc_client = setup_client();
-
+    #[rstest]
+    fn test_get_term_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
 
@@ -250,10 +247,8 @@ mod tests {
         assert_eq!(label_res, label_res_with_prefix);
     }
 
-    #[test]
-    fn test_get_bidirectional() {
-        let loinc_client = setup_client();
-
+    #[rstest]
+    fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "97062-4";
         let id_input_with_prefix = format!("LOINC:{}", id_input);
         let label_res = loinc_client.get(&id_input_with_prefix);

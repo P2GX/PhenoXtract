@@ -10,9 +10,11 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use dotenvy::dotenv;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenoxtract::ontology::CachedOntologyFactory;
-use phenoxtract::ontology::traits::HasPrefixId;
+use phenoxtract::ontology::loinc_client::LoincClient;
+use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
@@ -24,8 +26,8 @@ use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use tempfile::TempDir;
 
 #[fixture]
@@ -120,7 +122,7 @@ fn csv_context_4() -> TableContext {
                 .with_data_context(Context::SubjectId),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("diseases".to_string()))
-                .with_data_context(Context::MondoLabelOrId)
+                .with_data_context(Context::DiseaseLabelOrId)
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
@@ -265,7 +267,6 @@ fn test_pipeline_integration(
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
-    skip_in_ci!();
     //Set-up
     let cohort_name = "my_cohort";
 
@@ -337,13 +338,16 @@ fn test_pipeline_integration(
 
     //Create the pipeline
 
+    // load variables in .env into environment. This is needed for the default LoincCredentials.
+    dotenv().ok();
+
     let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-        ]),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
+        BiDictLibrary::new("HPO", vec![hpo_dict]),
+        BiDictLibrary::new("MONDO", vec![mondo_dict]),
+        BiDictLibrary::empty_with_name("UNIT"),
+        Some(LoincClient::default()),
     );
 
     let transformer_module = TransformerModule::new(

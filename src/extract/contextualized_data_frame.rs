@@ -1089,7 +1089,7 @@ mod builder_tests {
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let keys = vec![Context::HpoLabelOrId];
-        let values = vec![Context::MondoLabelOrId];
+        let values = vec![Context::DiseaseLabelOrId];
 
         let header_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1107,7 +1107,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_header_context(Filter::Is(&Context::MondoLabelOrId))
+                .where_header_context(Filter::Is(&Context::DiseaseLabelOrId))
                 .collect()
                 .len(),
             2

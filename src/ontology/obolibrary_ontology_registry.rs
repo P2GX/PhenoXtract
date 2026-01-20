@@ -139,36 +139,6 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
-    /// Creates a default `ObolibraryOntologyRegistry` configured for the Genotype Ontology (GENO).
-    ///
-    /// This is a convenience constructor that sets up a registry with standard settings
-    /// for downloading GENO in JSON format.
-    ///
-    /// # Configuration
-    /// - **Ontology Prefix:** `"geno"`
-    /// - **File Name:** `"geno.json"`
-    /// - **Storage Path:**
-    ///   - Primary: Platform-specific cache directory (e.g., `~/.cache/<crate_name>/geno` on Linux)
-    ///   - Fallback: `$HOME/.<crate_name>/geno` if platform directories are unavailable
-    ///
-    /// The storage location is determined using the `directories` crate's project
-    /// directories, with a fallback to the home directory if that fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RegistryError::EnvironmentVarNotSet)` if neither the platform-specific
-    /// project directories nor the `HOME` environment variable can be determined.
-    pub fn default_geno_registry() -> Result<Self, RegistryError> {
-        let geno_id = "geno";
-        let registry_path = Self::default_registry_path(geno_id)?;
-
-        Ok(ObolibraryOntologyRegistry::new(
-            registry_path,
-            Some("geno.json"),
-            geno_id,
-        ))
-    }
-
     /// Creates a default `ObolibraryOntologyRegistry` configured for the Human Phenotype Ontology (HPO) annotations.
     ///
     /// This is a convenience constructor that sets up a registry with standard settings
@@ -201,10 +171,8 @@ impl ObolibraryOntologyRegistry {
         ))
     }
 
-    fn resolve_filename_and_version(&mut self, version: &str) -> Result<String, RegistryError> {
-        let needs_metadata = version == "latest" || self.file_name.is_none();
-
-        if !needs_metadata {
+    fn resolve_version(&self, version: &str) -> Result<String, RegistryError> {
+        if version != "latest" {
             return Ok(version.to_string());
         }
 
@@ -212,23 +180,30 @@ impl ObolibraryOntologyRegistry {
             .bio_registry_client
             .get_resource(self.ontology_prefix.as_str())?;
 
-        let resolved_version = if version == "latest" {
-            metadata.version.ok_or_else(|| {
-                RegistryError::UnableToResolveVersion(version.to_string(), self.file_name.clone())
-            })?
-        } else {
-            version.to_string()
-        };
-
-        if self.file_name.is_none() {
-            self.file_name = metadata
-                .download_json
-                .or(metadata.download_owl)
-                .or(metadata.download_obo)
-                .map(|url| url.split("/").last().unwrap().to_string());
-        }
+        let resolved_version = metadata.version.ok_or_else(|| {
+            RegistryError::UnableToResolveVersion(version.to_string(), self.file_name.clone())
+        })?;
 
         Ok(resolved_version)
+    }
+
+    fn resolve_file_name(&mut self) -> Result<(), RegistryError> {
+        if self.file_name.is_some() {
+            return Ok(());
+        }
+
+        let metadata = self
+            .bio_registry_client
+            .get_resource(self.ontology_prefix.as_str())?;
+
+        // we only check the json file, because ontolius only supports json.
+        if let Some(json_file_url) = metadata.download_json {
+            self.file_name = Some(json_file_url.split("/").last().unwrap().to_string());
+        } else {
+            return Err(RegistryError::JsonFileMissing(metadata.prefix));
+        }
+
+        Ok(())
     }
 
     fn construct_file_name(&self, version: &str) -> String {
@@ -277,7 +252,8 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
         if !self.registry_path.exists() {
             std::fs::create_dir_all(&self.registry_path)?;
         }
-        let resolved_version = self.resolve_filename_and_version(version)?;
+        let resolved_version = self.resolve_version(version)?;
+        self.resolve_file_name()?;
 
         let mut out_path = self.registry_path.clone();
         out_path.push(self.construct_file_name(&resolved_version));
@@ -314,7 +290,9 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
 
     fn deregister(&mut self, version: &str) -> Result<(), RegistryError> {
-        let resolved_version = self.resolve_filename_and_version(version)?;
+        let resolved_version = self.resolve_version(version)?;
+        self.resolve_file_name()?;
+
         let file_path = self
             .registry_path
             .clone()
@@ -331,7 +309,9 @@ impl OntologyRegistry for ObolibraryOntologyRegistry {
     }
 
     fn get_location(&mut self, version: &str) -> Option<PathBuf> {
-        let resolved_version = self.resolve_filename_and_version(version).ok()?;
+        let resolved_version = self.resolve_version(version).ok()?;
+        self.resolve_file_name().ok()?;
+
         let file_path = self
             .registry_path
             .clone()
@@ -433,22 +413,6 @@ mod tests {
         // assert!(registry.registry_path.to_str().unwrap().contains("mondo"));
         assert_eq!(registry.file_name, Some("mondo.json".to_string()));
         assert_eq!(registry.ontology_prefix, "mondo");
-    }
-
-    #[rstest]
-    fn test_default_geno_registry() {
-        let registry = ObolibraryOntologyRegistry::default_geno_registry().unwrap();
-        /*
-        assert!(
-            registry
-                .registry_path
-                .to_str()
-                .unwrap()
-                .to_lowercase()
-                .contains(env!("CARGO_PKG_NAME"))
-        );*/
-        assert_eq!(registry.file_name, Some("geno.json".to_string()));
-        assert_eq!(registry.ontology_prefix, "geno");
     }
 
     #[rstest]

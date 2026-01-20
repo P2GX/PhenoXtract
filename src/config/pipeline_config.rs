@@ -1,3 +1,4 @@
+use crate::config::credentials::Credentials;
 use crate::config::loader_config::LoaderConfig;
 use crate::config::meta_data::MetaData;
 use crate::config::strategy_config::StrategyConfig;
@@ -17,6 +18,8 @@ pub struct PipelineConfig {
 
     /// The loader responsible for fetching the initial data.
     pub loader: LoaderConfig,
+
+    pub credentials: Credentials,
 }
 
 impl PipelineConfig {
@@ -24,11 +27,13 @@ impl PipelineConfig {
         meta_data: MetaData,
         transform_strategies: Vec<StrategyConfig>,
         loader: LoaderConfig,
+        credentials: Credentials,
     ) -> Self {
         Self {
             meta_data,
             transform_strategies,
             loader,
+            credentials,
         }
     }
 }
