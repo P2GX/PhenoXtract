@@ -66,12 +66,13 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::strategy_config::StrategyConfig;
     use crate::ontology::OntologyRef;
+    use crate::test_suite::ontology_mocking::MockOntologyRegistry;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
     fn create_test_factory() -> StrategyFactory {
         StrategyFactory {
-            ontology_factory: CachedOntologyFactory::default(),
+            ontology_factory: CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default())),
         }
     }
 
