@@ -48,7 +48,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "a2904131-9bf9-4245-a5b6-468b2443f8c2",
+                "id": "246f8ad2-b838-4bf7-aa07-3f0d1fa4a684",
                 "geneContext": {
                   "valueId": "HGNC:428",
                   "symbol": "ALMS1"
@@ -89,7 +89,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "83205f53-4456-47a3-ab58-96e94c45adfa",
+                "id": "71816f28-98d2-4a9d-83f1-aae608f7d43c",
                 "geneContext": {
                   "valueId": "HGNC:428",
                   "symbol": "ALMS1"
@@ -136,7 +136,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-20T09:25:41.373842Z",
+    "created": "2026-01-20T10:07:51.375513Z",
     "resources": [
       {
         "id": "hp",

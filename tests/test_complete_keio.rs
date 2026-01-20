@@ -142,20 +142,12 @@ fn test_complete_keio(temp_dir: TempDir) {
                 .with_identifier(Identifier::Regex("gene_symbol".to_string()))
                 .with_data_context(Context::HgncSymbolOrId)
                 .with_building_block_id(Some("A".to_string())),
-            // --- IMPORTANT ---
-            // I don't know from your snippet whether phenoxtract has Context::OmimId etc.
-            // If it does, replace these two contexts with the correct OMIM contexts.
-            //
+            // --- IMPORTANT --- OMIM IDs like "OMIM:123700" currently cannot be parsed as disease terms
+            // OMIM context missing
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease".to_string()))
                 .with_data_context(Context::MondoLabelOrId)
                 .with_building_block_id(Some("A".to_string())),
-            // NOTE: OMIM IDs like "OMIM:123700" currently cannot be parsed as disease terms
-            // by the PhenopacketBuilder. We'll add OMIM support later.
-            // SeriesContext::default()
-            //     .with_identifier(Identifier::Regex("disease_OMIM_id".to_string()))
-            //     .with_data_context(Context::OmimLabelOrId)
-            //     .with_building_block_id(Some("A".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("HGVS_1".to_string()))
                 .with_data_context(Context::Hgvs)
@@ -199,20 +191,22 @@ fn test_complete_keio(temp_dir: TempDir) {
             (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
             (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
         ]),
-        Box::new(build_hgnc_test_client(temp_dir.path())),
-        Box::new(build_hgvs_test_client(temp_dir.path())),
+        Box::new(build_hgnc_test_client(temp_dir.path())),  
+        Box::new(build_hgvs_test_client(temp_dir.path())),  
     );
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CdfCollectorBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
+        CdfCollectorBroker::with_default_collectors(
+            phenopacket_builder, cohort_name.to_owned()),
     );
 
     // Loader + Pipeline
 
     let output_dir = assets_path.join("irud").join("phenopackets");
     fs::create_dir_all(&output_dir).unwrap();
-    let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
+    let loader = Box::new(
+        FileSystemLoader::new(output_dir.clone(), true));
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
     pipeline.run(&mut data_sources).unwrap();

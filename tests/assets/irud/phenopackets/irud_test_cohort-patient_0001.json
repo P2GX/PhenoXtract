@@ -36,7 +36,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "1203acc1-0fa6-4c71-a86e-19817ee350dc",
+                "id": "a5da8676-cbdf-430c-8de9-05981105691e",
                 "geneContext": {
                   "valueId": "HGNC:3327",
                   "symbol": "ELN"
@@ -83,7 +83,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-20T09:25:41.373842Z",
+    "created": "2026-01-20T10:07:51.375513Z",
     "resources": [
       {
         "id": "hp",
