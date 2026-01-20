@@ -54,7 +54,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "f7f4d4ec-b7b6-48f2-a2c8-30e3298e7602",
+                "id": "d9bdf4ad-3110-4f8f-a0d4-621b110d79e6",
                 "geneContext": {
                   "valueId": "HGNC:3603",
                   "symbol": "FBN1"
@@ -101,7 +101,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-16T18:46:05.217559Z",
+    "created": "2026-01-20T09:25:41.373842Z",
     "resources": [
       {
         "id": "hp",
@@ -122,7 +122,7 @@
       {
         "id": "hgnc",
         "name": "HUGO Gene Nomenclature Committee",
-        "url": "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn",
         "version": "-",
         "namespacePrefix": "hgnc",
         "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"

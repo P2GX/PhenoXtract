@@ -48,7 +48,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "4c371879-0091-469f-a100-e132573d5dcb",
+                "id": "2fdbadaf-6edf-4503-8833-2e353647b6f9",
                 "geneContext": {
                   "valueId": "HGNC:19349",
                   "symbol": "KIF21A"
@@ -95,7 +95,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-16T18:46:05.217559Z",
+    "created": "2026-01-20T09:25:41.373842Z",
     "resources": [
       {
         "id": "hp",
@@ -116,7 +116,7 @@
       {
         "id": "hgnc",
         "name": "HUGO Gene Nomenclature Committee",
-        "url": "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn",
         "version": "-",
         "namespacePrefix": "hgnc",
         "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"

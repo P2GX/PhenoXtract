@@ -36,7 +36,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "1fab5ddc-2c33-4701-a2db-2e7f15878b45",
+                "id": "1203acc1-0fa6-4c71-a86e-19817ee350dc",
                 "geneContext": {
                   "valueId": "HGNC:3327",
                   "symbol": "ELN"
@@ -83,7 +83,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-16T18:46:05.217559Z",
+    "created": "2026-01-20T09:25:41.373842Z",
     "resources": [
       {
         "id": "hp",
@@ -104,7 +104,7 @@
       {
         "id": "hgnc",
         "name": "HUGO Gene Nomenclature Committee",
-        "url": "https://w3id.org/biopragmatics/resources/hgnc/2025-10-07/hgnc.ofn",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn",
         "version": "-",
         "namespacePrefix": "hgnc",
         "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
