@@ -36,7 +36,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "9e90ecbe-f359-4770-8a60-5745007d59d4",
+                "id": "4638333b-720e-43ce-9b5f-b572c68e3165",
                 "geneContext": {
                   "valueId": "HGNC:6990",
                   "symbol": "MECP2"
@@ -83,7 +83,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-20T10:23:41.282564Z",
+    "created": "2026-01-20T10:49:26.354057Z",
     "resources": [
       {
         "id": "hp",

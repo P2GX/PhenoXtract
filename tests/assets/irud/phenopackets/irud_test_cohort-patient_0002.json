@@ -48,7 +48,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "02d84bfc-858d-45b7-8ee1-c9ff01ea0880",
+                "id": "851674b8-50c0-4feb-9003-1f68f074c3a2",
                 "geneContext": {
                   "valueId": "HGNC:19349",
                   "symbol": "KIF21A"
@@ -95,7 +95,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-20T10:23:41.282564Z",
+    "created": "2026-01-20T10:49:26.354057Z",
     "resources": [
       {
         "id": "hp",

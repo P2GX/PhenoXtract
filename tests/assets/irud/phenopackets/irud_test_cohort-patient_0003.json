@@ -54,7 +54,7 @@
               "acmgPathogenicityClassification": "PATHOGENIC",
               "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
               "variationDescriptor": {
-                "id": "19d50773-c858-4ee0-b41a-db2106ef204b",
+                "id": "7b77286a-068e-4424-8591-f9fd2ee10045",
                 "geneContext": {
                   "valueId": "HGNC:3603",
                   "symbol": "FBN1"
@@ -101,7 +101,7 @@
     }
   ],
   "metaData": {
-    "created": "2026-01-20T10:23:41.282564Z",
+    "created": "2026-01-20T10:49:26.354057Z",
     "resources": [
       {
         "id": "hp",
