@@ -147,7 +147,7 @@ mod tests {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
-            hpo_dict.get(&hpo_id).unwrap(),
+            hpo_dict.get(hpo_id).unwrap(),
             "Triggered by nickel".to_string()
         );
     }

@@ -176,7 +176,7 @@ impl BIDict for LoincClient {
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         if let Some(loinc_number) = self.cache_read(id) {
-            return Ok(&loinc_number);
+            return Ok(loinc_number);
         }
 
         let loinc_search_results = self.query(id)?;
@@ -279,7 +279,7 @@ mod tests {
         );
         let found_label = label_res.unwrap();
 
-        let id_res = loinc_client.get(&found_label);
+        let id_res = loinc_client.get(found_label);
         assert!(
             id_res.is_ok(),
             "Should find an ID for output: {}",

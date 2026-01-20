@@ -85,7 +85,7 @@ impl Strategy for OntologyNormaliserStrategy {
                     if self.ontology_dict.get_label(cell_value).is_ok() {
                         cell_value
                     } else if let Ok(curie_id) = self.ontology_dict.get(cell_value) {
-                        &curie_id
+                        curie_id
                     } else {
                         if !cell_value.is_empty() {
                             error_info.insert_error(
