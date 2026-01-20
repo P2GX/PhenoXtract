@@ -213,7 +213,7 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
-        dotenv().expect("Could not load .env");
+        dotenv().ok();
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).expect("Failed to create config file");
         file.write_all(get_full_config_bytes().as_slice())
