@@ -11,7 +11,7 @@ pub(crate) static UO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::uo_with_version("2026-01-09"));
 pub(crate) static PATO_REF: Lazy<OntologyRef> =
     Lazy::new(|| OntologyRef::pato_with_version("2025-05-14"));
-pub(crate) static LOINC_REF: Lazy<DatabaseRef> = Lazy::new(|| DatabaseRef::loinc());
+pub(crate) static LOINC_REF: Lazy<DatabaseRef> = Lazy::new(DatabaseRef::loinc);
 
 pub(crate) fn mondo_meta_data_resource() -> Resource {
     Resource {
