@@ -16,10 +16,10 @@ use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
-use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
+use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
@@ -145,6 +145,43 @@ fn csv_context_4() -> TableContext {
 }
 
 #[fixture]
+fn csv_context_5() -> TableContext {
+    TableContext::new(
+        "CSV_Table_5".to_string(),
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("height (cm)".to_string()))
+                .with_data_context(Context::QuantitativeMeasurement {
+                    loinc_id: "8302-2".to_string(),
+                    unit_ontology_id: "UO:0000015".to_string(),
+                })
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("ref_low".to_string()))
+                .with_data_context(Context::ReferenceRangeLow)
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("ref_high".to_string()))
+                .with_data_context(Context::ReferenceRangeHigh)
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("nitrates in urine".to_string()))
+                .with_data_context(Context::QualitativeMeasurement {
+                    loinc_id: "LOINC:5802-4".to_string(),
+                })
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("date_of_observation".to_string()))
+                .with_data_context(Context::OnsetDate)
+                .with_building_block_id(Some("M".to_string())),
+        ],
+    )
+}
+
+#[fixture]
 fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     vec![
         TableContext::new(
@@ -264,6 +301,7 @@ fn test_pipeline_integration(
     csv_context_2: TableContext,
     csv_context_3: TableContext,
     csv_context_4: TableContext,
+    csv_context_5: TableContext,
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
@@ -278,6 +316,12 @@ fn test_pipeline_integration(
     let mondo_dict = onto_factory
         .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
         .unwrap();
+    let unit_dict = onto_factory
+        .build_bidict(&OntologyRef::uo_with_version("2026-01-09"), None)
+        .unwrap();
+    let qual_meas_dict = onto_factory
+        .build_bidict(&OntologyRef::pato_with_version("2025-05-14"), None)
+        .unwrap();
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -286,6 +330,7 @@ fn test_pipeline_integration(
     let csv_path_2 = assets_path.clone().join("csv_data_2.csv");
     let csv_path_3 = assets_path.clone().join("csv_data_3.csv");
     let csv_path_4 = assets_path.clone().join("csv_data_4.csv");
+    let csv_path_5 = assets_path.clone().join("csv_data_5.csv");
     let excel_path = assets_path.clone().join("excel_data.xlsx");
 
     let mut data_sources = [
@@ -313,6 +358,12 @@ fn test_pipeline_integration(
             csv_context_4,
             ExtractionConfig::new("CSV_Table_4".to_string(), true, true),
         )),
+        DataSource::Csv(CSVDataSource::new(
+            csv_path_5,
+            None,
+            csv_context_5,
+            ExtractionConfig::new("CSV_Table_5".to_string(), true, true),
+        )),
         DataSource::Excel(ExcelDatasource::new(
             excel_path,
             excel_context,
@@ -331,6 +382,12 @@ fn test_pipeline_integration(
             hpo_dict.clone(),
             Context::HpoLabelOrId,
         )),
+        Box::new(OntologyNormaliserStrategy::new(
+            qual_meas_dict.clone(),
+            Context::QualitativeMeasurement {
+                loinc_id: "LOINC:5802-4".to_string(),
+            },
+        )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),
@@ -346,8 +403,8 @@ fn test_pipeline_integration(
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
         BiDictLibrary::new("MONDO", vec![mondo_dict]),
-        BiDictLibrary::empty_with_name("UNIT"),
-        BiDictLibrary::empty_with_name("QUAL"),
+        BiDictLibrary::new("UNIT", vec![unit_dict]),
+        BiDictLibrary::new("QUAL", vec![qual_meas_dict]),
         Some(LoincClient::default()),
     );
 
