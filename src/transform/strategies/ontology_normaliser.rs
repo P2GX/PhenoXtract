@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::ContextKind;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::transform::error::StrategyError::MappingError;
@@ -39,14 +39,14 @@ use std::sync::Arc;
 /// 5. Returns an error if any labels failed to map (except for null values)
 pub struct OntologyNormaliserStrategy {
     ontology_dict: Arc<OntologyBiDict>,
-    data_context: Context,
+    data_context_kind: ContextKind,
 }
 
 impl OntologyNormaliserStrategy {
-    pub fn new(ontology_dict: Arc<OntologyBiDict>, data_context: Context) -> Self {
+    pub fn new(ontology_dict: Arc<OntologyBiDict>, data_context_kind: ContextKind) -> Self {
         Self {
             ontology_dict,
-            data_context,
+            data_context_kind,
         }
     }
 }
@@ -56,8 +56,7 @@ impl Strategy for OntologyNormaliserStrategy {
         tables.iter().any(|table| {
             !table
                 .filter_columns()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&self.data_context))
+                .where_data_context_kind(Filter::Is(&self.data_context_kind))
                 .where_data_type(Filter::Is(&DataType::String))
                 .collect()
                 .is_empty()
@@ -75,8 +74,7 @@ impl Strategy for OntologyNormaliserStrategy {
         for table in tables.iter_mut() {
             let column_names = table
                 .filter_columns()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&self.data_context))
+                .where_data_context_kind(Filter::Is(&self.data_context_kind))
                 .collect_owned_names();
 
             for col_name in column_names {
@@ -120,7 +118,7 @@ impl Strategy for OntologyNormaliserStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::context::Context;
+    use crate::config::context::{Context, ContextKind};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_suite::ontology_mocking::HPO_DICT;
@@ -172,7 +170,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabelOrId,
+            data_context_kind: ContextKind::HpoLabelOrId,
         };
         let _ = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -211,7 +209,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabelOrId,
+            data_context_kind: ContextKind::HpoLabelOrId,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -283,7 +281,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context: Context::HpoLabelOrId,
+            data_context_kind: ContextKind::HpoLabelOrId,
         };
         let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 

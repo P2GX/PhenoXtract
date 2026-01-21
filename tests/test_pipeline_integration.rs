@@ -1,6 +1,6 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
-use phenoxtract::config::context::Context;
+use phenoxtract::config::context::{Context, ContextKind};
 use phenoxtract::config::table_context::{
     AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
 };
@@ -362,7 +362,7 @@ fn test_pipeline_integration(
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
             hpo_dict.clone(),
-            Context::HpoLabelOrId,
+            ContextKind::HpoLabelOrId,
         )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
