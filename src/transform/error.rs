@@ -213,6 +213,14 @@ pub enum StrategyError {
         subject_id: String,
         unparseable_date: String,
     },
+    #[error(
+        "The column {column_name} had datatype {found_datatype}. Only the datatypes {allowed_datatypes:?} are accepted."
+    )]
+    DataTypeError {
+        column_name: String,
+        allowed_datatypes: Vec<DataType>,
+        found_datatype: DataType,
+    },
 }
 
 impl From<DataProcessingError> for StrategyError {
