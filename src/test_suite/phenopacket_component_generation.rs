@@ -1,3 +1,4 @@
+use crate::ontology::traits::BIDict;
 use crate::test_suite::cdf_generation::default_patient_id;
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use crate::transform::data_processing::parsing::try_parse_string_datetime;

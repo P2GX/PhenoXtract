@@ -1,4 +1,6 @@
+use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::OntologyRef;
+use crate::ontology::traits::BIDict;
 use ontolius::Identified;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::ontology::{MetadataAware, OntologyTerms};
@@ -12,6 +14,44 @@ pub struct OntologyBiDict {
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
+}
+
+impl BIDict for OntologyBiDict {
+    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+        let normalized_key = Self::normalize_key(id_or_label);
+
+        if let Some(identifier) = self.label_to_id.get(&normalized_key) {
+            return Ok(identifier);
+        }
+        if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
+            return Ok(identifier);
+        }
+        if let Some(label) = self.id_to_label.get(&normalized_key) {
+            return Ok(label);
+        }
+        Err(BiDictError::NotFound(normalized_key))
+    }
+
+    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+        let normalized_key = Self::normalize_key(id);
+
+        if let Some(label) = self.id_to_label.get(&normalized_key) {
+            return Ok(label);
+        }
+        Err(BiDictError::NotFound(normalized_key.to_string()))
+    }
+
+    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+        let normalized_key = Self::normalize_key(term);
+
+        if let Some(identifier) = self.label_to_id.get(&normalized_key) {
+            return Ok(identifier);
+        }
+        if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
+            return Ok(identifier);
+        }
+        Err(BiDictError::NotFound(normalized_key))
+    }
 }
 
 impl OntologyBiDict {
@@ -42,49 +82,6 @@ impl OntologyBiDict {
             synonym_to_id: synonym_to_id_lower,
             id_to_label: id_to_label_lower,
         }
-    }
-
-    /// Performs a case-insensitive search for an Ontology label, synonym, or ID.
-    ///
-    /// This method provides a unified interface to query the dictionary. It checks for
-    /// a match in the following order:
-    /// 1.  Official label -> Ontology ID
-    /// 2.  Synonym name -> Ontology ID
-    /// 3.  Ontology ID -> Official label
-    ///
-    /// The search is case-insensitive.
-    ///
-    /// # Parameters
-    ///
-    /// * `key`: A string slice representing the label name, synonym, or Ontology ID to look up.
-    ///
-    /// # Returns
-    ///
-    /// * `Some(&str)` containing the corresponding ID or label name if a match is found.
-    /// * `None` if the input string does not match any known label, synonym, or ID.
-    pub fn get(&self, key: &str) -> Option<&str> {
-        let normalized_key = Self::normalize_key(key);
-
-        if let Some(identifier) = self.label_to_id.get(&normalized_key) {
-            return Some(identifier);
-        }
-        if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
-            return Some(identifier);
-        }
-        if let Some(label) = self.id_to_label.get(&normalized_key) {
-            return Some(label);
-        }
-        None
-    }
-
-    pub fn is_primary_label(&self, key: &str) -> bool {
-        self.label_to_id.contains_key(&Self::normalize_key(key))
-    }
-    pub fn is_synonym(&self, key: &str) -> bool {
-        self.synonym_to_id.contains_key(&Self::normalize_key(key))
-    }
-    pub fn is_id(&self, key: &str) -> bool {
-        self.id_to_label.contains_key(&Self::normalize_key(key))
     }
 
     fn normalize_key(key: &str) -> String {
@@ -127,25 +124,31 @@ mod tests {
     fn test_hpo_bidict_get() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
 
-        assert_eq!(hpo_dict.get("HP:0000639"), Some("Nystagmus"));
+        assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
-        assert_eq!(hpo_dict.get("Nystagmus"), Some("HP:0000639"));
+        assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
-        assert_eq!(hpo_dict.get("contact with nickel"), Some("HP:4000120"));
+        assert_eq!(
+            hpo_dict.get("contact with nickel").unwrap(),
+            "HP:4000120".to_string()
+        );
     }
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
-        let hpo_id = hpo_dict.get("contact with nickel");
-        assert_eq!(hpo_dict.get(hpo_id.unwrap()), Some("Triggered by nickel"));
+        let hpo_id = hpo_dict.get("contact with nickel").unwrap();
+        assert_eq!(
+            hpo_dict.get(hpo_id).unwrap(),
+            "Triggered by nickel".to_string()
+        );
     }
 }
