@@ -1,6 +1,6 @@
 use crate::ontology::error::BiDictError;
-use crate::ontology::resource_references::OntologyRef;
-use crate::ontology::traits::BIDict;
+use crate::ontology::resource_references::{OntologyRef, ResourceRef};
+use crate::ontology::traits::BiDict;
 use ontolius::Identified;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::ontology::{MetadataAware, OntologyTerms};
@@ -16,7 +16,7 @@ pub struct OntologyBiDict {
     id_to_label: HashMap<String, String>,
 }
 
-impl BIDict for OntologyBiDict {
+impl BiDict for OntologyBiDict {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         let normalized_key = Self::normalize_key(id_or_label);
 
@@ -52,6 +52,11 @@ impl BIDict for OntologyBiDict {
         }
         Err(BiDictError::NotFound(normalized_key))
     }
+
+    fn reference(&self) -> &ResourceRef {
+        self.ontology.as_inner()
+    }
+}
 }
 
 impl OntologyBiDict {
@@ -117,25 +122,26 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ontology::resource_references::KnownPrefixes;
     use crate::test_suite::ontology_mocking::HPO;
     use rstest::rstest;
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
 
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
         assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
         assert_eq!(
             hpo_dict.get("contact with nickel").unwrap(),
             "HP:4000120".to_string()
@@ -144,7 +150,7 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
             hpo_dict.get(hpo_id).unwrap(),
