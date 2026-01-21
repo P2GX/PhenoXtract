@@ -63,7 +63,7 @@ impl StrategyFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::{Context, ContextKind};
+    use crate::config::context::ContextKind;
     use crate::config::strategy_config::StrategyConfig;
     use crate::ontology::OntologyRef;
     use crate::transform::strategies::mapping::DefaultMapping;
