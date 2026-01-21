@@ -1,14 +1,27 @@
 #![allow(unused)]
-
-use crate::config::credentials::LoincCredentials;
 use crate::ontology::error::BiDictError;
-use crate::ontology::traits::BIDict;
+use crate::ontology::resource_references::ResourceRef;
+use crate::ontology::traits::{BiDict, HasVersion};
 use regex::bytes::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoincRelease {
+    pub version: String,
+    pub release_date: String,
+    pub relma_version: String,
+    pub number_of_loincs: i64,
+    pub max_loinc: String,
+    pub download_url: String,
+    #[serde(rename = "downloadMD5Hash")]
+    pub download_md5_hash: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -91,18 +104,25 @@ pub struct LoincClient {
     password: String,
     cache: RwLock<HashMap<String, String>>,
     loinc_id_regex: Regex,
+    reference: OnceLock<ResourceRef>,
 }
 
 impl LoincClient {
     const LOINC_PREFIX: &'static str = "LOINC:";
-    pub fn new(loinc_credentials: LoincCredentials) -> Self {
+    pub fn new(user_name: String, password: String, reference: Option<ResourceRef>) -> Self {
+        let reference_lock = match reference {
+            Some(r) if r.version() != "latest" && !r.version().is_empty() => OnceLock::from(r),
+            _ => OnceLock::new(),
+        };
+
         Self {
             client: Client::new(),
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
-            user_name: loinc_credentials.username,
-            password: loinc_credentials.password,
+            user_name,
+            password,
             cache: RwLock::new(HashMap::new()),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
+            reference: reference_lock,
         }
     }
 
@@ -161,11 +181,16 @@ impl LoincClient {
 
 impl Default for LoincClient {
     fn default() -> Self {
-        Self::new(LoincCredentials::default())
+        let username =
+            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
+        let password =
+            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
+
+        Self::new(username, password, None)
     }
 }
 
-impl BIDict for LoincClient {
+impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
             self.get_label(id_or_label)
@@ -211,6 +236,27 @@ impl BIDict for LoincClient {
             Some(id) => Ok(id),
         }
     }
+
+    fn reference(&self) -> &ResourceRef {
+        self.reference.get_or_init(|| {
+            let res: LoincRelease = self
+                .client
+                .get("https://loinc.regenstrief.org/api/v1/Loinc")
+                .basic_auth(&self.user_name, Some(&self.password))
+                .send()
+                .expect("Loinc client request failed")
+                .json()
+                .expect("Loinc client request failed");
+
+            ResourceRef::from(res)
+        })
+    }
+}
+
+impl From<LoincRelease> for ResourceRef {
+    fn from(value: LoincRelease) -> Self {
+        ResourceRef::new("LOINC".to_string(), value.version)
+    }
 }
 
 #[cfg(test)]
@@ -223,7 +269,8 @@ mod tests {
     #[fixture]
     fn loinc_client() -> LoincClient {
         dotenv().ok();
-        LoincClient::new(LoincCredentials::default())
+
+        LoincClient::default()
     }
 
     #[rstest]
