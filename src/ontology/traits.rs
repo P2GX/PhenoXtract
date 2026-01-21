@@ -1,4 +1,4 @@
-use crate::ontology::error::{BiDictError};
+use crate::ontology::error::BiDictError;
 
 pub trait HasPrefixId {
     fn prefix_id(&self) -> &str;
