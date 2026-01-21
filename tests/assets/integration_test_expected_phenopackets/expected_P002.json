@@ -52,7 +52,9 @@
         "label": "Body height"
       },
       "timeObserved": {
-        "timestamp": "2026-01-21T00:00:00Z"
+        "age": {
+          "iso8601duration": "P40Y1M9D"
+        }
       },
       "value": {
         "quantity": {
@@ -78,7 +80,9 @@
         "label": "Nitrite [Presence] in Urine by Test strip"
       },
       "timeObserved": {
-        "timestamp": "2026-01-21T00:00:00Z"
+        "age": {
+          "iso8601duration": "P40Y1M9D"
+        }
       },
       "value": {
         "ontologyClass": {
