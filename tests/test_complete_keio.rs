@@ -6,8 +6,9 @@ use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::CachedOntologyFactory;
+use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::ontology::resource_references::OntologyRef;
-use phenoxtract::ontology::traits::HasPrefixId;
+use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
@@ -18,7 +19,7 @@ use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -146,7 +147,7 @@ fn test_complete_keio(temp_dir: TempDir) {
             // OMIM context missing
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease".to_string()))
-                .with_data_context(Context::MondoLabelOrId)
+                .with_data_context(Context::DiseaseLabelOrId)
                 .with_building_block_id(Some("A".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("HGVS_1".to_string()))
@@ -179,7 +180,7 @@ fn test_complete_keio(temp_dir: TempDir) {
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(OntologyNormaliserStrategy::new(
             mondo_dict.clone(),
-            Context::MondoLabelOrId,
+            Context::DiseaseLabelOrId,
         )),
         Box::new(MultiHPOColExpansionStrategy),
     ];
@@ -187,12 +188,12 @@ fn test_complete_keio(temp_dir: TempDir) {
     // PhenopacketBuilder
 
     let phenopacket_builder = PhenopacketBuilder::new(
-        HashMap::from_iter([
-            (hpo_dict.ontology.prefix_id().to_string(), hpo_dict),
-            (mondo_dict.ontology.prefix_id().to_string(), mondo_dict),
-        ]),
-        Box::new(build_hgnc_test_client(temp_dir.path())),  
-        Box::new(build_hgvs_test_client(temp_dir.path())),  
+        Box::new(build_hgnc_test_client(temp_dir.path())),
+        Box::new(build_hgvs_test_client(temp_dir.path())),
+        BiDictLibrary::new("HPO", vec![hpo_dict]),
+        BiDictLibrary::new("MONDO", vec![mondo_dict]),
+        BiDictLibrary::empty_with_name("UNIT"),
+        Some(LoincClient::default()),
     );
 
     let transformer_module = TransformerModule::new(
