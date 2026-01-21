@@ -2,6 +2,7 @@ use crate::ontology::traits::{HasPrefixId, HasVersion};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
+use strum_macros::EnumString;
 
 #[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct ResourceRef {
@@ -37,11 +38,6 @@ impl HasPrefixId for ResourceRef {
 pub struct OntologyRef(ResourceRef);
 
 impl OntologyRef {
-    pub const HPO_PREFIX: &'static str = "HP";
-    pub const MONDO_PREFIX: &'static str = "MONDO";
-
-    pub const UO_PREFIX: &'static str = "UO";
-
     pub fn new(prefix_id: String, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
             prefix_id,
@@ -62,27 +58,34 @@ impl OntologyRef {
     pub fn into_inner(self) -> ResourceRef {
         self.0
     }
+    pub fn as_inner(&self) -> &ResourceRef {
+        &self.0
+    }
     pub fn hp() -> Self {
-        Self::new(Self::HPO_PREFIX.to_string(), None)
+        Self::new(KnownPrefixes::HP.to_string(), None)
     }
     pub fn hp_with_version(version: &str) -> Self {
-        Self::new(Self::HPO_PREFIX.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::HP.to_string(), Some(version.to_string()))
     }
 
     pub fn mondo() -> Self {
-        Self::new(Self::MONDO_PREFIX.to_string(), None)
+        Self::new(KnownPrefixes::MONDO.to_string(), None)
     }
 
     pub fn mondo_with_version(version: &str) -> Self {
-        Self::new(Self::MONDO_PREFIX.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::MONDO.to_string(), Some(version.to_string()))
     }
-
     pub fn uo() -> Self {
-        Self::new(Self::UO_PREFIX.to_string(), None)
+        Self::new(KnownPrefixes::UO.to_string(), None)
     }
-
     pub fn uo_with_version(version: &str) -> Self {
-        Self::new(Self::UO_PREFIX.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::UO.to_string(), Some(version.to_string()))
+    }
+}
+
+impl From<ResourceRef> for OntologyRef {
+    fn from(value: ResourceRef) -> Self {
+        Self(value)
     }
 }
 
@@ -124,78 +127,44 @@ impl From<&str> for OntologyRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
-pub struct DatabaseRef(ResourceRef);
-
-impl DatabaseRef {
-    pub const OMIM_PREFIX: &'static str = "omim";
-    pub const HGNC_PREFIX: &'static str = "hgnc";
-
-    pub fn new(prefix_id: String, version: Option<String>) -> Self {
-        DatabaseRef(ResourceRef {
-            prefix_id,
-            version: version.unwrap_or_else(|| "latest".to_string()),
-        })
-    }
-
-    #[allow(dead_code)]
-    fn with_prefix(mut self, prefix: &str) -> Self {
-        self.0.prefix_id = prefix.to_string();
-        self
-    }
-
-    pub fn with_version(mut self, version: &str) -> Self {
-        self.0.version = version.to_string();
-        self
-    }
-    pub fn omim() -> Self {
-        Self::new(Self::OMIM_PREFIX.to_string(), None)
-    }
-    pub fn omim_with_version(version: &str) -> Self {
-        Self::new(Self::OMIM_PREFIX.to_string(), Some(version.to_string()))
-    }
-    pub fn hgnc() -> Self {
-        Self::new(Self::HGNC_PREFIX.to_string(), None)
-    }
-    pub fn hgnc_with_version(version: &str) -> Self {
-        Self::new(Self::HGNC_PREFIX.to_string(), Some(version.to_string()))
-    }
+#[derive(Debug, PartialEq, Clone, EnumString)]
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) enum KnownPrefixes {
+    HP,
+    MONDO,
+    HGNC,
+    HGVS,
+    LOINC,
+    UO,
+    OMIM,
 }
 
-impl HasVersion for DatabaseRef {
-    fn version(&self) -> &str {
-        self.0.version()
-    }
-}
-
-impl HasPrefixId for DatabaseRef {
-    fn prefix_id(&self) -> &str {
-        self.0.prefix_id()
-    }
-}
-
-impl Deref for DatabaseRef {
-    type Target = ResourceRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Display for DatabaseRef {
+impl Display for KnownPrefixes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.0.prefix_id, self.0.version)
+        let as_str = match self {
+            KnownPrefixes::HP => "HP",
+            KnownPrefixes::MONDO => "MONDO",
+            KnownPrefixes::HGNC => "HGNC",
+            KnownPrefixes::HGVS => "HGVS",
+            KnownPrefixes::LOINC => "LOINC",
+            KnownPrefixes::UO => "UO",
+            KnownPrefixes::OMIM => "OMIM",
+        };
+        write!(f, "{}", as_str)
     }
 }
 
-impl From<String> for DatabaseRef {
-    fn from(prefix_id: String) -> Self {
-        DatabaseRef::new(prefix_id, None)
+impl From<KnownPrefixes> for ResourceRef {
+    fn from(value: KnownPrefixes) -> Self {
+        ResourceRef {
+            prefix_id: value.to_string(),
+            version: "latest".to_string(),
+        }
     }
 }
 
-impl From<&str> for DatabaseRef {
-    fn from(prefix_id: &str) -> Self {
-        DatabaseRef::from(prefix_id.to_string())
+impl From<KnownPrefixes> for String {
+    fn from(value: KnownPrefixes) -> Self {
+        value.to_string()
     }
 }
