@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::ontology::error::BiDictError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
 use pivot::hgvs::HGVSError;
@@ -300,4 +301,6 @@ pub enum PhenopacketBuilderError {
     HgvsError(#[from] HGVSError),
     #[error(transparent)]
     HgncError(#[from] HGNCError),
+    #[error(transparent)]
+    BidictError(#[from] BiDictError),
 }

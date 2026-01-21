@@ -486,17 +486,12 @@ impl PhenopacketBuilder {
                 loinc_id: loinc_id.to_string(),
             }
         })?;
-        let loinc_label = loinc_client.get_label(loinc_id).ok_or_else(|| {
-            PhenopacketBuilderError::ParsingError {
-                what: "LOINC label".to_string(),
-                value: loinc_id.to_string(),
-            }
-        })?;
+        let loinc_label = loinc_client.get_label(loinc_id)?;
 
         let mut measurement_element = Measurement {
             assay: Some(OntologyClass {
                 id: loinc_id.to_string(),
-                label: loinc_label,
+                label: loinc_label.to_string(),
             }),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::Quantity(quantity)),
@@ -555,17 +550,12 @@ impl PhenopacketBuilder {
                 loinc_id: loinc_id.to_string(),
             }
         })?;
-        let loinc_label = loinc_client.get_label(loinc_id).ok_or_else(|| {
-            PhenopacketBuilderError::ParsingError {
-                what: "LOINC label".to_string(),
-                value: loinc_id.to_string(),
-            }
-        })?;
+        let loinc_label = loinc_client.get_label(loinc_id)?;
 
         let mut measurement_element = Measurement {
             assay: Some(OntologyClass {
                 id: loinc_id.to_string(),
-                label: loinc_label,
+                label: loinc_label.to_string(),
             }),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::OntologyClass(qualitative_measurement_term)),
