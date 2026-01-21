@@ -109,7 +109,7 @@ mod tests {
 
         let time_observed = Series::new(
             "time_observed".into(),
-            &[AnyValue::Null, AnyValue::String(&default_iso_age())],
+            &[AnyValue::String(&default_iso_age()), AnyValue::Null],
         );
 
         patient_cdf

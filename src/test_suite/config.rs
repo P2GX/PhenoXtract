@@ -76,7 +76,7 @@ pipeline:
     hp_ref:
       version: "2025-09-01"
       prefix_id: "HP"
-    unit_ontology_refs:
+    unit_refs:
       - version: "2026-01-09"
         prefix_id: "UO"
   credentials:
