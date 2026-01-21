@@ -2,6 +2,7 @@
   "id": "my_cohort-P007",
   "subject": {
     "id": "P007",
+    "dateOfBirth": "1994-03-21T00:00:00Z",
     "sex": "UNKNOWN_SEX",
     "karyotypicSex": "UNKNOWN_KARYOTYPE"
   },
@@ -12,7 +13,9 @@
         "label": "Seafood allergy"
       },
       "onset": {
-        "timestamp": "2025-10-21T00:00:00Z"
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
       }
     },
     {
@@ -21,7 +24,9 @@
         "label": "Dairy allergy"
       },
       "onset": {
-        "timestamp": "2025-10-21T00:00:00Z"
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
       }
     },
     {
@@ -30,7 +35,9 @@
         "label": "Gluten allergy"
       },
       "onset": {
-        "timestamp": "2025-10-21T00:00:00Z"
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
       }
     }
   ],

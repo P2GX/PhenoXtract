@@ -39,7 +39,9 @@
         "label": "Rhinorrhea"
       },
       "onset": {
-        "timestamp": "2021-02-23T00:00:00Z"
+        "age": {
+          "iso8601duration": "P35Y2M11D"
+        }
       }
     }
   ],

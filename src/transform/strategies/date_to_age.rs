@@ -13,8 +13,9 @@ use crate::transform::data_processing::parsing::{
 use crate::transform::strategies::traits::Strategy;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
-use polars::prelude::{AnyValue, Column};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 const DATE_CONTEXTS_WITHOUT_DOB: [Context; 3] = [
@@ -83,7 +84,22 @@ impl Strategy for DateToAgeStrategy {
                 .collect_owned_names();
 
             for date_col_name in date_column_names.iter() {
-                let stringified_date_col = table.data().column(date_col_name)?.str()?;
+                let date_col = table.data().column(date_col_name)?;
+
+                let casted_date_col = match date_col.dtype() {
+                    DataType::String => Cow::Borrowed(date_col),
+                    DataType::Date => Cow::Owned(date_col.cast(&DataType::String)?),
+                    DataType::Datetime(..) => Cow::Owned(date_col.cast(&DataType::String)?),
+                    other_datatype => {
+                        return Err(StrategyError::DataTypeError {
+                            column_name: date_col_name.clone(),
+                            allowed_datatypes: vec![DataType::String, DataType::Date],
+                            found_datatype: other_datatype.clone(),
+                        });
+                    }
+                };
+
+                let stringified_date_col = casted_date_col.str()?;
 
                 let subject_id_date_zip = stringified_subject_id_col
                     .iter()
@@ -372,8 +388,38 @@ mod tests {
     }
 
     #[fixture]
+    fn onset_bob_date() -> i32 {
+        let date = NaiveDate::from_str(onset_bob().as_str()).unwrap();
+        (date - epoch_date()).num_days() as i32
+    }
+
+    #[fixture]
+    fn onset_bob_datetime() -> i64 {
+        let datetime = NaiveDate::from_str(onset_bob().as_str())
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        (datetime - epoch_datetime()).num_milliseconds()
+    }
+
+    #[fixture]
     fn onset_charlie() -> String {
         "2025-11-25".to_string()
+    }
+
+    #[fixture]
+    fn onset_charlie_date() -> i32 {
+        let date = NaiveDate::from_str(onset_charlie().as_str()).unwrap();
+        (date - epoch_date()).num_days() as i32
+    }
+
+    #[fixture]
+    fn onset_charlie_datetime() -> i64 {
+        let datetime = NaiveDate::from_str(onset_charlie().as_str())
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        (datetime - epoch_datetime()).num_milliseconds()
     }
 
     #[fixture]
@@ -436,6 +482,26 @@ mod tests {
     }
 
     #[fixture]
+    fn df_with_date_onset() -> DataFrame {
+        df!(
+        "subject_id" => &["Alice", "Bob", "Charlie"],
+        "pneumonia" => &["Not observed", "Not observed", "Observed"],
+        "onset" => &[AnyValue::Null, AnyValue::Date(onset_bob_date()), AnyValue::Date(onset_charlie_date())],
+        )
+            .unwrap()
+    }
+
+    #[fixture]
+    fn df_with_datetime_onset() -> DataFrame {
+        df!(
+        "subject_id" => &["Alice", "Bob", "Charlie"],
+        "pneumonia" => &["Not observed", "Not observed", "Observed"],
+        "onset" => &[AnyValue::Null, AnyValue::Datetime(onset_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(onset_charlie_datetime(), TimeUnit::Milliseconds, None)],
+        )
+            .unwrap()
+    }
+
+    #[fixture]
     fn onset_tc() -> TableContext {
         TableContext::new(
             "table2".to_string(),
@@ -455,13 +521,14 @@ mod tests {
     }
 
     #[rstest]
-    #[rstest]
-    #[case(df_with_string_dob())]
-    #[case(df_with_date_dob())]
-    #[case(df_with_datetime_dob())]
-    fn test_date_to_age_strategy(#[case] dob_df: DataFrame) {
+    fn test_date_to_age_strategy(
+        #[values(df_with_string_dob(), df_with_date_dob(), df_with_datetime_dob())]
+        dob_df: DataFrame,
+        #[values(df_with_str_onset(), df_with_date_onset(), df_with_datetime_onset())]
+        onset_df: DataFrame,
+    ) {
         let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
-        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset()).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), onset_df).unwrap();
         let tables = &mut [&mut cdf1, &mut cdf2];
         let date_to_age_strat = DateToAgeStrategy;
         date_to_age_strat.transform(tables).unwrap();

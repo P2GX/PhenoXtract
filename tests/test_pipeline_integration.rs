@@ -16,10 +16,10 @@ use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
-use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
+use phenoxtract::transform::strategies::{DateToAgeStrategy, OntologyNormaliserStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
@@ -126,7 +126,7 @@ fn csv_context_4() -> TableContext {
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::OnsetAge)
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("gene".to_string()))
@@ -331,6 +331,7 @@ fn test_pipeline_integration(
             hpo_dict.clone(),
             Context::HpoLabelOrId,
         )),
+        Box::new(DateToAgeStrategy),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),
