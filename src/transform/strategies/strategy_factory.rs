@@ -66,6 +66,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::strategy_config::StrategyConfig;
     use crate::ontology::OntologyRef;
+    use crate::ontology::resource_references::KnownPrefixes;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
@@ -118,8 +119,8 @@ mod tests {
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
-            ontology_prefix: OntologyRef::new("geno".to_string(), None).clone(),
-            data_context: Context::GenoLabelOrId,
+            ontology_prefix: OntologyRef::new(KnownPrefixes::MONDO.into(), None).clone(),
+            data_context: Context::DiseaseLabelOrId,
         };
 
         let result = factory.try_from_config(&config);

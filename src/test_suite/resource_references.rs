@@ -1,5 +1,6 @@
+use crate::ontology::OntologyRef;
+use crate::ontology::resource_references::KnownPrefixes;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
-use crate::ontology::{DatabaseRef, OntologyRef};
 use once_cell::sync::Lazy;
 use phenopackets::schema::v2::core::Resource;
 
@@ -32,11 +33,11 @@ pub(crate) fn hp_meta_data_resource() -> Resource {
 
 pub(crate) fn hgnc_meta_data_resource() -> Resource {
     Resource {
-        id: DatabaseRef::hgnc().prefix_id().to_lowercase(),
+        id: KnownPrefixes::HGNC.into(),
         name: "HUGO Gene Nomenclature Committee".to_string(),
         url: "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn".to_string(),
         version: "-".to_string(),
-        namespace_prefix: DatabaseRef::hgnc().prefix_id().to_string(),
+        namespace_prefix: KnownPrefixes::HGNC.into(),
         iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1".to_string(),
     }
 }

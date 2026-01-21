@@ -1,13 +1,14 @@
 use crate::ontology::ObolibraryOntologyRegistry;
-use crate::ontology::error::OntologyFactoryError;
+use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::resource_references::OntologyRef;
+use crate::ontology::resource_references::{KnownPrefixes, OntologyRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion, OntologyRegistry};
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
-use serde::de::StdError;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -91,7 +92,7 @@ impl CachedOntologyFactory {
         &mut self,
         ontology: &OntologyRef,
         file_name: Option<&str>,
-    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+    ) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let cache_key = CacheKey {
             ontology: ontology.clone(),
             file_name: file_name.map(str::to_string),
@@ -101,19 +102,14 @@ impl CachedOntologyFactory {
             return Ok(onto.ontology.clone());
         }
 
-        let mut registry = match ontology.prefix_id() {
-            OntologyRef::HPO_PREFIX => ObolibraryOntologyRegistry::default_hpo_registry(),
-            OntologyRef::MONDO_PREFIX => ObolibraryOntologyRegistry::default_mondo_registry(),
-            _ => {
-                let registry_path =
-                    ObolibraryOntologyRegistry::default_registry_path(ontology.prefix_id())
-                        .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
-                Ok(ObolibraryOntologyRegistry::new(
-                    registry_path,
-                    file_name,
-                    ontology.prefix_id(),
-                ))
-            }
+        let mut registry = match KnownPrefixes::from_str(ontology.prefix_id()) {
+            Ok(KnownPrefixes::HP) => ObolibraryOntologyRegistry::default_hpo_registry(),
+            Ok(KnownPrefixes::MONDO) => ObolibraryOntologyRegistry::default_mondo_registry(),
+            _ => ObolibraryOntologyRegistry::default_registry_path(ontology.prefix_id()).map(
+                |registry_path| {
+                    ObolibraryOntologyRegistry::new(registry_path, file_name, ontology.prefix_id())
+                },
+            ),
         }
         .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
@@ -160,7 +156,7 @@ impl CachedOntologyFactory {
         &mut self,
         ontology_ref: &OntologyRef,
         file_name: Option<&str>,
-    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+    ) -> Result<Arc<OntologyBiDict>, FactoryError> {
         let key = CacheKey {
             ontology: ontology_ref.clone(),
             file_name: file_name.map(str::to_string),
@@ -197,10 +193,7 @@ impl CachedOntologyFactory {
     /// # Errors
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
-    pub fn hp(
-        &mut self,
-        version: Option<String>,
-    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+    pub fn hp(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let onto_ref = match version {
             None => OntologyRef::hp(),
             Some(v) => OntologyRef::hp_with_version(&v),
@@ -226,7 +219,7 @@ impl CachedOntologyFactory {
     pub fn hp_bi_dict(
         &mut self,
         version: Option<String>,
-    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+    ) -> Result<Arc<OntologyBiDict>, FactoryError> {
         let onto_ref = match version {
             None => OntologyRef::hp(),
             Some(v) => OntologyRef::hp_with_version(&v),
@@ -249,10 +242,7 @@ impl CachedOntologyFactory {
     /// # Errors
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
-    pub fn mondo(
-        &mut self,
-        version: Option<String>,
-    ) -> Result<Arc<FullCsrOntology>, OntologyFactoryError> {
+    pub fn mondo(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let onto_ref = match version {
             None => OntologyRef::mondo(),
             Some(v) => OntologyRef::mondo_with_version(&v),
@@ -277,7 +267,7 @@ impl CachedOntologyFactory {
     pub fn mondo_bi_dict(
         &mut self,
         version: Option<String>,
-    ) -> Result<Arc<OntologyBiDict>, OntologyFactoryError> {
+    ) -> Result<Arc<OntologyBiDict>, FactoryError> {
         let onto_ref = match version {
             None => OntologyRef::mondo(),
             Some(v) => OntologyRef::mondo_with_version(&v),
@@ -292,13 +282,9 @@ impl CachedOntologyFactory {
         Ok(Arc::new(ontolius))
     }
 
-    fn cant_build_err_wrap<E: Into<Box<dyn StdError + Send + Sync>>>(
-        err: E,
-        ontology: &OntologyRef,
-    ) -> OntologyFactoryError {
-        OntologyFactoryError::CantBuild {
-            source: err.into(),
-            ontology: ontology.clone(),
+    fn cant_build_err_wrap<E: Display>(err: E, ontology: &OntologyRef) -> FactoryError {
+        FactoryError::CantBuild {
+            reason: format!("for ontology '{}' '{}'", ontology, err),
         }
     }
 }
@@ -309,7 +295,7 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_build_ontology_success() -> Result<(), OntologyFactoryError> {
+    fn test_build_ontology_success() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
@@ -326,7 +312,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_build_bidict() -> Result<(), OntologyFactoryError> {
+    fn test_build_bidict() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::default();
@@ -343,7 +329,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_build_bidict_other() -> Result<(), OntologyFactoryError> {
+    fn test_build_bidict_other() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("ro".to_string(), None);
 
         let mut factory = CachedOntologyFactory::default();

@@ -8,7 +8,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::ontology::traits::BIDict;
+use crate::ontology::traits::BiDict;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
 use std::collections::HashSet;
