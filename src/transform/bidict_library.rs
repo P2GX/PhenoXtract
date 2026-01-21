@@ -37,36 +37,26 @@ impl BiDictLibrary {
         &self.bidicts
     }
 
-    pub fn get_bidict_prefixes(&self) -> Vec<&str> {
-        self.bidicts
-            .iter()
-            .map(|bidict| bidict.ontology.prefix_id())
-            .collect::<Vec<&str>>()
-    }
-
     pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
             if let Ok(term) = bidict.get(query) {
-                let corresponding_label_or_id = bidict.get(term).unwrap_or_else(|_| {
-                    panic!(
-                        "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
-                        bidict.ontology.clone().into_inner()
-                    )
-                });
+                if let Ok(corresponding_label_or_id) = bidict.get(term) {
+                    let (label, id) = if bidict.get_id(term).is_ok() {
+                        (term, corresponding_label_or_id)
+                    } else {
+                        (corresponding_label_or_id, term)
+                    };
 
-                let (label, id) = if bidict.get_id(term).is_ok() {
-                    (term, corresponding_label_or_id)
-                } else {
-                    (corresponding_label_or_id, term)
-                };
-
-                return Some((
-                    OntologyClass {
-                        id: id.to_string(),
-                        label: label.to_string(),
-                    },
-                    bidict.ontology.clone().into_inner(),
-                ));
+                    return Some((
+                        OntologyClass {
+                            id: id.to_string(),
+                            label: label.to_string(),
+                        },
+                        bidict.reference().clone(),
+                    ));
+                }
+            } else {
+                continue;
             }
         }
 
@@ -116,5 +106,25 @@ mod tests {
         let result = build_test_mondo_bidict_library().query_bidicts("NonexistentTerm");
 
         assert!(result.is_none());
+    }
+
+    #[rstest]
+    fn test_query_bidicts_on_empty_library() {
+        let library = BiDictLibrary::empty_with_name("EmptyLib");
+        let result = library.query_bidicts("AnyQuery");
+
+        assert!(result.is_none());
+    }
+
+    #[rstest]
+    fn test_query_bidicts_returns_correct_resource_ref() {
+        let phenotype = default_phenotype_oc();
+        let library = build_test_hpo_bidict_library();
+
+        let expected_ref = library.get_bidicts()[0].reference();
+
+        let result = library.query_bidicts(&phenotype.label).unwrap();
+
+        assert_eq!(&result.1, expected_ref);
     }
 }
