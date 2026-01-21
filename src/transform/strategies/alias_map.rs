@@ -147,8 +147,8 @@ mod tests {
     #[fixture]
     fn sc_float_aliases() -> SeriesContext {
         SeriesContext::default()
-            .with_identifier(Identifier::Regex("weight".to_string()))
-            .with_data_context(Context::WeightInKg)
+            .with_identifier(Identifier::Regex("survival_time_days".to_string()))
+            .with_data_context(Context::SurvivalTimeDays)
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([
                     ("10.1".to_string(), Some("20.2".to_string())),
@@ -219,7 +219,7 @@ mod tests {
     fn df_aliasing() -> DataFrame {
         let col1 = Column::new("patient_id".into(), ["P001", "P002", "P003", "P004"]);
         let col2 = Column::new("age".into(), [11, 22, 33, 44]);
-        let col3 = Column::new("weight".into(), [10.1, 20.2, 30.3, 40.4]);
+        let col3 = Column::new("survival_time_days".into(), [10.1, 20.2, 30.3, 40.4]);
         let col4 = Column::new("smokes1".into(), [true, true, false, false]);
         let col5 = Column::new("smokes2".into(), [true, true, false, false]);
         DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
@@ -234,7 +234,7 @@ mod tests {
     fn df_no_aliasing() -> DataFrame {
         let col1 = Column::new("patient_id".into(), ["P1", "P2", "P3", "P4"]);
         let col2 = Column::new("age".into(), [10, 20, 30, 40]);
-        let col3 = Column::new("weight".into(), [10.2, 20.3, 30.4, 40.5]);
+        let col3 = Column::new("survival_time_days".into(), [10.2, 20.3, 30.4, 40.5]);
         let col4 = Column::new("smokes".into(), [true, true, true, true]);
         DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
     }
@@ -283,7 +283,7 @@ mod tests {
             ],
         );
         let col3 = Column::new(
-            "weight".into(),
+            "survival_time_days".into(),
             [
                 AnyValue::Float64(10.1),
                 AnyValue::Float64(20.2),
@@ -338,8 +338,12 @@ mod tests {
             &Column::new("age".into(), [22, 22, 33, 44])
         );
         assert_eq!(
-            cdf_aliasing.clone().data().column("weight").unwrap(),
-            &Column::new("weight".into(), [20.2, 40.4, 60.6, 80.8])
+            cdf_aliasing
+                .clone()
+                .data()
+                .column("survival_time_days")
+                .unwrap(),
+            &Column::new("survival_time_days".into(), [20.2, 40.4, 60.6, 80.8])
         );
         assert_eq!(
             cdf_aliasing.clone().data().column("smokes1").unwrap(),
@@ -398,9 +402,9 @@ mod tests {
             )
         );
         assert_eq!(
-            cdf_nulls.data().column("weight").unwrap(),
+            cdf_nulls.data().column("survival_time_days").unwrap(),
             &Column::new(
-                "weight".into(),
+                "survival_time_days".into(),
                 [
                     AnyValue::Float64(20.2),
                     AnyValue::Float64(40.4),
@@ -484,7 +488,7 @@ mod tests {
         let df = cdf_aliasing.data().clone();
         let col_string = df.column("patient_id").unwrap().name().clone();
         let col_int = df.column("age").unwrap().name().clone();
-        let col_float = df.column("weight").unwrap().name().clone();
+        let col_float = df.column("survival_time_days").unwrap().name().clone();
         let col_bool1 = df.column("smokes1").unwrap().name().clone();
         let col_bool2 = df.column("smokes2").unwrap().name().clone();
 

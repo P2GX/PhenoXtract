@@ -1,4 +1,4 @@
-use crate::config::context::{Context, DISEASE_LABEL_OR_ID_CONTEXTS};
+use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
@@ -27,7 +27,7 @@ impl Collect for InterpretationCollector {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts_are(DISEASE_LABEL_OR_ID_CONTEXTS.as_slice())
+                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
