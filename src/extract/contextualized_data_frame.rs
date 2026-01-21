@@ -508,7 +508,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let extracted_col = cdf
-            .get_single_linked_column(Some("Absent_BB"), &[Context::OrphanetLabelOrId])
+            .get_single_linked_column(Some("Absent_BB"), &[Context::DiseaseLabelOrId])
             .unwrap();
 
         assert!(extracted_col.is_none());
@@ -1121,7 +1121,7 @@ mod builder_tests {
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let keys = vec![Context::ObservationStatus, Context::AgeAtLastEncounter];
-        let values = vec![Context::DateOfBirth, Context::OmimLabelOrId];
+        let values = vec![Context::DateOfBirth, Context::DiseaseLabelOrId];
 
         let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1148,7 +1148,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_data_context(Filter::Is(&Context::OmimLabelOrId))
+                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
                 .collect()
                 .len(),
             1
