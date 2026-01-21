@@ -1,17 +1,15 @@
-use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::{BIDict, HasPrefixId};
+use crate::ontology::traits::BiDict;
 use phenopackets::schema::v2::core::OntologyClass;
-use std::sync::Arc;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct BiDictLibrary {
     name: String,
-    bidicts: Vec<Arc<OntologyBiDict>>,
+    bidicts: Vec<Box<dyn BiDict>>,
 }
 
 impl BiDictLibrary {
-    pub fn new(name: &str, bidicts: Vec<Arc<OntologyBiDict>>) -> Self {
+    pub fn new(name: &str, bidicts: Vec<Box<dyn BiDict>>) -> Self {
         BiDictLibrary {
             name: name.to_string(),
             bidicts,
@@ -25,7 +23,7 @@ impl BiDictLibrary {
         }
     }
 
-    pub fn add_bidict(&mut self, bidict: Arc<OntologyBiDict>) {
+    pub fn add_bidict(&mut self, bidict: Box<dyn BiDict>) {
         self.bidicts.push(bidict);
     }
 
@@ -33,7 +31,7 @@ impl BiDictLibrary {
         &self.name
     }
 
-    pub fn get_bidicts(&self) -> &Vec<Arc<OntologyBiDict>> {
+    pub fn get_bidicts(&self) -> &Vec<Box<dyn BiDict>> {
         &self.bidicts
     }
 
@@ -66,19 +64,30 @@ impl BiDictLibrary {
 
 impl PartialEq for BiDictLibrary {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.bidicts == other.bidicts
+        let bi_dict_refs = self
+            .bidicts
+            .iter()
+            .map(|bi| bi.reference())
+            .collect::<Vec<_>>();
+        let bi_dict_refs_other = self
+            .bidicts
+            .iter()
+            .map(|bi| bi.reference())
+            .collect::<Vec<_>>();
+
+        self.name == other.name && bi_dict_refs == bi_dict_refs_other
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::test_suite::component_building::{
         build_test_hpo_bidict_library, build_test_mondo_bidict_library,
     };
     use crate::test_suite::phenopacket_component_generation::default_phenotype_oc;
     use pretty_assertions::assert_eq;
     use rstest::*;
-
     #[rstest]
     fn test_query_bidicts_with_valid_label() {
         let phenotype = default_phenotype_oc();
