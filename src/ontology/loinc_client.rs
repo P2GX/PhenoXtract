@@ -181,9 +181,10 @@ impl BIDict for LoincClient {
 
         let loinc_search_results = self.query(id)?;
 
-        if loinc_search_results.len() == 1 {
-            let loinc_result = loinc_search_results.first().unwrap();
-            self.cache_write(id, loinc_result.long_common_name.as_str());
+        for result in loinc_search_results {
+            if Self::format_loinc_curie(&result.loinc_num) == id || result.loinc_num == id {
+                self.cache_write(id, result.long_common_name.as_str());
+            }
         }
 
         match self.cache_read(id) {
