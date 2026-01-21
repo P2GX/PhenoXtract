@@ -4,6 +4,7 @@ use crate::error::{ConstructionError, PipelineError};
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::traits::Extractable;
 use crate::load::traits::Loadable;
+use std::fs;
 
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
@@ -14,7 +15,11 @@ use crate::transform::phenopacket_builder::PhenopacketBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
+use crate::utils::get_cache_dir;
 use log::info;
+use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
+use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
+use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenopackets::schema::v2::Phenopacket;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
@@ -101,7 +106,18 @@ impl TryFrom<PipelineConfig> for Pipeline {
     type Error = ConstructionError;
 
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
-        let mut ontology_factory = CachedOntologyFactory::default();
+        let ontology_registry_dir = get_cache_dir()?.join("ontology_registry");
+
+        if !ontology_registry_dir.exists() {
+            fs::create_dir_all(&ontology_registry_dir)?;
+        }
+
+        let mut ontology_factory =
+            CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
+                ontology_registry_dir,
+                BioRegistryMetadataProvider::default(),
+                OboLibraryProvider::default(),
+            )));
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
@@ -182,7 +198,7 @@ impl TryFrom<PathBuf> for Pipeline {
         if !path.exists() {
             return Err(ConstructionError::NoConfigFileFound(path));
         }
-        let config: PhenoXtractConfig = ConfigLoader::load(path.clone()).unwrap();
+        let config: PhenoXtractConfig = ConfigLoader::load(path.clone())?;
 
         Pipeline::try_from(config)
     }
@@ -193,6 +209,7 @@ mod tests {
     use super::*;
     use crate::config::ConfigLoader;
     use crate::test_suite::config::get_full_config_bytes;
+    use dotenvy::dotenv;
     use rstest::{fixture, rstest};
     use std::fs::File as StdFile;
     use std::io::Write;
@@ -205,15 +222,19 @@ mod tests {
 
     #[rstest]
     fn test_try_from_pipeline_config(temp_dir: TempDir) {
+        dotenv().ok();
         let file_path = temp_dir.path().join("config.yaml");
-        let mut file = StdFile::create(&file_path).unwrap();
-        file.write_all(get_full_config_bytes().as_slice()).unwrap();
-        let config: PhenoXtractConfig = ConfigLoader::load(file_path.clone()).unwrap();
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(get_full_config_bytes().as_slice())
+            .expect("Failed to write config file");
+        let config: PhenoXtractConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
 
         let configs_from_sources = [
-            Pipeline::try_from(config.clone()).unwrap(),
-            Pipeline::try_from(config.pipeline.clone()).unwrap(),
-            Pipeline::try_from(file_path).unwrap(),
+            Pipeline::try_from(config.clone()).expect("Failed to convert config from config"),
+            Pipeline::try_from(config.pipeline.clone())
+                .expect("Failed to convert config from pipeline"),
+            Pipeline::try_from(file_path).expect("Failed to convert config from path"),
         ];
 
         let expected_config = configs_from_sources.first().unwrap();

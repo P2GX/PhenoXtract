@@ -1,4 +1,6 @@
 use crate::ontology::traits::{HasPrefixId, HasVersion};
+use ontology_registry;
+use ontology_registry::enums::Version;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -12,6 +14,13 @@ pub struct ResourceRef {
 impl ResourceRef {
     pub fn new(prefix_id: String, version: String) -> Self {
         Self { version, prefix_id }
+    }
+
+    pub fn as_version(&self) -> Version {
+        match self.version.as_str() {
+            "latest" => Version::Latest,
+            _ => Version::Declared(self.version.clone()),
+        }
     }
 }
 

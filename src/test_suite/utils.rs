@@ -1,5 +1,6 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use std::path::PathBuf;
 
 #[macro_export]
 macro_rules! skip_in_ci {
@@ -46,4 +47,12 @@ fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
             }
         }
     }
+}
+
+fn assets_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets")
+}
+pub(crate) fn mock_ontology_path() -> PathBuf {
+    let assets_path = assets_path();
+    assets_path.join("ontologies")
 }

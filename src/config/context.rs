@@ -25,7 +25,7 @@ use strum_macros::EnumDiscriminants;
 )]
 #[derive_err(Debug)]
 #[strum_discriminants(name(ContextKind))]
-#[strum_discriminants(derive(Display))]
+#[strum_discriminants(derive(Display, Deserialize, Serialize))]
 #[strum_discriminants(
     doc = "ContextKind is the same as Context, but all variants have their fields stripped. This is useful if you want to consider e.g. the QuantitativeMeasurement variant as a whole as opposed to a specific instance of it."
 )]
@@ -38,7 +38,6 @@ pub enum Context {
     VitalStatus,
     DateAtLastEncounter,
     AgeAtLastEncounter,
-    WeightInKg,
     DateOfDeath,
     AgeOfDeath,
     CauseOfDeath,
@@ -46,11 +45,8 @@ pub enum Context {
 
     // ontologies and databases
     HpoLabelOrId,
-    OmimLabelOrId,
-    OrphanetLabelOrId,
     DiseaseLabelOrId,
     HgncSymbolOrId,
-    GenoLabelOrId,
 
     // variants
     Hgvs,
@@ -81,14 +77,6 @@ impl Display for Context {
         write!(f, "{self:?}")
     }
 }
-
-// context constants
-
-pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
-    Context::DiseaseLabelOrId,
-    Context::OmimLabelOrId,
-    Context::OrphanetLabelOrId,
-];
 
 pub const DATE_CONTEXTS: [Context; 4] = [
     Context::DateOfBirth,

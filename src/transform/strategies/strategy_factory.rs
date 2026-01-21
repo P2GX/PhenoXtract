@@ -46,13 +46,13 @@ impl StrategyFactory {
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
                 ontology_prefix,
-                data_context,
+                data_context_kind,
             } => {
                 let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
 
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
-                    data_context.clone(),
+                    *data_context_kind,
                 )))
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
@@ -63,15 +63,16 @@ impl StrategyFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::Context;
+    use crate::config::context::ContextKind;
     use crate::config::strategy_config::StrategyConfig;
     use crate::ontology::OntologyRef;
+    use crate::test_suite::ontology_mocking::MockOntologyRegistry;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
     fn create_test_factory() -> StrategyFactory {
         StrategyFactory {
-            ontology_factory: CachedOntologyFactory::default(),
+            ontology_factory: CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default())),
         }
     }
 
@@ -118,8 +119,8 @@ mod tests {
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
-            ontology_prefix: OntologyRef::new("geno".to_string(), None).clone(),
-            data_context: Context::GenoLabelOrId,
+            ontology_prefix: OntologyRef::new("mondo".to_string(), None).clone(),
+            data_context_kind: ContextKind::DiseaseLabelOrId,
         };
 
         let result = factory.try_from_config(&config);
