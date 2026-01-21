@@ -69,17 +69,17 @@ impl OntologyRef {
     }
 
     pub fn mondo() -> Self {
-        Self::new(KnownPrefixes::MONDO.to_string(), None)
+        Self::new(KnownPrefixes::MONDO.into(), None)
     }
 
     pub fn mondo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::MONDO.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::MONDO.into(), Some(version.to_string()))
     }
     pub fn uo() -> Self {
-        Self::new(KnownPrefixes::UO.to_string(), None)
+        Self::new(KnownPrefixes::UO.into(), None)
     }
     pub fn uo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::UO.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::UO.into(), Some(version.to_string()))
     }
 }
 
