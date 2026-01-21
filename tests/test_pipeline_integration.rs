@@ -272,12 +272,16 @@ fn test_pipeline_integration(
 
     let mut onto_factory = CachedOntologyFactory::default();
 
-    let hpo_dict = onto_factory
-        .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
-        .unwrap();
-    let mondo_dict = onto_factory
-        .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
-        .unwrap();
+    let hpo_dict = Box::new(
+        onto_factory
+            .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
+            .unwrap(),
+    );
+    let mondo_dict = Box::new(
+        onto_factory
+            .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
+            .unwrap(),
+    );
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -328,7 +332,9 @@ fn test_pipeline_integration(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            hpo_dict.clone(),
+            onto_factory
+                .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
+                .unwrap(),
             Context::HpoLabelOrId,
         )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
@@ -347,7 +353,7 @@ fn test_pipeline_integration(
         BiDictLibrary::new("HPO", vec![hpo_dict]),
         BiDictLibrary::new("MONDO", vec![mondo_dict]),
         BiDictLibrary::empty_with_name("UNIT"),
-        Some(LoincClient::default()),
+        BiDictLibrary::new("MEASUREMENTS", vec![Box::new(LoincClient::default())]),
     );
 
     let transformer_module = TransformerModule::new(
