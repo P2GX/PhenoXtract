@@ -38,7 +38,6 @@ pub enum Context {
     VitalStatus,
     DateAtLastEncounter,
     AgeAtLastEncounter,
-    WeightInKg,
     DateOfDeath,
     AgeOfDeath,
     CauseOfDeath,
@@ -46,11 +45,8 @@ pub enum Context {
 
     // ontologies and databases
     HpoLabelOrId,
-    OmimLabelOrId,
-    OrphanetLabelOrId,
     DiseaseLabelOrId,
     HgncSymbolOrId,
-    GenoLabelOrId,
 
     // variants
     Hgvs,
@@ -82,14 +78,6 @@ impl Display for Context {
         write!(f, "{self:?}")
     }
 }
-
-// context constants
-
-pub const DISEASE_LABEL_OR_ID_CONTEXTS: [Context; 3] = [
-    Context::DiseaseLabelOrId,
-    Context::OmimLabelOrId,
-    Context::OrphanetLabelOrId,
-];
 
 pub const DATE_CONTEXTS: [Context; 4] = [
     Context::DateOfBirth,
