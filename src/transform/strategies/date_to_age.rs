@@ -13,6 +13,7 @@ use crate::transform::data_processing::parsing::{
 use crate::transform::strategies::traits::Strategy;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
+use polars::prelude::TimeUnit::Milliseconds;
 use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::borrow::Cow;
@@ -93,7 +94,11 @@ impl Strategy for DateToAgeStrategy {
                     other_datatype => {
                         return Err(StrategyError::DataTypeError {
                             column_name: date_col_name.clone(),
-                            allowed_datatypes: vec![DataType::String, DataType::Date],
+                            allowed_datatypes: vec![
+                                DataType::String,
+                                DataType::Date,
+                                DataType::Datetime(Milliseconds, None),
+                            ],
                             found_datatype: other_datatype.clone(),
                         });
                     }
