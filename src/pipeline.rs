@@ -16,9 +16,6 @@ use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
 use crate::utils::get_cache_dir;
 use log::info;
-use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
-use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
-use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenopackets::schema::v2::Phenopacket;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
@@ -111,11 +108,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             fs::create_dir_all(&ontology_registry_dir)?;
         }
 
-        let mut resource_factory = ResourceConfigFactory::new(Box::new(FileSystemOntologyRegistry::new(
-                ontology_registry_dir,
-                BioRegistryMetadataProvider::default(),
-                OboLibraryProvider::default(),
-            )));
+        let mut resource_factory = ResourceConfigFactory::default();
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");

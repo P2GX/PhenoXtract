@@ -1,16 +1,18 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::resource_references::{KnownPrefixes, OntologyRef};
+use crate::ontology::resource_references::OntologyRef;
 use crate::ontology::traits::HasPrefixId;
+use crate::utils::get_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
+use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
+use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use ontology_registry::enums::FileType;
 use ontology_registry::traits::OntologyRegistry;
-use serde::de::StdError;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -290,6 +292,16 @@ impl CachedOntologyFactory {
         FactoryError::CantBuild {
             reason: format!("for ontology '{}' '{}'", ontology, err),
         }
+    }
+}
+
+impl Default for CachedOntologyFactory {
+    fn default() -> Self {
+        CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
+            get_cache_dir().expect("Cannot get cache dir"),
+            BioRegistryMetadataProvider::default(),
+            OboLibraryProvider::default(),
+        )))
     }
 }
 
