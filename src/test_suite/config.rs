@@ -73,16 +73,18 @@ pipeline:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
-    hp_ref:
+    hp_resource:
+      id: "HP"
       version: "2025-09-01"
-      prefix_id: "HP"
-    unit_ontology_refs:
-      - version: "2026-01-09"
-        prefix_id: "UO"
-  credentials:
-    loinc:
-      username: ${LOINC_USERNAME}
-      password: ${LOINC_PASSWORD}
+    unit_resources:
+      - id: "UO"
+        version: "2026-01-09"
+    measurement_resources:
+      - id: "LOINC"
+        version: "2.80"
+        secrets:
+            user: $LOINC_USERNAME
+            password: $LOINC_PASSWORD
 "#;
 
 /// Alternative: Get the combined config as bytes
