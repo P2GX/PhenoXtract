@@ -1,13 +1,6 @@
-use crate::ontology::error::{BiDictError, RegistryError};
+use crate::ontology::error::{BiDictError};
 use crate::ontology::resource_references::ResourceRef;
 use std::fmt::Debug;
-use std::path::PathBuf;
-
-pub trait OntologyRegistry {
-    fn register(&mut self, version: &str) -> Result<PathBuf, RegistryError>;
-    fn deregister(&mut self, version: &str) -> Result<(), RegistryError>;
-    fn get_location(&mut self, version: &str) -> Option<PathBuf>;
-}
 
 pub trait HasPrefixId {
     fn prefix_id(&self) -> &str;

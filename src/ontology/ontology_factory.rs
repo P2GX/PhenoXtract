@@ -1,10 +1,12 @@
-use crate::ontology::ObolibraryOntologyRegistry;
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownPrefixes, OntologyRef};
-use crate::ontology::traits::{HasPrefixId, HasVersion, OntologyRegistry};
+use crate::ontology::traits::HasPrefixId;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontology_registry::enums::FileType;
+use ontology_registry::traits::OntologyRegistry;
+use serde::de::StdError;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -23,9 +25,10 @@ struct CachedOntology {
     bidict: OnceLock<Arc<OntologyBiDict>>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct CachedOntologyFactory {
     cache: HashMap<CacheKey, CachedOntology>,
+    registry: Box<dyn OntologyRegistry<PathBuf> + Send + Sync>,
 }
 
 /// A factory for creating and caching ontology instances.
@@ -64,6 +67,13 @@ pub struct CachedOntologyFactory {
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 impl CachedOntologyFactory {
+    pub fn new(registry: Box<dyn OntologyRegistry<PathBuf> + Send + Sync>) -> Self {
+        Self {
+            cache: HashMap::new(),
+            registry,
+        }
+    }
+
     /// Builds or retrieves a cached ontology instance.
     ///
     /// This is the core method for loading ontologies. It first checks the cache for an
@@ -102,19 +112,13 @@ impl CachedOntologyFactory {
             return Ok(onto.ontology.clone());
         }
 
-        let mut registry = match KnownPrefixes::from_str(ontology.prefix_id()) {
-            Ok(KnownPrefixes::HP) => ObolibraryOntologyRegistry::default_hpo_registry(),
-            Ok(KnownPrefixes::MONDO) => ObolibraryOntologyRegistry::default_mondo_registry(),
-            _ => ObolibraryOntologyRegistry::default_registry_path(ontology.prefix_id()).map(
-                |registry_path| {
-                    ObolibraryOntologyRegistry::new(registry_path, file_name, ontology.prefix_id())
-                },
-            ),
-        }
-        .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
-
-        let ontology_path = registry
-            .register(ontology.version())
+        let ontology_path = self
+            .registry
+            .register(
+                &ontology.prefix_id().to_lowercase(),
+                &ontology.clone().into_inner().as_version(),
+                &FileType::Json, // Hardcoded json, because ontolius depends on it
+            )
             .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
         let ontology_build = Self::init_ontolius(ontology_path)
@@ -292,13 +296,14 @@ impl CachedOntologyFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_suite::ontology_mocking::MockOntologyRegistry;
     use rstest::rstest;
 
     #[rstest]
     fn test_build_ontology_success() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
-        let mut factory = CachedOntologyFactory::default();
+        let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_ontology(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);
@@ -315,7 +320,7 @@ mod tests {
     fn test_build_bidict() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
 
-        let mut factory = CachedOntologyFactory::default();
+        let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_bidict(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);
@@ -332,7 +337,7 @@ mod tests {
     fn test_build_bidict_other() -> Result<(), FactoryError> {
         let ontology = OntologyRef::new("ro".to_string(), None);
 
-        let mut factory = CachedOntologyFactory::default();
+        let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_bidict(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);

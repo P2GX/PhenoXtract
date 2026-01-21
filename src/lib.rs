@@ -10,4 +10,5 @@ pub mod pipeline;
 mod test_suite;
 
 pub mod transform;
+pub(crate) mod utils;
 mod validation;

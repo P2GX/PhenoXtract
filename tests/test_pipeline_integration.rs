@@ -10,9 +10,14 @@ use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::OntologyRef;
 
+use directories::ProjectDirs;
 use dotenvy::dotenv;
+use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
+use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
+use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenoxtract::ontology::CachedOntologyFactory;
+use phenoxtract::ontology::error::RegistryError;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
@@ -25,6 +30,7 @@ use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
 use std::collections::HashMap;
+use std::env::home_dir;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -258,6 +264,29 @@ fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
     }
 }
 
+fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
+    let pkg_name = env!("CARGO_PKG_NAME");
+
+    let phenox_cache_dir = if let Some(project_dir) = ProjectDirs::from("", "", pkg_name) {
+        project_dir.cache_dir().to_path_buf()
+    } else if let Some(home_dir) = home_dir() {
+        home_dir.join(pkg_name)
+    } else {
+        return Err(RegistryError::CantEstablishRegistryDir);
+    };
+
+    if !phenox_cache_dir.exists() {
+        fs::create_dir_all(&phenox_cache_dir)?;
+    }
+
+    let ontology_registry_dir = phenox_cache_dir.join("ontology_registry");
+
+    if !ontology_registry_dir.exists() {
+        fs::create_dir_all(&ontology_registry_dir)?;
+    }
+    Ok(ontology_registry_dir.to_owned())
+}
+
 #[rstest]
 fn test_pipeline_integration(
     csv_context: TableContext,
@@ -270,7 +299,11 @@ fn test_pipeline_integration(
     //Set-up
     let cohort_name = "my_cohort";
 
-    let mut onto_factory = CachedOntologyFactory::default();
+    let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
+        ontology_registry_dir().expect("ontology_registry_dir could not be created"),
+        BioRegistryMetadataProvider::default(),
+        OboLibraryProvider::default(),
+    )));
 
     let hpo_dict = Box::new(
         onto_factory
