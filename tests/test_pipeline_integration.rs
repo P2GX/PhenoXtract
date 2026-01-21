@@ -417,9 +417,7 @@ fn test_pipeline_integration(
         )),
         Box::new(OntologyNormaliserStrategy::new(
             qual_meas_dict.clone(),
-            Context::QualitativeMeasurement {
-                loinc_id: "LOINC:5802-4".to_string(),
-            },
+            ContextKind::QualitativeMeasurement,
         )),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
