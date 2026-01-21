@@ -1,4 +1,6 @@
 use crate::ontology::error::{BiDictError, RegistryError};
+use crate::ontology::resource_references::ResourceRef;
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub trait OntologyRegistry {
@@ -15,8 +17,10 @@ pub trait HasVersion {
     fn version(&self) -> &str;
 }
 
-pub trait BIDict {
+pub trait BiDict: Debug {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError>;
     fn get_label(&self, id: &str) -> Result<&str, BiDictError>;
     fn get_id(&self, term: &str) -> Result<&str, BiDictError>;
+
+    fn reference(&self) -> &ResourceRef;
 }
