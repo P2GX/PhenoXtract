@@ -150,7 +150,7 @@
         "id": "mondo",
         "name": "Mondo Disease Ontology",
         "url": "http://purl.obolibrary.org/obo/mondo.json",
-        "version": "2025-11-04",
+        "version": "2026-01-06",
         "namespacePrefix": "MONDO",
         "iriPrefix": "http://purl.obolibrary.org/obo/MONDO_$1"
       },

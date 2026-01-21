@@ -22,7 +22,11 @@ pub struct LoincRelease {
     #[serde(rename = "downloadMD5Hash")]
     pub download_md5_hash: String,
 }
-
+impl From<LoincRelease> for ResourceRef {
+    fn from(value: LoincRelease) -> Self {
+        ResourceRef::new(KnownPrefixes::LOINC, value.version)
+    }
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct LoincResponse {
@@ -249,12 +253,6 @@ impl BiDict for LoincClient {
 
             ResourceRef::from(res)
         })
-    }
-}
-
-impl From<LoincRelease> for ResourceRef {
-    fn from(value: LoincRelease) -> Self {
-        ResourceRef::new(KnownPrefixes::LOINC, value.version)
     }
 }
 
