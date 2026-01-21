@@ -1,4 +1,4 @@
-use crate::ontology::OntologyRef;
+use crate::config::resource_config::ResourceConfig;
 use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
@@ -10,20 +10,23 @@ pub struct MetaData {
     #[serde(default = "default_creator")]
     pub submitted_by: String,
     #[serde(default)]
-    pub hp_ref: Option<OntologyRef>,
+    pub hp_resource: Option<ResourceConfig>,
     #[serde(default)]
-    pub disease_refs: Vec<OntologyRef>,
+    pub disease_resources: Vec<ResourceConfig>,
     #[serde(default)]
-    pub unit_ontology_refs: Vec<OntologyRef>,
+    pub measurement_resources: Vec<ResourceConfig>,
+    #[serde(default)]
+    pub unit_resources: Vec<ResourceConfig>,
 }
 impl MetaData {
     pub fn new(
         created_by: Option<&str>,
         submitted_by: Option<&str>,
         cohort_name: &str,
-        hp_ref: Option<OntologyRef>,
-        disease_refs: Vec<OntologyRef>,
-        unit_ontology_refs: Vec<OntologyRef>,
+        hp_resource: Option<ResourceConfig>,
+        disease_resources: Vec<ResourceConfig>,
+        measurement_resources: Vec<ResourceConfig>,
+        unit_resources: Vec<ResourceConfig>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -35,9 +38,10 @@ impl MetaData {
                 Some(s) => s.to_owned(),
             },
             cohort_name: cohort_name.to_owned(),
-            hp_ref,
-            disease_refs,
-            unit_ontology_refs,
+            hp_resource,
+            disease_resources,
+            measurement_resources,
+            unit_resources,
         }
     }
 }
@@ -48,9 +52,10 @@ impl Default for MetaData {
             created_by: default_creator(),
             submitted_by: default_creator(),
             cohort_name: "unnamed_cohort".to_string(),
-            hp_ref: None,
-            disease_refs: vec![],
-            unit_ontology_refs: vec![],
+            hp_resource: None,
+            disease_resources: vec![],
+            measurement_resources: vec![],
+            unit_resources: vec![],
         }
     }
 }
@@ -89,9 +94,9 @@ mod tests {
         assert_eq!(metadata.created_by, expected_creator);
         assert_eq!(metadata.submitted_by, expected_creator);
         assert_eq!(metadata.cohort_name, expected_cohort);
-        assert_eq!(metadata.hp_ref, None);
-        assert_eq!(metadata.disease_refs, vec![]);
-        assert_eq!(metadata.unit_ontology_refs, vec![]);
+        assert_eq!(metadata.hp_resource, None);
+        assert_eq!(metadata.disease_resources, vec![]);
+        assert_eq!(metadata.unit_resources, vec![]);
     }
 
     const YAML_DATA: &[u8] = br#"
@@ -126,11 +131,8 @@ mod tests {
             "Magnus Knut Hansen".to_string()
         );
         assert_eq!(default_meta_data.cohort_name, "arkham 2025");
-        assert_eq!(
-            default_meta_data.hp_ref.unwrap(),
-            OntologyRef::hp_with_version("2025-09-01")
-        );
-        assert_eq!(default_meta_data.disease_refs, vec![]);
-        assert_eq!(default_meta_data.unit_ontology_refs, vec![]);
+        assert_eq!(default_meta_data.hp_resource, None);
+        assert_eq!(default_meta_data.disease_resources, vec![]);
+        assert_eq!(default_meta_data.unit_resources, vec![]);
     }
 }
