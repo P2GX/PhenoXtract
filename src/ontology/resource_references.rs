@@ -62,10 +62,10 @@ impl OntologyRef {
         &self.0
     }
     pub fn hp() -> Self {
-        Self::new(KnownPrefixes::HP.to_string(), None)
+        Self::new(KnownPrefixes::HP.into(), None)
     }
     pub fn hp_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::HP.to_string(), Some(version.to_string()))
+        Self::new(KnownPrefixes::HP.into(), Some(version.to_string()))
     }
 
     pub fn mondo() -> Self {

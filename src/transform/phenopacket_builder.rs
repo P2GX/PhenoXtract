@@ -570,6 +570,7 @@ impl PartialEq for PhenopacketBuilder {
             && self.hpo_bidict_lib == other.hpo_bidict_lib
             && self.disease_bidict_lib == other.disease_bidict_lib
             && self.unit_bidict_lib == other.unit_bidict_lib
+            && self.measurement_bidict_lib == other.measurement_bidict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }
@@ -1508,7 +1509,7 @@ mod tests {
 
         builder.ensure_resource(
             &pp_id,
-            &ResourceRef::new(KnownPrefixes::OMIM.to_string(), "latest".to_string()),
+            &ResourceRef::new(KnownPrefixes::OMIM.into(), "latest".to_string()),
         );
 
         let pp = builder.build().first().unwrap().clone();

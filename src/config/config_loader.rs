@@ -99,7 +99,6 @@ pipeline:
       version: "2025-09-01"
 "#;
 
-    // UPDATED TOML
     const TOML_DATA: &[u8] = br#"
 [[data_sources]]
 type = "csv"
@@ -129,13 +128,11 @@ created_by = "Rouven Reuter"
 submitted_by = "Magnus Knut Hansen"
 cohort_name = "Arkham Asylum 2025"
 
-# Changed from hp_ref to hp_resource
 [pipeline.meta_data.hp_resource]
-id = "hp"                 # Changed from prefix_id="HP"
+id = "hp"
 version = "2025-09-01"
 "#;
 
-    // UPDATED JSON
     const JSON_DATA: &[u8] = br#"
 {
   "data_sources": [
