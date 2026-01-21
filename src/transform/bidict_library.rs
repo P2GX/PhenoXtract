@@ -1,6 +1,6 @@
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::HasPrefixId;
+use crate::ontology::traits::{BIDict, HasPrefixId};
 use phenopackets::schema::v2::core::OntologyClass;
 use std::sync::Arc;
 
@@ -46,15 +46,15 @@ impl BiDictLibrary {
 
     pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
-            if let Some(term) = bidict.get(query) {
-                let corresponding_label_or_id = bidict.get(term).unwrap_or_else(|| {
+            if let Ok(term) = bidict.get(query) {
+                let corresponding_label_or_id = bidict.get(term).unwrap_or_else(|_| {
                     panic!(
                         "Bidirectional dictionary '{}' inconsistency: missing reverse mapping",
                         bidict.ontology.clone().into_inner()
                     )
                 });
 
-                let (label, id) = if bidict.is_primary_label(term) {
+                let (label, id) = if bidict.get_id(term).is_ok() {
                     (term, corresponding_label_or_id)
                 } else {
                     (corresponding_label_or_id, term)
