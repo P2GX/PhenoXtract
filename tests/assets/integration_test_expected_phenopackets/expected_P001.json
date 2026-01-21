@@ -57,7 +57,9 @@
         "label": "Abnormal eye physiology"
       },
       "onset": {
-        "timestamp": "1998-04-25T00:00:00Z"
+        "age": {
+          "iso8601duration": "P41Y10M22D"
+        }
       }
     }
   ],
