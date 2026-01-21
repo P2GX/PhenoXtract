@@ -57,6 +57,23 @@ impl BiDict for OntologyBiDict {
         self.ontology.as_inner()
     }
 }
+
+impl BiDict for Arc<OntologyBiDict> {
+    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get(id_or_label)
+    }
+
+    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get_label(id)
+    }
+
+    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get_id(term)
+    }
+
+    fn reference(&self) -> &ResourceRef {
+        self.as_ref().reference()
+    }
 }
 
 impl OntologyBiDict {
