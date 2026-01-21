@@ -11,8 +11,11 @@ pub struct ResourceRef {
 }
 
 impl ResourceRef {
-    pub fn new(prefix_id: String, version: String) -> Self {
-        Self { version, prefix_id }
+    pub fn new(prefix_id: impl Into<String>, version: String) -> Self {
+        Self {
+            version,
+            prefix_id: prefix_id.into(),
+        }
     }
 }
 
@@ -38,9 +41,9 @@ impl HasPrefixId for ResourceRef {
 pub struct OntologyRef(ResourceRef);
 
 impl OntologyRef {
-    pub fn new(prefix_id: String, version: Option<String>) -> Self {
+    pub fn new(prefix_id: impl Into<String>, version: Option<String>) -> Self {
         OntologyRef(ResourceRef {
-            prefix_id,
+            prefix_id: prefix_id.into(),
             version: version.unwrap_or_else(|| "latest".to_string()),
         })
     }
@@ -62,24 +65,24 @@ impl OntologyRef {
         &self.0
     }
     pub fn hp() -> Self {
-        Self::new(KnownPrefixes::HP.into(), None)
+        Self::new(KnownPrefixes::HP, None)
     }
     pub fn hp_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::HP.into(), Some(version.to_string()))
+        Self::new(KnownPrefixes::HP, Some(version.to_string()))
     }
 
     pub fn mondo() -> Self {
-        Self::new(KnownPrefixes::MONDO.into(), None)
+        Self::new(KnownPrefixes::MONDO, None)
     }
 
     pub fn mondo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::MONDO.into(), Some(version.to_string()))
+        Self::new(KnownPrefixes::MONDO, Some(version.to_string()))
     }
     pub fn uo() -> Self {
-        Self::new(KnownPrefixes::UO.into(), None)
+        Self::new(KnownPrefixes::UO, None)
     }
     pub fn uo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::UO.into(), Some(version.to_string()))
+        Self::new(KnownPrefixes::UO, Some(version.to_string()))
     }
 }
 

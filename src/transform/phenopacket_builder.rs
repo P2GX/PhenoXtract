@@ -1509,7 +1509,7 @@ mod tests {
 
         builder.ensure_resource(
             &pp_id,
-            &ResourceRef::new(KnownPrefixes::OMIM.into(), "latest".to_string()),
+            &ResourceRef::new(KnownPrefixes::OMIM, "latest".to_string()),
         );
 
         let pp = builder.build().first().unwrap().clone();
