@@ -118,8 +118,8 @@ mod tests {
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
-            ontology_prefix: OntologyRef::new("geno".to_string(), None).clone(),
-            data_context: Context::GenoLabelOrId,
+            ontology_prefix: OntologyRef::new("mondo".to_string(), None).clone(),
+            data_context: Context::DiseaseLabelOrId,
         };
 
         let result = factory.try_from_config(&config);
