@@ -10,7 +10,7 @@ pub enum StrategyConfig {
     DefaultMapping(DefaultMapping),
     MultiHpoColExpansion,
     OntologyNormaliser {
-        ontology_prefix: OntologyRef,
+        ontology: OntologyRef,
         data_context: Context,
     },
     AgeToIso8601,

@@ -45,7 +45,7 @@ impl StrategyFactory {
             },
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
-                ontology_prefix,
+                ontology: ontology_prefix,
                 data_context,
             } => {
                 let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
@@ -119,7 +119,7 @@ mod tests {
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
-            ontology_prefix: MONDO_REF.clone(),
+            ontology: MONDO_REF.clone(),
             data_context: Context::DiseaseLabelOrId,
         };
 
