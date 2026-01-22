@@ -112,7 +112,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
-        let mut measurement_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
+        let mut assay_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
 
         if let Some(hp_resource) = config.meta_data.hp_resource {
@@ -125,9 +125,9 @@ impl TryFrom<PipelineConfig> for Pipeline {
             disease_bidict_library.add_bidict(disease_bidict);
         }
 
-        for measurement_resource in config.meta_data.measurement_resources {
-            let measurement_bidict = resource_factory.build(measurement_resource)?;
-            measurement_bidict_library.add_bidict(measurement_bidict);
+        for assay_resource in config.meta_data.assay_resources {
+            let assay_bidict = resource_factory.build(assay_resource)?;
+            assay_bidict_library.add_bidict(assay_bidict);
         }
 
         for unit_ontology_ref in config.meta_data.unit_resources {
@@ -142,7 +142,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             hpo_bidict_library,
             disease_bidict_library,
             unit_bidict_library,
-            measurement_bidict_library,
+            assay_bidict_library,
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config

@@ -22,7 +22,7 @@ pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("MONDO", vec![Box::new(MONDO_BIDICT.clone())])
 }
 
-pub(crate) fn build_test_measurement_bidict_library() -> BiDictLibrary {
+pub(crate) fn build_test_assay_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("LOINC", vec![Box::new(LoincClient::default())])
 }
 
@@ -46,6 +46,6 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_hpo_bidict_library(),
         build_test_mondo_bidict_library(),
         BiDictLibrary::default(),
-        build_test_measurement_bidict_library(),
+        build_test_assay_bidict_library(),
     )
 }

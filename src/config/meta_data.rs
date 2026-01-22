@@ -14,7 +14,7 @@ pub struct MetaData {
     #[serde(default)]
     pub disease_resources: Vec<ResourceConfig>,
     #[serde(default)]
-    pub measurement_resources: Vec<ResourceConfig>,
+    pub assay_resources: Vec<ResourceConfig>,
     #[serde(default)]
     pub unit_resources: Vec<ResourceConfig>,
 }
@@ -25,7 +25,7 @@ impl MetaData {
         cohort_name: &str,
         hp_resource: Option<ResourceConfig>,
         disease_resources: Vec<ResourceConfig>,
-        measurement_resources: Vec<ResourceConfig>,
+        assay_resources: Vec<ResourceConfig>,
         unit_resources: Vec<ResourceConfig>,
     ) -> Self {
         Self {
@@ -40,7 +40,7 @@ impl MetaData {
             cohort_name: cohort_name.to_owned(),
             hp_resource,
             disease_resources,
-            measurement_resources,
+            assay_resources,
             unit_resources,
         }
     }
@@ -54,7 +54,7 @@ impl Default for MetaData {
             cohort_name: "unnamed_cohort".to_string(),
             hp_resource: None,
             disease_resources: vec![],
-            measurement_resources: vec![],
+            assay_resources: vec![],
             unit_resources: vec![],
         }
     }

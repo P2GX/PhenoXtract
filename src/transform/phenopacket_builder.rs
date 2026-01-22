@@ -32,7 +32,7 @@ pub struct PhenopacketBuilder {
     disease_bidict_lib: BiDictLibrary,
     unit_bidict_lib: BiDictLibrary,
     #[allow(unused)]
-    measurement_bidict_lib: BiDictLibrary,
+    assay_bidict_lib: BiDictLibrary,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -43,7 +43,7 @@ impl PhenopacketBuilder {
         hpo_bidict_lib: BiDictLibrary,
         disease_bidict_lib: BiDictLibrary,
         unit_bidict_lib: BiDictLibrary,
-        measurement_bidict_lib: BiDictLibrary,
+        assay_bidict_lib: BiDictLibrary,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
@@ -52,7 +52,7 @@ impl PhenopacketBuilder {
             hpo_bidict_lib,
             disease_bidict_lib,
             unit_bidict_lib,
-            measurement_bidict_lib,
+            assay_bidict_lib,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -570,7 +570,7 @@ impl PartialEq for PhenopacketBuilder {
             && self.hpo_bidict_lib == other.hpo_bidict_lib
             && self.disease_bidict_lib == other.disease_bidict_lib
             && self.unit_bidict_lib == other.unit_bidict_lib
-            && self.measurement_bidict_lib == other.measurement_bidict_lib
+            && self.assay_bidict_lib == other.assay_bidict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }

@@ -79,7 +79,7 @@ pipeline:
     unit_resources:
       - id: "UO"
         version: "2026-01-09"
-    measurement_resources:
+    assay_resources:
       - id: "LOINC"
         version: "2.80"
         secrets:
