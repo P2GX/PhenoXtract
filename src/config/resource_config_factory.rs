@@ -32,7 +32,9 @@ impl ResourceConfigFactory {
                     Ok(Box::new(LoincClient::new(user, password, None)))
                 }
                 Secrets::Token { .. } => Err(FactoryError::CantBuild {
-                    reason: "LOINC API needs password and username to be configured".to_string(),
+                    reason:
+                        "LOINC API needs password and username instead of token to be configured"
+                            .to_string(),
                 }),
             },
         }
