@@ -149,6 +149,7 @@ pub(crate) enum KnownPrefixes {
     LOINC,
     UO,
     OMIM,
+    PATO,
 }
 
 impl Display for KnownPrefixes {
@@ -161,6 +162,7 @@ impl Display for KnownPrefixes {
             KnownPrefixes::LOINC => "LOINC",
             KnownPrefixes::UO => "UO",
             KnownPrefixes::OMIM => "OMIM",
+            KnownPrefixes::PATO => "PATO",
         };
         write!(f, "{}", as_str)
     }
