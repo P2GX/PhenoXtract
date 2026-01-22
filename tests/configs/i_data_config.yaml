@@ -1,0 +1,49 @@
+data_sources:
+  - type: "excel"
+    source: "/Users/patrick/Downloads/PhenoXtract/i_data.xlsx"
+    contexts:
+      - name: "Cohort"
+        context:
+          - identifier: "PatientId"
+            data_context: subject_id
+          - identifier: "YOB"
+            data_context: date_of_birth
+          - identifier: "Living"
+            data_context: vital_status
+      - name: "Vitals"
+        context:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Vitals Date"
+            data_context: onset_date
+          - identifier: "Height (cm)"
+            data_context: qualitative_measurement
+    extraction_configs:
+      - name: "Cohort"
+        has_headers: true
+        patients_are_rows: true
+      - name: "Vitals"
+        has_headers: true
+        patients_are_rows: true
+pipeline:
+  transform_strategies:
+    - "alias_map"
+    - "multi_hpo_col_expansion"
+  loader:
+    file_system:
+      output_dir: "some/dir"
+      create_dir: true
+  meta_data:
+    created_by: Rouven Reuter
+    submitted_by: Magnus Knut Hansen
+    cohort_name: "Arkham Asylum 2025"
+    hp_ref:
+      version: "2025-09-01"
+      prefix_id: "HP"
+    unit_refs:
+      - version: "2026-01-09"
+        prefix_id: "UO"
+  credentials:
+    loinc:
+      username: ${LOINC_USERNAME}
+      password: ${LOINC_PASSWORD}
