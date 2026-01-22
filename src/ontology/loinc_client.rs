@@ -203,8 +203,8 @@ impl BiDict for LoincClient {
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
-        if let Some(loinc_number) = self.cache_read(id) {
-            return Ok(loinc_number);
+        if let Some(lonic_label) = self.cache_read(id) {
+            return Ok(lonic_label);
         }
 
         let loinc_search_results = self.query(id)?;
