@@ -116,7 +116,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
 
         if let Some(hp_resource) = config.meta_data.hp_resource {
-            let hpo_bidict = resource_factory.build(hp_resource)?;
+            let hpo_bidict = resource_factory.build(hp_resource.into())?;
             hpo_bidict_library.add_bidict(hpo_bidict);
         };
 

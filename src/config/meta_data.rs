@@ -1,4 +1,4 @@
-use crate::config::resource_config::ResourceConfig;
+use crate::config::resource_config::{HpoResourceConfig, ResourceConfig};
 use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
@@ -10,7 +10,7 @@ pub struct MetaData {
     #[serde(default = "default_creator")]
     pub submitted_by: String,
     #[serde(default)]
-    pub hp_resource: Option<ResourceConfig>,
+    pub hp_resource: Option<HpoResourceConfig>,
     #[serde(default)]
     pub disease_resources: Vec<ResourceConfig>,
     #[serde(default)]
@@ -23,7 +23,7 @@ impl MetaData {
         created_by: Option<&str>,
         submitted_by: Option<&str>,
         cohort_name: &str,
-        hp_resource: Option<ResourceConfig>,
+        hp_resource: Option<HpoResourceConfig>,
         disease_resources: Vec<ResourceConfig>,
         assay_resources: Vec<ResourceConfig>,
         unit_resources: Vec<ResourceConfig>,

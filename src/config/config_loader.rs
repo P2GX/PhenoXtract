@@ -48,7 +48,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::loader_config::LoaderConfig;
     use crate::config::meta_data::MetaData;
-    use crate::config::resource_config::ResourceConfig;
+    use crate::config::resource_config::{HpoResourceConfig, ResourceConfig};
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
     use crate::config::table_context::{
@@ -273,7 +273,7 @@ version = "2025-09-01"
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
-                    Some(ResourceConfig::new(KnownResourcePrefixes::HP).with_version("2025-09-01")),
+                    Some(HpoResourceConfig::new("2025-09-01")),
                     vec![],
                     vec![
                         ResourceConfig::new(KnownResourcePrefixes::LOINC)

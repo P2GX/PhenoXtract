@@ -1,4 +1,4 @@
-use crate::ontology::resource_references::ResourceRef;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use serde::{Deserialize, Serialize};
 
@@ -65,6 +65,29 @@ impl Default for ResourceConfig {
         Self {
             id: "".to_string(),
             version: None,
+            secrets: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct HpoResourceConfig {
+    pub version: Option<String>,
+}
+
+impl HpoResourceConfig {
+    pub fn new(version: impl Into<String>) -> Self {
+        HpoResourceConfig {
+            version: Some(version.into()),
+        }
+    }
+}
+
+impl From<HpoResourceConfig> for ResourceConfig {
+    fn from(hpo_resource_config: HpoResourceConfig) -> Self {
+        ResourceConfig {
+            id: KnownResourcePrefixes::HP.to_string(),
+            version: hpo_resource_config.version,
             secrets: None,
         }
     }
