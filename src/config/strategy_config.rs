@@ -14,4 +14,5 @@ pub enum StrategyConfig {
         data_context_kind: ContextKind,
     },
     AgeToIso8601,
+    DateToAge,
 }

@@ -5,7 +5,8 @@ use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
 use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
-    AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
+    AliasMapStrategy, DateToAgeStrategy, MappingStrategy, MultiHPOColExpansionStrategy,
+    OntologyNormaliserStrategy,
 };
 
 pub struct StrategyFactory {
@@ -56,6 +57,7 @@ impl StrategyFactory {
                 )))
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
+            StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
         }
     }
 }
@@ -86,6 +88,19 @@ mod tests {
         assert!(
             result.is_ok(),
             "Should successfully create AliasMapStrategy"
+        );
+    }
+
+    #[rstest]
+    fn test_try_from_config_date_to_age() {
+        let mut factory = create_test_factory();
+        let config = StrategyConfig::DateToAge;
+
+        let result = factory.try_from_config(&config);
+
+        assert!(
+            result.is_ok(),
+            "Should successfully create DateToAgeStrategy"
         );
     }
 
