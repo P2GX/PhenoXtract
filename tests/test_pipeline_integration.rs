@@ -1,6 +1,6 @@
 use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
-use phenoxtract::config::context::Context;
+use phenoxtract::config::context::{Context, ContextKind};
 use phenoxtract::config::table_context::{
     AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
 };
@@ -21,10 +21,10 @@ use phenoxtract::ontology::error::RegistryError;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
-use phenoxtract::transform::strategies::OntologyNormaliserStrategy;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
+use phenoxtract::transform::strategies::{DateToAgeStrategy, OntologyNormaliserStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
@@ -132,7 +132,7 @@ fn csv_context_4() -> TableContext {
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::OnsetAge)
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("gene".to_string()))
@@ -368,8 +368,9 @@ fn test_pipeline_integration(
             onto_factory
                 .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
                 .unwrap(),
-            Context::HpoLabelOrId,
+            ContextKind::HpoLabelOrId,
         )),
+        Box::new(DateToAgeStrategy),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),

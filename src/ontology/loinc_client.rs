@@ -176,7 +176,7 @@ impl LoincClient {
             None => false,
             Some(loinc_number) => {
                 query.starts_with::<&str>(KnownPrefixes::LOINC.to_string().as_ref())
-                    & self.loinc_id_regex.is_match(loinc_number.as_bytes())
+                    && self.loinc_id_regex.is_match(loinc_number.as_bytes())
             }
         }
     }
@@ -203,15 +203,16 @@ impl BiDict for LoincClient {
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
-        if let Some(lonic_label) = self.cache_read(id) {
-            return Ok(lonic_label);
+        if let Some(label) = self.cache_read(id) {
+            return Ok(label);
         }
 
         let loinc_search_results = self.query(id)?;
 
-        if loinc_search_results.len() == 1 {
-            let loinc_result = loinc_search_results.first().unwrap();
-            self.cache_write(id, loinc_result.long_common_name.as_str());
+        for result in loinc_search_results {
+            if Self::format_loinc_curie(&result.loinc_num) == id || result.loinc_num == id {
+                self.cache_write(id, result.long_common_name.as_str());
+            }
         }
 
         match self.cache_read(id) {
