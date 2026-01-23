@@ -3,7 +3,6 @@ use ontology_registry;
 use ontology_registry::enums::Version;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
 use strum_macros::{EnumString, VariantNames};
 
 #[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
@@ -13,18 +12,31 @@ pub struct ResourceRef {
 }
 
 impl ResourceRef {
-    pub fn new(prefix_id: impl Into<String>, version: String) -> Self {
+    pub fn new(prefix_id: impl Into<String>, version: Option<impl Into<String>>) -> Self {
         Self {
-            version,
+            version: match version {
+                None => "latest".to_string(),
+                Some(v) => v.into(),
+            },
             prefix_id: prefix_id.into(),
         }
     }
 
-    pub fn as_version(&self) -> Version {
+    pub(crate) fn as_version(&self) -> Version {
         match self.version.as_str() {
             "latest" => Version::Latest,
             _ => Version::Declared(self.version.clone()),
         }
+    }
+
+    pub fn with_version(mut self, version: &str) -> Self {
+        self.version = version.to_string();
+        self
+    }
+
+    pub fn with_latest(mut self) -> Self {
+        self.version = "latest".to_string();
+        self
     }
 }
 
@@ -46,87 +58,9 @@ impl HasPrefixId for ResourceRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
-pub struct OntologyRef(ResourceRef);
-
-impl OntologyRef {
-    pub fn new(prefix_id: impl Into<String>, version: Option<String>) -> Self {
-        OntologyRef(ResourceRef {
-            prefix_id: prefix_id.into(),
-            version: version.unwrap_or_else(|| "latest".to_string()),
-        })
-    }
-    #[allow(dead_code)]
-    fn with_prefix(mut self, prefix: &str) -> Self {
-        self.0.prefix_id = prefix.to_string();
-        self
-    }
-
-    pub fn with_version(mut self, version: &str) -> Self {
-        self.0.version = version.to_string();
-        self
-    }
-
-    pub fn into_inner(self) -> ResourceRef {
-        self.0
-    }
-    pub fn as_inner(&self) -> &ResourceRef {
-        &self.0
-    }
-    pub fn hp() -> Self {
-        Self::new(KnownResourcePrefixes::HP, None)
-    }
-
-    pub fn mondo() -> Self {
-        Self::new(KnownResourcePrefixes::MONDO, None)
-    }
-
-    pub fn uo() -> Self {
-        Self::new(KnownResourcePrefixes::UO, None)
-    }
-}
-
-impl From<ResourceRef> for OntologyRef {
-    fn from(value: ResourceRef) -> Self {
-        Self(value)
-    }
-}
-
-impl HasVersion for OntologyRef {
-    fn version(&self) -> &str {
-        self.0.version()
-    }
-}
-
-impl HasPrefixId for OntologyRef {
-    fn prefix_id(&self) -> &str {
-        self.0.prefix_id()
-    }
-}
-
-impl Deref for OntologyRef {
-    type Target = ResourceRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Display for OntologyRef {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.0.prefix_id, self.0.version)
-    }
-}
-
-impl From<String> for OntologyRef {
-    fn from(prefix_id: String) -> Self {
-        OntologyRef::new(prefix_id, None)
-    }
-}
-
-impl From<&str> for OntologyRef {
+impl From<&str> for ResourceRef {
     fn from(prefix_id: &str) -> Self {
-        OntologyRef::from(prefix_id.to_string())
+        ResourceRef::new(prefix_id, Some("latest"))
     }
 }
 
@@ -142,6 +76,30 @@ pub(crate) enum KnownResourcePrefixes {
     OMIM,
     PATO,
 }
+
+/// Auto implementation of convenience functions to construct `ResourceRef`s from `KnownResourcePrefixes`
+macro_rules! impl_resource_constructors_no_dep {
+    ($($variant:ident => $func_name:ident),* $(,)?) => {
+        impl ResourceRef {
+            $(
+                pub fn $func_name() -> Self {
+                    Self::from(KnownResourcePrefixes::$variant).with_latest()
+                }
+            )*
+        }
+    };
+}
+
+impl_resource_constructors_no_dep!(
+    HP => hp,
+    MONDO => mondo,
+    HGNC => hgnc,
+    HGVS => hgvs,
+    LOINC => loinc,
+    UO => uo,
+    OMIM => omim,
+    PATO => pato,
+);
 
 impl Display for KnownResourcePrefixes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

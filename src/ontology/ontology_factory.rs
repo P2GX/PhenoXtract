@@ -1,6 +1,6 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::resource_references::{KnownResourcePrefixes, OntologyRef};
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::utils::get_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
@@ -17,7 +17,7 @@ use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct CacheKey {
-    ontology: OntologyRef,
+    ontology: ResourceRef,
     file_name: Option<String>,
 }
 
@@ -41,7 +41,7 @@ pub struct CachedOntologyFactory {
 ///
 /// # Caching Behavior
 ///
-/// The factory caches ontologies based on their `OntologyRef` and an optional file name.
+/// The factory caches ontologies based on their `ResourceRef` and an optional file name.
 /// Once an ontology is built, subsequent requests for the same ontology will return the
 /// cached instance, avoiding expensive I/O and parsing operations.
 ///
@@ -102,7 +102,7 @@ impl CachedOntologyFactory {
     /// - The ontology file cannot be parsed or initialized
     pub fn build_ontology(
         &mut self,
-        ontology: &OntologyRef,
+        ontology: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let cache_key = CacheKey {
@@ -118,7 +118,7 @@ impl CachedOntologyFactory {
             .registry
             .register(
                 &ontology.prefix_id().to_lowercase(),
-                &ontology.clone().into_inner().as_version(),
+                &ontology.clone().as_version(),
                 &FileType::Json, // Hardcoded json, because ontolius depends on it
             )
             .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
@@ -160,7 +160,7 @@ impl CachedOntologyFactory {
     /// Returns `OntologyFactoryError` if the underlying ontology cannot be built.
     pub fn build_bidict(
         &mut self,
-        ontology_ref: &OntologyRef,
+        ontology_ref: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
         let key = CacheKey {
@@ -185,7 +185,7 @@ impl CachedOntologyFactory {
     /// Loads the Human Phenotype Ontology (HPO).
     ///
     /// Convenience method for loading the HPO ontology without needing to construct
-    /// an `OntologyRef` manually.
+    /// an `ResourceRef` manually.
     ///
     /// # Arguments
     ///
@@ -200,13 +200,13 @@ impl CachedOntologyFactory {
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn hp(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownResourcePrefixes::HP, version);
+        let onto_ref = ResourceRef::new(KnownResourcePrefixes::HP, version);
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Human Phenotype Ontology (HPO).
     ///
     /// Convenience method for loading the HPO bidict without needing to construct
-    /// an `OntologyRef` manually.
+    /// an `ResourceRef` manually.
     ///
     /// # Arguments
     ///
@@ -223,7 +223,7 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownResourcePrefixes::HP, version);
+        let onto_ref = ResourceRef::new(KnownResourcePrefixes::HP, version);
 
         self.build_bidict(&onto_ref, None)
     }
@@ -243,7 +243,7 @@ impl CachedOntologyFactory {
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn mondo(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownResourcePrefixes::MONDO, version);
+        let onto_ref = ResourceRef::new(KnownResourcePrefixes::MONDO, version);
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Mondo Disease Ontology (MONDO).
@@ -265,7 +265,7 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownResourcePrefixes::MONDO, version);
+        let onto_ref = ResourceRef::new(KnownResourcePrefixes::MONDO, version);
         self.build_bidict(&onto_ref, None)
     }
 
@@ -276,7 +276,7 @@ impl CachedOntologyFactory {
         Ok(Arc::new(ontolius))
     }
 
-    fn cant_build_err_wrap<E: Display>(err: E, ontology: &OntologyRef) -> FactoryError {
+    fn cant_build_err_wrap<E: Display>(err: E, ontology: &ResourceRef) -> FactoryError {
         FactoryError::CantBuild {
             reason: format!("for ontology '{}' '{}'", ontology, err),
         }
@@ -301,7 +301,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontology_success() -> Result<(), FactoryError> {
-        let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
+        let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_ontology(&ontology, None)?;
@@ -318,7 +318,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict() -> Result<(), FactoryError> {
-        let ontology = OntologyRef::new("geno".to_string(), Some("2025-07-25".to_string()));
+        let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_bidict(&ontology, None)?;
@@ -335,7 +335,7 @@ mod tests {
 
     #[rstest]
     fn test_build_bidict_other() -> Result<(), FactoryError> {
-        let ontology = OntologyRef::new("ro".to_string(), None);
+        let ontology = ResourceRef::from("ro").with_latest();
 
         let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
         let result = factory.build_bidict(&ontology, None)?;

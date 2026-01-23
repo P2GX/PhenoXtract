@@ -1,5 +1,4 @@
 #![allow(clippy::too_many_arguments)]
-use crate::ontology::OntologyRef;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
@@ -341,7 +340,7 @@ impl PhenopacketBuilder {
                 );
                 self.ensure_resource(
                     phenopacket_id,
-                    &OntologyRef::new("geno".to_string(), None).with_version("2025-07-25"),
+                    &ResourceRef::from("geno").with_version("2025-07-25"),
                 );
 
                 if let Some(gene) = gene_variant_data.get_gene() {
@@ -1515,7 +1514,7 @@ mod tests {
 
         builder.ensure_resource(
             &pp_id,
-            &ResourceRef::new(KnownResourcePrefixes::OMIM, "latest".to_string()),
+            &ResourceRef::from(KnownResourcePrefixes::OMIM).with_latest(),
         );
 
         let pp = builder.build().first().unwrap().clone();

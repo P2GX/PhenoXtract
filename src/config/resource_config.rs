@@ -1,4 +1,3 @@
-use crate::ontology::OntologyRef;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use serde::{Deserialize, Serialize};
@@ -53,16 +52,6 @@ pub enum Secrets {
 
 impl From<ResourceRef> for ResourceConfig {
     fn from(value: ResourceRef) -> Self {
-        ResourceConfig {
-            id: value.prefix_id().to_string(),
-            version: Some(value.version().to_string()),
-            secrets: None,
-        }
-    }
-}
-
-impl From<OntologyRef> for ResourceConfig {
-    fn from(value: OntologyRef) -> Self {
         ResourceConfig {
             id: value.prefix_id().to_string(),
             version: Some(value.version().to_string()),
