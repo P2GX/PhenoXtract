@@ -8,7 +8,7 @@ use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::resource_references::OntologyRef;
+use phenoxtract::ontology::resource_references::ResourceRef;
 
 use directories::ProjectDirs;
 use dotenvy::dotenv;
@@ -161,7 +161,7 @@ fn csv_context_5() -> TableContext {
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("height (cm)".to_string()))
                 .with_data_context(Context::QuantitativeMeasurement {
-                    loinc_id: "8302-2".to_string(),
+                    loinc_id: "LOINC:8302-2".to_string(),
                     unit_ontology_id: "UO:0000015".to_string(),
                 })
                 .with_building_block_id(Some("M".to_string())),
@@ -343,18 +343,16 @@ fn test_pipeline_integration(
         OboLibraryProvider::default(),
     )));
 
-    let hpo_dict = onto_factory
-        .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
-        .unwrap();
-    let mondo_dict = onto_factory
-        .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
-        .unwrap();
-    let unit_dict = onto_factory
-        .build_bidict(&OntologyRef::uo_with_version("2026-01-09"), None)
-        .unwrap();
-    let qual_meas_dict = onto_factory
-        .build_bidict(&OntologyRef::pato_with_version("2025-05-14"), None)
-        .unwrap();
+    let hp_ref = ResourceRef::hp().with_version("2025-09-01");
+    let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
+    let uo_ref = ResourceRef::uo().with_version("2026-01-09");
+    let pato_ref = ResourceRef::pato().with_version("2025-05-14");
+
+    let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
+    let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
+    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
+    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
+
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -412,11 +410,11 @@ fn test_pipeline_integration(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            hpo_dict.clone(),
+            onto_factory.build_bidict(&hp_ref, None).unwrap(),
             ContextKind::HpoLabelOrId,
         )),
         Box::new(OntologyNormaliserStrategy::new(
-            qual_meas_dict.clone(),
+            onto_factory.build_bidict(&pato_ref, None).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
         Box::new(DateToAgeStrategy),
@@ -434,10 +432,10 @@ fn test_pipeline_integration(
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
-        BiDictLibrary::new("MONDO", vec![mondo_dict]),
-        BiDictLibrary::new("UNIT", vec![unit_dict]),
-        BiDictLibrary::new("QUAL", vec![qual_meas_dict]),
-        Some(LoincClient::default()),
+        BiDictLibrary::new("DISEASE", vec![mondo_dict]),
+        BiDictLibrary::new("UNIT", vec![uo_dict]),
+        BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
+        BiDictLibrary::new("QUAL", vec![pato_dict]),
     );
 
     let transformer_module = TransformerModule::new(

@@ -1,17 +1,17 @@
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
-use crate::ontology::{DatabaseRef, OntologyRef};
 use once_cell::sync::Lazy;
 use phenopackets::schema::v2::core::Resource;
 
-pub(crate) static HPO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::hp_with_version("2025-09-01"));
-pub(crate) static MONDO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::mondo_with_version("2026-01-06"));
-pub(crate) static UO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::uo_with_version("2026-01-09"));
-pub(crate) static PATO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::pato_with_version("2025-05-14"));
-pub(crate) static LOINC_REF: Lazy<DatabaseRef> = Lazy::new(DatabaseRef::loinc);
+pub(crate) static HPO_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::hp().with_version("2025-09-01"));
+pub(crate) static MONDO_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::mondo().with_version("2025-11-04"));
+pub(crate) static UO_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::uo().with_version("2026-01-09"));
+pub(crate) static PATO_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::pato().with_version("2025-05-14"));
+pub(crate) static LOINC_REF: Lazy<ResourceRef> = Lazy::new(ResourceRef::loinc);
 
 pub(crate) fn mondo_meta_data_resource() -> Resource {
     Resource {
@@ -37,11 +37,11 @@ pub(crate) fn hp_meta_data_resource() -> Resource {
 
 pub(crate) fn hgnc_meta_data_resource() -> Resource {
     Resource {
-        id: DatabaseRef::hgnc().prefix_id().to_lowercase(),
+        id: KnownResourcePrefixes::HGNC.to_string().to_lowercase(),
         name: "HUGO Gene Nomenclature Committee".to_string(),
         url: "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn".to_string(),
         version: "-".to_string(),
-        namespace_prefix: DatabaseRef::hgnc().prefix_id().to_string(),
+        namespace_prefix: KnownResourcePrefixes::HGNC.to_string().to_lowercase(),
         iri_prefix: "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1".to_string(),
     }
 }
