@@ -4,6 +4,7 @@ use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::resource_references::KnownPrefixes;
 use crate::ontology::traits::BiDict;
 use crate::ontology::{CachedOntologyFactory, OntologyRef};
+use strum::VariantNames;
 
 #[derive(Default)]
 pub(crate) struct ResourceConfigFactory {
@@ -13,24 +14,48 @@ pub(crate) struct ResourceConfigFactory {
 impl ResourceConfigFactory {
     pub fn build(&mut self, config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
         if config.id.to_uppercase() == KnownPrefixes::LOINC.to_string() {
-            Self::build_loinc_client(config)
+            Self::build_loinc_client(&config)
         } else {
-            let ontology_bidict = self
-                .ontology_factory
-                .build_bidict(&OntologyRef::new(config.id, config.version), None)?;
-            Ok(Box::new(ontology_bidict))
+            match self.ontology_factory.build_bidict(
+                &OntologyRef::new(config.id.clone(), config.version.clone()),
+                None,
+            ) {
+                Ok(bi_dict) => Ok(Box::new(bi_dict)),
+                Err(err) => {
+                    let is_known = KnownPrefixes::VARIANTS
+                        .iter()
+                        .any(|&known_id| known_id.eq_ignore_ascii_case(&config.id));
+
+                    let reason = if is_known {
+                        format!(
+                            "Failed to build known resource '{}': {}. This is a supported resource, so this may indicate a configuration, network, or data source issue.",
+                            config.id, err
+                        )
+                    } else {
+                        format!(
+                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this one could not be built. Known supported resources are: {}",
+                            config.id, err, KnownPrefixes::VARIANTS.join(", ")
+                        )
+                    };
+
+                    Err(FactoryError::CantBuild { reason })
+
+                },
+            }
         }
     }
 
-    fn build_loinc_client(config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
-        match config.secrets {
+    fn build_loinc_client(config: &ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
+        match &config.secrets {
             None => Err(FactoryError::CantBuild {
                 reason: "No LOINC credentials provided.".to_string(),
             }),
             Some(secrets) => match secrets {
-                Secrets::Credentials { user, password } => {
-                    Ok(Box::new(LoincClient::new(user, password, None)))
-                }
+                Secrets::Credentials { user, password } => Ok(Box::new(LoincClient::new(
+                    user.clone(),
+                    password.clone(),
+                    None,
+                ))),
                 Secrets::Token { .. } => Err(FactoryError::CantBuild {
                     reason:
                         "LOINC API needs password and username instead of token to be configured"

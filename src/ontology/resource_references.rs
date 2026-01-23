@@ -4,7 +4,7 @@ use ontology_registry::enums::Version;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
-use strum_macros::EnumString;
+use strum_macros::{EnumString, VariantNames};
 
 #[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct ResourceRef {
@@ -139,7 +139,7 @@ impl From<&str> for OntologyRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumString)]
+#[derive(Debug, PartialEq, Clone, EnumString, VariantNames)]
 #[allow(clippy::upper_case_acronyms)]
 pub(crate) enum KnownPrefixes {
     HP,
