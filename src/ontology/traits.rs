@@ -2,7 +2,6 @@ use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::ResourceRef;
 use std::fmt::Debug;
 
-
 pub trait HasPrefixId {
     fn prefix_id(&self) -> &str;
 }
