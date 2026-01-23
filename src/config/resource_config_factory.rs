@@ -33,10 +33,11 @@ impl ResourceConfigFactory {
                         )
                     } else {
                         format!(
-                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this one could not be built. Known supported resources are: {}",
+                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that can not be build.",
                             config.id,
                             err,
-                            KnownResourcePrefixes::VARIANTS.join(", ")
+                            KnownResourcePrefixes::VARIANTS.join(", "),
+                            config.id
                         )
                     };
 
