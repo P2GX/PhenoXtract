@@ -34,13 +34,14 @@ impl ResourceConfigFactory {
                     } else {
                         format!(
                             "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this one could not be built. Known supported resources are: {}",
-                            config.id, err, KnownPrefixes::VARIANTS.join(", ")
+                            config.id,
+                            err,
+                            KnownPrefixes::VARIANTS.join(", ")
                         )
                     };
 
                     Err(FactoryError::CantBuild { reason })
-
-                },
+                }
             }
         }
     }
