@@ -17,7 +17,10 @@ data_sources:
           - identifier: "Vitals Date"
             data_context: onset_date
           - identifier: "Height (cm)"
-            data_context: qualitative_measurement
+            data_context:
+              quantitative_measurement:
+                loinc_id: "8302-2"
+                unit_ontology_id: "UO:0000015"
     extraction_configs:
       - name: "Cohort"
         has_headers: true
@@ -27,11 +30,10 @@ data_sources:
         patients_are_rows: true
 pipeline:
   transform_strategies:
-    - "alias_map"
-    - "multi_hpo_col_expansion"
+    - "date_to_age"
   loader:
     file_system:
-      output_dir: "some/dir"
+      output_dir: "/Users/patrick/Downloads/PhenoXtract/i_data_phenopackets/"
       create_dir: true
   meta_data:
     created_by: Rouven Reuter
