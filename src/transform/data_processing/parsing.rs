@@ -4,11 +4,11 @@ use log::debug;
 
 fn try_parse<T, F>(date_str: &str, formats: &[&str], parser: F) -> Option<T>
 where
-    F: Fn(&str, &str) -> Result<T, chrono::ParseError>,
+    F: Fn(&str, &str) -> Option<T>,
 {
     for format in formats {
         match parser(date_str, format) {
-            Ok(value) => {
+            Some(value) => {
                 return Some(value);
             }
             _ => {
@@ -21,11 +21,42 @@ where
 }
 
 pub fn try_parse_string_date(date_str: &str) -> Option<NaiveDate> {
-    try_parse(date_str, DATE_FORMATS, NaiveDate::parse_from_str)
+    try_parse(date_str, DATE_FORMATS, custom_naive_date_parser_from_str)
 }
 
-pub fn try_parse_string_datetime(date_str: &str) -> Option<NaiveDateTime> {
-    try_parse(date_str, DATETIME_FORMATS, NaiveDateTime::parse_from_str)
+pub fn try_parse_string_datetime(datetime_str: &str) -> Option<NaiveDateTime> {
+    try_parse(
+        datetime_str,
+        DATETIME_FORMATS,
+        custom_naive_datetime_parser_from_str,
+    )
+}
+
+pub fn custom_naive_date_parser_from_str(date_str: &str, fmt: &str) -> Option<NaiveDate> {
+    if fmt == "%Y" {
+        match date_str.parse::<i32>() {
+            Ok(year) => Some(NaiveDate::from_ymd_opt(year, 1, 1).unwrap()),
+            Err(_) => None,
+        }
+    } else {
+        NaiveDate::parse_from_str(date_str, fmt).ok()
+    }
+}
+
+pub fn custom_naive_datetime_parser_from_str(date_str: &str, fmt: &str) -> Option<NaiveDateTime> {
+    if fmt == "%Y" {
+        match date_str.parse::<i32>() {
+            Ok(year) => Some(
+                NaiveDate::from_ymd_opt(year, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap(),
+            ),
+            Err(_) => None,
+        }
+    } else {
+        NaiveDateTime::parse_from_str(date_str, fmt).ok()
+    }
 }
 
 #[cfg(test)]
@@ -36,6 +67,9 @@ mod tests {
 
     #[rstest]
     fn test_try_parse_date_success() {
+        let date = try_parse_string_date("1989");
+        assert_eq!(date, Some(NaiveDate::from_ymd_opt(1989, 1, 1).unwrap()));
+
         let date = try_parse_string_date("2025-09-04");
         assert_eq!(date, Some(NaiveDate::from_ymd_opt(2025, 9, 4).unwrap()));
 
@@ -63,6 +97,17 @@ mod tests {
 
     #[rstest]
     fn test_try_parse_datetime_success() {
+        let datetime = try_parse_string_datetime("2025");
+        assert_eq!(
+            datetime,
+            Some(
+                NaiveDate::from_ymd_opt(2025, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+            )
+        );
+
         let datetime = try_parse_string_datetime("2025-09-04 11:00:59");
         assert_eq!(
             datetime,

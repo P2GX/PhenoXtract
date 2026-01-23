@@ -89,6 +89,8 @@ impl Strategy for DateToAgeStrategy {
 
                 let casted_date_col = match date_col.dtype() {
                     DataType::String => Cow::Borrowed(date_col),
+                    DataType::Int32 => Cow::Owned(date_col.cast(&DataType::String)?),
+                    DataType::Int64 => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Date => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Datetime(..) => Cow::Owned(date_col.cast(&DataType::String)?),
                     other_datatype => {
@@ -276,8 +278,8 @@ mod tests {
     use crate::config::context::AGE_CONTEXTS;
     use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::SeriesContext;
-    use chrono::NaiveDate;
     use chrono::NaiveDateTime;
+    use chrono::{Datelike, NaiveDate};
     use polars::datatypes::TimeUnit;
     use polars::df;
     use polars::frame::DataFrame;
@@ -389,7 +391,7 @@ mod tests {
 
     #[fixture]
     fn onset_bob() -> String {
-        "1991-12-01".to_string()
+        "1991-01-01".to_string()
     }
 
     #[fixture]
@@ -408,8 +410,14 @@ mod tests {
     }
 
     #[fixture]
+    fn onset_bob_int() -> i32 {
+        let date = NaiveDate::from_str(onset_bob().as_str()).unwrap();
+        date.year()
+    }
+
+    #[fixture]
     fn onset_charlie() -> String {
-        "2025-11-25".to_string()
+        "2025-01-01".to_string()
     }
 
     #[fixture]
@@ -425,6 +433,12 @@ mod tests {
             .and_hms_opt(0, 0, 0)
             .unwrap();
         (datetime - epoch_datetime()).num_milliseconds()
+    }
+
+    #[fixture]
+    fn onset_charlie_int() -> i32 {
+        let date = NaiveDate::from_str(onset_charlie().as_str()).unwrap();
+        date.year()
     }
 
     #[fixture]
@@ -451,7 +465,7 @@ mod tests {
     fn df_with_datetime_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
-        "DOB" => &[AnyValue::Datetime(dob_alice_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_charlie_datetime(), TimeUnit::Milliseconds, None)],
+        "DOB" => &[AnyValue::Datetime(dob_alice_datetime(), Milliseconds, None), AnyValue::Datetime(dob_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_charlie_datetime(), TimeUnit::Milliseconds, None)],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         )
             .unwrap()
@@ -507,6 +521,16 @@ mod tests {
     }
 
     #[fixture]
+    fn df_with_int_onset() -> DataFrame {
+        df!(
+        "subject_id" => &["Alice", "Bob", "Charlie"],
+        "pneumonia" => &["Not observed", "Not observed", "Observed"],
+        "onset" => &[AnyValue::Null, AnyValue::Int32(onset_bob_int()), AnyValue::Int32(onset_charlie_int())],
+        )
+            .unwrap()
+    }
+
+    #[fixture]
     fn onset_tc() -> TableContext {
         TableContext::new(
             "table2".to_string(),
@@ -529,7 +553,12 @@ mod tests {
     fn test_date_to_age_strategy(
         #[values(df_with_string_dob(), df_with_date_dob(), df_with_datetime_dob())]
         dob_df: DataFrame,
-        #[values(df_with_str_onset(), df_with_date_onset(), df_with_datetime_onset())]
+        #[values(
+            df_with_str_onset(),
+            df_with_date_onset(),
+            df_with_datetime_onset(),
+            df_with_int_onset()
+        )]
         onset_df: DataFrame,
     ) {
         let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
@@ -546,8 +575,8 @@ mod tests {
                 "onset".into(),
                 vec![
                     AnyValue::Null,
-                    AnyValue::String("P1Y"),
-                    AnyValue::String("P45Y10M17D")
+                    AnyValue::String("P1M"),
+                    AnyValue::String("P44Y11M24D")
                 ]
             )
         );
@@ -574,7 +603,7 @@ mod tests {
         let onset_age_bob =
             DateToAgeStrategy::date_and_dob_to_age("P001", dob_bob_string(), onset_bob().as_str())
                 .unwrap();
-        assert_eq!(onset_age_bob, "P1Y");
+        assert_eq!(onset_age_bob, "P1M");
 
         let onset_age_charlie = DateToAgeStrategy::date_and_dob_to_age(
             "P001",
@@ -582,7 +611,7 @@ mod tests {
             onset_charlie().as_str(),
         )
         .unwrap();
-        assert_eq!(onset_age_charlie, "P45Y10M17D");
+        assert_eq!(onset_age_charlie, "P44Y11M24D");
     }
 
     #[rstest]
@@ -595,7 +624,7 @@ mod tests {
             onset_bob().as_str(),
         )
         .unwrap();
-        assert_eq!(onset_age_bob, "P1Y");
+        assert_eq!(onset_age_bob, "P1M");
     }
 
     #[rstest]
