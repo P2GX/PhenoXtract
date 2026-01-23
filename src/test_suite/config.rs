@@ -74,13 +74,13 @@ pipeline:
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
     hp_resource:
-      id: "HP"
+      prefix: "HP"
       version: "2025-09-01"
     unit_resources:
-      - id: "UO"
+      - prefix: "UO"
         version: "2026-01-09"
     assay_resources:
-      - id: "LOINC"
+      - prefix: "LOINC"
         version: "2.80"
         secrets:
             user: $LOINC_USERNAME

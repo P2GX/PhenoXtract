@@ -4,15 +4,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct ResourceConfig {
-    pub id: String,
+    pub prefix: String,
     pub version: Option<String>,
     pub secrets: Option<Secrets>,
 }
 
 impl ResourceConfig {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(prefix: impl Into<String>) -> Self {
         Self {
-            id: id.into(),
+            prefix: prefix.into(),
             version: None,
             secrets: None,
         }
@@ -53,7 +53,7 @@ pub enum Secrets {
 impl From<ResourceRef> for ResourceConfig {
     fn from(value: ResourceRef) -> Self {
         ResourceConfig {
-            id: value.prefix_id().to_string(),
+            prefix: value.prefix_id().to_string(),
             version: Some(value.version().to_string()),
             secrets: None,
         }
@@ -63,7 +63,7 @@ impl From<ResourceRef> for ResourceConfig {
 impl Default for ResourceConfig {
     fn default() -> Self {
         Self {
-            id: "".to_string(),
+            prefix: "".to_string(),
             version: None,
             secrets: None,
         }

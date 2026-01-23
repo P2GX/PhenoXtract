@@ -95,7 +95,7 @@ pipeline:
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
     hp_resource:
-      id: "hp"
+      prefix: "hp"
       version: "2025-09-01"
 "#;
 
@@ -129,7 +129,7 @@ submitted_by = "Magnus Knut Hansen"
 cohort_name = "Arkham Asylum 2025"
 
 [pipeline.meta_data.hp_resource]
-id = "hp"
+prefix = "hp"
 version = "2025-09-01"
 "#;
 
@@ -166,7 +166,7 @@ version = "2025-09-01"
       "submitted_by": "Magnus Knut Hansen",
       "cohort_name": "Arkham Asylum 2025",
       "hp_resource": {
-        "id": "hp",
+        "prefix": "hp",
         "version": "2025-09-01"
       }
     }
@@ -207,7 +207,7 @@ version = "2025-09-01"
       submitted_by: "Magnus Knut Hansen",
       cohort_name: "Arkham Asylum 2025",
       hp_resource: (
-        id: "hp",
+        prefix: "hp",
         version: "2025-09-01",
       ),
     ),
