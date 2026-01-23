@@ -59,7 +59,7 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
-    use crate::ontology::resource_references::KnownPrefixes;
+    use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::config::get_full_config_bytes;
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
@@ -273,14 +273,14 @@ version = "2025-09-01"
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
-                    Some(ResourceConfig::new(KnownPrefixes::HP).with_version("2025-09-01")),
+                    Some(ResourceConfig::new(KnownResourcePrefixes::HP).with_version("2025-09-01")),
                     vec![],
                     vec![
-                        ResourceConfig::new(KnownPrefixes::LOINC)
+                        ResourceConfig::new(KnownResourcePrefixes::LOINC)
                             .with_version("2.80")
                             .with_credentials(loinc_username, loinc_password),
                     ],
-                    vec![ResourceConfig::new(KnownPrefixes::UO).with_version("2026-01-09")],
+                    vec![ResourceConfig::new(KnownResourcePrefixes::UO).with_version("2026-01-09")],
                 ),
                 vec![
                     StrategyConfig::AliasMap,

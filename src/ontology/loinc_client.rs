@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::ontology::error::BiDictError;
-use crate::ontology::resource_references::{KnownPrefixes, ResourceRef};
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
 use regex::bytes::Regex;
 use reqwest::blocking::Client;
@@ -24,7 +24,7 @@ pub struct LoincRelease {
 }
 impl From<LoincRelease> for ResourceRef {
     fn from(value: LoincRelease) -> Self {
-        ResourceRef::new(KnownPrefixes::LOINC, value.version)
+        ResourceRef::new(KnownResourcePrefixes::LOINC, value.version)
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,13 +169,13 @@ impl LoincClient {
     }
 
     fn format_loinc_curie(loinc_number: &str) -> String {
-        format!("{}:{}", KnownPrefixes::LOINC, loinc_number)
+        format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
         match query.split(':').next_back() {
             None => false,
             Some(loinc_number) => {
-                query.starts_with::<&str>(KnownPrefixes::LOINC.to_string().as_ref())
+                query.starts_with::<&str>(KnownResourcePrefixes::LOINC.to_string().as_ref())
                     && self.loinc_id_regex.is_match(loinc_number.as_bytes())
             }
         }
@@ -292,7 +292,7 @@ mod tests {
     #[rstest]
     fn test_get_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownPrefixes::LOINC, id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
 
         let label_res = loinc_client.get(id_input);
         let label_res_with_prefix = loinc_client.get(&id_input_with_prefix);
@@ -302,7 +302,7 @@ mod tests {
     #[rstest]
     fn test_get_term_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownPrefixes::LOINC, id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
 
         let label_res = loinc_client.get_label(id_input);
         let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
@@ -312,7 +312,7 @@ mod tests {
     #[rstest]
     fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownPrefixes::LOINC, id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
         let label_res = loinc_client.get(&id_input_with_prefix);
 
         assert!(

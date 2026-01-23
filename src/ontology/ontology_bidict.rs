@@ -139,26 +139,29 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::resource_references::KnownPrefixes;
+    use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::ontology_mocking::HPO;
     use rstest::rstest;
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
 
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         assert_eq!(
             hpo_dict.get("contact with nickel").unwrap(),
             "HP:4000120".to_string()
@@ -167,7 +170,8 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &KnownPrefixes::HP.to_string());
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
             hpo_dict.get(hpo_id).unwrap(),

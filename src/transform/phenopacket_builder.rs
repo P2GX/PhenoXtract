@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::ontology::OntologyRef;
-use crate::ontology::resource_references::{KnownPrefixes, ResourceRef};
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
@@ -308,7 +308,10 @@ impl PhenopacketBuilder {
             let (symbol, id) = self
                 .hgnc_client
                 .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
-            self.ensure_resource(phenopacket_id, &ResourceRef::from(KnownPrefixes::HGNC));
+            self.ensure_resource(
+                phenopacket_id,
+                &ResourceRef::from(KnownResourcePrefixes::HGNC),
+            );
 
             let gi = GenomicInterpretation {
                 subject_or_biosample_id: patient_id.to_string(),
@@ -332,7 +335,10 @@ impl PhenopacketBuilder {
 
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
-                self.ensure_resource(phenopacket_id, &ResourceRef::from(KnownPrefixes::HGNC));
+                self.ensure_resource(
+                    phenopacket_id,
+                    &ResourceRef::from(KnownResourcePrefixes::HGNC),
+                );
                 self.ensure_resource(
                     phenopacket_id,
                     &OntologyRef::new("geno".to_string(), None).with_version("2025-07-25"),
@@ -1509,7 +1515,7 @@ mod tests {
 
         builder.ensure_resource(
             &pp_id,
-            &ResourceRef::new(KnownPrefixes::OMIM, "latest".to_string()),
+            &ResourceRef::new(KnownResourcePrefixes::OMIM, "latest".to_string()),
         );
 
         let pp = builder.build().first().unwrap().clone();

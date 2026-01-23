@@ -74,15 +74,15 @@ impl OntologyRef {
         &self.0
     }
     pub fn hp() -> Self {
-        Self::new(KnownPrefixes::HP, None)
+        Self::new(KnownResourcePrefixes::HP, None)
     }
 
     pub fn mondo() -> Self {
-        Self::new(KnownPrefixes::MONDO, None)
+        Self::new(KnownResourcePrefixes::MONDO, None)
     }
 
     pub fn uo() -> Self {
-        Self::new(KnownPrefixes::UO, None)
+        Self::new(KnownResourcePrefixes::UO, None)
     }
 }
 
@@ -132,7 +132,7 @@ impl From<&str> for OntologyRef {
 
 #[derive(Debug, PartialEq, Clone, EnumString, VariantNames)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum KnownPrefixes {
+pub(crate) enum KnownResourcePrefixes {
     HP,
     MONDO,
     HGNC,
@@ -143,24 +143,24 @@ pub(crate) enum KnownPrefixes {
     PATO,
 }
 
-impl Display for KnownPrefixes {
+impl Display for KnownResourcePrefixes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let as_str = match self {
-            KnownPrefixes::HP => "HP",
-            KnownPrefixes::MONDO => "MONDO",
-            KnownPrefixes::HGNC => "HGNC",
-            KnownPrefixes::HGVS => "HGVS",
-            KnownPrefixes::LOINC => "LOINC",
-            KnownPrefixes::UO => "UO",
-            KnownPrefixes::OMIM => "OMIM",
-            KnownPrefixes::PATO => "PATO",
+            KnownResourcePrefixes::HP => "HP",
+            KnownResourcePrefixes::MONDO => "MONDO",
+            KnownResourcePrefixes::HGNC => "HGNC",
+            KnownResourcePrefixes::HGVS => "HGVS",
+            KnownResourcePrefixes::LOINC => "LOINC",
+            KnownResourcePrefixes::UO => "UO",
+            KnownResourcePrefixes::OMIM => "OMIM",
+            KnownResourcePrefixes::PATO => "PATO",
         };
         write!(f, "{}", as_str)
     }
 }
 
-impl From<KnownPrefixes> for ResourceRef {
-    fn from(value: KnownPrefixes) -> Self {
+impl From<KnownResourcePrefixes> for ResourceRef {
+    fn from(value: KnownResourcePrefixes) -> Self {
         ResourceRef {
             prefix_id: value.to_string(),
             version: "latest".to_string(),
@@ -168,8 +168,8 @@ impl From<KnownPrefixes> for ResourceRef {
     }
 }
 
-impl From<KnownPrefixes> for String {
-    fn from(value: KnownPrefixes) -> Self {
+impl From<KnownResourcePrefixes> for String {
+    fn from(value: KnownResourcePrefixes) -> Self {
         value.to_string()
     }
 }

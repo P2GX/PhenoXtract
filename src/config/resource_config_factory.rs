@@ -13,7 +13,7 @@ pub(crate) struct ResourceConfigFactory {
 
 impl ResourceConfigFactory {
     pub fn build(&mut self, config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
-        if config.id.to_uppercase() == KnownPrefixes::LOINC.to_string() {
+        if config.id.to_uppercase() == KnownResourcePrefixes::LOINC.to_string() {
             Self::build_loinc_client(&config)
         } else {
             match self.ontology_factory.build_bidict(
@@ -22,7 +22,7 @@ impl ResourceConfigFactory {
             ) {
                 Ok(bi_dict) => Ok(Box::new(bi_dict)),
                 Err(err) => {
-                    let is_known = KnownPrefixes::VARIANTS
+                    let is_known = KnownResourcePrefixes::VARIANTS
                         .iter()
                         .any(|&known_id| known_id.eq_ignore_ascii_case(&config.id));
 
@@ -36,7 +36,7 @@ impl ResourceConfigFactory {
                             "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this one could not be built. Known supported resources are: {}",
                             config.id,
                             err,
-                            KnownPrefixes::VARIANTS.join(", ")
+                            KnownResourcePrefixes::VARIANTS.join(", ")
                         )
                     };
 
@@ -75,7 +75,7 @@ impl ResourceConfigFactory {
 mod tests {
     use super::*;
     use crate::ontology::error::FactoryError;
-    use crate::ontology::resource_references::KnownPrefixes;
+    use crate::ontology::resource_references::KnownResourcePrefixes;
 
     fn get_factory() -> ResourceConfigFactory {
         ResourceConfigFactory::default()
@@ -86,7 +86,7 @@ mod tests {
         let mut factory = get_factory();
 
         let config = ResourceConfig {
-            id: KnownPrefixes::LOINC.into(),
+            id: KnownResourcePrefixes::LOINC.into(),
             version: None,
             secrets: Some(Secrets::Credentials {
                 user: "test_user".to_string(),
@@ -127,7 +127,7 @@ mod tests {
         let mut factory = get_factory();
 
         let config = ResourceConfig {
-            id: KnownPrefixes::LOINC.into(),
+            id: KnownResourcePrefixes::LOINC.into(),
             version: None,
             secrets: None,
         };
@@ -150,7 +150,7 @@ mod tests {
         let mut factory = get_factory();
 
         let config = ResourceConfig {
-            id: KnownPrefixes::LOINC.into(),
+            id: KnownResourcePrefixes::LOINC.into(),
             version: None,
             secrets: Some(Secrets::Token {
                 token: "12345".to_string(),

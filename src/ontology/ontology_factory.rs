@@ -1,6 +1,6 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::ontology::resource_references::{KnownPrefixes, OntologyRef};
+use crate::ontology::resource_references::{KnownResourcePrefixes, OntologyRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::utils::get_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
@@ -200,7 +200,7 @@ impl CachedOntologyFactory {
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn hp(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownPrefixes::HP, version);
+        let onto_ref = OntologyRef::new(KnownResourcePrefixes::HP, version);
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Human Phenotype Ontology (HPO).
@@ -223,7 +223,7 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownPrefixes::HP, version);
+        let onto_ref = OntologyRef::new(KnownResourcePrefixes::HP, version);
 
         self.build_bidict(&onto_ref, None)
     }
@@ -243,7 +243,7 @@ impl CachedOntologyFactory {
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn mondo(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownPrefixes::MONDO, version);
+        let onto_ref = OntologyRef::new(KnownResourcePrefixes::MONDO, version);
         self.build_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Mondo Disease Ontology (MONDO).
@@ -265,7 +265,7 @@ impl CachedOntologyFactory {
         &mut self,
         version: Option<String>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let onto_ref = OntologyRef::new(KnownPrefixes::MONDO, version);
+        let onto_ref = OntologyRef::new(KnownResourcePrefixes::MONDO, version);
         self.build_bidict(&onto_ref, None)
     }
 
