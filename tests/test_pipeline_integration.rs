@@ -305,16 +305,11 @@ fn test_pipeline_integration(
         OboLibraryProvider::default(),
     )));
 
-    let hpo_dict = Box::new(
-        onto_factory
-            .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
-            .unwrap(),
-    );
-    let mondo_dict = Box::new(
-        onto_factory
-            .build_bidict(&OntologyRef::mondo_with_version("2026-01-06"), None)
-            .unwrap(),
-    );
+    let hp_ref = OntologyRef::hp().with_version("2025-09-01");
+    let mondo_ref = OntologyRef::mondo().with_version("2026-01-06");
+
+    let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
+    let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -365,9 +360,7 @@ fn test_pipeline_integration(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            onto_factory
-                .build_bidict(&OntologyRef::hp_with_version("2025-09-01"), None)
-                .unwrap(),
+            onto_factory.build_bidict(&hp_ref, None).unwrap(),
             ContextKind::HpoLabelOrId,
         )),
         Box::new(DateToAgeStrategy),
@@ -385,7 +378,7 @@ fn test_pipeline_integration(
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
-        BiDictLibrary::new("MONDO", vec![mondo_dict]),
+        BiDictLibrary::new("DISEASE", vec![mondo_dict]),
         BiDictLibrary::empty_with_name("UNIT"),
         BiDictLibrary::new("MEASUREMENTS", vec![Box::new(LoincClient::default())]),
     );

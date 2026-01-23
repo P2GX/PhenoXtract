@@ -5,9 +5,9 @@ use once_cell::sync::Lazy;
 use phenopackets::schema::v2::core::Resource;
 
 pub(crate) static HPO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::hp_with_version("2025-09-01"));
+    Lazy::new(|| OntologyRef::hp().with_version("2025-09-01"));
 pub(crate) static MONDO_REF: Lazy<OntologyRef> =
-    Lazy::new(|| OntologyRef::mondo_with_version("2025-11-04"));
+    Lazy::new(|| OntologyRef::mondo().with_version("2025-11-04"));
 
 pub(crate) fn mondo_meta_data_resource() -> Resource {
     Resource {

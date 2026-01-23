@@ -76,22 +76,13 @@ impl OntologyRef {
     pub fn hp() -> Self {
         Self::new(KnownPrefixes::HP, None)
     }
-    pub fn hp_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::HP, Some(version.to_string()))
-    }
 
     pub fn mondo() -> Self {
         Self::new(KnownPrefixes::MONDO, None)
     }
 
-    pub fn mondo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::MONDO, Some(version.to_string()))
-    }
     pub fn uo() -> Self {
         Self::new(KnownPrefixes::UO, None)
-    }
-    pub fn uo_with_version(version: &str) -> Self {
-        Self::new(KnownPrefixes::UO, Some(version.to_string()))
     }
 }
 
