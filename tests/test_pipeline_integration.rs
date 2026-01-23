@@ -161,7 +161,7 @@ fn csv_context_5() -> TableContext {
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("height (cm)".to_string()))
                 .with_data_context(Context::QuantitativeMeasurement {
-                    loinc_id: "LOINC:8302-2".to_string(),
+                    assay_id: "LOINC:8302-2".to_string(),
                     unit_ontology_id: "UO:0000015".to_string(),
                 })
                 .with_building_block_id(Some("M".to_string())),
@@ -176,7 +176,7 @@ fn csv_context_5() -> TableContext {
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("nitrates in urine".to_string()))
                 .with_data_context(Context::QualitativeMeasurement {
-                    loinc_id: "LOINC:5802-4".to_string(),
+                    assay_id: "LOINC:5802-4".to_string(),
                 })
                 .with_building_block_id(Some("M".to_string())),
             SeriesContext::default()

@@ -23,7 +23,7 @@ impl Collect for QualitativeMeasurementCollector {
                 .collect();
 
             for qual_measurement_sc in qualitative_measurement_scs {
-                let loinc_id = qual_measurement_sc
+                let assay_id = qual_measurement_sc
                     .get_data_context()
                     .try_as_qualitative_measurement()
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -53,7 +53,7 @@ impl Collect for QualitativeMeasurementCollector {
                                 phenopacket_id,
                                 qual_measurement,
                                 time_observed,
-                                loinc_id,
+                                assay_id,
                             )?;
                         }
                     }
@@ -118,7 +118,7 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier("nitrate in urine".into())
                     .with_data_context(Context::QualitativeMeasurement {
-                        loinc_id: default_qual_loinc().id,
+                        assay_id: default_qual_loinc().id,
                     })
                     .with_building_block_id(Some("nitrate_measurement".to_string())),
                 vec![measurements.into_column()].as_ref(),
