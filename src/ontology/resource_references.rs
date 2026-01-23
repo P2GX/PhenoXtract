@@ -77,6 +77,7 @@ pub(crate) enum KnownResourcePrefixes {
     PATO,
 }
 
+/// Auto implementation of convenience functions to construct `ResourceRef`s from `KnownResourcePrefixes`
 macro_rules! impl_resource_constructors_no_dep {
     ($($variant:ident => $func_name:ident),* $(,)?) => {
         impl ResourceRef {
