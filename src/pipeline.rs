@@ -6,9 +6,8 @@ use crate::extract::traits::Extractable;
 use crate::load::traits::Loadable;
 use std::fs;
 
+use crate::config::resource_config_factory::ResourceConfigFactory;
 use crate::load::loader_factory::LoaderFactory;
-use crate::ontology::CachedOntologyFactory;
-use crate::ontology::loinc_client::LoincClient;
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::phenopacket_builder::PhenopacketBuilder;
@@ -17,9 +16,6 @@ use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_module::TransformerModule;
 use crate::utils::get_cache_dir;
 use log::info;
-use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
-use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
-use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenopackets::schema::v2::Phenopacket;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
@@ -112,40 +108,41 @@ impl TryFrom<PipelineConfig> for Pipeline {
             fs::create_dir_all(&ontology_registry_dir)?;
         }
 
-        let mut ontology_factory =
-            CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
-                ontology_registry_dir,
-                BioRegistryMetadataProvider::default(),
-                OboLibraryProvider::default(),
-            )));
+        let mut resource_factory = ResourceConfigFactory::default();
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
+        let mut assay_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
 
-        if let Some(hp_ref) = &config.meta_data.hp_ref {
-            let hpo_bidict = ontology_factory.build_bidict(hp_ref, None)?;
+        if let Some(hp_resource) = config.meta_data.hp_resource {
+            let hpo_bidict = resource_factory.build(hp_resource)?;
             hpo_bidict_library.add_bidict(hpo_bidict);
         };
 
-        for disease_ref in &config.meta_data.disease_refs {
-            let disease_bidict = ontology_factory.build_bidict(disease_ref, None)?;
+        for disease_resource in config.meta_data.disease_resources {
+            let disease_bidict = resource_factory.build(disease_resource)?;
             disease_bidict_library.add_bidict(disease_bidict);
         }
 
-        for unit_ontology_ref in &config.meta_data.unit_ontology_refs {
-            let unit_bidict = ontology_factory.build_bidict(unit_ontology_ref, None)?;
+        for assay_resource in config.meta_data.assay_resources {
+            let assay_bidict = resource_factory.build(assay_resource)?;
+            assay_bidict_library.add_bidict(assay_bidict);
+        }
+
+        for unit_ontology_ref in config.meta_data.unit_resources {
+            let unit_bidict = resource_factory.build(unit_ontology_ref)?;
             unit_bidict_library.add_bidict(unit_bidict);
         }
 
-        let mut strategy_factory = StrategyFactory::new(ontology_factory);
+        let mut strategy_factory = StrategyFactory::new(resource_factory.into_ontology_factory());
         let phenopacket_builder = PhenopacketBuilder::new(
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
             hpo_bidict_library,
             disease_bidict_library,
             unit_bidict_library,
-            config.credentials.loinc.map(LoincClient::new),
+            assay_bidict_library,
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
