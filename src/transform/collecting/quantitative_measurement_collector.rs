@@ -23,7 +23,7 @@ impl Collect for QuantitativeMeasurementCollector {
                 .collect();
 
             for quant_measurement_sc in quantitative_measurement_scs {
-                let (loinc_id, unit_ontology_id) = quant_measurement_sc
+                let (assay_id, unit_ontology_id) = quant_measurement_sc
                     .get_data_context()
                     .try_as_quantitative_measurement()
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -73,7 +73,7 @@ impl Collect for QuantitativeMeasurementCollector {
                                 phenopacket_id,
                                 quant_measurement,
                                 time_observed,
-                                loinc_id,
+                                assay_id,
                                 unit_ontology_id,
                                 ref_low.zip(ref_high),
                             )?;
@@ -148,7 +148,7 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier("height".into())
                     .with_data_context(Context::QuantitativeMeasurement {
-                        loinc_id: default_quant_loinc().id,
+                        assay_id: default_quant_loinc().id,
                         unit_ontology_id: default_uo_term().id,
                     })
                     .with_building_block_id(Some("height_measurement".to_string())),

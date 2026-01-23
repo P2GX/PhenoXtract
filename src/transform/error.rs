@@ -295,8 +295,6 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("No {bidict_type} BiDict was found, despite being called.")]
     MissingBiDict { bidict_type: String },
-    #[error("LoincClient was missing. It was needed to interpret the LOINC ID {loinc_id}.")]
-    MissingLoincClient { loinc_id: String },
     #[error(transparent)]
     HgvsError(#[from] HGVSError),
     #[error(transparent)]
