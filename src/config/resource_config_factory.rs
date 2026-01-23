@@ -1,9 +1,9 @@
 use crate::config::resource_config::{ResourceConfig, Secrets};
+use crate::ontology::CachedOntologyFactory;
 use crate::ontology::error::FactoryError;
 use crate::ontology::loinc_client::LoincClient;
-use crate::ontology::resource_references::KnownResourcePrefixes;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::BiDict;
-use crate::ontology::{CachedOntologyFactory, OntologyRef};
 use strum::VariantNames;
 
 #[derive(Default)]
@@ -17,7 +17,7 @@ impl ResourceConfigFactory {
             Self::build_loinc_client(&config)
         } else {
             match self.ontology_factory.build_bidict(
-                &OntologyRef::new(config.id.clone(), config.version.clone()),
+                &ResourceRef::new(config.id.clone(), config.version.clone()),
                 None,
             ) {
                 Ok(bi_dict) => Ok(Box::new(bi_dict)),

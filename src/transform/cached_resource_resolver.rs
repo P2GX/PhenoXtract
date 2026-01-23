@@ -115,21 +115,26 @@ impl CachedResourceResolver {
 
 #[cfg(test)]
 mod tests {
-    use crate::ontology::resource_references::ResourceRef;
-    use crate::ontology::traits::HasPrefixId;
+    use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
     use crate::transform::cached_resource_resolver::CachedResourceResolver;
     use rstest::rstest;
 
     #[rstest]
     fn test_resolve() {
-        let resource_id = ResourceRef::new("hp".to_string(), "".to_string());
+        let resource_id = ResourceRef::from(KnownResourcePrefixes::HP).with_latest();
         let mut resolver = CachedResourceResolver::default();
         let hpo_metadata = resolver.resolve(&resource_id).unwrap();
 
-        assert_eq!(hpo_metadata.id, resource_id.prefix_id());
+        assert_eq!(
+            hpo_metadata.id,
+            KnownResourcePrefixes::HP.to_string().to_lowercase()
+        );
         assert_eq!(hpo_metadata.name, "Human Phenotype Ontology");
         assert_eq!(hpo_metadata.url, "http://purl.obolibrary.org/obo/hp.json");
-        assert_eq!(hpo_metadata.namespace_prefix, "HP");
+        assert_eq!(
+            hpo_metadata.namespace_prefix,
+            KnownResourcePrefixes::HP.to_string()
+        );
         assert_eq!(
             hpo_metadata.iri_prefix,
             "http://purl.obolibrary.org/obo/HP_$1"
@@ -139,10 +144,13 @@ mod tests {
     #[rstest]
     fn test_resolve_versionless_resource() {
         let mut resolver = CachedResourceResolver::default();
-        let resource_id = ResourceRef::new("hgnc".to_string(), "latest".to_string());
+        let resource_id = ResourceRef::from(KnownResourcePrefixes::HGNC).with_latest();
         let hgnc_metadata = resolver.resolve(&resource_id).unwrap();
 
-        assert_eq!(hgnc_metadata.id, "hgnc");
+        assert_eq!(
+            hgnc_metadata.id,
+            KnownResourcePrefixes::HGNC.to_string().to_lowercase()
+        );
         assert_eq!(hgnc_metadata.version, "-");
     }
 }

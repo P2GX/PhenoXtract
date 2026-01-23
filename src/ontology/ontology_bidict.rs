@@ -1,5 +1,5 @@
 use crate::ontology::error::BiDictError;
-use crate::ontology::resource_references::{OntologyRef, ResourceRef};
+use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
 use ontolius::Identified;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OntologyBiDict {
-    pub ontology: OntologyRef,
+    ontology: ResourceRef,
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
@@ -54,7 +54,7 @@ impl BiDict for OntologyBiDict {
     }
 
     fn reference(&self) -> &ResourceRef {
-        self.ontology.as_inner()
+        &self.ontology
     }
 }
 
@@ -78,7 +78,7 @@ impl BiDict for Arc<OntologyBiDict> {
 
 impl OntologyBiDict {
     pub(crate) fn new(
-        ontology: OntologyRef,
+        ontology: ResourceRef,
         label_to_id: HashMap<String, String>,
         synonym_to_id: HashMap<String, String>,
         id_to_label: HashMap<String, String>,
@@ -130,7 +130,7 @@ impl OntologyBiDict {
             }
         }
 
-        let ont_ref = OntologyRef::from(ontology_prefix).with_version(ontology.version());
+        let ont_ref = ResourceRef::from(ontology_prefix).with_version(ontology.version());
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }

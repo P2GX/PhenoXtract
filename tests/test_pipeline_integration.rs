@@ -8,7 +8,7 @@ use phenoxtract::extract::ExcelDatasource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::resource_references::OntologyRef;
+use phenoxtract::ontology::resource_references::ResourceRef;
 
 use directories::ProjectDirs;
 use dotenvy::dotenv;
@@ -305,8 +305,8 @@ fn test_pipeline_integration(
         OboLibraryProvider::default(),
     )));
 
-    let hp_ref = OntologyRef::hp().with_version("2025-09-01");
-    let mondo_ref = OntologyRef::mondo().with_version("2026-01-06");
+    let hp_ref = ResourceRef::hp().with_version("2025-09-01");
+    let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
 
     let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
     let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());

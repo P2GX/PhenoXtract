@@ -24,7 +24,7 @@ pub struct LoincRelease {
 }
 impl From<LoincRelease> for ResourceRef {
     fn from(value: LoincRelease) -> Self {
-        ResourceRef::new(KnownResourcePrefixes::LOINC, value.version)
+        ResourceRef::from(KnownResourcePrefixes::LOINC).with_version(&value.version)
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
