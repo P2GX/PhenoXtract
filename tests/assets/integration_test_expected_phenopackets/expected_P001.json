@@ -66,7 +66,7 @@
   "measurements": [
     {
       "assay": {
-        "id": "8302-2",
+        "id": "LOINC:8302-2",
         "label": "Body height"
       },
       "timeObserved": {
@@ -223,7 +223,7 @@
         "id": "loinc",
         "name": "Logical Observation Identifiers Names and Codes",
         "url": "https://loinc.org/",
-        "version": "-",
+        "version": "2.81",
         "namespacePrefix": "loinc",
         "iriPrefix": "https://loinc.org/$1"
       },

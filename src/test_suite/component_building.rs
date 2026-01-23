@@ -22,16 +22,16 @@ pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("MONDO", vec![Box::new(MONDO_BIDICT.clone())])
 }
 
-pub(crate) fn build_test_assay_bidict_library() -> BiDictLibrary {
+pub(crate) fn build_test_loinc_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("LOINC", vec![Box::new(LoincClient::default())])
 }
 
 pub(crate) fn build_test_uo_bidict_library() -> BiDictLibrary {
-    BiDictLibrary::new("UO", vec![UO_DICT.clone()])
+    BiDictLibrary::new("UO", vec![Box::new(UO_DICT.clone())])
 }
 
 pub(crate) fn build_test_pato_bidict_library() -> BiDictLibrary {
-    BiDictLibrary::new("PATO", vec![PATO_DICT.clone()])
+    BiDictLibrary::new("PATO", vec![Box::new(PATO_DICT.clone())])
 }
 
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
@@ -54,7 +54,7 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_hpo_bidict_library(),
         build_test_mondo_bidict_library(),
         build_test_uo_bidict_library(),
+        build_test_loinc_bidict_library(),
         build_test_pato_bidict_library(),
-        build_test_assay_bidict_library(),
     )
 }

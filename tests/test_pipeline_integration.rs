@@ -161,7 +161,7 @@ fn csv_context_5() -> TableContext {
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("height (cm)".to_string()))
                 .with_data_context(Context::QuantitativeMeasurement {
-                    loinc_id: "8302-2".to_string(),
+                    loinc_id: "LOINC:8302-2".to_string(),
                     unit_ontology_id: "UO:0000015".to_string(),
                 })
                 .with_building_block_id(Some("M".to_string())),
@@ -345,15 +345,14 @@ fn test_pipeline_integration(
 
     let hp_ref = ResourceRef::hp().with_version("2025-09-01");
     let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
+    let uo_ref = ResourceRef::uo().with_version("2026-01-09");
+    let pato_ref = ResourceRef::pato().with_version("2025-05-14");
 
     let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
     let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
-    let unit_dict = onto_factory
-        .build_bidict(&OntologyRef::uo_with_version("2026-01-09"), None)
-        .unwrap();
-    let qual_meas_dict = onto_factory
-        .build_bidict(&OntologyRef::pato_with_version("2025-05-14"), None)
-        .unwrap();
+    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
+    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
+
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -415,7 +414,7 @@ fn test_pipeline_integration(
             ContextKind::HpoLabelOrId,
         )),
         Box::new(OntologyNormaliserStrategy::new(
-            qual_meas_dict.clone(),
+            onto_factory.build_bidict(&pato_ref, None).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
         Box::new(DateToAgeStrategy),
@@ -434,9 +433,9 @@ fn test_pipeline_integration(
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
         BiDictLibrary::new("DISEASE", vec![mondo_dict]),
-        BiDictLibrary::new("UNIT", vec![unit_dict]),
-        BiDictLibrary::new("QUAL", vec![qual_meas_dict]),
-        BiDictLibrary::new("MEASUREMENTS", vec![Box::new(LoincClient::default())]),
+        BiDictLibrary::new("UNIT", vec![uo_dict]),
+        BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
+        BiDictLibrary::new("QUAL", vec![pato_dict]),
     );
 
     let transformer_module = TransformerModule::new(

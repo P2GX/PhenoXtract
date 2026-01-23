@@ -136,9 +136,10 @@ impl TryFrom<PipelineConfig> for Pipeline {
             unit_bidict_library.add_bidict(unit_bidict);
         }
 
-        for qualitative_measurement_ontology_ref in &config.meta_data.qualitative_measurement_refs {
-            let qual_bidict =
-                ontology_factory.build_bidict(qualitative_measurement_ontology_ref, None)?;
+        for qualitative_measurement_ontology_ref in
+            config.meta_data.qualitative_measurement_resources
+        {
+            let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
             qualitative_measurement_bidict_library.add_bidict(qual_bidict);
         }
 
@@ -151,7 +152,6 @@ impl TryFrom<PipelineConfig> for Pipeline {
             unit_bidict_library,
             assay_bidict_library,
             qualitative_measurement_bidict_library,
-            config.credentials.loinc.map(LoincClient::new),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config

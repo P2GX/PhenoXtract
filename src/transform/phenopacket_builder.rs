@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
-use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::{BIDict, HasPrefixId, HasVersion};
+use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
@@ -34,13 +33,8 @@ pub struct PhenopacketBuilder {
     hpo_bidict_lib: BiDictLibrary,
     disease_bidict_lib: BiDictLibrary,
     unit_bidict_lib: BiDictLibrary,
-    #[allow(unused)]
     assay_bidict_lib: BiDictLibrary,
-    hpo_bidict: BiDictLibrary,
-    disease_bidicts: BiDictLibrary,
-    unit_bidicts: BiDictLibrary,
-    qualitative_measurement_bidicts: BiDictLibrary,
-    loinc_client: Option<LoincClient>,
+    qualitative_measurement_bidict_lib: BiDictLibrary,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -52,11 +46,7 @@ impl PhenopacketBuilder {
         disease_bidict_lib: BiDictLibrary,
         unit_bidict_lib: BiDictLibrary,
         assay_bidict_lib: BiDictLibrary,
-        hpo_bidict: BiDictLibrary,
-        disease_bidicts: BiDictLibrary,
-        unit_bidicts: BiDictLibrary,
-        qualitative_measurement_bidicts: BiDictLibrary,
-        loinc_client: Option<LoincClient>,
+        qualitative_measurement_bidict_lib: BiDictLibrary,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
@@ -66,11 +56,7 @@ impl PhenopacketBuilder {
             disease_bidict_lib,
             unit_bidict_lib,
             assay_bidict_lib,
-            hpo_bidict,
-            disease_bidicts,
-            unit_bidicts,
-            qualitative_measurement_bidicts,
-            loinc_client,
+            qualitative_measurement_bidict_lib,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -468,23 +454,37 @@ impl PhenopacketBuilder {
         phenopacket_id: &str,
         quant_measurement: f64,
         time_observed: Option<&str>,
-        loinc_id: &str,
+        assay_id: &str,
         unit_ontology_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        if self.unit_bidicts.get_bidicts().is_empty() {
+        if self.unit_bidict_lib.get_bidicts().is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: "quantitative measurement".to_string(),
             });
         }
 
+        if self.assay_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
         let (unit_ontology_term, unit_ontology_ref) = self
-            .unit_bidicts
+            .unit_bidict_lib
             .query_bidicts(unit_ontology_id)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                 what: "Unit ontology term".to_string(),
                 value: unit_ontology_id.to_string(),
             })?;
+
+        let (assay_term, assay_ref) =
+            self.assay_bidict_lib
+                .query_bidicts(assay_id)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Assay term".to_string(),
+                    value: assay_id.to_string(),
+                })?;
 
         let mut quantity = Quantity {
             unit: Some(unit_ontology_term.clone()),
@@ -500,18 +500,8 @@ impl PhenopacketBuilder {
             });
         }
 
-        let loinc_client = self.loinc_client.as_ref().ok_or_else(|| {
-            PhenopacketBuilderError::MissingLoincClient {
-                loinc_id: loinc_id.to_string(),
-            }
-        })?;
-        let loinc_label = loinc_client.get_label(loinc_id)?;
-
         let mut measurement_element = Measurement {
-            assay: Some(OntologyClass {
-                id: loinc_id.to_string(),
-                label: loinc_label.to_string(),
-            }),
+            assay: Some(assay_term),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::Quantity(quantity)),
             })),
@@ -532,8 +522,7 @@ impl PhenopacketBuilder {
 
         pp.measurements.push(measurement_element);
 
-        let loinc_ref = ResourceRef::new("LOINC".to_string(), "latest".to_string());
-        self.ensure_resource(phenopacket_id, &loinc_ref);
+        self.ensure_resource(phenopacket_id, &assay_ref);
         self.ensure_resource(phenopacket_id, &unit_ontology_ref);
 
         Ok(())
@@ -544,10 +533,10 @@ impl PhenopacketBuilder {
         phenopacket_id: &str,
         qual_measurement: &str,
         time_observed: Option<&str>,
-        loinc_id: &str,
+        assay_id: &str,
     ) -> Result<(), PhenopacketBuilderError> {
         if self
-            .qualitative_measurement_bidicts
+            .qualitative_measurement_bidict_lib
             .get_bidicts()
             .is_empty()
         {
@@ -556,26 +545,30 @@ impl PhenopacketBuilder {
             });
         }
 
+        if self.assay_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
+        let (assay_term, assay_ref) =
+            self.assay_bidict_lib
+                .query_bidicts(assay_id)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Assay term".to_string(),
+                    value: assay_id.to_string(),
+                })?;
+
         let (qualitative_measurement_term, qualitative_measurement_ontology_ref) = self
-            .qualitative_measurement_bidicts
+            .qualitative_measurement_bidict_lib
             .query_bidicts(qual_measurement)
             .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                 what: "Qualitative measurement term".to_string(),
                 value: qual_measurement.to_string(),
             })?;
 
-        let loinc_client = self.loinc_client.as_ref().ok_or_else(|| {
-            PhenopacketBuilderError::MissingLoincClient {
-                loinc_id: loinc_id.to_string(),
-            }
-        })?;
-        let loinc_label = loinc_client.get_label(loinc_id)?;
-
         let mut measurement_element = Measurement {
-            assay: Some(OntologyClass {
-                id: loinc_id.to_string(),
-                label: loinc_label.to_string(),
-            }),
+            assay: Some(assay_term),
             measurement_value: Some(MeasurementValue::Value(ValueStruct {
                 value: Some(Value::OntologyClass(qualitative_measurement_term)),
             })),
@@ -596,8 +589,7 @@ impl PhenopacketBuilder {
 
         pp.measurements.push(measurement_element);
 
-        let loinc_ref = ResourceRef::new("LOINC".to_string(), "latest".to_string());
-        self.ensure_resource(phenopacket_id, &loinc_ref);
+        self.ensure_resource(phenopacket_id, &assay_ref);
         self.ensure_resource(phenopacket_id, &qualitative_measurement_ontology_ref);
 
         Ok(())
