@@ -1,5 +1,5 @@
 use crate::config::context::ContextKind;
-use crate::ontology::OntologyRef;
+use crate::ontology::resource_references::ResourceRef;
 use crate::transform::strategies::mapping::DefaultMapping;
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +10,9 @@ pub enum StrategyConfig {
     DefaultMapping(DefaultMapping),
     MultiHpoColExpansion,
     OntologyNormaliser {
-        ontology_prefix: OntologyRef,
+        ontology: ResourceRef,
         data_context_kind: ContextKind,
     },
     AgeToIso8601,
+    DateToAge,
 }

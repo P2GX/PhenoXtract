@@ -46,9 +46,9 @@ impl ConfigLoader {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::config::credentials::{Credentials, LoincCredentials};
     use crate::config::loader_config::LoaderConfig;
     use crate::config::meta_data::MetaData;
+    use crate::config::resource_config::ResourceConfig;
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
     use crate::config::table_context::{
@@ -59,7 +59,7 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
-    use crate::ontology::OntologyRef;
+    use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::config::get_full_config_bytes;
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
@@ -94,13 +94,9 @@ pipeline:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
-    hp_ref:
+    hp_resource:
+      id: "hp"
       version: "2025-09-01"
-      prefix_id: "HP"
-  credentials:
-    loinc:
-      username: "your_loinc_username"
-      password: "your_loinc_password"
 "#;
 
     const TOML_DATA: &[u8] = br#"
@@ -132,13 +128,9 @@ created_by = "Rouven Reuter"
 submitted_by = "Magnus Knut Hansen"
 cohort_name = "Arkham Asylum 2025"
 
-[pipeline.meta_data.hp_ref]
+[pipeline.meta_data.hp_resource]
+id = "hp"
 version = "2025-09-01"
-prefix_id = "HP"
-
-[pipeline.credentials.loinc]
-username = "your_loinc_username"
-password = "your_loinc_password"
 "#;
 
     const JSON_DATA: &[u8] = br#"
@@ -173,15 +165,9 @@ password = "your_loinc_password"
       "created_by": "Rouven Reuter",
       "submitted_by": "Magnus Knut Hansen",
       "cohort_name": "Arkham Asylum 2025",
-      "hp_ref": {
-        "version": "2025-09-01",
-        "prefix_id": "HP"
-      }
-    },
-    "credentials": {
-      "loinc": {
-        "username": "your_loinc_username",
-        "password": "your_loinc_password"
+      "hp_resource": {
+        "id": "hp",
+        "version": "2025-09-01"
       }
     }
   }
@@ -220,15 +206,9 @@ password = "your_loinc_password"
       created_by: "Rouven Reuter",
       submitted_by: "Magnus Knut Hansen",
       cohort_name: "Arkham Asylum 2025",
-      hp_ref: (
+      hp_resource: (
+        id: "hp",
         version: "2025-09-01",
-        prefix_id: "HP",
-      ),
-    ),
-    credentials: (
-      loinc: (
-        username: "your_loinc_username",
-        password: "your_loinc_password",
       ),
     ),
   ),
@@ -293,9 +273,14 @@ password = "your_loinc_password"
                     Some("Rouven Reuter"),
                     Some("Magnus Knut Hansen"),
                     "Arkham Asylum 2025",
-                    Some(OntologyRef::hp_with_version("2025-09-01")),
+                    Some(ResourceConfig::new(KnownResourcePrefixes::HP).with_version("2025-09-01")),
                     vec![],
-                    vec![OntologyRef::uo_with_version("2026-01-09")],
+                    vec![
+                        ResourceConfig::new(KnownResourcePrefixes::LOINC)
+                            .with_version("2.80")
+                            .with_credentials(loinc_username, loinc_password),
+                    ],
+                    vec![ResourceConfig::new(KnownResourcePrefixes::UO).with_version("2026-01-09")],
                     vec![],
                 ),
                 vec![
@@ -305,12 +290,6 @@ password = "your_loinc_password"
                 LoaderConfig::FileSystem {
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
-                },
-                Credentials {
-                    loinc: Some(LoincCredentials {
-                        username: loinc_username,
-                        password: loinc_password,
-                    }),
                 },
             ),
             data_sources: vec![

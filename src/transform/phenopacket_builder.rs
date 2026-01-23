@@ -1,8 +1,7 @@
 #![allow(clippy::too_many_arguments)]
-use crate::ontology::loinc_client::LoincClient;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{BIDict, HasPrefixId, HasVersion};
-use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
@@ -32,6 +31,11 @@ pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
+    hpo_bidict_lib: BiDictLibrary,
+    disease_bidict_lib: BiDictLibrary,
+    unit_bidict_lib: BiDictLibrary,
+    #[allow(unused)]
+    assay_bidict_lib: BiDictLibrary,
     hpo_bidict: BiDictLibrary,
     disease_bidicts: BiDictLibrary,
     unit_bidicts: BiDictLibrary,
@@ -44,6 +48,10 @@ impl PhenopacketBuilder {
     pub fn new(
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
+        hpo_bidict_lib: BiDictLibrary,
+        disease_bidict_lib: BiDictLibrary,
+        unit_bidict_lib: BiDictLibrary,
+        assay_bidict_lib: BiDictLibrary,
         hpo_bidict: BiDictLibrary,
         disease_bidicts: BiDictLibrary,
         unit_bidicts: BiDictLibrary,
@@ -54,6 +62,10 @@ impl PhenopacketBuilder {
             subject_to_phenopacket: HashMap::new(),
             hgnc_client,
             hgvs_client,
+            hpo_bidict_lib,
+            disease_bidict_lib,
+            unit_bidict_lib,
+            assay_bidict_lib,
             hpo_bidict,
             disease_bidicts,
             unit_bidicts,
@@ -244,18 +256,19 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        if self.hpo_bidict.get_bidicts().is_empty() {
+        if self.hpo_bidict_lib.get_bidicts().is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: "HPO".to_string(),
             });
         }
 
-        let (hpo_term, hpo_ref) = self.hpo_bidict.query_bidicts(phenotype).ok_or_else(|| {
-            PhenopacketBuilderError::ParsingError {
-                what: "HPO term".to_string(),
-                value: phenotype.to_string(),
-            }
-        })?;
+        let (hpo_term, hpo_ref) =
+            self.hpo_bidict_lib
+                .query_bidicts(phenotype)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "HPO term".to_string(),
+                    value: phenotype.to_string(),
+                })?;
 
         let feature = self.get_or_create_phenotypic_feature(phenopacket_id, hpo_term);
 
@@ -291,19 +304,19 @@ impl PhenopacketBuilder {
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
-        if self.disease_bidicts.get_bidicts().is_empty() {
+        if self.disease_bidict_lib.get_bidicts().is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: "disease".to_string(),
             });
         }
 
         let (disease_term, res_ref) =
-            self.disease_bidicts.query_bidicts(disease).ok_or_else(|| {
-                PhenopacketBuilderError::ParsingError {
+            self.disease_bidict_lib
+                .query_bidicts(disease)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                     what: "Disease term".to_string(),
                     value: disease.to_string(),
-                }
-            })?;
+                })?;
 
         self.ensure_resource(phenopacket_id, &res_ref);
 
@@ -311,7 +324,10 @@ impl PhenopacketBuilder {
             let (symbol, id) = self
                 .hgnc_client
                 .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
-            self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
+            self.ensure_resource(
+                phenopacket_id,
+                &ResourceRef::from(KnownResourcePrefixes::HGNC),
+            );
 
             let gi = GenomicInterpretation {
                 subject_or_biosample_id: patient_id.to_string(),
@@ -335,10 +351,13 @@ impl PhenopacketBuilder {
 
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
-                self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
                 self.ensure_resource(
                     phenopacket_id,
-                    &OntologyRef::new("geno".to_string(), None).with_version("2025-07-25"),
+                    &ResourceRef::from(KnownResourcePrefixes::HGNC),
+                );
+                self.ensure_resource(
+                    phenopacket_id,
+                    &ResourceRef::from("geno").with_version("2025-07-25"),
                 );
 
                 if let Some(gene) = gene_variant_data.get_gene() {
@@ -406,19 +425,19 @@ impl PhenopacketBuilder {
             warn!("laterality disease not implemented yet");
         }
 
-        if self.disease_bidicts.get_bidicts().is_empty() {
+        if self.disease_bidict_lib.get_bidicts().is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: "disease".to_string(),
             });
         }
 
         let (disease_term, res_ref) =
-            self.disease_bidicts.query_bidicts(disease).ok_or_else(|| {
-                PhenopacketBuilderError::ParsingError {
+            self.disease_bidict_lib
+                .query_bidicts(disease)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                     what: "Disease term".to_string(),
                     value: disease.to_string(),
-                }
-            })?;
+                })?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -679,9 +698,10 @@ impl PhenopacketBuilder {
 impl PartialEq for PhenopacketBuilder {
     fn eq(&self, other: &Self) -> bool {
         self.subject_to_phenopacket == other.subject_to_phenopacket
-            && self.hpo_bidict == other.hpo_bidict
-            && self.disease_bidicts == other.disease_bidicts
-            && self.unit_bidicts == other.unit_bidicts
+            && self.hpo_bidict_lib == other.hpo_bidict_lib
+            && self.disease_bidict_lib == other.disease_bidict_lib
+            && self.unit_bidict_lib == other.unit_bidict_lib
+            && self.assay_bidict_lib == other.assay_bidict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }
@@ -689,7 +709,7 @@ impl PartialEq for PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::DatabaseRef;
+    use crate::ontology::resource_references::ResourceRef;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
@@ -1669,7 +1689,10 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id".to_string();
 
-        builder.ensure_resource(&pp_id, &DatabaseRef::omim());
+        builder.ensure_resource(
+            &pp_id,
+            &ResourceRef::from(KnownResourcePrefixes::OMIM).with_latest(),
+        );
 
         let pp = builder.build().first().unwrap().clone();
         let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();
