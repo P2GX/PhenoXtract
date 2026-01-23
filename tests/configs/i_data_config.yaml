@@ -39,10 +39,11 @@ pipeline:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen
     cohort_name: "Arkham Asylum 2025"
-    hp_ref:
+    hp_resource:
+      id: "HP"
       version: "2025-09-01"
       prefix_id: "HP"
-    unit_refs:
+    unit_resources:
       - version: "2026-01-09"
         prefix_id: "UO"
   credentials:
