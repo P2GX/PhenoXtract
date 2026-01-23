@@ -1,6 +1,6 @@
 use crate::ontology::error::BiDictError;
-use crate::ontology::resource_references::OntologyRef;
-use crate::ontology::traits::BIDict;
+use crate::ontology::resource_references::ResourceRef;
+use crate::ontology::traits::BiDict;
 use ontolius::Identified;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::ontology::{MetadataAware, OntologyTerms};
@@ -10,13 +10,13 @@ use std::sync::Arc;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OntologyBiDict {
-    pub ontology: OntologyRef,
+    ontology: ResourceRef,
     label_to_id: HashMap<String, String>,
     synonym_to_id: HashMap<String, String>,
     id_to_label: HashMap<String, String>,
 }
 
-impl BIDict for OntologyBiDict {
+impl BiDict for OntologyBiDict {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         let normalized_key = Self::normalize_key(id_or_label);
 
@@ -52,11 +52,33 @@ impl BIDict for OntologyBiDict {
         }
         Err(BiDictError::NotFound(normalized_key))
     }
+
+    fn reference(&self) -> &ResourceRef {
+        &self.ontology
+    }
+}
+
+impl BiDict for Arc<OntologyBiDict> {
+    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get(id_or_label)
+    }
+
+    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get_label(id)
+    }
+
+    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+        self.as_ref().get_id(term)
+    }
+
+    fn reference(&self) -> &ResourceRef {
+        self.as_ref().reference()
+    }
 }
 
 impl OntologyBiDict {
     pub(crate) fn new(
-        ontology: OntologyRef,
+        ontology: ResourceRef,
         label_to_id: HashMap<String, String>,
         synonym_to_id: HashMap<String, String>,
         id_to_label: HashMap<String, String>,
@@ -108,7 +130,7 @@ impl OntologyBiDict {
             }
         }
 
-        let ont_ref = OntologyRef::from(ontology_prefix).with_version(ontology.version());
+        let ont_ref = ResourceRef::from(ontology_prefix).with_version(ontology.version());
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
@@ -117,25 +139,29 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::ontology_mocking::HPO;
     use rstest::rstest;
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
 
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         assert_eq!(
             hpo_dict.get("contact with nickel").unwrap(),
             "HP:4000120".to_string()
@@ -144,7 +170,8 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), OntologyRef::HPO_PREFIX);
+        let hpo_dict =
+            OntologyBiDict::from_ontology(HPO.clone(), &KnownResourcePrefixes::HP.to_string());
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
             hpo_dict.get(hpo_id).unwrap(),
