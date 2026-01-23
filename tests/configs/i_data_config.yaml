@@ -19,7 +19,7 @@ data_sources:
           - identifier: "Height (cm)"
             data_context:
               quantitative_measurement:
-                loinc_id: "8302-2"
+                assay_id: "LOINC:8302-2"
                 unit_ontology_id: "UO:0000015"
     extraction_configs:
       - name: "Cohort"
