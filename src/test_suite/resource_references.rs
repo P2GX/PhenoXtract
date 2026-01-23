@@ -11,7 +11,7 @@ pub(crate) static UO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::uo().with_version("2026-01-09"));
 pub(crate) static PATO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::pato().with_version("2025-05-14"));
-pub(crate) static LOINC_REF: Lazy<ResourceRef> = Lazy::new(|| ResourceRef::loinc());
+pub(crate) static LOINC_REF: Lazy<ResourceRef> = Lazy::new(ResourceRef::loinc);
 
 pub(crate) fn mondo_meta_data_resource() -> Resource {
     Resource {
