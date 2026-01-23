@@ -74,7 +74,7 @@ pub(crate) fn loinc_meta_data_resource() -> Resource {
         name: "Logical Observation Identifiers Names and Codes".to_string(),
         url: "https://loinc.org/".to_string(),
         version: "-".to_string(),
-        namespace_prefix: LOINC_REF.prefix_id().to_string(),
+        namespace_prefix: LOINC_REF.prefix_id().to_lowercase(),
         iri_prefix: "https://loinc.org/$1".to_string(),
     }
 }
