@@ -1,7 +1,7 @@
 use crate::config::resource_config::{ResourceConfig, Secrets};
 use crate::ontology::error::FactoryError;
 use crate::ontology::loinc_client::LoincClient;
-use crate::ontology::resource_references::KnownPrefixes;
+use crate::ontology::resource_references::KnownResourcePrefixes;
 use crate::ontology::traits::BiDict;
 use crate::ontology::{CachedOntologyFactory, OntologyRef};
 use strum::VariantNames;
@@ -28,7 +28,7 @@ impl ResourceConfigFactory {
 
                     let reason = if is_known {
                         format!(
-                            "Failed to build known resource '{}': {}. This is a supported resource, so this may indicate a configuration, network, or data source issue.",
+                            "Failed to build known resource '{}': {}. This is a supported ontology, so this may indicate a configuration, network, or data source issue.",
                             config.id, err
                         )
                     } else {
