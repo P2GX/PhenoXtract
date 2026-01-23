@@ -13,8 +13,7 @@ use crate::transform::data_processing::parsing::{
 use crate::transform::strategies::traits::Strategy;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
-use polars::prelude::TimeUnit::Milliseconds;
-use polars::prelude::{AnyValue, Column, DataType};
+use polars::prelude::{AnyValue, Column, DataType, TimeUnit};
 use std::any::type_name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -99,7 +98,7 @@ impl Strategy for DateToAgeStrategy {
                             allowed_datatypes: vec![
                                 DataType::String,
                                 DataType::Date,
-                                DataType::Datetime(Milliseconds, None),
+                                DataType::Datetime(TimeUnit::Milliseconds, None),
                             ],
                             found_datatype: other_datatype.clone(),
                         });
@@ -465,7 +464,7 @@ mod tests {
     fn df_with_datetime_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
-        "DOB" => &[AnyValue::Datetime(dob_alice_datetime(), Milliseconds, None), AnyValue::Datetime(dob_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_charlie_datetime(), TimeUnit::Milliseconds, None)],
+        "DOB" => &[AnyValue::Datetime(dob_alice_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_bob_datetime(), TimeUnit::Milliseconds, None), AnyValue::Datetime(dob_charlie_datetime(), TimeUnit::Milliseconds, None)],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         )
             .unwrap()
