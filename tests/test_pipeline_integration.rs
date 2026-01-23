@@ -309,7 +309,7 @@ fn remove_version_from_loinc(pp: &mut Phenopacket) {
         let loinc_resource = metadata
             .resources
             .iter_mut()
-            .find(|resource| resource.id == "loinc".to_string());
+            .find(|resource| resource.id == "loinc");
 
         if let Some(loinc_resource) = loinc_resource {
             loinc_resource.version = "-".to_string()
