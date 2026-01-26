@@ -134,10 +134,6 @@ impl PhenopacketBuilder {
         cause_of_death: Option<&str>,
         survival_time_in_days: Option<u32>,
     ) -> Result<(), PhenopacketBuilderError> {
-        if cause_of_death.is_some() {
-            warn!("cause_of_death - not implemented for vital_status yet");
-        }
-
         let status = Status::from_str_name(status).ok_or(PhenopacketBuilderError::ParsingError {
             what: "vital status".to_string(),
             value: status.to_string(),
@@ -153,6 +149,21 @@ impl PhenopacketBuilder {
             None => None,
         };
 
+        let cause_of_death = match cause_of_death {
+            Some(cause_of_death) => {
+                let (disease_term, disease_ref) = self
+                    .disease_bidict_lib
+                    .query_bidicts(cause_of_death)
+                    .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                        what: "disease term".to_string(),
+                        value: cause_of_death.to_string(),
+                    })?;
+                self.ensure_resource(phenopacket_id, &disease_ref);
+                Some(disease_term)
+            }
+            None => None,
+        };
+
         let survival_time_in_days = survival_time_in_days.unwrap_or(0);
 
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
@@ -161,7 +172,7 @@ impl PhenopacketBuilder {
         individual.vital_status = Some(VitalStatus {
             status,
             time_of_death,
-            cause_of_death: None,
+            cause_of_death,
             survival_time_in_days,
         });
         Ok(())
@@ -1476,7 +1487,7 @@ mod tests {
                 &phenopacket_id,
                 "ALIVE",
                 Some(&default_iso_age()),
-                None,
+                Some(default_disease_oc().id.as_str()),
                 Some(322),
             )
             .unwrap();
@@ -1489,7 +1500,7 @@ mod tests {
             Some(VitalStatus {
                 status: Status::Alive.into(),
                 time_of_death: Some(default_age_element()),
-                cause_of_death: None,
+                cause_of_death: Some(default_disease_oc()),
                 survival_time_in_days: 322,
             })
         );
