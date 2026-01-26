@@ -207,8 +207,8 @@ where
         val_opt.is_none_or(|val| {
             val.fract() == T::Native::zero()
                 && val.is_finite()
-                && val >= T::Native::from_i64(i64::MIN).unwrap()
-                && val <= T::Native::from_i64(i64::MAX).unwrap()
+                && Some(val) >= T::Native::from_i64(i64::MIN)
+                && Some(val) <= T::Native::from_i64(i64::MAX)
         })
     })
 }
