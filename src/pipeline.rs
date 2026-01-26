@@ -112,7 +112,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
-        let mut assay_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
+        let mut assay_bidict_library = BiDictLibrary::empty_with_name("ASSAY");
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
         let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
 

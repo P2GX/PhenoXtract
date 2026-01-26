@@ -261,6 +261,9 @@ fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
     remove_id_from_variation_descriptor(actual);
     remove_id_from_variation_descriptor(expected);
 
+    remove_version_from_loinc(actual);
+    remove_version_from_loinc(expected);
+
     pretty_assertions::assert_eq!(actual, expected);
 }
 
@@ -297,6 +300,19 @@ fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
                     vi.id = "TEST_ID".to_string();
                 }
             }
+        }
+    }
+}
+
+fn remove_version_from_loinc(pp: &mut Phenopacket) {
+    if let Some(metadata) = &mut pp.meta_data {
+        let loinc_resource = metadata
+            .resources
+            .iter_mut()
+            .find(|resource| resource.id == "loinc");
+
+        if let Some(loinc_resource) = loinc_resource {
+            loinc_resource.version = "-".to_string()
         }
     }
 }
