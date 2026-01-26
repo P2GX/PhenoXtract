@@ -52,7 +52,7 @@ impl BiDictLibrary {
                 return Some((
                     OntologyClass {
                         id: id.to_string(),
-                        label: query.to_string(),
+                        label: query.trim().to_lowercase(),
                     },
                     bidict.reference().clone(),
                 ));
