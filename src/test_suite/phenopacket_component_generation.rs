@@ -131,7 +131,7 @@ pub(crate) fn default_quant_value() -> f64 {
 pub(crate) fn default_pato_qual_measurement() -> OntologyClass {
     OntologyClass {
         id: "PATO:0000467".to_string(),
-        label: "present".to_string(),
+        label: "Present".to_string(),
     }
 }
 
