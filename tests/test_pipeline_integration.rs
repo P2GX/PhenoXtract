@@ -21,6 +21,7 @@ use phenoxtract::ontology::error::RegistryError;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
+use phenoxtract::transform::phenopacket_builder::BuilderMetaData;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
@@ -445,6 +446,7 @@ fn test_pipeline_integration(
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
+        BuilderMetaData::new(cohort_name, "The Collector"),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
@@ -456,7 +458,7 @@ fn test_pipeline_integration(
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CdfCollectorBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
+        CdfCollectorBroker::with_default_collectors(phenopacket_builder),
     );
 
     let output_dir = assets_path.join("do_not_push");

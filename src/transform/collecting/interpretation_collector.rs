@@ -18,7 +18,7 @@ impl Collect for InterpretationCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let subject_sex =
             get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
@@ -72,15 +72,8 @@ impl Collect for InterpretationCollector {
                     for stringified_disease_col in stringified_disease_cols.iter() {
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
-                            let subject_id = patient_cdf
-                                .get_subject_id_col()
-                                .str()?
-                                .get(0)
-                                .expect("subject_id missing");
-
                             builder.upsert_interpretation(
-                                subject_id,
-                                phenopacket_id,
+                                patient_id,
                                 disease,
                                 &gene_variant_data,
                                 subject_sex.clone(),
@@ -260,16 +253,16 @@ mod tests {
         .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id().to_string();
+        let patient_id = default_patient_id();
 
         InterpretationCollector
-            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
+            .collect(&mut builder, &[patient_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
                 resources: vec![

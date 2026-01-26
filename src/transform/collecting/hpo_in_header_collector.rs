@@ -16,15 +16,9 @@ impl Collect for HpoInHeaderCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
-            let patient_id = patient_cdf
-                .get_subject_id_col()
-                .get(0)
-                .expect("Should have one patient id")
-                .to_string();
-
             let hpo_term_in_header_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::HpoLabelOrId))
@@ -67,15 +61,7 @@ impl Collect for HpoInHeaderCollector {
                         if let Some(obs_status) = obs_status {
                             let excluded = if obs_status { None } else { Some(true) };
                             builder.upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo_id,
-                                None,
-                                excluded,
-                                None,
-                                None,
-                                onset,
-                                None,
-                                None,
+                                patient_id, hpo_id, None, excluded, None, None, onset, None, None,
                             )?;
                         } else if let Some(onset) = onset {
                             warn!(
@@ -104,7 +90,7 @@ mod tests {
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{
-        generate_minimal_cdf, generate_minimal_cdf_components,
+        default_patient_id, generate_minimal_cdf, generate_minimal_cdf_components,
     };
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
@@ -176,6 +162,8 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let collector = HpoInHeaderCollector;
 
+        let patient_id = default_patient_id();
+
         let (patient_col, sc) = generate_minimal_cdf_components(1, 2);
 
         let mut fractured_nose_excluded = default_phenotype().clone();
@@ -213,14 +201,14 @@ mod tests {
         )
         .unwrap();
 
-        let pp_id = default_phenopacket_id();
-
-        collector.collect(&mut builder, &[cdf], &pp_id).unwrap();
+        collector
+            .collect(&mut builder, &[cdf], &patient_id)
+            .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: pp_id.to_string(),
+            id: default_phenopacket_id(),
             phenotypic_features: vec![fractured_nose_excluded],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource()],

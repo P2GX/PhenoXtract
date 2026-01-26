@@ -7,6 +7,7 @@
     "karyotypicSex": "UNKNOWN_KARYOTYPE"
   },
   "metaData": {
-    "created": "2025-10-30T10:23:46.834116Z"
+    "created": "2025-10-30T10:23:46.834116Z",
+    "created_by": "The Collector"
   }
 }

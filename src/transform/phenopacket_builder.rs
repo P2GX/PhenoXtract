@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+use crate::config::MetaData;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
@@ -26,7 +27,32 @@ use pivot::hgvs::{AlleleCount, HGVSData};
 use std::collections::HashMap;
 
 #[derive(Debug)]
+pub struct BuilderMetaData {
+    cohort_name: String,
+    created_by: String,
+}
+
+impl BuilderMetaData {
+    pub fn new(cohort_name: impl Into<String>, created_by: impl Into<String>) -> BuilderMetaData {
+        Self {
+            cohort_name: cohort_name.into(),
+            created_by: created_by.into(),
+        }
+    }
+}
+
+impl From<MetaData> for BuilderMetaData {
+    fn from(config_meta_data: MetaData) -> Self {
+        Self {
+            cohort_name: config_meta_data.cohort_name,
+            created_by: config_meta_data.created_by,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct PhenopacketBuilder {
+    meta_data: BuilderMetaData,
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
@@ -40,6 +66,7 @@ pub struct PhenopacketBuilder {
 
 impl PhenopacketBuilder {
     pub fn new(
+        meta_data: BuilderMetaData,
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
         hpo_bidict_lib: BiDictLibrary,
@@ -49,6 +76,7 @@ impl PhenopacketBuilder {
         qualitative_measurement_bidict_lib: BiDictLibrary,
     ) -> Self {
         Self {
+            meta_data,
             subject_to_phenopacket: HashMap::new(),
             hgnc_client,
             hgvs_client,
@@ -60,7 +88,12 @@ impl PhenopacketBuilder {
             resource_resolver: CachedResourceResolver::default(),
         }
     }
-
+    fn generate_phenopacket_id(&self, patient_id: &str) -> String {
+        if patient_id.starts_with(&self.meta_data.created_by) {
+            return patient_id.to_string();
+        }
+        format!("{}-{}", self.meta_data.cohort_name, patient_id)
+    }
     pub(crate) fn build(&self) -> Vec<Phenopacket> {
         let mut phenopackets: Vec<Phenopacket> =
             self.subject_to_phenopacket.values().cloned().collect();
@@ -71,7 +104,8 @@ impl PhenopacketBuilder {
             metadata.created = Some(
                 try_parse_timestamp(&now)
                     .expect("Failed to parse current timestamp for phenopacket metadata"),
-            )
+            );
+            metadata.created_by = self.meta_data.created_by.clone()
         });
 
         phenopackets
@@ -79,8 +113,7 @@ impl PhenopacketBuilder {
 
     pub(crate) fn upsert_individual(
         &mut self,
-        phenopacket_id: &str,
-        individual_id: &str,
+        patient_id: &str,
         alternate_ids: Option<&[&str]>,
         date_of_birth: Option<&str>,
         time_at_last_encounter: Option<&str>,
@@ -105,10 +138,10 @@ impl PhenopacketBuilder {
             warn!("taxonomy - not implemented for individual yet");
         }
 
-        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+        let phenopacket = self.get_or_create_phenopacket(patient_id);
 
         let individual = phenopacket.subject.get_or_insert(Individual::default());
-        individual.id = individual_id.to_string();
+        individual.id = patient_id.to_string();
 
         if let Some(date_of_birth) = date_of_birth {
             individual.date_of_birth =
@@ -133,7 +166,7 @@ impl PhenopacketBuilder {
 
     pub(crate) fn upsert_vital_status(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         status: &str,
         time_of_death: Option<&str>,
         cause_of_death: Option<&str>,
@@ -163,7 +196,7 @@ impl PhenopacketBuilder {
                         what: "disease term".to_string(),
                         value: cause_of_death.to_string(),
                     })?;
-                self.ensure_resource(phenopacket_id, &disease_ref);
+                self.ensure_resource(patient_id, &disease_ref);
                 Some(disease_term)
             }
             None => None,
@@ -171,7 +204,7 @@ impl PhenopacketBuilder {
 
         let survival_time_in_days = survival_time_in_days.unwrap_or(0);
 
-        let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+        let phenopacket = self.get_or_create_phenopacket(patient_id);
         let individual = phenopacket.subject.get_or_insert(Individual::default());
 
         individual.vital_status = Some(VitalStatus {
@@ -230,7 +263,7 @@ impl PhenopacketBuilder {
     /// ```
     pub(crate) fn upsert_phenotypic_feature(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         phenotype: &str,
         description: Option<&str>,
         excluded: Option<bool>,
@@ -267,7 +300,7 @@ impl PhenopacketBuilder {
                     value: phenotype.to_string(),
                 })?;
 
-        let feature = self.get_or_create_phenotypic_feature(phenopacket_id, hpo_term);
+        let feature = self.get_or_create_phenotypic_feature(patient_id, hpo_term);
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
@@ -287,19 +320,19 @@ impl PhenopacketBuilder {
             feature.onset = Some(onset_te);
         }
 
-        self.ensure_resource(phenopacket_id, &hpo_ref);
+        self.ensure_resource(patient_id, &hpo_ref);
         Ok(())
     }
 
     pub(crate) fn upsert_interpretation(
         &mut self,
         patient_id: &str,
-        phenopacket_id: &str,
         disease: &str,
         gene_variant_data: &PathogenicGeneVariantData,
         subject_sex: Option<String>,
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
+        let phenopacket_id = self.generate_phenopacket_id(patient_id);
 
         if self.disease_bidict_lib.get_bidicts().is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
@@ -315,16 +348,13 @@ impl PhenopacketBuilder {
                     value: disease.to_string(),
                 })?;
 
-        self.ensure_resource(phenopacket_id, &res_ref);
+        self.ensure_resource(patient_id, &res_ref);
 
         if let PathogenicGeneVariantData::CausativeGene(gene) = gene_variant_data {
             let (symbol, id) = self
                 .hgnc_client
                 .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
-            self.ensure_resource(
-                phenopacket_id,
-                &ResourceRef::from(KnownResourcePrefixes::HGNC),
-            );
+            self.ensure_resource(patient_id, &ResourceRef::from(KnownResourcePrefixes::HGNC));
 
             let gi = GenomicInterpretation {
                 subject_or_biosample_id: patient_id.to_string(),
@@ -348,12 +378,9 @@ impl PhenopacketBuilder {
 
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
+                self.ensure_resource(patient_id, &ResourceRef::from(KnownResourcePrefixes::HGNC));
                 self.ensure_resource(
-                    phenopacket_id,
-                    &ResourceRef::from(KnownResourcePrefixes::HGNC),
-                );
-                self.ensure_resource(
-                    phenopacket_id,
+                    patient_id,
                     &ResourceRef::from("geno").with_version("2025-07-25"),
                 );
 
@@ -379,7 +406,7 @@ impl PhenopacketBuilder {
         let interpretation_id = format!("{}-{}", phenopacket_id, disease_term.id);
 
         let interpretation =
-            self.get_or_create_interpretation(phenopacket_id, interpretation_id.as_str());
+            self.get_or_create_interpretation(patient_id, interpretation_id.as_str());
 
         interpretation.progress_status = ProgressStatus::UnknownProgress.into();
 
@@ -393,7 +420,7 @@ impl PhenopacketBuilder {
 
     pub(crate) fn insert_disease(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         disease: &str,
         excluded: Option<bool>,
         onset: Option<&str>,
@@ -451,18 +478,18 @@ impl PhenopacketBuilder {
             disease_element.onset = Some(onset_te);
         }
 
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pp = self.get_or_create_phenopacket(patient_id);
 
         pp.diseases.push(disease_element);
 
-        self.ensure_resource(phenopacket_id, &res_ref);
+        self.ensure_resource(patient_id, &res_ref);
 
         Ok(())
     }
 
     pub(crate) fn insert_quantitative_measurement(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         quant_measurement: f64,
         time_observed: Option<&str>,
         assay_id: &str,
@@ -529,19 +556,19 @@ impl PhenopacketBuilder {
             measurement_element.time_observed = Some(time_observed_te);
         }
 
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pp = self.get_or_create_phenopacket(patient_id);
 
         pp.measurements.push(measurement_element);
 
-        self.ensure_resource(phenopacket_id, &assay_ref);
-        self.ensure_resource(phenopacket_id, &unit_ref);
+        self.ensure_resource(patient_id, &assay_ref);
+        self.ensure_resource(patient_id, &unit_ref);
 
         Ok(())
     }
 
     pub(crate) fn insert_qualitative_measurement(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         qual_measurement: &str,
         time_observed: Option<&str>,
         assay_id: &str,
@@ -596,19 +623,20 @@ impl PhenopacketBuilder {
             measurement_element.time_observed = Some(time_observed_te);
         }
 
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pp = self.get_or_create_phenopacket(patient_id);
 
         pp.measurements.push(measurement_element);
 
-        self.ensure_resource(phenopacket_id, &assay_ref);
-        self.ensure_resource(phenopacket_id, &qualitative_measurement_ontology_ref);
+        self.ensure_resource(patient_id, &assay_ref);
+        self.ensure_resource(patient_id, &qualitative_measurement_ontology_ref);
 
         Ok(())
     }
 
-    fn get_or_create_phenopacket(&mut self, phenopacket_id: &str) -> &mut Phenopacket {
+    fn get_or_create_phenopacket(&mut self, patient_id: &str) -> &mut Phenopacket {
+        let phenopacket_id = self.generate_phenopacket_id(patient_id);
         self.subject_to_phenopacket
-            .entry(phenopacket_id.to_string())
+            .entry(phenopacket_id.clone())
             .or_insert_with(|| Phenopacket {
                 id: phenopacket_id.to_string(),
                 ..Default::default()
@@ -617,10 +645,10 @@ impl PhenopacketBuilder {
 
     fn get_or_create_phenotypic_feature(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         phenotype: OntologyClass,
     ) -> &mut PhenotypicFeature {
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pp = self.get_or_create_phenopacket(patient_id);
         let pf_index = pp.phenotypic_features.iter().position(|feature| {
             if let Some(t) = &feature.r#type {
                 t.id == phenotype.id
@@ -643,10 +671,10 @@ impl PhenopacketBuilder {
     }
     fn get_or_create_interpretation(
         &mut self,
-        phenopacket_id: &str,
+        patient_id: &str,
         interpretation_id: &str,
     ) -> &mut Interpretation {
-        let pp = self.get_or_create_phenopacket(phenopacket_id);
+        let pp = self.get_or_create_phenopacket(patient_id);
         let interpretation_index = pp
             .interpretations
             .iter()
@@ -665,13 +693,9 @@ impl PhenopacketBuilder {
         }
     }
 
-    fn ensure_resource(
-        &mut self,
-        phenopacket_id: &str,
-        resource_id: &(impl HasPrefixId + HasVersion),
-    ) {
+    fn ensure_resource(&mut self, patient_id: &str, resource_id: &(impl HasPrefixId + HasVersion)) {
         let needs_resource = self
-            .get_or_create_phenopacket(phenopacket_id)
+            .get_or_create_phenopacket(patient_id)
             .meta_data
             .as_ref()
             .map(|meta_data| {
@@ -688,7 +712,7 @@ impl PhenopacketBuilder {
                 .resolve(resource_id)
                 .expect("Could not resolve resource");
 
-            let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
+            let phenopacket = self.get_or_create_phenopacket(patient_id);
             phenopacket
                 .meta_data
                 .get_or_insert_with(Default::default)
@@ -705,6 +729,7 @@ impl PartialEq for PhenopacketBuilder {
             && self.disease_bidict_lib == other.disease_bidict_lib
             && self.unit_bidict_lib == other.unit_bidict_lib
             && self.assay_bidict_lib == other.assay_bidict_lib
+            && self.qualitative_measurement_bidict_lib == other.qualitative_measurement_bidict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }
@@ -713,13 +738,14 @@ impl PartialEq for PhenopacketBuilder {
 mod tests {
     use super::*;
     use crate::ontology::resource_references::ResourceRef;
-    use crate::test_suite::cdf_generation::default_patient_id;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_disease, default_disease_oc, default_iso_age,
-        default_phenopacket_id, default_phenotype_oc, default_qual_loinc, default_qual_measurement,
-        default_quant_loinc, default_quant_measurement, default_reference_range, default_timestamp,
-        default_timestamp_element, default_uo_term, generate_phenotype,
+        default_age_element, default_cohort_id, default_disease, default_disease_oc,
+        default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc,
+        default_qual_measurement, default_quant_loinc, default_quant_measurement,
+        default_reference_range, default_timestamp, default_timestamp_element, default_uo_term,
+        generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -775,11 +801,11 @@ mod tests {
     fn test_upsert_phenotypic_feature_success(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenotype = default_phenotype_oc();
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
 
         builder
             .upsert_phenotypic_feature(
-                pp_id.as_str(),
+                patient_id.as_str(),
                 &phenotype.label.to_string(),
                 None,
                 None,
@@ -791,7 +817,11 @@ mod tests {
             )
             .unwrap();
 
-        assert!(builder.subject_to_phenopacket.contains_key(&pp_id));
+        assert!(
+            builder
+                .subject_to_phenopacket
+                .contains_key(&default_phenopacket_id())
+        );
 
         let phenopacket = builder
             .subject_to_phenopacket
@@ -834,7 +864,7 @@ mod tests {
     fn test_multiple_phenotypic_features_same_phenopacket(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenotype = default_phenotype_oc();
-        let pp_id = default_phenopacket_id();
+        let pp_id = default_patient_id();
 
         builder
             .upsert_phenotypic_feature(
@@ -864,7 +894,10 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
@@ -872,49 +905,43 @@ mod tests {
     fn test_different_phenopacket_ids(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let id1 = "pp_001".to_string();
-        let id2 = "pp_002".to_string();
+        let p_ids = generate_patient_ids(2);
 
-        builder
-            .upsert_phenotypic_feature(
-                id1.as_str(),
-                &default_phenotype_oc().id.to_string(),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+        for p_id in &p_ids {
+            builder
+                .upsert_phenotypic_feature(
+                    p_id,
+                    &default_phenotype_oc().id.to_string(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+        }
+
+        p_ids.iter().for_each(|p_id| {
+            assert!(
+                builder
+                    .subject_to_phenopacket
+                    .contains_key(&builder.generate_phenopacket_id(p_id))
             )
-            .unwrap();
+        });
 
-        builder
-            .upsert_phenotypic_feature(
-                id2.as_str(),
-                &default_phenotype_oc().id.to_string(),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap();
-
-        assert!(builder.subject_to_phenopacket.contains_key(&id1));
-        assert!(builder.subject_to_phenopacket.contains_key(&id2));
         assert_eq!(builder.subject_to_phenopacket.len(), 2);
     }
 
     #[rstest]
     fn test_update_phenotypic_features(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
+        let phenopacket_id = default_phenopacket_id();
 
         let existing_phenopacket = Phenopacket {
-            id: pp_id.clone(),
+            id: patient_id.clone(),
             subject: None,
             phenotypic_features: vec![generate_phenotype("HP:0000001", None)],
             measurements: vec![],
@@ -927,11 +954,11 @@ mod tests {
         };
         builder
             .subject_to_phenopacket
-            .insert(default_phenopacket_id().clone(), existing_phenopacket);
+            .insert(phenopacket_id.clone(), existing_phenopacket);
 
         builder
             .upsert_phenotypic_feature(
-                pp_id.as_str(),
+                patient_id.as_str(),
                 &default_phenotype_oc().id,
                 None,
                 None,
@@ -943,21 +970,18 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder
-            .subject_to_phenopacket
-            .get(&default_phenopacket_id())
-            .unwrap();
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 2);
     }
 
     #[rstest]
     fn test_update_onset_of_phenotypic_feature(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
 
         builder
             .upsert_phenotypic_feature(
-                pp_id.as_str(),
+                patient_id.as_str(),
                 &default_phenotype_oc().id.to_string(),
                 None,
                 None,
@@ -972,7 +996,7 @@ mod tests {
         // Update the same feature
         builder
             .upsert_phenotypic_feature(
-                pp_id.as_str(),
+                patient_id.as_str(),
                 &default_phenotype_oc().id.to_string(),
                 None,
                 None,
@@ -984,7 +1008,10 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&pp_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         assert_eq!(phenopacket.phenotypic_features.len(), 1);
 
         let feature = &phenopacket.phenotypic_features[0];
@@ -1030,7 +1057,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &default_phenopacket_id(),
                 &disease_id,
                 &PathogenicGeneVariantData::None,
                 Some("MALE".to_string()),
@@ -1046,7 +1072,6 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let homozygous_variant = PathogenicGeneVariantData::HomozygousVariant {
@@ -1057,7 +1082,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &phenopacket_id,
                 &disease_id,
                 &homozygous_variant,
                 Some("FEMALE".to_string()),
@@ -1108,7 +1132,6 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let compound_heterozygous_pair =
@@ -1121,7 +1144,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &phenopacket_id,
                 &disease_id,
                 &compound_heterozygous_pair,
                 Some("FEMALE".to_string()),
@@ -1173,7 +1195,6 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_autosomal_heterozygous_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1184,7 +1205,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &phenopacket_id,
                 &disease_id,
                 &heterozygous_variant,
                 None,
@@ -1235,7 +1255,6 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_hemizygous_x_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let single_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1246,7 +1265,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &phenopacket_id,
                 &disease_id,
                 &single_variant,
                 Some("MALE".to_string()),
@@ -1297,7 +1315,6 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_heterozygous_x_variant(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let single_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1308,7 +1325,6 @@ mod tests {
         builder
             .upsert_interpretation(
                 &default_patient_id(),
-                &phenopacket_id,
                 &disease_id,
                 &single_variant,
                 Some("FEMALE".to_string()),
@@ -1362,12 +1378,12 @@ mod tests {
         temp_dir: TempDir,
     ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
 
         let existing_pp = basic_pp_with_disease_info;
         builder
             .subject_to_phenopacket
-            .insert(phenopacket_id.to_string(), existing_pp.clone());
+            .insert(patient_id.to_string(), existing_pp.clone());
 
         let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
             gene: Some("KIF21A".to_string()),
@@ -1376,8 +1392,7 @@ mod tests {
 
         builder
             .upsert_interpretation(
-                &default_patient_id(),
-                &phenopacket_id,
+                &patient_id,
                 &default_disease_oc().label,
                 &heterozygous_variant,
                 None,
@@ -1402,19 +1417,12 @@ mod tests {
     #[rstest]
     fn test_upsert_interpretation_single_gene(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
         let disease_id = default_disease_oc().id.clone();
 
         let gene_data = PathogenicGeneVariantData::CausativeGene("KIF21A".to_string());
 
         builder
-            .upsert_interpretation(
-                &default_patient_id(),
-                &phenopacket_id,
-                &disease_id,
-                &gene_data,
-                None,
-            )
+            .upsert_interpretation(&default_patient_id(), &disease_id, &gene_data, None)
             .unwrap();
 
         let pp = builder.subject_to_phenopacket.values().next().unwrap();
@@ -1453,13 +1461,13 @@ mod tests {
     fn test_insert_disease(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         let disease = default_disease_oc();
         let onset_age = default_iso_age();
 
         builder
             .insert_disease(
-                &phenopacket_id,
+                &patient_id,
                 &disease.id,
                 None,
                 Some(&onset_age),
@@ -1472,7 +1480,7 @@ mod tests {
             .unwrap();
 
         let expected_pp = &mut Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             diseases: vec![Disease {
                 term: Some(disease),
                 onset: Some(default_age_element()),
@@ -1494,39 +1502,27 @@ mod tests {
     fn test_insert_same_disease_twice(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         let disease = default_disease_oc();
 
-        builder
-            .insert_disease(
-                &phenopacket_id,
-                &disease.id,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap();
-
-        builder
-            .insert_disease(
-                &phenopacket_id,
-                &disease.id,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap();
+        for _ in 0..2 {
+            builder
+                .insert_disease(
+                    &patient_id,
+                    &disease.id,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+        }
 
         let expected_pp = &mut Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id().to_string(),
             diseases: vec![default_disease(), default_disease()],
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource()],
@@ -1548,17 +1544,7 @@ mod tests {
         let individual_id = default_patient_id();
 
         builder
-            .upsert_individual(
-                &phenopacket_id,
-                &individual_id,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+            .upsert_individual(&individual_id, None, None, None, None, None, None, None)
             .unwrap();
 
         let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
@@ -1570,10 +1556,9 @@ mod tests {
         // Test upserting the other entries
         builder
             .upsert_individual(
-                &phenopacket_id,
                 &individual_id,
                 None,
-                Some("2001-01-29"), //TODO
+                Some("2001-01-29"),
                 None,
                 Some("MALE"),
                 None,
@@ -1599,11 +1584,11 @@ mod tests {
     fn test_upsert_vital_status(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
 
         builder
             .upsert_vital_status(
-                &phenopacket_id,
+                &patient_id,
                 "ALIVE",
                 Some(&default_iso_age()),
                 Some(default_disease_oc().id.as_str()),
@@ -1611,7 +1596,10 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(
@@ -1629,12 +1617,12 @@ mod tests {
     fn test_insert_quantitative_measurement(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         let measurement_val = 1.1;
 
         builder
             .insert_quantitative_measurement(
-                phenopacket_id.as_str(),
+                patient_id.as_str(),
                 measurement_val,
                 Some(default_iso_age().as_str()),
                 default_quant_loinc().id.as_str(),
@@ -1643,7 +1631,10 @@ mod tests {
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         let measurements = phenopacket.measurements.clone();
         assert_eq!(measurements.len(), 1);
 
@@ -1655,19 +1646,22 @@ mod tests {
     fn test_insert_qualitative_measurement(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
 
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         let measurement_val = "Present";
 
         builder
             .insert_qualitative_measurement(
-                phenopacket_id.as_str(),
+                patient_id.as_str(),
                 measurement_val,
                 Some(default_iso_age().as_str()),
                 default_qual_loinc().id.as_str(),
             )
             .unwrap();
 
-        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
         let measurements = phenopacket.measurements.clone();
         assert_eq!(measurements.len(), 1);
 
@@ -1678,12 +1672,12 @@ mod tests {
     #[rstest]
     fn test_get_or_create_phenopacket(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
 
-        builder.get_or_create_phenopacket(&phenopacket_id);
-        let pp = builder.get_or_create_phenopacket(&phenopacket_id);
+        builder.get_or_create_phenopacket(&patient_id);
+        let pp = builder.get_or_create_phenopacket(&patient_id);
 
-        assert_eq!(pp.id, phenopacket_id);
+        assert_eq!(pp.id, default_phenopacket_id());
         assert_eq!(builder.subject_to_phenopacket.len(), 1);
     }
 
@@ -1709,5 +1703,16 @@ mod tests {
             iri_prefix: "https://omim.org/MIM:$1".to_string(),
         };
         assert_eq!(omim_resrouce, &expected_resource);
+    }
+
+    #[rstest]
+    fn test_generate_phenopacket_id(temp_dir: TempDir) {
+        let builder = build_test_phenopacket_builder(temp_dir.path());
+        let p_id = default_patient_id();
+
+        std::assert_eq!(
+            builder.generate_phenopacket_id(&p_id),
+            format!("{}-{}", default_cohort_id(), p_id)
+        );
     }
 }

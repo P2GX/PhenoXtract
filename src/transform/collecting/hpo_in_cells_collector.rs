@@ -13,7 +13,7 @@ impl Collect for HpoInCellsCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
             let hpo_terms_in_cells_scs = patient_cdf
@@ -44,15 +44,7 @@ impl Collect for HpoInCellsCollector {
                             };
 
                             builder.upsert_phenotypic_feature(
-                                phenopacket_id,
-                                hpo,
-                                None,
-                                None,
-                                None,
-                                None,
-                                hpo_onset,
-                                None,
-                                None,
+                                patient_id, hpo, None, None, None, None, hpo_onset, None, None,
                             )?;
                         }
                     }
@@ -69,7 +61,7 @@ mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_iso_age, default_phenopacket_id, default_phenotype,
@@ -143,15 +135,15 @@ mod tests {
         temp_dir: TempDir,
     ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         HpoInCellsCollector
-            .collect(&mut builder, &[phenotypes_in_rows_cdf], &pp_id)
+            .collect(&mut builder, &[phenotypes_in_rows_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: pp_id,
+            id: default_phenopacket_id(),
             phenotypic_features: vec![default_phenotype(), spasmus_nutans_pf_with_onset],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource()],

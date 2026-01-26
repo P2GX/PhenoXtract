@@ -12,7 +12,7 @@ impl Collect for IndividualCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let date_of_birth =
             get_single_multiplicity_element(patient_cdfs, Context::DateOfBirth, Context::None)?;
@@ -20,15 +20,8 @@ impl Collect for IndividualCollector {
         let subject_sex =
             get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
 
-        let subject_id = patient_cdfs[0]
-            .get_subject_id_col()
-            .str()?
-            .get(0)
-            .expect("subject_id missing");
-
         builder.upsert_individual(
-            phenopacket_id,
-            subject_id,
+            patient_id,
             None,
             date_of_birth.as_deref(),
             None,
@@ -38,7 +31,7 @@ impl Collect for IndividualCollector {
             None,
         )?;
 
-        Self::collect_vitality_status(builder, patient_cdfs, phenopacket_id)?;
+        Self::collect_vitality_status(builder, patient_cdfs, patient_id)?;
 
         Ok(())
     }
@@ -48,7 +41,7 @@ impl IndividualCollector {
     fn collect_vitality_status(
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let status =
             get_single_multiplicity_element(patient_cdfs, Context::VitalStatus, Context::None)?;
@@ -74,7 +67,7 @@ impl IndividualCollector {
                 .transpose()?;
 
             builder.upsert_vital_status(
-                phenopacket_id,
+                patient_id,
                 status.as_ref(),
                 time_of_death.as_deref(),
                 cause_of_death.as_deref(),
@@ -90,8 +83,11 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::phenopacket_component_generation::default_disease_oc;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_disease_oc, default_phenopacket_id,
+    };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
@@ -112,7 +108,7 @@ mod tests {
 
     #[fixture]
     fn patient_id() -> String {
-        "P001".to_string()
+        default_patient_id()
     }
 
     #[fixture]
@@ -199,16 +195,15 @@ mod tests {
         patient_id: String,
     ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_id".to_string();
 
         IndividualCollector
-            .collect(&mut builder, &[individual_info_cdf], &phenopacket_id)
+            .collect(&mut builder, &[individual_info_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let indiv = Individual {
-            id: patient_id.to_string(),
+            id: patient_id,
             date_of_birth: Some(Timestamp {
                 seconds: -312595200,
                 nanos: 0,
@@ -229,7 +224,7 @@ mod tests {
         };
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             subject: Some(indiv),
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource()],

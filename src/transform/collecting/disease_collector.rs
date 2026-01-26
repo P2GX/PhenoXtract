@@ -15,7 +15,7 @@ impl Collect for DiseaseCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
             let disease_in_cells_scs = patient_cdf
@@ -51,7 +51,7 @@ impl Collect for DiseaseCollector {
                                 };
 
                             builder.insert_disease(
-                                phenopacket_id,
+                                patient_id,
                                 disease,
                                 None,
                                 disease_onset,
@@ -75,10 +75,10 @@ impl Collect for DiseaseCollector {
 mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_with_age_onset, default_iso_age, generate_disease,
+        default_disease_with_age_onset, default_iso_age, default_phenopacket_id, generate_disease,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -96,7 +96,7 @@ mod tests {
     #[rstest]
     fn test_collect_diseases(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "cohort2019-P002".to_string();
+        let patient_id = default_patient_id();
 
         let mut cdf = generate_minimal_cdf(1, 2);
         let diseases = vec![
@@ -138,13 +138,13 @@ mod tests {
             .unwrap();
 
         DiseaseCollector
-            .collect(&mut builder, &[cdf], &phenopacket_id)
+            .collect(&mut builder, &[cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             diseases,
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource()],

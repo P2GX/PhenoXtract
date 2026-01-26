@@ -9,7 +9,7 @@ pub trait Collect: Debug + AsAny {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError>;
 }
 

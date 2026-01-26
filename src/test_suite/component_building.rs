@@ -1,4 +1,5 @@
 use crate::ontology::loinc_client::LoincClient;
+use crate::test_suite::config::default_config_meta_data;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY, PATO_DICT, UO_DICT};
 use crate::test_suite::resource_references::HPO_REF;
 use crate::transform::PhenopacketBuilder;
@@ -49,6 +50,7 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     dotenv().ok();
 
     PhenopacketBuilder::new(
+        default_config_meta_data().into(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
         build_test_hpo_bidict_library(),

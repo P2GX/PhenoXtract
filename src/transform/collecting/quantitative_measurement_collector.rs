@@ -14,7 +14,7 @@ impl Collect for QuantitativeMeasurementCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
             let quantitative_measurement_scs = patient_cdf
@@ -70,7 +70,7 @@ impl Collect for QuantitativeMeasurementCollector {
                             };
 
                             builder.insert_quantitative_measurement(
-                                phenopacket_id,
+                                patient_id,
                                 quant_measurement,
                                 time_observed,
                                 assay_id,
@@ -91,7 +91,7 @@ impl Collect for QuantitativeMeasurementCollector {
 mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
         default_iso_age, default_phenopacket_id, default_quant_loinc, default_quant_measurement,
@@ -187,9 +187,9 @@ mod tests {
     #[rstest]
     fn test_collect_quantitative_measurement(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         QuantitativeMeasurementCollector
-            .collect(&mut builder, &[quant_measurement_cdf()], &pp_id)
+            .collect(&mut builder, &[quant_measurement_cdf()], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
@@ -205,7 +205,7 @@ mod tests {
         );
 
         let mut expected_phenopacket = Phenopacket {
-            id: pp_id,
+            id: default_phenopacket_id(),
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
                 resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
