@@ -21,6 +21,8 @@ data_sources:
               hash_map:
                 "less than 1 year": "0"
               output_dtype: Int64
+          - identifier: "Sex"
+            data_context: subject_sex
       - name: "Vitals"
         context:
           - identifier: "patientid"
@@ -41,9 +43,10 @@ data_sources:
         patients_are_rows: true
 pipeline:
   transform_strategies:
-    - "date_to_age"
-    - "alias_map"
-    - "age_to_iso8601"
+    - date_to_age
+    - alias_map
+    - age_to_iso8601
+    - default_mapping: sex_mapping
   loader:
     file_system:
       output_dir: "/Users/patrick/Downloads/PhenoXtract/i_data_phenopackets/"
