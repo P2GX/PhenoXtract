@@ -92,9 +92,6 @@ impl PhenopacketBuilder {
         if alternate_ids.is_some() {
             warn!("alternate_ids - not implemented for individual yet");
         }
-        if time_at_last_encounter.is_some() {
-            warn!("time_at_last_encounter - not implemented for individual yet");
-        }
         if karyotypic_sex.is_some() {
             warn!("karyotypic_sex - not implemented for individual yet");
         }
@@ -128,6 +125,17 @@ impl PhenopacketBuilder {
                 })?
                 .into();
         }
+
+        if let Some(time_str) = time_at_last_encounter {
+            let time_te = try_parse_time_element(time_str).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "Time At Last Encounter".to_string(),
+                    value: time_str.to_string(),
+                }
+            })?;
+            individual.time_at_last_encounter = Some(time_te);
+        }
+
         Ok(())
     }
 
@@ -716,17 +724,17 @@ mod tests {
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_disease, default_disease_oc, default_iso_age,
-        default_phenopacket_id, default_phenotype_oc, default_qual_loinc, default_qual_measurement,
-        default_quant_loinc, default_quant_measurement, default_reference_range, default_timestamp,
-        default_timestamp_element, default_uo_term, generate_phenotype,
+        default_age_element, default_datetime, default_disease, default_disease_oc,
+        default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc,
+        default_qual_measurement, default_quant_loinc, default_quant_measurement,
+        default_reference_range, default_timestamp, default_timestamp_element, default_uo_term,
+        generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
     use phenopackets::schema::v2::core::{MetaData, Resource};
     use pretty_assertions::assert_eq;
-    use prost_types::Timestamp;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -1573,8 +1581,8 @@ mod tests {
                 &phenopacket_id,
                 &individual_id,
                 None,
-                Some("2001-01-29"), //TODO
-                None,
+                Some(default_datetime().to_string().as_str()),
+                Some(default_iso_age().as_str()),
                 Some("MALE"),
                 None,
                 None,
@@ -1586,12 +1594,10 @@ mod tests {
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(individual.sex, Sex::Male as i32);
+        assert_eq!(individual.date_of_birth, Some(default_timestamp()));
         assert_eq!(
-            individual.date_of_birth,
-            Some(Timestamp {
-                seconds: 980726400,
-                nanos: 0,
-            })
+            individual.time_at_last_encounter,
+            Some(default_age_element())
         );
     }
 
