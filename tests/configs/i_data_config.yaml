@@ -20,7 +20,7 @@ data_sources:
             alias_map:
               hash_map:
                 "less than 1 year": "0"
-              output_dtype: Float64
+              output_dtype: Int64
       - name: "Vitals"
         context:
           - identifier: "patientid"
