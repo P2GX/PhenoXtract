@@ -101,6 +101,19 @@ data_sources:
                 assay_id: "LOINC:39156-5"
                 unit_ontology_id: "UO:0000086"
             building_block_id: "M"
+      - name: "Head Circ."
+        context:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Head Circumf Date"
+            data_context: onset_date
+            building_block_id: "M"
+          - identifier: "Head (cm)"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:9843-4"
+                unit_ontology_id: "UO:0000015"
+            building_block_id: "M"
     extraction_configs:
       - name: "Cohort"
         has_headers: true
