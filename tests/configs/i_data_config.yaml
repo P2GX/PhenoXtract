@@ -82,11 +82,25 @@ data_sources:
             data_context: subject_id
           - identifier: "Vitals Date"
             data_context: onset_date
+            building_block_id: "M"
           - identifier: "Height (cm)"
             data_context:
               quantitative_measurement:
                 assay_id: "LOINC:8302-2"
                 unit_ontology_id: "UO:0000015"
+            building_block_id: "M"
+          - identifier: "Weight (kg)"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:29463-7"
+                unit_ontology_id: "UO:0000009"
+            building_block_id: "M"
+          - identifier: "Body Mass Index"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:39156-5"
+                unit_ontology_id: "UO:0000086"
+            building_block_id: "M"
     extraction_configs:
       - name: "Cohort"
         has_headers: true
