@@ -1,5 +1,6 @@
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::BiDict;
+use crate::ontology::traits::{BiDict, HasPrefixId};
+use crate::utils::is_curie;
 use phenopackets::schema::v2::core::OntologyClass;
 
 #[derive(Debug, Default)]
@@ -37,24 +38,24 @@ impl BiDictLibrary {
 
     pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
-            if let Ok(term) = bidict.get(query) {
-                if let Ok(corresponding_label_or_id) = bidict.get(term) {
-                    let (label, id) = if bidict.get_id(term).is_ok() {
-                        (term, corresponding_label_or_id)
-                    } else {
-                        (corresponding_label_or_id, term)
-                    };
-
+            if is_curie(query, Some(bidict.reference().prefix_id()), None) {
+                if let Ok(label) = bidict.get_label(query) {
                     return Some((
                         OntologyClass {
-                            id: id.to_string(),
+                            id: query.to_string(),
                             label: label.to_string(),
                         },
                         bidict.reference().clone(),
                     ));
                 }
-            } else {
-                continue;
+            } else if let Ok(id) = bidict.get_id(query) {
+                return Some((
+                    OntologyClass {
+                        id: id.to_string(),
+                        label: query.to_string(),
+                    },
+                    bidict.reference().clone(),
+                ));
             }
         }
 
@@ -82,12 +83,17 @@ impl PartialEq for BiDictLibrary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ontology::loinc_client::LoincClient;
     use crate::test_suite::component_building::{
         build_test_hpo_bidict_library, build_test_mondo_bidict_library,
     };
-    use crate::test_suite::phenopacket_component_generation::default_phenotype_oc;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_phenotype_oc, default_qual_loinc,
+    };
+    use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::*;
+
     #[rstest]
     fn test_query_bidicts_with_valid_label() {
         let phenotype = default_phenotype_oc();
@@ -108,6 +114,23 @@ mod tests {
 
         assert_eq!(result.0.label, phenotype.label);
         assert_eq!(result.0.id, phenotype.id);
+    }
+
+    #[rstest]
+    fn test_query_bidicts_not_a_curie_fail() {
+        dotenv().ok();
+        let bidict_lib = BiDictLibrary::new("LOINC", vec![Box::new(LoincClient::default())]);
+
+        let loinc_id = default_qual_loinc()
+            .id
+            .clone() // clone the String so we own it
+            .split_once(':')
+            .unwrap()
+            .1
+            .to_string();
+
+        let result = bidict_lib.query_bidicts(loinc_id.as_str());
+        assert!(result.is_none());
     }
 
     #[rstest]
