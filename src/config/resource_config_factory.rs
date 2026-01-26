@@ -53,11 +53,18 @@ impl ResourceConfigFactory {
                 reason: "No LOINC credentials provided.".to_string(),
             }),
             Some(secrets) => match secrets {
-                Secrets::Credentials { user, password } => Ok(Box::new(LoincClient::new(
-                    user.clone(),
-                    password.clone(),
-                    None,
-                ))),
+                Secrets::Credentials { user, password } => {
+                    let loinc_ref = config
+                        .version
+                        .as_ref()
+                        .map(|version| ResourceRef::loinc().with_version(version));
+
+                    Ok(Box::new(LoincClient::new(
+                        user.clone(),
+                        password.clone(),
+                        loinc_ref,
+                    )))
+                }
                 Secrets::Token { .. } => Err(FactoryError::CantBuild {
                     reason:
                         "LOINC API needs password and username instead of token to be configured"
