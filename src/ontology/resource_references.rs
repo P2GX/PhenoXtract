@@ -3,7 +3,7 @@ use ontology_registry;
 use ontology_registry::enums::Version;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use strum_macros::{EnumString, VariantNames};
+use strum_macros::{AsRefStr, EnumString, VariantNames};
 
 #[derive(Debug, PartialEq, Clone, Default, Eq, Hash, Deserialize, Serialize)]
 pub struct ResourceRef {
@@ -64,7 +64,7 @@ impl From<&str> for ResourceRef {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumString, VariantNames)]
+#[derive(Debug, PartialEq, Clone, EnumString, VariantNames, AsRefStr)]
 #[allow(clippy::upper_case_acronyms)]
 pub(crate) enum KnownResourcePrefixes {
     HP,
@@ -126,5 +126,11 @@ impl From<KnownResourcePrefixes> for ResourceRef {
 impl From<KnownResourcePrefixes> for String {
     fn from(value: KnownResourcePrefixes) -> Self {
         value.to_string()
+    }
+}
+
+impl PartialEq<KnownResourcePrefixes> for &str {
+    fn eq(&self, other: &KnownResourcePrefixes) -> bool {
+        self.eq_ignore_ascii_case(other.as_ref())
     }
 }
