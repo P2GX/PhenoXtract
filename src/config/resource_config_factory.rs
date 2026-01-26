@@ -12,7 +12,7 @@ pub(crate) struct ResourceConfigFactory {
 }
 
 impl ResourceConfigFactory {
-    const NON_CREATABLE_RESOURCES: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
+    const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
 
     pub fn build(&mut self, config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
         if config
@@ -27,7 +27,7 @@ impl ResourceConfigFactory {
             ) {
                 Ok(bi_dict) => Ok(Box::new(bi_dict)),
                 Err(err) => {
-                    let non_creatable_strs: Vec<&str> = Self::NON_CREATABLE_RESOURCES
+                    let non_creatable_strs: Vec<&str> = Self::NON_CONFIGURABLE
                         .iter()
                         .map(|prefix| prefix.as_ref())
                         .collect();
@@ -53,7 +53,7 @@ impl ResourceConfigFactory {
                         )
                     } else {
                         format!(
-                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that can not be built.",
+                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that cannot be built.",
                             config.id,
                             err,
                             supported_resources.join(", "),
@@ -224,12 +224,12 @@ mod tests {
 
         let err = result.err().unwrap();
 
-        let non_creatable_strs: Vec<&str> = ResourceConfigFactory::NON_CREATABLE_RESOURCES
+        let non_configurable_strs: Vec<&str> = ResourceConfigFactory::NON_CONFIGURABLE
             .iter()
-            .map(|prefix| prefix.as_ref())
+            .map(|id| id.as_ref())
             .collect();
 
-        for not_supported in non_creatable_strs {
+        for not_supported in non_configurable_strs {
             assert!(!err.to_string().contains(not_supported));
         }
     }
