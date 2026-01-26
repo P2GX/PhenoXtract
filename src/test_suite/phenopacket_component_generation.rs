@@ -70,7 +70,7 @@ pub(crate) fn default_iso_age() -> String {
 }
 
 pub(crate) fn default_date() -> NaiveDate {
-    NaiveDate::from_ymd_opt(2005, 10, 01).unwrap()
+    NaiveDate::from_ymd_opt(2005, 10, 1).unwrap()
 }
 
 pub(crate) fn default_datetime() -> NaiveDateTime {
