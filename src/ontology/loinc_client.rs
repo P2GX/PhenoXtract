@@ -2,7 +2,8 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use regex::bytes::Regex;
+use crate::utils::is_curie;
+use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -161,7 +162,7 @@ impl LoincClient {
             if self.is_loinc_curie(key) {
                 let loinc_number = key.split(":").last().unwrap().to_string();
                 cache_write.insert(loinc_number, entry.to_string());
-            } else if self.loinc_id_regex.is_match(key.as_bytes()) {
+            } else if self.loinc_id_regex.is_match(key) {
                 let loinc_curie = Self::format_loinc_curie(key);
                 cache_write.insert(loinc_curie, entry.to_string());
             }
@@ -172,13 +173,11 @@ impl LoincClient {
         format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
-        match query.split(':').next_back() {
-            None => false,
-            Some(loinc_number) => {
-                query.starts_with::<&str>(KnownResourcePrefixes::LOINC.to_string().as_ref())
-                    && self.loinc_id_regex.is_match(loinc_number.as_bytes())
-            }
-        }
+        is_curie(
+            query,
+            Some(KnownResourcePrefixes::LOINC.to_string().as_str()),
+            Some(&self.loinc_id_regex),
+        )
     }
 }
 
