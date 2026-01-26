@@ -524,7 +524,7 @@ mod tests {
     #[rstest]
     fn test_is_ints() {
         let floaty_int_col = Column::new("float_col".into(), [1.0, 2.0, 3.0]);
-        assert!(is_ints(&floaty_int_col.f64().unwrap()));
-        assert!(!is_ints(&casted_float_col().f64().unwrap()));
+        assert!(is_ints(floaty_int_col.f64().unwrap()));
+        assert!(!is_ints(casted_float_col().f64().unwrap()));
     }
 }
