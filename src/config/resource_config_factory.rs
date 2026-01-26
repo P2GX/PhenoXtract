@@ -12,8 +12,13 @@ pub(crate) struct ResourceConfigFactory {
 }
 
 impl ResourceConfigFactory {
+    const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
+
     pub fn build(&mut self, config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
-        if config.id.to_uppercase() == KnownResourcePrefixes::LOINC.to_string() {
+        if config
+            .id
+            .eq_ignore_ascii_case(KnownResourcePrefixes::LOINC.as_ref())
+        {
             Self::build_loinc_client(&config)
         } else {
             match self.ontology_factory.build_bidict(
@@ -22,9 +27,24 @@ impl ResourceConfigFactory {
             ) {
                 Ok(bi_dict) => Ok(Box::new(bi_dict)),
                 Err(err) => {
-                    let is_known = KnownResourcePrefixes::VARIANTS
+                    let non_creatable_strs: Vec<&str> = Self::NON_CONFIGURABLE
                         .iter()
-                        .any(|&known_id| known_id.eq_ignore_ascii_case(&config.id));
+                        .map(|prefix| prefix.as_ref())
+                        .collect();
+
+                    let supported_resources: Vec<&str> = KnownResourcePrefixes::VARIANTS
+                        .iter()
+                        .copied()
+                        .filter(|&variant_id| {
+                            !non_creatable_strs
+                                .iter()
+                                .any(|&nc_id| nc_id.eq_ignore_ascii_case(variant_id))
+                        })
+                        .collect();
+
+                    let is_known = supported_resources
+                        .iter()
+                        .any(|&id| id.eq_ignore_ascii_case(&config.id));
 
                     let reason = if is_known {
                         format!(
@@ -33,10 +53,10 @@ impl ResourceConfigFactory {
                         )
                     } else {
                         format!(
-                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that can not be build.",
+                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that cannot be built.",
                             config.id,
                             err,
-                            KnownResourcePrefixes::VARIANTS.join(", "),
+                            supported_resources.join(", "),
                             config.id
                         )
                     };
@@ -188,5 +208,29 @@ mod tests {
         let result = factory.build(config);
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_build_check_error_message() {
+        let mut factory = get_factory();
+
+        let config = ResourceConfig {
+            id: "NOT_A_RESOURCE".to_string(),
+            version: Some("2025-06-24".to_string()),
+            secrets: None,
+        };
+
+        let result = factory.build(config);
+
+        let err = result.err().unwrap();
+
+        let non_configurable_strs: Vec<&str> = ResourceConfigFactory::NON_CONFIGURABLE
+            .iter()
+            .map(|id| id.as_ref())
+            .collect();
+
+        for not_supported in non_configurable_strs {
+            assert!(!err.to_string().contains(not_supported));
+        }
     }
 }
