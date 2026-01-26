@@ -10,6 +10,17 @@ data_sources:
             data_context: date_of_birth
           - identifier: "Living"
             data_context: vital_status
+            alias_map:
+              hash_map:
+                "Yes": "ALIVE"
+                "No": "DECEASED"
+              output_dtype: String
+          - identifier: "Age of Death (Years)"
+            data_context: age_of_death
+            alias_map:
+              hash_map:
+                "less than 1 year": "0"
+              output_dtype: Float64
       - name: "Vitals"
         context:
           - identifier: "patientid"
@@ -31,6 +42,8 @@ data_sources:
 pipeline:
   transform_strategies:
     - "date_to_age"
+    - "alias_map"
+    - "age_to_iso8601"
   loader:
     file_system:
       output_dir: "/Users/patrick/Downloads/PhenoXtract/i_data_phenopackets/"
@@ -38,15 +51,15 @@ pipeline:
   meta_data:
     created_by: Rouven Reuter
     submitted_by: Magnus Knut Hansen
-    cohort_name: "Arkham Asylum 2025"
+    cohort_name: "I_COHORT"
     hp_resource:
       id: "HP"
       version: "2025-09-01"
-      prefix_id: "HP"
     unit_resources:
-      - version: "2026-01-09"
-        prefix_id: "UO"
-  credentials:
-    loinc:
-      username: ${LOINC_USERNAME}
-      password: ${LOINC_PASSWORD}
+      - id: "UO"
+        version: "2026-01-09"
+    assay_resources:
+      - id: "LOINC"
+        secrets:
+          user: ${LOINC_USERNAME}
+          password: ${LOINC_PASSWORD}

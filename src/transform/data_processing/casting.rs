@@ -55,6 +55,8 @@ pub fn polars_column_cast_specific(
         return Ok(column.clone());
     }
 
+    dbg!(&column);
+
     let failed_parse_err = |dtype: DataType| DataProcessingError::CastingError {
         col_name: col_name.to_string(),
         from: column.dtype().clone(),
