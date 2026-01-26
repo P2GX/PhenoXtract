@@ -1,6 +1,6 @@
 use crate::ontology::CachedOntologyFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::test_suite::resource_references::{HPO_REF, MONDO_REF};
+use crate::test_suite::resource_references::{HPO_REF, MONDO_REF, PATO_REF, UO_REF};
 use crate::test_suite::utils::mock_ontology_path;
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -65,6 +65,22 @@ pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
         .lock()
         .unwrap()
         .build_bidict(&HPO_REF.clone(), None)
+        .unwrap()
+});
+
+pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+    ONTOLOGY_FACTORY
+        .lock()
+        .unwrap()
+        .build_bidict(&UO_REF.clone(), None)
+        .unwrap()
+});
+
+pub(crate) static PATO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+    ONTOLOGY_FACTORY
+        .lock()
+        .unwrap()
+        .build_bidict(&PATO_REF.clone(), None)
         .unwrap()
 });
 

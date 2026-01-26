@@ -151,6 +151,43 @@ fn csv_context_4() -> TableContext {
 }
 
 #[fixture]
+fn csv_context_5() -> TableContext {
+    TableContext::new(
+        "CSV_Table_5".to_string(),
+        vec![
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("Patient ID".to_string()))
+                .with_data_context(Context::SubjectId),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("height (cm)".to_string()))
+                .with_data_context(Context::QuantitativeMeasurement {
+                    assay_id: "LOINC:8302-2".to_string(),
+                    unit_ontology_id: "UO:0000015".to_string(),
+                })
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("ref_low".to_string()))
+                .with_data_context(Context::ReferenceRangeLow)
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("ref_high".to_string()))
+                .with_data_context(Context::ReferenceRangeHigh)
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("nitrates in urine".to_string()))
+                .with_data_context(Context::QualitativeMeasurement {
+                    assay_id: "LOINC:5802-4".to_string(),
+                })
+                .with_building_block_id(Some("M".to_string())),
+            SeriesContext::default()
+                .with_identifier(Identifier::Regex("date_of_observation".to_string()))
+                .with_data_context(Context::OnsetDate)
+                .with_building_block_id(Some("M".to_string())),
+        ],
+    )
+}
+
+#[fixture]
 fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     vec![
         TableContext::new(
@@ -224,6 +261,9 @@ fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
     remove_id_from_variation_descriptor(actual);
     remove_id_from_variation_descriptor(expected);
 
+    remove_version_from_loinc(actual);
+    remove_version_from_loinc(expected);
+
     pretty_assertions::assert_eq!(actual, expected);
 }
 
@@ -264,6 +304,19 @@ fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
     }
 }
 
+fn remove_version_from_loinc(pp: &mut Phenopacket) {
+    if let Some(metadata) = &mut pp.meta_data {
+        let loinc_resource = metadata
+            .resources
+            .iter_mut()
+            .find(|resource| resource.id == "loinc");
+
+        if let Some(loinc_resource) = loinc_resource {
+            loinc_resource.version = "-".to_string()
+        }
+    }
+}
+
 fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
     let pkg_name = env!("CARGO_PKG_NAME");
 
@@ -293,6 +346,7 @@ fn test_pipeline_integration(
     csv_context_2: TableContext,
     csv_context_3: TableContext,
     csv_context_4: TableContext,
+    csv_context_5: TableContext,
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
 ) {
@@ -307,9 +361,14 @@ fn test_pipeline_integration(
 
     let hp_ref = ResourceRef::hp().with_version("2025-09-01");
     let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
+    let uo_ref = ResourceRef::uo().with_version("2026-01-09");
+    let pato_ref = ResourceRef::pato().with_version("2025-05-14");
 
     let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
     let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
+    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
+    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
+
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
 
@@ -318,6 +377,7 @@ fn test_pipeline_integration(
     let csv_path_2 = assets_path.clone().join("csv_data_2.csv");
     let csv_path_3 = assets_path.clone().join("csv_data_3.csv");
     let csv_path_4 = assets_path.clone().join("csv_data_4.csv");
+    let csv_path_5 = assets_path.clone().join("csv_data_5.csv");
     let excel_path = assets_path.clone().join("excel_data.xlsx");
 
     let mut data_sources = [
@@ -345,6 +405,12 @@ fn test_pipeline_integration(
             csv_context_4,
             ExtractionConfig::new("CSV_Table_4".to_string(), true, true),
         )),
+        DataSource::Csv(CSVDataSource::new(
+            csv_path_5,
+            None,
+            csv_context_5,
+            ExtractionConfig::new("CSV_Table_5".to_string(), true, true),
+        )),
         DataSource::Excel(ExcelDatasource::new(
             excel_path,
             excel_context,
@@ -363,6 +429,10 @@ fn test_pipeline_integration(
             onto_factory.build_bidict(&hp_ref, None).unwrap(),
             ContextKind::HpoLabelOrId,
         )),
+        Box::new(OntologyNormaliserStrategy::new(
+            onto_factory.build_bidict(&pato_ref, None).unwrap(),
+            ContextKind::QualitativeMeasurement,
+        )),
         Box::new(DateToAgeStrategy),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
@@ -379,8 +449,9 @@ fn test_pipeline_integration(
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
         BiDictLibrary::new("DISEASE", vec![mondo_dict]),
-        BiDictLibrary::empty_with_name("UNIT"),
-        BiDictLibrary::new("MEASUREMENTS", vec![Box::new(LoincClient::default())]),
+        BiDictLibrary::new("UNIT", vec![uo_dict]),
+        BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
+        BiDictLibrary::new("QUAL", vec![pato_dict]),
     );
 
     let transformer_module = TransformerModule::new(
