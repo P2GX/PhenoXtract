@@ -23,6 +23,59 @@ data_sources:
               output_dtype: Int64
           - identifier: "Sex"
             data_context: subject_sex
+          - identifier: "Most Recent Visit Date"
+            data_context: date_at_last_encounter
+          - identifier: "Diagnosis"
+            data_context: disease_label_or_id
+            building_block_id: "D"
+            alias_map:
+              hash_map:
+                "AGAMMAGLOBULINEMIA": "agammaglobulinemia"
+                "ATAXIA TELANGIECTASIA": "ataxia telangiectasia"
+                "AUTOIMMUNE LYMPHOPROLIFERATIVE SYNDROME (ALPS)": "autoimmune lymphoproliferative syndrome"
+                "AUTOINFLAMMATORY DISEASE": "autoinflammatory disease, X-linked"
+                "CHARGE SYNDROME": "CHARGE syndrome"
+                "CHRONIC GRANULOMATOUS DISEASE": "chronic granulomatous disease"
+                "COMBINED IMMUNE DEFICIENCY": "combined immunodeficiency"
+                "COMMON VARIABLE IMMUNE DEFICIENCY (CVID)": "common variable immunodeficiency"
+                "COMPLEMENT DEFICIENCY": "complement deficiency"
+                "DIGEORGE SYNDROME": "DiGeorge syndrome"
+                "DYSKERATOSIS CONGENITA": "dyskeratosis congenita"
+                "ECTODERMAL DYSPLASIA WITH IMMUNODEFICIENCY (NEMO AND OTHERS)": "ectodermal dysplasia and immune deficiency"
+                "HLH, INCLUDING XLP AND PIGMENTARY DISORDERS": "hemophagocytic syndrome"
+                "HYPER IGE SYNDROME": "hyper-IgE syndrome"
+                "HYPER IGM SYNDROME": "hyper-IgM syndrome"
+                "HYPOGAMMAGLOBULINEMIA": "syndromic agammaglobulinemia"
+                "IGA DEFICIENCY": "dysgammaglobulinemia"
+                "IGG SUBCLASS DEFICIENCY": "selective IgG subclass deficiency"
+                "IMMUNE DEFICIENCY WITH SYNDROMIC FEATURES (NOT OTHERWISE LISTED)": "immunodeficiency disease"
+                "IMMUNE DYSREGULATION": "immune dysregulation, autoimmunity, and autoinflammation"
+                "IMMUNODEFICIENCY UNKNOWN CAUSE": "immunodeficiency disease"
+                "IMMUNODEFICIENCY WITH MYELODYSPLASIA (GATA2 AND OTHERS)": "immunodeficiency disease"
+                "INTERFERONOPATHY (AICARDI-GOUTIERES AND OTHERS)": "type 1 interferonopathy"
+                "LEUKOCYTE ADHESION DEFICIENCY": "leukocyte adhesion deficiency"
+                "MUCOCUTANEOUS CANDIDIASIS": "chronic mucocutaneous candidiasis"
+                "NEUTROPENIA": "neutropenia"
+                "NK CELL DEFECT": "inborn error of immunity"
+                "OMENN SYNDROME": "omenn syndrome"
+                "OTHER IMMUNE DEFICIENCY - KNOWN CAUSE": "immunodeficiency disease"
+                "OTHER NEUTROPHIL PROBLEMS": "neutrophil immunodeficiency syndrome"
+                "OTHER T-CELL PROBLEMS": null
+                "PREDISPOSITION TO SEVERE VIRAL INFECTIONS": "immunodeficiency 83, susceptibility to viral infections"
+                "SEVERE COMBINED IMMUNE DEFICIENCY (SCID)": "severe combined immunodeficiency"
+                "SPECIFIC ANTIBODY DEFICIENCY WITH NORMAL IG CONCENTRATIONS AND NORMAL NUMBERS OF B CELLS": null
+                "SUSCEPTIBILITY TO MYCOBACTERIA (MSMD)": "inherited susceptibility to mycobacterial diseases"
+                "TLR PATHWAY ABNORMALITY": null
+                "TRANSIENT HYPOGAMMAGLOBULINEMIA OF INFANCY WITH NORMAL NUMBERS OF B CELLS": "transient hypogammaglobulinemia of infancy"
+                "WISKOTT-ALDRICH SYNDROME": "Wiskott-Aldrich syndrome"
+              output_dtype: String
+          - identifier: "Onset Age (Years)"
+            data_context: onset_age
+            building_block_id: "D"
+            alias_map:
+              hash_map:
+                "less than 1 year": "0"
+              output_dtype: Int64
       - name: "Vitals"
         context:
           - identifier: "patientid"
@@ -43,10 +96,10 @@ data_sources:
         patients_are_rows: true
 pipeline:
   transform_strategies:
-    - date_to_age
     - alias_map
-    - age_to_iso8601
     - default_mapping: sex_mapping
+    - date_to_age
+    - age_to_iso8601
   loader:
     file_system:
       output_dir: "/Users/patrick/Downloads/PhenoXtract/i_data_phenopackets/"
@@ -61,6 +114,8 @@ pipeline:
     unit_resources:
       - id: "UO"
         version: "2026-01-09"
+    disease_resources:
+      - id: "MONDO"
     assay_resources:
       - id: "LOINC"
         secrets:
