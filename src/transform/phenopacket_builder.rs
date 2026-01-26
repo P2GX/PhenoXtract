@@ -455,7 +455,7 @@ impl PhenopacketBuilder {
         quant_measurement: f64,
         time_observed: Option<&str>,
         assay_id: &str,
-        unit_ontology_id: &str,
+        unit_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
         if self.unit_bidict_lib.get_bidicts().is_empty() {
@@ -470,12 +470,12 @@ impl PhenopacketBuilder {
             });
         }
 
-        let (unit_ontology_term, unit_ontology_ref) = self
-            .unit_bidict_lib
-            .query_bidicts(unit_ontology_id)
-            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
-                what: "Unit ontology term".to_string(),
-                value: unit_ontology_id.to_string(),
+        let (unit_term, unit_ref) =
+            self.unit_bidict_lib.query_bidicts(unit_id).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "Unit ontology term".to_string(),
+                    value: unit_id.to_string(),
+                }
             })?;
 
         let (assay_term, assay_ref) =
@@ -487,14 +487,14 @@ impl PhenopacketBuilder {
                 })?;
 
         let mut quantity = Quantity {
-            unit: Some(unit_ontology_term.clone()),
+            unit: Some(unit_term.clone()),
             value: quant_measurement,
             ..Default::default()
         };
 
         if let Some(reference_range) = reference_range {
             quantity.reference_range = Some(ReferenceRange {
-                unit: Some(unit_ontology_term),
+                unit: Some(unit_term),
                 low: reference_range.0,
                 high: reference_range.1,
             });
@@ -523,7 +523,7 @@ impl PhenopacketBuilder {
         pp.measurements.push(measurement_element);
 
         self.ensure_resource(phenopacket_id, &assay_ref);
-        self.ensure_resource(phenopacket_id, &unit_ontology_ref);
+        self.ensure_resource(phenopacket_id, &unit_ref);
 
         Ok(())
     }
