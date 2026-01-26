@@ -112,8 +112,9 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
         let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
-        let mut assay_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
+        let mut assay_bidict_library = BiDictLibrary::empty_with_name("ASSAY");
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
+        let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
 
         if let Some(hp_resource) = config.meta_data.hp_resource {
             let hpo_bidict = resource_factory.build(hp_resource)?;
@@ -135,6 +136,13 @@ impl TryFrom<PipelineConfig> for Pipeline {
             unit_bidict_library.add_bidict(unit_bidict);
         }
 
+        for qualitative_measurement_ontology_ref in
+            config.meta_data.qualitative_measurement_resources
+        {
+            let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
+            qualitative_measurement_bidict_library.add_bidict(qual_bidict);
+        }
+
         let mut strategy_factory = StrategyFactory::new(resource_factory.into_ontology_factory());
         let phenopacket_builder = PhenopacketBuilder::new(
             Box::new(CachedHGNCClient::default()),
@@ -143,6 +151,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
             disease_bidict_library,
             unit_bidict_library,
             assay_bidict_library,
+            qualitative_measurement_bidict_library,
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
@@ -158,6 +167,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
                 config.meta_data.cohort_name.clone(),
             ),
         );
+
         let loader_module = LoaderFactory::try_from_config(config.loader)?;
 
         Ok(Pipeline::new(tf_module, loader_module))

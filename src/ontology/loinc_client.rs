@@ -206,7 +206,6 @@ impl BiDict for LoincClient {
         if let Some(label) = self.cache_read(id) {
             return Ok(label);
         }
-
         let loinc_search_results = self.query(id)?;
 
         for result in loinc_search_results {
@@ -260,6 +259,9 @@ impl BiDict for LoincClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_qual_loinc, default_quant_loinc,
+    };
     use dotenvy::dotenv;
     use rstest::{fixture, rstest};
     use std::env;
@@ -272,21 +274,18 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_term(loinc_client: LoincClient) {
-        let res = loinc_client.get_label("LOINC:97062-4");
-        assert_eq!(res.unwrap(), "History of High blood glucose");
+    fn test_get_label(loinc_client: LoincClient) {
+        let res = loinc_client.get_label(default_quant_loinc().id.as_str());
+        assert_eq!(res.unwrap(), default_quant_loinc().label);
     }
 
     #[rstest]
     fn test_get_id(loinc_client: LoincClient) {
-        let term = "Glucose [Measurement] in Urine";
-        let res = loinc_client.get_id(term);
+        let label = default_qual_loinc().label;
+        let res = loinc_client.get_id(label.as_str());
 
-        assert!(res.is_ok(), "Should find an ID for term: {}", term);
-        assert!(
-            res.unwrap().starts_with("LOINC:"),
-            "ID should have the LOINC: prefix"
-        );
+        assert!(res.is_ok(), "Should find an ID for term: {}", label);
+        assert_eq!(res.unwrap(), default_qual_loinc().id);
     }
 
     #[rstest]

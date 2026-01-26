@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::ontology::error::BiDictError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
 use pivot::hgvs::HGVSError;
@@ -292,10 +293,12 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
-    #[error("Missing BiDict for {0}")]
-    MissingBiDict(String),
+    #[error("No {bidict_type} BiDict was found, despite being called.")]
+    MissingBiDict { bidict_type: String },
     #[error(transparent)]
     HgvsError(#[from] HGVSError),
     #[error(transparent)]
     HgncError(#[from] HGNCError),
+    #[error(transparent)]
+    BidictError(#[from] BiDictError),
 }

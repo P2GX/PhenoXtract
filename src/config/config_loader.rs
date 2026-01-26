@@ -281,6 +281,7 @@ version = "2025-09-01"
                             .with_credentials(loinc_username, loinc_password),
                     ],
                     vec![ResourceConfig::new(KnownResourcePrefixes::UO).with_version("2026-01-09")],
+                    vec![],
                 ),
                 vec![
                     StrategyConfig::AliasMap,
