@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::data_processing::casting::polars_column_cast_ambivalent;
+use crate::transform::data_processing::casting::{is_ints, polars_column_cast_ambivalent};
 use crate::transform::error::DataProcessingError;
 use polars::datatypes::DataType;
 use polars::prelude::ChunkApply;
@@ -67,22 +67,8 @@ impl CdfPreprocessor {
             let column = cdf.data().column(&col_name)?;
 
             let is_all_integers = match column.dtype() {
-                DataType::Float64 => column.f64()?.into_iter().all(|val_opt: Option<f64>| {
-                    val_opt.is_none_or(|val| {
-                        val.fract() == 0.0
-                            && val.is_finite()
-                            && val >= i64::MIN as f64
-                            && val <= i64::MAX as f64
-                    })
-                }),
-                DataType::Float32 => column.f32()?.into_iter().all(|val_opt: Option<f32>| {
-                    val_opt.is_none_or(|val| {
-                        val.fract() == 0.0
-                            && val.is_finite()
-                            && val >= i64::MIN as f32
-                            && val <= i64::MAX as f32
-                    })
-                }),
+                DataType::Float64 => is_ints(column.f64()?),
+                DataType::Float32 => is_ints(column.f32()?),
                 DataType::Int32 => true,
                 _ => false,
             };

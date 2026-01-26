@@ -3,8 +3,9 @@ use crate::transform::data_processing::parsing::{
 };
 use crate::transform::error::DataProcessingError;
 use log::debug;
+use num_traits::{Float, FromPrimitive, Zero};
 use polars::datatypes::{AnyValue, DataType, TimeUnit};
-use polars::prelude::Column;
+use polars::prelude::{ChunkedArray, Column, PolarsFloatType};
 
 pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
     let col_name = column.name();
@@ -20,8 +21,8 @@ pub fn polars_column_cast_ambivalent(column: &Column) -> Column {
         return casted;
     }
 
-    if let Ok(casted) = column.strict_cast(&DataType::Int64) {
-        debug!("Casted column: {col_name} to i32.");
+    if let Ok(casted) = cast_to_int(column) {
+        debug!("Casted column: {col_name} to i64.");
         return casted;
     }
 
@@ -65,8 +66,7 @@ pub fn polars_column_cast_specific(
         DataType::Boolean => cast_to_bool(column).inspect(|_casted| {
             debug!("Casted column: {col_name} to bool.");
         }),
-        DataType::Int64 => column
-            .strict_cast(&DataType::Int64)
+        DataType::Int64 => cast_to_int(column)
             .inspect(|_casted| {
                 debug!("Casted column: {col_name} to Int64.");
             })
@@ -114,6 +114,28 @@ fn cast_to_bool(column: &Column) -> Result<Column, DataProcessingError> {
         .collect::<Result<Vec<AnyValue>, DataProcessingError>>()?;
 
     Ok(Column::new(col_name.clone(), bools))
+}
+
+fn cast_to_int(column: &Column) -> Result<Column, DataProcessingError> {
+    if column.dtype() == &DataType::Int32 || column.dtype() == &DataType::Int64 {
+        return Ok(column.strict_cast(&DataType::Int64)?);
+    }
+
+    let col_name = column.name();
+
+    let float_col = column.strict_cast(&DataType::Float64)?;
+
+    if is_ints(float_col.f64()?)
+        && let Ok(cast_col) = float_col.strict_cast(&DataType::Int64)
+    {
+        Ok(cast_col)
+    } else {
+        Err(DataProcessingError::CastingError {
+            col_name: col_name.as_str().to_string(),
+            from: column.dtype().clone(),
+            to: DataType::Int64,
+        })
+    }
 }
 
 fn cast_to_date(column: &Column) -> Result<Column, DataProcessingError> {
@@ -176,6 +198,21 @@ fn cast_to_datetime(column: &Column) -> Result<Column, DataProcessingError> {
     Ok(Column::new(col_name.clone(), datetimes))
 }
 
+pub(crate) fn is_ints<T>(float_col: &ChunkedArray<T>) -> bool
+where
+    T: PolarsFloatType,
+    T::Native: Float,
+{
+    float_col.into_iter().all(|val_opt| {
+        val_opt.is_none_or(|val| {
+            val.fract() == T::Native::zero()
+                && val.is_finite()
+                && Some(val) >= T::Native::from_i64(i64::MIN)
+                && Some(val) <= T::Native::from_i64(i64::MAX)
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,6 +224,11 @@ mod tests {
     #[fixture]
     fn int_col() -> Column {
         Column::new("int_col".into(), ["1", "2", "3"])
+    }
+
+    #[fixture]
+    fn floaty_int_col() -> Column {
+        Column::new("floaty_int_col".into(), ["1.0", "2.0", "3.0"])
     }
 
     #[fixture]
@@ -344,6 +386,7 @@ mod tests {
 
     #[rstest]
     #[case::int(int_col(), DataType::Int64, casted_int_col())]
+    #[case::floaty_int(floaty_int_col(), DataType::Int64, casted_int_col())]
     #[case::float(float_col(), DataType::Float64, casted_float_col())]
     #[case::bool(bool_col(), DataType::Boolean, casted_bool_col())]
     #[case::bool_with_nulls(bool_col_with_nulls(), DataType::Boolean, casted_bool_col_with_nulls())]
@@ -380,6 +423,7 @@ mod tests {
 
     #[rstest]
     #[case::int(int_col(), DataType::Int64, DataType::Int64, casted_int_col())]
+    #[case::int(floaty_int_col(), DataType::Int64, DataType::Int64, casted_int_col())]
     #[case::float(float_col(), DataType::Float64, DataType::Float64, casted_float_col())]
     #[case::bool(bool_col(), DataType::Boolean, DataType::Boolean, casted_bool_col())]
     #[case::bool_with_nulls(
@@ -461,5 +505,26 @@ mod tests {
     #[rstest]
     fn test_cast_to_datetime_err(string_col: Column) {
         assert!(cast_to_datetime(&string_col).is_err())
+    }
+
+    #[rstest]
+    #[case::string_ints(int_col())]
+    #[case::floaty_ints(floaty_int_col())]
+    #[case::true_ints(casted_int_col())]
+    fn test_cast_to_int(#[case] input: Column) {
+        let casted_col = cast_to_int(&input).unwrap();
+        assert_eq!(casted_col.dtype(), &DataType::Int64);
+    }
+
+    #[rstest]
+    fn test_cast_to_int_err(float_col: Column) {
+        assert!(cast_to_int(&float_col).is_err())
+    }
+
+    #[rstest]
+    fn test_is_ints() {
+        let floaty_int_col = Column::new("float_col".into(), [1.0, 2.0, 3.0]);
+        assert!(is_ints(floaty_int_col.f64().unwrap()));
+        assert!(!is_ints(casted_float_col().f64().unwrap()));
     }
 }
