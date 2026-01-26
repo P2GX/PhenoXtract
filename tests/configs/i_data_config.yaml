@@ -121,6 +121,9 @@ data_sources:
       - name: "Vitals"
         has_headers: true
         patients_are_rows: true
+      - name: "Head Circ."
+        has_headers: true
+        patients_are_rows: true
 pipeline:
   transform_strategies:
     - alias_map
