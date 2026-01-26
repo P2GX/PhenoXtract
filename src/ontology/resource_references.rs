@@ -128,9 +128,3 @@ impl From<KnownResourcePrefixes> for String {
         value.to_string()
     }
 }
-
-impl PartialEq<KnownResourcePrefixes> for &str {
-    fn eq(&self, other: &KnownResourcePrefixes) -> bool {
-        self.eq_ignore_ascii_case(other.as_ref())
-    }
-}
