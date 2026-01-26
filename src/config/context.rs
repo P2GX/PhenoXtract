@@ -53,12 +53,11 @@ pub enum Context {
 
     // measurements
     QuantitativeMeasurement {
-        loinc_id: String,
+        assay_id: String,
         unit_ontology_id: String,
     },
     QualitativeMeasurement {
-        loinc_id: String,
-        unit_ontology_prefix: String,
+        assay_id: String,
     },
     ReferenceRangeLow,
     ReferenceRangeHigh,

@@ -17,8 +17,11 @@ pub struct MetaData {
     pub assay_resources: Vec<ResourceConfig>,
     #[serde(default)]
     pub unit_resources: Vec<ResourceConfig>,
+    #[serde(default)]
+    pub qualitative_measurement_resources: Vec<ResourceConfig>,
 }
 impl MetaData {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         created_by: Option<&str>,
         submitted_by: Option<&str>,
@@ -27,6 +30,7 @@ impl MetaData {
         disease_resources: Vec<ResourceConfig>,
         assay_resources: Vec<ResourceConfig>,
         unit_resources: Vec<ResourceConfig>,
+        qualitative_measurement_resources: Vec<ResourceConfig>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -42,6 +46,7 @@ impl MetaData {
             disease_resources,
             assay_resources,
             unit_resources,
+            qualitative_measurement_resources,
         }
     }
 }
@@ -56,6 +61,7 @@ impl Default for MetaData {
             disease_resources: vec![],
             assay_resources: vec![],
             unit_resources: vec![],
+            qualitative_measurement_resources: vec![],
         }
     }
 }
