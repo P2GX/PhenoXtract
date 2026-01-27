@@ -108,12 +108,10 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::config::default_config_meta_data;
+    use crate::test_suite::phenopacket_component_generation::default_phenopacket_id;
     use crate::test_suite::phenopacket_component_generation::{
         default_disease_oc, default_iso_age,
-    };
-    use crate::test_suite::config::default_config_meta_data;
-    use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_phenopacket_id,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;

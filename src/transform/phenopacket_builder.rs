@@ -757,16 +757,11 @@ mod tests {
     use crate::test_suite::cdf_generation::{default_patient_id, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_datetime, default_disease, default_disease_oc,
-        default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc,
-        default_qual_measurement, default_quant_loinc, default_quant_measurement,
-        default_reference_range, default_timestamp, default_timestamp_element, default_uo_term,
-        generate_phenotype,
-        default_age_element, default_cohort_id, default_disease, default_disease_oc,
-        default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc,
-        default_qual_measurement, default_quant_loinc, default_quant_measurement,
-        default_reference_range, default_timestamp, default_timestamp_element, default_uo_term,
-        generate_phenotype,
+        default_age_element, default_cohort_id, default_datetime, default_disease,
+        default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc,
+        default_qual_loinc, default_qual_measurement, default_quant_loinc,
+        default_quant_measurement, default_reference_range, default_timestamp,
+        default_timestamp_element, default_uo_term, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
