@@ -1391,7 +1391,7 @@ mod tests {
         let existing_pp = basic_pp_with_disease_info;
         builder
             .subject_to_phenopacket
-            .insert(patient_id.to_string(), existing_pp.clone());
+            .insert(default_phenopacket_id(), existing_pp.clone());
 
         let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
             gene: Some("KIF21A".to_string()),
