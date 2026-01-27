@@ -1,7 +1,6 @@
-use crate::Pipeline;
 use crate::config::ConfigLoader;
 use crate::config::pipeline_config::PipelineConfig;
-use crate::error::{ConstructionError, PipelineError};
+use crate::error::ConstructionError;
 use crate::extract::data_source::DataSource;
 use crate::validation::phenoxtractor_config_validation::validate_unique_data_sources;
 use serde::{Deserialize, Serialize};
@@ -14,14 +13,6 @@ pub struct PhenoXtractConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     pub data_sources: Vec<DataSource>,
     pub pipeline: PipelineConfig,
-}
-
-impl PhenoXtractConfig {
-    pub fn run(&self) -> Result<(), PipelineError> {
-        let mut pipeline = Pipeline::try_from(self.pipeline.clone())?;
-        pipeline.run(self.data_sources.clone().as_mut_slice())?;
-        Ok(())
-    }
 }
 
 impl TryFrom<PathBuf> for PhenoXtractConfig {
