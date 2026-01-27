@@ -83,7 +83,7 @@ data_sources:
       patients_are_rows: true
     context:
       name: "test_table"
-pipeline:
+pipeline_config:
   transform_strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
@@ -114,22 +114,22 @@ patients_are_rows = true
 [data_sources.context]
 name = "test_table"
 
-[pipeline]
+[pipeline_config]
 transform_strategies = [
     "alias_map",
     "multi_hpo_col_expansion"
 ]
 
-[pipeline.loader.file_system]
+[pipeline_config.loader.file_system]
 output_dir = "some/dir"
 create_dir = true
 
-[pipeline.meta_data]
+[pipeline_config.meta_data]
 created_by = "Rouven Reuter"
 submitted_by = "Magnus Knut Hansen"
 cohort_name = "Arkham Asylum 2025"
 
-[pipeline.meta_data.hp_resource]
+[pipeline_config.meta_data.hp_resource]
 id = "hp"
 version = "2025-09-01"
 "#;
@@ -151,7 +151,7 @@ version = "2025-09-01"
       }
     }
   ],
-  "pipeline": {
+  "pipeline_config": {
     "transform_strategies": [
       "alias_map",
       "multi_hpo_col_expansion"
@@ -192,7 +192,7 @@ version = "2025-09-01"
       ),
     ),
   ],
-  pipeline: (
+  pipeline_config: (
     transform_strategies: [
       "alias_map",
       "multi_hpo_col_expansion",
@@ -269,7 +269,7 @@ version = "2025-09-01"
             env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
 
         let expected_config = PhenoXtractConfig {
-            pipeline: PipelineConfig::new(
+            pipeline_config: PipelineConfig::new(
                 MetaData::new(
                     Some("The Collector"),
                     Some("Magnus Knut Hansen"),
