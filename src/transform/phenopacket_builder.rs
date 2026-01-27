@@ -307,7 +307,6 @@ impl PhenopacketBuilder {
         gene_variant_data: &PathogenicGeneVariantData,
         subject_sex: Option<String>,
     ) -> Result<(), PhenopacketBuilderError> {
-
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
         if self.disease_bidict_lib.get_bidicts().is_empty() {

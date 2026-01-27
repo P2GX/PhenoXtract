@@ -68,7 +68,7 @@ impl Collect for InterpretationCollector {
                         PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
                             .map_err(CollectorError::GeneVariantData)?;
 
-                    if matches!(gene_variant_data,PathogenicGeneVariantData::None) {
+                    if matches!(gene_variant_data, PathogenicGeneVariantData::None) {
                         continue;
                     }
 
@@ -297,14 +297,8 @@ mod tests {
             [AnyValue::String(default_disease_oc().label.as_str())],
         );
         let gene_col = Column::new("gene".into(), [AnyValue::Null]);
-        let hgvs_col1 = Column::new(
-            "hgvs1".into(),
-            [AnyValue::Null],
-        );
-        let hgvs_col2 = Column::new(
-            "hgvs2".into(),
-            [AnyValue::Null],
-        );
+        let hgvs_col1 = Column::new("hgvs1".into(), [AnyValue::Null]);
+        let hgvs_col2 = Column::new("hgvs2".into(), [AnyValue::Null]);
 
         let diseases_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("diseases".to_string()))
@@ -337,9 +331,9 @@ mod tests {
                 hgvs_col2,
                 gene_col,
             ])
-                .unwrap(),
+            .unwrap(),
         )
-            .unwrap();
+        .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let phenopacket_id = default_phenopacket_id().to_string();
