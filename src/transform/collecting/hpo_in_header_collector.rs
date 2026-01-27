@@ -104,6 +104,7 @@ mod tests {
     };
     use crate::test_suite::resource_references::hp_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
     use polars::datatypes::{AnyValue, DataType};
@@ -216,6 +217,7 @@ mod tests {
             id: default_phenopacket_id(),
             phenotypic_features: vec![fractured_nose_excluded],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![hp_meta_data_resource()],
                 created_by: default_meta_data().created_by,
                 submitted_by: default_meta_data().submitted_by,

@@ -104,6 +104,7 @@ mod tests {
     };
     use crate::test_suite::resource_references::{loinc_meta_data_resource, uo_meta_data_resource};
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::MetaData;
     use polars::datatypes::AnyValue;
@@ -213,6 +214,7 @@ mod tests {
             id: default_phenopacket_id(),
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
                 submitted_by: default_meta_data().submitted_by,
                 created_by: default_meta_data().created_by,

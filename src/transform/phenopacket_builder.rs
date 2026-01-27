@@ -8,6 +8,7 @@ use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::utils::chromosomal_sex_from_str;
 use crate::transform::utils::{try_parse_time_element, try_parse_timestamp};
+use crate::utils::phenopacket_schema_version;
 use chrono::Utc;
 use log::warn;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
@@ -114,7 +115,7 @@ impl PhenopacketBuilder {
             );
             metadata.created_by = self.meta_data.created_by.clone();
             metadata.submitted_by = self.meta_data.submitted_by.clone();
-            metadata.phenopacket_schema_version = "2.0".to_string();
+            metadata.phenopacket_schema_version = phenopacket_schema_version();
         });
 
         phenopackets

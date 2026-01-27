@@ -4,7 +4,7 @@ use crate::transform::error::CollectorError;
 use std::any::Any;
 use std::fmt::Debug;
 
-pub trait Collect: Debug + AsAny {
+pub trait Collect: Debug {
     fn collect(
         &self,
         builder: &mut PhenopacketBuilder,
@@ -13,14 +13,4 @@ pub trait Collect: Debug + AsAny {
     ) -> Result<(), CollectorError>;
 
     fn as_any(&self) -> &dyn Any;
-}
-
-pub trait AsAny {
-    fn as_any(&self) -> &dyn Any;
-}
-
-impl<T: 'static> AsAny for T {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }

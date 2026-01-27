@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::PhenopacketBuilder;
-use crate::transform::collecting::traits::{AsAny, Collect};
+use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use std::any::Any;
@@ -119,6 +119,7 @@ mod tests {
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
@@ -273,6 +274,7 @@ mod tests {
             id: default_phenopacket_id(),
             subject: Some(indiv),
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![mondo_meta_data_resource()],
                 submitted_by: default_meta_data().submitted_by,
                 created_by: default_meta_data().created_by,

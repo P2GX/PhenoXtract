@@ -107,6 +107,7 @@ mod tests {
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
     };
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
     use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
     use phenopackets::schema::v2::Phenopacket;
@@ -270,6 +271,7 @@ mod tests {
             id: default_phenopacket_id(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![
                     mondo_meta_data_resource(),
                     hgnc_meta_data_resource(),

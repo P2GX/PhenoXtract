@@ -88,6 +88,7 @@ mod tests {
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::MetaData;
     use polars::prelude::{AnyValue, Column};
@@ -153,6 +154,7 @@ mod tests {
             id: default_phenopacket_id(),
             diseases,
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![mondo_meta_data_resource()],
                 created_by: default_meta_data().created_by.clone(),
                 submitted_by: default_meta_data().submitted_by.clone(),

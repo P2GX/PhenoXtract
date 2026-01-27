@@ -1,5 +1,4 @@
 use crate::extract::ContextualizedDataFrame;
-use crate::transform;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;
@@ -11,7 +10,6 @@ use crate::transform::collecting::quantitative_measurement_collector::Quantitati
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
-use std::any::Any;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -95,13 +93,13 @@ impl PartialEq for CdfCollectorBroker {
         let mut self_ids: Vec<_> = self
             .collectors
             .iter()
-            .map(|col| transform::collecting::traits::AsAny::as_any(col).type_id())
+            .map(|col| col.as_any().type_id())
             .collect();
 
         let mut other_ids: Vec<_> = other
             .collectors
             .iter()
-            .map(|col| transform::collecting::traits::AsAny::as_any(col).type_id())
+            .map(|col| col.as_any().type_id())
             .collect();
 
         self_ids.sort();
@@ -116,9 +114,8 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{generate_minimal_cdf, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::transform;
     use rstest::{fixture, rstest};
     use std::any::Any;
     use std::cell::{Cell, RefCell};
@@ -184,16 +181,14 @@ mod tests {
         broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
-            let mock = transform::collecting::traits::AsAny::as_any(&collector)
-                .downcast_ref::<MockCollector>()
-                .unwrap();
+            let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
 
             assert_eq!(mock.call_count.get(), 2);
 
             let mut seen = mock.seen_pps.borrow().clone();
             seen.sort();
 
-            let expected = ["P0".to_string(), "P1".to_string()];
+            let expected = generate_patient_ids(2);
             assert_eq!(seen, expected);
             assert_eq!(mock.seen_pps.borrow().len(), 2);
         }
