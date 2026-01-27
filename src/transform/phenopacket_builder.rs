@@ -113,7 +113,8 @@ impl PhenopacketBuilder {
                     .expect("Failed to parse current timestamp for phenopacket metadata"),
             );
             metadata.created_by = self.meta_data.created_by.clone();
-            metadata.submitted_by = self.meta_data.submitted_by.clone()
+            metadata.submitted_by = self.meta_data.submitted_by.clone();
+            metadata.phenopacket_schema_version = "2.0".to_string();
         });
 
         phenopackets
