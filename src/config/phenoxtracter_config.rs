@@ -12,12 +12,12 @@ use validator::Validate;
 pub struct PhenoXtractConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     pub data_sources: Vec<DataSource>,
-    pub pipeline: PipelineConfig,
+    pub pipeline_config: PipelineConfig,
 }
 
 impl PhenoXtractConfig {
     pub fn pipeline_config(&self) -> PipelineConfig {
-        self.pipeline.clone()
+        self.pipeline_config.clone()
     }
     pub fn data_sources(&self) -> Vec<DataSource> {
         self.data_sources.clone()
