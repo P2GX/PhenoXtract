@@ -6,7 +6,15 @@ use phenoxtract::ontology::traits::BiDict;
 #[test]
 fn test_omim_client() {
     dotenv().ok();
-    let client = OmimClient::new();
+    // Skip test if API key is not available (e.g., in CI)
+    let api_key = match std::env::var("BIOPORTAL_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            println!("Skipping test_omim_client: BIOPORTAL_API_KEY not set");
+            return;
+        }
+    };
+    let client = OmimClient::new_with_key(api_key);
 
     // Test by ID - with better error handling
     match client.get_label("OMIM:614200") {
@@ -35,7 +43,15 @@ fn test_omim_client() {
 #[test]
 fn test_omim_client_caching() {
     dotenv().ok();
-    let client = OmimClient::new();
+    // Skip test if API key is not available (e.g., in CI)
+    let api_key = match std::env::var("BIOPORTAL_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            println!("Skipping test_omim_client_caching: BIOPORTAL_API_KEY not set");
+            return;
+        }
+    };
+    let client = OmimClient::new_with_key(api_key);
 
     // First call should hit the API
     let result1 = client.get("OMIM:191100");
@@ -70,7 +86,15 @@ fn test_invalid_omim_id_validation() {
 #[test]
 fn test_omim_147920() {
     dotenv().ok();
-    let client = OmimClient::new();
+    // Skip test if API key is not available (e.g., in CI)
+    let api_key = match std::env::var("BIOPORTAL_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            println!("Skipping test_omim_147920: BIOPORTAL_API_KEY not set");
+            return;
+        }
+    };
+    let client = OmimClient::new_with_key(api_key);
 
     // Test OMIM:147920
     match client.get_label("OMIM:147920") {
