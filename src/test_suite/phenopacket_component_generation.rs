@@ -1,6 +1,6 @@
 use crate::ontology::traits::BiDict;
 use crate::test_suite::cdf_generation::default_patient_id;
-use crate::test_suite::config::default_config_meta_data;
+use crate::test_suite::component_building::phenopacket_builder_metadata;
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
@@ -13,7 +13,7 @@ use phenopackets::schema::v2::core::{
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
-    default_config_meta_data().cohort_name
+    phenopacket_builder_metadata().cohort_name
 }
 
 pub(crate) fn default_phenopacket_id() -> String {

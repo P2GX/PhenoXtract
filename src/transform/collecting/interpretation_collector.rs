@@ -95,7 +95,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::config::default_config_meta_data;
+    use crate::test_suite::component_building::phenopacket_builder_metadata;
     use crate::test_suite::phenopacket_component_generation::{
         default_cohort_id, default_disease_oc, default_phenopacket_id,
     };
@@ -271,8 +271,8 @@ mod tests {
                     hgnc_meta_data_resource(),
                     geno_meta_data_resource(),
                 ],
-                created_by: default_config_meta_data().created_by,
-                submitted_by: default_config_meta_data().submitted_by,
+                created_by: phenopacket_builder_metadata().created_by,
+                submitted_by: phenopacket_builder_metadata().submitted_by,
                 ..Default::default()
             }),
             ..Default::default()

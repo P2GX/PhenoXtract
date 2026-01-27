@@ -1,6 +1,3 @@
-use crate::config::MetaData;
-use config::{Config, File, FileFormat};
-
 pub(crate) static DATA_SOURCES_CONFIG: &[u8] = br#"
 data_sources:
   - type: "csv"
@@ -96,18 +93,4 @@ pub(crate) fn get_full_config_bytes() -> Vec<u8> {
     let pipeline = std::str::from_utf8(PIPELINE_CONFIG).expect("Invalid UTF-8 in PIPELINE_CONFIG");
 
     format!("{}\n{}", data_sources.trim(), pipeline.trim()).into_bytes()
-}
-
-pub(crate) fn default_config_meta_data() -> MetaData {
-    let yaml_str = std::str::from_utf8(PIPELINE_CONFIG)
-        .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
-
-    let config = Config::builder()
-        .add_source(File::from_str(yaml_str, FileFormat::Yaml))
-        .build()
-        .expect("FATAL: Failed to parse configuration");
-
-    config
-        .get::<MetaData>("pipeline_config.meta_data")
-        .expect("FATAL: Missing or invalid 'pipeline_config.meta_data' section")
 }
