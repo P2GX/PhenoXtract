@@ -124,8 +124,17 @@ impl OmimClient {
 
         let search_resp: SearchResponse = resp.json().map_err(|e| BiDictError::Request(e))?;
 
-        // Return first matching term
-        search_resp.collection.into_iter().next().ok_or(BiDictError::NotFound(label.to_string()))
+        // Return first matching term and extract ID from @id if necessary
+        let mut result = search_resp.collection.into_iter().next().ok_or(BiDictError::NotFound(label.to_string()))?;
+        
+        // Extract ID from @id field if not present
+        if result.id.is_empty() && !result.at_id.is_empty() {
+            if let Some(last_part) = result.at_id.split('/').last() {
+                result.id = last_part.to_string();
+            }
+        }
+        
+        Ok(result)
     }
 
     /// Read a value from the internal cache.
