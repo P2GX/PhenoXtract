@@ -185,7 +185,7 @@ impl TryFrom<PhenoXtractConfig> for Pipeline {
     type Error = ConstructionError;
 
     fn try_from(config: PhenoXtractConfig) -> Result<Self, Self::Error> {
-        Pipeline::try_from(config.pipeline)
+        Pipeline::try_from(config.pipeline_config)
     }
 }
 
@@ -230,7 +230,7 @@ mod tests {
 
         let configs_from_sources = [
             Pipeline::try_from(config.clone()).expect("Failed to convert config from config"),
-            Pipeline::try_from(config.pipeline.clone())
+            Pipeline::try_from(config.pipeline_config.clone())
                 .expect("Failed to convert config from pipeline"),
             Pipeline::try_from(file_path).expect("Failed to convert config from path"),
         ];
