@@ -1,6 +1,6 @@
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{BiDict, HasPrefixId};
-use crate::utils::is_curie;
+use crate::utils::check_curie_format;
 use phenopackets::schema::v2::core::OntologyClass;
 
 #[derive(Debug, Default)]
@@ -38,7 +38,7 @@ impl BiDictLibrary {
 
     pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
-            if is_curie(query, Some(bidict.reference().prefix_id()), None) {
+            if check_curie_format(query, Some(bidict.reference().prefix_id()), None) {
                 if let Ok(label) = bidict.get_label(query) {
                     return Some((
                         OntologyClass {

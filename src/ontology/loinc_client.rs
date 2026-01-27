@@ -2,7 +2,7 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use crate::utils::is_curie;
+use crate::utils::check_curie_format;
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -173,7 +173,7 @@ impl LoincClient {
         format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
-        is_curie(
+        check_curie_format(
             query,
             Some(KnownResourcePrefixes::LOINC.to_string().as_str()),
             Some(&self.loinc_id_regex),
