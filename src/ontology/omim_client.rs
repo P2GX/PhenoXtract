@@ -1,12 +1,12 @@
 // OMIM client for querying BioPortal (including BIDict)
-use crate::ontology::traits::BIDict;
 use crate::ontology::error::BiDictError;
+use crate::ontology::traits::BIDict;
 use reqwest::blocking::Client;
-use urlencoding::encode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::sync::RwLock;
+use urlencoding::encode;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OmimResult {
@@ -34,8 +34,8 @@ impl OmimClient {
     /// Creates a new OMIM client.
     /// Expects: `BIOPORTAL_API_KEY` environment variable to be set
     pub fn new() -> Self {
-        let api_key = env::var("BIOPORTAL_API_KEY")
-            .expect("BIOPORTAL_API_KEY must be set in environment");
+        let api_key =
+            env::var("BIOPORTAL_API_KEY").expect("BIOPORTAL_API_KEY must be set in environment");
 
         OmimClient {
             client: Client::new(),
@@ -71,7 +71,8 @@ impl OmimClient {
             id_trimmed
         );
 
-        let resp = self.client
+        let resp = self
+            .client
             .get(&url)
             .header("Authorization", format!("apikey token={}", self.api_key))
             .send()
@@ -80,7 +81,10 @@ impl OmimClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().unwrap_or_default();
-            eprintln!("BioPortal API error for {}: status={}, body={}", url, status, body);
+            eprintln!(
+                "BioPortal API error for {}: status={}, body={}",
+                url, status, body
+            );
             return Err(BiDictError::NotFound(id.to_string()));
         }
 
@@ -108,7 +112,8 @@ impl OmimClient {
             encoded_label, self.api_key
         );
 
-        let resp = self.client
+        let resp = self
+            .client
             .get(&url)
             .send()
             .map_err(|e| BiDictError::Request(e))?;
@@ -125,15 +130,19 @@ impl OmimClient {
         let search_resp: SearchResponse = resp.json().map_err(|e| BiDictError::Request(e))?;
 
         // Return first matching term and extract ID from @id if necessary
-        let mut result = search_resp.collection.into_iter().next().ok_or(BiDictError::NotFound(label.to_string()))?;
-        
+        let mut result = search_resp
+            .collection
+            .into_iter()
+            .next()
+            .ok_or(BiDictError::NotFound(label.to_string()))?;
+
         // Extract ID from @id field if not present
         if result.id.is_empty() && !result.at_id.is_empty() {
             if let Some(last_part) = result.at_id.split('/').last() {
                 result.id = last_part.to_string();
             }
         }
-        
+
         Ok(result)
     }
 

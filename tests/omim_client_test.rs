@@ -1,7 +1,7 @@
+use dotenvy::dotenv;
+use phenoxtract::ontology::error::BiDictError;
 use phenoxtract::ontology::omim_client::OmimClient;
 use phenoxtract::ontology::traits::BIDict;
-use phenoxtract::ontology::error::BiDictError;
-use dotenvy::dotenv;
 
 #[test]
 fn test_omim_client() {
@@ -18,16 +18,16 @@ fn test_omim_client() {
     match client.get_id("Bleeding disorder, platelet-type, 9") {
         Ok(id) => {
             println!("Bleeding disorder, platelet-type, 9 -> {}", id);
-            
+
             // Test by synonym - with better error handling
             match client.get_id("GLYCOPROTEIN Ia DEFICIENCY") {
                 Ok(id_syn) => {
                     println!("GLYCOPROTEIN Ia DEFICIENCY -> {}", id_syn);
                     assert_eq!(id, id_syn, "IDs should match for the same disease");
-                },
+                }
                 Err(e) => println!("Failed to get ID by synonym: {}", e),
             }
-        },
+        }
         Err(e) => println!("Failed to get ID by label: {}", e),
     }
 }
@@ -50,10 +50,10 @@ fn test_omim_client_caching() {
         (Ok(r1), Ok(r2)) => {
             assert_eq!(r1, r2, "Cached results should match");
             println!("Caching test passed: {}", r1);
-        },
+        }
         (Err(e1), Err(e2)) => {
             println!("Both calls failed with errors: {} and {}", e1, e2);
-        },
+        }
         _ => println!("Results were inconsistent"),
     }
 }
@@ -77,7 +77,7 @@ fn test_omim_147920() {
         Ok(label) => {
             println!("OMIM:147920 -> {}", label);
             assert!(!label.is_empty(), "Label should not be empty");
-        },
+        }
         Err(e) => println!("Failed to get label for OMIM:147920: {}", e),
     }
 }
