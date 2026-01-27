@@ -36,4 +36,6 @@ pub enum PipelineError {
     Validation(#[from] ValidationErrors),
     #[error(transparent)]
     Load(#[from] LoadError),
+    #[error(transparent)]
+    Construction(#[from] ConstructionError),
 }
