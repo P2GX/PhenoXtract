@@ -836,7 +836,7 @@ mod builder_tests {
     use crate::extract::contextualized_dataframe_filters::Filter;
     use polars::df;
     use polars::frame::DataFrame;
-    use polars::prelude::{Column, DataType, NamedFrom, Series};
+    use polars::prelude::{AnyValue, Column, DataType, NamedFrom, Series};
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
 
@@ -849,6 +849,7 @@ mod builder_tests {
         "location (some stuff)" => &["NY", "SF", "LA"],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
+                        "null" => &[AnyValue::Null, AnyValue::Null, AnyValue::Null],
         )
         .unwrap()
     }
@@ -875,6 +876,10 @@ mod builder_tests {
                     .with_identifier(Identifier::Regex("overweight".to_string()))
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("null".to_string()))
+                    .with_data_context(Context::AgeAtLastEncounter)
+                    .with_building_block_id(Some("block_1".to_string())),
             ],
         )
     }
@@ -884,11 +889,14 @@ mod builder_tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let original_context_no = cdf.context().context().len();
+
         cdf.builder()
             .remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
             .build_dirty();
 
-        assert_eq!(cdf.context().context().len(), 2);
+        assert_eq!(cdf.context().context().len(), original_context_no - 2);
     }
 
     #[rstest]
@@ -896,27 +904,37 @@ mod builder_tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let original_context_no = cdf.context().context().len();
+        let original_col_no = cdf.data().width();
+        let original_col_height = cdf.data().height();
+
         cdf.builder()
             .remove_scs_with_context(&Context::VitalStatus, &Context::None)
             .build_dirty();
 
-        assert_eq!(cdf.context().context().len(), 4);
-        assert_eq!(cdf.data().width(), 6);
-        assert_eq!(cdf.data().height(), 3);
+        assert_eq!(cdf.context().context().len(), original_context_no);
+        assert_eq!(cdf.data().width(), original_col_no);
+        assert_eq!(cdf.data().height(), original_col_height);
     }
 
     #[rstest]
     fn test_remove_scs_and_cols_with_context() {
         let df = sample_df();
         let ctx = sample_ctx();
+
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let original_context_no = cdf.context().context().len();
+        let original_col_no = cdf.data().width();
+
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
             .unwrap()
             .build_dirty();
 
-        assert_eq!(cdf.context().context().len(), 3);
-        assert_eq!(cdf.data().width(), 5);
+        assert_eq!(cdf.context().context().len(), original_context_no - 1);
+        assert_eq!(cdf.data().width(), original_col_no - 1);
     }
 
     #[rstest]
@@ -924,14 +942,19 @@ mod builder_tests {
         let df = sample_df();
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let original_context_no = cdf.context().context().len();
+        let original_col_no = cdf.data().width();
+        let original_col_height = cdf.data().height();
+
         cdf.builder()
             .drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
             .unwrap()
             .build_dirty();
 
-        assert_eq!(cdf.context().context().len(), 4);
-        assert_eq!(cdf.data().width(), 6);
-        assert_eq!(cdf.data().height(), 3);
+        assert_eq!(cdf.context().context().len(), original_context_no);
+        assert_eq!(cdf.data().width(), original_col_no);
+        assert_eq!(cdf.data().height(), original_col_height);
     }
 
     #[rstest]
@@ -1118,6 +1141,7 @@ mod builder_tests {
         "location (some stuff)" => &["NY", "SF", "LA"],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
+            "null" => [AnyValue::Null, AnyValue::Null, AnyValue::Null],
         )
         .unwrap();
         assert_eq!(cdf.data(), &expected_df);
@@ -1192,7 +1216,7 @@ mod builder_tests {
                 .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
                 .collect()
                 .len(),
-            1
+            2
         );
     }
 
@@ -1223,5 +1247,35 @@ mod builder_tests {
         let age_col = cdf.data().column("age").unwrap();
         assert_eq!(age_col.dtype(), &DataType::String);
         assert_eq!(age_col, &Column::new("age".into(), vec!["25", "30", "40"]));
+    }
+
+    #[rstest]
+    fn test_get_non_null_linked_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        assert_eq!(
+            cdf.get_non_null_linked_cols_with_context(
+                Some("block_1"),
+                &Context::AgeAtLastEncounter,
+                &Context::None
+            ),
+            vec!["age".to_string()]
+        )
+    }
+
+    #[rstest]
+    fn test_get_stringified_cols() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        assert_eq!(
+            cdf.get_stringified_cols(vec!["bronchitis".to_string(), "overweight".to_string()])
+                .unwrap()
+                .len(),
+            2
+        )
     }
 }

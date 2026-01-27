@@ -162,30 +162,4 @@ mod tests {
         let sme = get_single_multiplicity_element(&[cdf], context, Context::None);
         assert!(sme.is_err());
     }
-
-    #[rstest]
-    fn test_get_stringified_cols_with_data_context_in_bb() {
-        let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let context = Context::AgeAtLastEncounter;
-
-        let df = DataFrame::new(vec![
-            subject_col.clone(),
-            Column::new("age".into(), &[46, 22]),
-        ])
-        .unwrap();
-        let tc = TableContext::new(
-            "tc".to_string(),
-            vec![
-                subject_sc,
-                SeriesContext::default()
-                    .with_identifier(Identifier::from("age"))
-                    .with_data_context(context.clone())
-                    .with_building_block_id(Some("B".to_string())),
-            ],
-        );
-        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
-
-        let sme = get_single_multiplicity_element(&[cdf], context, Context::None);
-        assert!(sme.is_err());
-    }
 }
