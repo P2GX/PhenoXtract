@@ -1,8 +1,10 @@
+use crate::config::MetaData;
 use crate::ontology::traits::BiDict;
 use crate::test_suite::cdf_generation::default_patient_id;
-use crate::test_suite::config::default_config_meta_data;
+use crate::test_suite::config::{PIPELINE_CONFIG, default_meta_data};
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
+use config::{Config, File, FileFormat};
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -13,7 +15,7 @@ use phenopackets::schema::v2::core::{
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
-    default_config_meta_data().cohort_name
+    default_meta_data().cohort_name
 }
 
 pub(crate) fn default_phenopacket_id() -> String {
@@ -249,4 +251,18 @@ pub(crate) fn default_phenotype_oc() -> OntologyClass {
         id: "HP:0041249".to_string(),
         label: "Fractured nose".to_string(),
     }
+}
+
+pub(crate) fn default_meta_data() -> MetaData {
+    let yaml_str = std::str::from_utf8(PIPELINE_CONFIG)
+        .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
+
+    let config = Config::builder()
+        .add_source(File::from_str(yaml_str, FileFormat::Yaml))
+        .build()
+        .expect("FATAL: Failed to parse configuration");
+
+    config
+        .get::<MetaData>("pipeline_config.meta_data")
+        .expect("FATAL: Missing or invalid 'pipeline_config.meta_data' section")
 }

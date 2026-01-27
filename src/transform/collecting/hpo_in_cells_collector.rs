@@ -71,7 +71,7 @@ mod tests {
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
 
-    use crate::test_suite::config::default_config_meta_data;
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
@@ -148,8 +148,8 @@ mod tests {
             phenotypic_features: vec![default_phenotype(), spasmus_nutans_pf_with_onset],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource()],
-                created_by: default_config_meta_data().created_by.clone(),
-                submitted_by: default_config_meta_data().submitted_by.clone(),
+                created_by: default_meta_data().created_by.clone(),
+                submitted_by: default_meta_data().submitted_by.clone(),
                 ..Default::default()
             }),
             ..Default::default()
