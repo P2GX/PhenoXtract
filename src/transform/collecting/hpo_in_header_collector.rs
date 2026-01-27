@@ -93,6 +93,7 @@ mod tests {
         default_patient_id, generate_minimal_cdf, generate_minimal_cdf_components,
     };
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::config::default_config_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_iso_age, default_phenopacket_id, default_phenotype,
         generate_phenotype,
@@ -212,6 +213,8 @@ mod tests {
             phenotypic_features: vec![fractured_nose_excluded],
             meta_data: Some(MetaData {
                 resources: vec![hp_meta_data_resource()],
+                created_by: default_config_meta_data().created_by,
+                submitted_by: default_config_meta_data().submitted_by,
                 ..Default::default()
             }),
             ..Default::default()

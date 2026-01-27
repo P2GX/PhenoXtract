@@ -77,6 +77,7 @@ mod tests {
     use crate::config::table_context::SeriesContext;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::config::default_config_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_disease_with_age_onset, default_iso_age, default_phenopacket_id, generate_disease,
     };
@@ -148,6 +149,8 @@ mod tests {
             diseases,
             meta_data: Some(MetaData {
                 resources: vec![mondo_meta_data_resource()],
+                created_by: default_config_meta_data().created_by.clone(),
+                submitted_by: default_config_meta_data().submitted_by.clone(),
                 ..Default::default()
             }),
             ..Default::default()

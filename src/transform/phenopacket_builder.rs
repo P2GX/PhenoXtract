@@ -30,13 +30,19 @@ use std::collections::HashMap;
 pub struct BuilderMetaData {
     cohort_name: String,
     created_by: String,
+    submitted_by: String,
 }
 
 impl BuilderMetaData {
-    pub fn new(cohort_name: impl Into<String>, created_by: impl Into<String>) -> BuilderMetaData {
+    pub fn new(
+        cohort_name: impl Into<String>,
+        created_by: impl Into<String>,
+        submitted_by: impl Into<String>,
+    ) -> BuilderMetaData {
         Self {
             cohort_name: cohort_name.into(),
             created_by: created_by.into(),
+            submitted_by: submitted_by.into(),
         }
     }
 }
@@ -46,6 +52,7 @@ impl From<MetaData> for BuilderMetaData {
         Self {
             cohort_name: config_meta_data.cohort_name,
             created_by: config_meta_data.created_by,
+            submitted_by: config_meta_data.submitted_by,
         }
     }
 }
@@ -105,7 +112,8 @@ impl PhenopacketBuilder {
                 try_parse_timestamp(&now)
                     .expect("Failed to parse current timestamp for phenopacket metadata"),
             );
-            metadata.created_by = self.meta_data.created_by.clone()
+            metadata.created_by = self.meta_data.created_by.clone();
+            metadata.submitted_by = self.meta_data.submitted_by.clone()
         });
 
         phenopackets
