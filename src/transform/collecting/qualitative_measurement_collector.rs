@@ -23,7 +23,7 @@ impl Collect for QualitativeMeasurementCollector {
                 .collect();
 
             for qual_measurement_sc in qualitative_measurement_scs {
-                let (loinc_id, unit_ontology_prefix) = qual_measurement_sc
+                let assay_id = qual_measurement_sc
                     .get_data_context()
                     .try_as_qualitative_measurement()
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
@@ -53,8 +53,7 @@ impl Collect for QualitativeMeasurementCollector {
                                 phenopacket_id,
                                 qual_measurement,
                                 time_observed,
-                                loinc_id,
-                                unit_ontology_prefix,
+                                assay_id,
                             )?;
                         }
                     }
@@ -63,5 +62,106 @@ impl Collect for QualitativeMeasurementCollector {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::table_context::SeriesContext;
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_iso_age, default_pato_qual_measurement, default_phenopacket_id, default_qual_loinc,
+        default_qual_measurement, generate_qual_measurement,
+    };
+    use crate::test_suite::resource_references::{
+        loinc_meta_data_resource, pato_meta_data_resource,
+    };
+    use crate::test_suite::utils::assert_phenopackets;
+    use phenopackets::schema::v2::Phenopacket;
+    use phenopackets::schema::v2::core::{MetaData, OntologyClass};
+    use polars::datatypes::AnyValue;
+    use polars::prelude::{IntoColumn, NamedFrom, Series};
+    use rstest::{fixture, rstest};
+    use tempfile::TempDir;
+
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    #[fixture]
+    fn pato_absent() -> OntologyClass {
+        OntologyClass {
+            id: "PATO:0000462".to_string(),
+            label: "absent".to_string(),
+        }
+    }
+
+    #[fixture]
+    fn qual_measurement_cdf() -> ContextualizedDataFrame {
+        let mut patient_cdf = generate_minimal_cdf(1, 2);
+        let measurements = Series::new(
+            "nitrate in urine".into(),
+            vec![default_pato_qual_measurement().label, pato_absent().label],
+        );
+
+        let time_observed = Series::new(
+            "time_observed".into(),
+            &[AnyValue::String(&default_iso_age()), AnyValue::Null],
+        );
+
+        patient_cdf
+            .builder()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("nitrate in urine".into())
+                    .with_data_context(Context::QualitativeMeasurement {
+                        assay_id: default_qual_loinc().id,
+                    })
+                    .with_building_block_id(Some("nitrate_measurement".to_string())),
+                vec![measurements.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_columns_with_series_context(
+                SeriesContext::default()
+                    .with_identifier("time_observed".into())
+                    .with_data_context(Context::OnsetAge)
+                    .with_building_block_id(Some("nitrate_measurement".to_string())),
+                vec![time_observed.into_column()].as_ref(),
+            )
+            .unwrap()
+            .build()
+            .unwrap()
+            .clone()
+    }
+
+    #[rstest]
+    fn test_collect_qualitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let pp_id = default_phenopacket_id();
+        QualitativeMeasurementCollector
+            .collect(&mut builder, &[qual_measurement_cdf()], &pp_id)
+            .unwrap();
+
+        let mut phenopackets = builder.build();
+
+        let measurement1 = default_qual_measurement();
+
+        let measurement2 = generate_qual_measurement(default_qual_loinc(), pato_absent(), None);
+
+        let mut expected_phenopacket = Phenopacket {
+            id: pp_id,
+            measurements: vec![measurement1, measurement2],
+            meta_data: Some(MetaData {
+                resources: vec![loinc_meta_data_resource(), pato_meta_data_resource()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        pretty_assertions::assert_eq!(phenopackets.len(), 1);
+        assert_phenopackets(&mut phenopackets[0], &mut expected_phenopacket);
     }
 }

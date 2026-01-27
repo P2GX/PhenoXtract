@@ -45,6 +45,53 @@
       }
     }
   ],
+  "measurements": [
+    {
+      "assay": {
+        "id": "LOINC:8302-2",
+        "label": "Body height"
+      },
+      "timeObserved": {
+        "age": {
+          "iso8601duration": "P40Y1M9D"
+        }
+      },
+      "value": {
+        "quantity": {
+          "unit": {
+            "id": "UO:0000015",
+            "label": "centimeter"
+          },
+          "value": 162.3,
+          "referenceRange": {
+            "unit": {
+              "id": "UO:0000015",
+              "label": "centimeter"
+            },
+            "low": 150.0,
+            "high": 200.0
+          }
+        }
+      }
+    },
+    {
+      "assay": {
+        "id": "LOINC:5802-4",
+        "label": "Nitrite [Presence] in Urine by Test strip"
+      },
+      "timeObserved": {
+        "age": {
+          "iso8601duration": "P40Y1M9D"
+        }
+      },
+      "value": {
+        "ontologyClass": {
+          "id": "PATO:0000462",
+          "label": "absent"
+        }
+      }
+    }
+  ],
   "interpretations": [
     {
       "id": "my_cohort-P002-MONDO:0000359",
@@ -52,7 +99,7 @@
       "diagnosis": {
         "disease": {
           "id": "MONDO:0000359",
-          "label": "spondylocostal dysostosis"
+          "label": "Spondylocostal Dysostosis"
         },
         "genomicInterpretations": [
           {
@@ -71,7 +118,7 @@
     {
       "term": {
         "id": "MONDO:0000359",
-        "label": "spondylocostal dysostosis"
+        "label": "Spondylocostal Dysostosis"
       },
       "onset": {
         "age": {
@@ -106,6 +153,30 @@
         "version": "-",
         "namespacePrefix": "hgnc",
         "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
+      },
+      {
+        "id": "loinc",
+        "name": "Logical Observation Identifiers Names and Codes",
+        "url": "https://loinc.org/",
+        "version": "2.81",
+        "namespacePrefix": "loinc",
+        "iriPrefix": "https://loinc.org/$1"
+      },
+      {
+        "id": "uo",
+        "name": "Units of measurement ontology",
+        "url": "http://purl.obolibrary.org/obo/uo.json",
+        "version": "2026-01-09",
+        "namespacePrefix": "UO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/UO_$1"
+      },
+      {
+        "id": "pato",
+        "name": "Phenotype And Trait Ontology",
+        "url": "http://purl.obolibrary.org/obo/pato.json",
+        "version": "2025-05-14",
+        "namespacePrefix": "PATO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/PATO_$1"
       }
     ]
   }

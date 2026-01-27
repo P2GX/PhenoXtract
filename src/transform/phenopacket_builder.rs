@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
-use crate::ontology::loinc_client::LoincClient;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
-use crate::ontology::{DatabaseRef, OntologyRef};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::error::PhenopacketBuilderError;
@@ -14,10 +13,13 @@ use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
+use phenopackets::schema::v2::core::measurement::MeasurementValue;
+use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, OntologyClass,
-    PhenotypicFeature, Sex, VitalStatus,
+    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, Measurement,
+    OntologyClass, PhenotypicFeature, Quantity, ReferenceRange, Sex, Value as ValueStruct,
+    VitalStatus,
 };
 use pivot::hgnc::{GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, HGVSData};
@@ -28,10 +30,11 @@ pub struct PhenopacketBuilder {
     subject_to_phenopacket: HashMap<String, Phenopacket>,
     hgnc_client: Box<dyn HGNCData>,
     hgvs_client: Box<dyn HGVSData>,
-    hpo_bidict: BiDictLibrary,
-    disease_bidicts: BiDictLibrary,
-    unit_bidicts: BiDictLibrary,
-    _loinc_client: Option<LoincClient>,
+    hpo_bidict_lib: BiDictLibrary,
+    disease_bidict_lib: BiDictLibrary,
+    unit_bidict_lib: BiDictLibrary,
+    assay_bidict_lib: BiDictLibrary,
+    qualitative_measurement_bidict_lib: BiDictLibrary,
     resource_resolver: CachedResourceResolver,
 }
 
@@ -39,19 +42,21 @@ impl PhenopacketBuilder {
     pub fn new(
         hgnc_client: Box<dyn HGNCData>,
         hgvs_client: Box<dyn HGVSData>,
-        hpo_bidict: BiDictLibrary,
-        disease_bidicts: BiDictLibrary,
-        unit_bidicts: BiDictLibrary,
-        loinc_client: Option<LoincClient>,
+        hpo_bidict_lib: BiDictLibrary,
+        disease_bidict_lib: BiDictLibrary,
+        unit_bidict_lib: BiDictLibrary,
+        assay_bidict_lib: BiDictLibrary,
+        qualitative_measurement_bidict_lib: BiDictLibrary,
     ) -> Self {
         Self {
             subject_to_phenopacket: HashMap::new(),
             hgnc_client,
             hgvs_client,
-            hpo_bidict,
-            disease_bidicts,
-            unit_bidicts,
-            _loinc_client: loinc_client,
+            hpo_bidict_lib,
+            disease_bidict_lib,
+            unit_bidict_lib,
+            assay_bidict_lib,
+            qualitative_measurement_bidict_lib,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -87,9 +92,6 @@ impl PhenopacketBuilder {
         if alternate_ids.is_some() {
             warn!("alternate_ids - not implemented for individual yet");
         }
-        if time_at_last_encounter.is_some() {
-            warn!("time_at_last_encounter - not implemented for individual yet");
-        }
         if karyotypic_sex.is_some() {
             warn!("karyotypic_sex - not implemented for individual yet");
         }
@@ -123,6 +125,17 @@ impl PhenopacketBuilder {
                 })?
                 .into();
         }
+
+        if let Some(time_str) = time_at_last_encounter {
+            let time_te = try_parse_time_element(time_str).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "Time At Last Encounter".to_string(),
+                    value: time_str.to_string(),
+                }
+            })?;
+            individual.time_at_last_encounter = Some(time_te);
+        }
+
         Ok(())
     }
 
@@ -134,10 +147,6 @@ impl PhenopacketBuilder {
         cause_of_death: Option<&str>,
         survival_time_in_days: Option<u32>,
     ) -> Result<(), PhenopacketBuilderError> {
-        if cause_of_death.is_some() {
-            warn!("cause_of_death - not implemented for vital_status yet");
-        }
-
         let status = Status::from_str_name(status).ok_or(PhenopacketBuilderError::ParsingError {
             what: "vital status".to_string(),
             value: status.to_string(),
@@ -153,6 +162,21 @@ impl PhenopacketBuilder {
             None => None,
         };
 
+        let cause_of_death = match cause_of_death {
+            Some(cause_of_death) => {
+                let (disease_term, disease_ref) = self
+                    .disease_bidict_lib
+                    .query_bidicts(cause_of_death)
+                    .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                        what: "disease term".to_string(),
+                        value: cause_of_death.to_string(),
+                    })?;
+                self.ensure_resource(phenopacket_id, &disease_ref);
+                Some(disease_term)
+            }
+            None => None,
+        };
+
         let survival_time_in_days = survival_time_in_days.unwrap_or(0);
 
         let phenopacket = self.get_or_create_phenopacket(phenopacket_id);
@@ -161,7 +185,7 @@ impl PhenopacketBuilder {
         individual.vital_status = Some(VitalStatus {
             status,
             time_of_death,
-            cause_of_death: None,
+            cause_of_death,
             survival_time_in_days,
         });
         Ok(())
@@ -237,19 +261,19 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        if self.hpo_bidict.get_bidicts().is_empty() {
-            return Err(PhenopacketBuilderError::ParsingError {
-                what: "No HPO bidict provided.".to_string(),
-                value: phenotype.to_string(),
+        if self.hpo_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "HPO".to_string(),
             });
         }
 
-        let (hpo_term, hpo_ref) = self.hpo_bidict.query_bidicts(phenotype).ok_or_else(|| {
-            PhenopacketBuilderError::ParsingError {
-                what: "HPO term".to_string(),
-                value: phenotype.to_string(),
-            }
-        })?;
+        let (hpo_term, hpo_ref) =
+            self.hpo_bidict_lib
+                .query_bidicts(phenotype)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "HPO term".to_string(),
+                    value: phenotype.to_string(),
+                })?;
 
         let feature = self.get_or_create_phenotypic_feature(phenopacket_id, hpo_term);
 
@@ -285,20 +309,19 @@ impl PhenopacketBuilder {
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
-        if self.disease_bidicts.get_bidicts().is_empty() {
-            return Err(PhenopacketBuilderError::ParsingError {
-                what: "No disease bidict provided.".to_string(),
-                value: disease.to_string(),
+        if self.disease_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "disease".to_string(),
             });
         }
 
         let (disease_term, res_ref) =
-            self.disease_bidicts.query_bidicts(disease).ok_or_else(|| {
-                PhenopacketBuilderError::ParsingError {
+            self.disease_bidict_lib
+                .query_bidicts(disease)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                     what: "Disease term".to_string(),
                     value: disease.to_string(),
-                }
-            })?;
+                })?;
 
         self.ensure_resource(phenopacket_id, &res_ref);
 
@@ -306,7 +329,10 @@ impl PhenopacketBuilder {
             let (symbol, id) = self
                 .hgnc_client
                 .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
-            self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
+            self.ensure_resource(
+                phenopacket_id,
+                &ResourceRef::from(KnownResourcePrefixes::HGNC),
+            );
 
             let gi = GenomicInterpretation {
                 subject_or_biosample_id: patient_id.to_string(),
@@ -330,10 +356,13 @@ impl PhenopacketBuilder {
 
             for var in gene_variant_data.get_vars() {
                 let validated_hgvs = self.hgvs_client.request_and_validate_hgvs(var)?;
-                self.ensure_resource(phenopacket_id, &DatabaseRef::hgnc());
                 self.ensure_resource(
                     phenopacket_id,
-                    &OntologyRef::new("geno".to_string(), None).with_version("2025-07-25"),
+                    &ResourceRef::from(KnownResourcePrefixes::HGNC),
+                );
+                self.ensure_resource(
+                    phenopacket_id,
+                    &ResourceRef::from("geno").with_version("2025-07-25"),
                 );
 
                 if let Some(gene) = gene_variant_data.get_gene() {
@@ -401,20 +430,19 @@ impl PhenopacketBuilder {
             warn!("laterality disease not implemented yet");
         }
 
-        if self.disease_bidicts.get_bidicts().is_empty() {
-            return Err(PhenopacketBuilderError::ParsingError {
-                what: "No disease bidict provided.".to_string(),
-                value: disease.to_string(),
+        if self.disease_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "disease".to_string(),
             });
         }
 
         let (disease_term, res_ref) =
-            self.disease_bidicts.query_bidicts(disease).ok_or_else(|| {
-                PhenopacketBuilderError::ParsingError {
+            self.disease_bidict_lib
+                .query_bidicts(disease)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
                     what: "Disease term".to_string(),
                     value: disease.to_string(),
-                }
-            })?;
+                })?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -440,32 +468,148 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub(crate) fn insert_quantitative_measurement(
         &mut self,
-        _phenopacket_id: &str,
-        _quant_measurement: f64,
-        _time_observed: Option<&str>,
-        _loinc_id: &str,
-        _unit_ontology_id: &str,
-        _reference_range_low: Option<f64>,
-        _reference_range_high: Option<f64>,
+        phenopacket_id: &str,
+        quant_measurement: f64,
+        time_observed: Option<&str>,
+        assay_id: &str,
+        unit_id: &str,
+        reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        // todo!
+        if self.unit_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "quantitative measurement".to_string(),
+            });
+        }
+
+        if self.assay_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
+        let (unit_term, unit_ref) =
+            self.unit_bidict_lib.query_bidicts(unit_id).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "Unit ontology term".to_string(),
+                    value: unit_id.to_string(),
+                }
+            })?;
+
+        let (assay_term, assay_ref) =
+            self.assay_bidict_lib
+                .query_bidicts(assay_id)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Assay term".to_string(),
+                    value: assay_id.to_string(),
+                })?;
+
+        let mut quantity = Quantity {
+            unit: Some(unit_term.clone()),
+            value: quant_measurement,
+            ..Default::default()
+        };
+
+        if let Some(reference_range) = reference_range {
+            quantity.reference_range = Some(ReferenceRange {
+                unit: Some(unit_term),
+                low: reference_range.0,
+                high: reference_range.1,
+            });
+        }
+
+        let mut measurement_element = Measurement {
+            assay: Some(assay_term),
+            measurement_value: Some(MeasurementValue::Value(ValueStruct {
+                value: Some(Value::Quantity(quantity)),
+            })),
+            ..Default::default()
+        };
+
+        if let Some(time_observed) = time_observed {
+            let time_observed_te = try_parse_time_element(time_observed).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: time_observed.to_string(),
+                }
+            })?;
+            measurement_element.time_observed = Some(time_observed_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.measurements.push(measurement_element);
+
+        self.ensure_resource(phenopacket_id, &assay_ref);
+        self.ensure_resource(phenopacket_id, &unit_ref);
 
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub(crate) fn insert_qualitative_measurement(
         &mut self,
-        _phenopacket_id: &str,
-        _qual_measurement: &str,
-        _time_observed: Option<&str>,
-        _loinc_id: &str,
-        _unit_ontology_prefix: &str,
+        phenopacket_id: &str,
+        qual_measurement: &str,
+        time_observed: Option<&str>,
+        assay_id: &str,
     ) -> Result<(), PhenopacketBuilderError> {
-        // todo!
+        if self
+            .qualitative_measurement_bidict_lib
+            .get_bidicts()
+            .is_empty()
+        {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "qualitative measurement".to_string(),
+            });
+        }
+
+        if self.assay_bidict_lib.get_bidicts().is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
+        let (assay_term, assay_ref) =
+            self.assay_bidict_lib
+                .query_bidicts(assay_id)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "Assay term".to_string(),
+                    value: assay_id.to_string(),
+                })?;
+
+        let (qualitative_measurement_term, qualitative_measurement_ontology_ref) = self
+            .qualitative_measurement_bidict_lib
+            .query_bidicts(qual_measurement)
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "Qualitative measurement term".to_string(),
+                value: qual_measurement.to_string(),
+            })?;
+
+        let mut measurement_element = Measurement {
+            assay: Some(assay_term),
+            measurement_value: Some(MeasurementValue::Value(ValueStruct {
+                value: Some(Value::OntologyClass(qualitative_measurement_term)),
+            })),
+            ..Default::default()
+        };
+
+        if let Some(time_observed) = time_observed {
+            let time_observed_te = try_parse_time_element(time_observed).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: time_observed.to_string(),
+                }
+            })?;
+            measurement_element.time_observed = Some(time_observed_te);
+        }
+
+        let pp = self.get_or_create_phenopacket(phenopacket_id);
+
+        pp.measurements.push(measurement_element);
+
+        self.ensure_resource(phenopacket_id, &assay_ref);
+        self.ensure_resource(phenopacket_id, &qualitative_measurement_ontology_ref);
 
         Ok(())
     }
@@ -565,9 +709,10 @@ impl PhenopacketBuilder {
 impl PartialEq for PhenopacketBuilder {
     fn eq(&self, other: &Self) -> bool {
         self.subject_to_phenopacket == other.subject_to_phenopacket
-            && self.hpo_bidict == other.hpo_bidict
-            && self.disease_bidicts == other.disease_bidicts
-            && self.unit_bidicts == other.unit_bidicts
+            && self.hpo_bidict_lib == other.hpo_bidict_lib
+            && self.disease_bidict_lib == other.disease_bidict_lib
+            && self.unit_bidict_lib == other.unit_bidict_lib
+            && self.assay_bidict_lib == other.assay_bidict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }
@@ -575,12 +720,14 @@ impl PartialEq for PhenopacketBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::DatabaseRef;
+    use crate::ontology::resource_references::ResourceRef;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_disease, default_disease_oc, default_iso_age,
-        default_phenopacket_id, default_phenotype_oc, default_timestamp, default_timestamp_element,
+        default_age_element, default_datetime, default_disease, default_disease_oc,
+        default_iso_age, default_phenopacket_id, default_phenotype_oc, default_qual_loinc,
+        default_qual_measurement, default_quant_loinc, default_quant_measurement,
+        default_reference_range, default_timestamp, default_timestamp_element, default_uo_term,
         generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
@@ -588,7 +735,6 @@ mod tests {
     use phenopackets::ga4gh::vrsatile::v1::Expression;
     use phenopackets::schema::v2::core::{MetaData, Resource};
     use pretty_assertions::assert_eq;
-    use prost_types::Timestamp;
     use rstest::*;
     use tempfile::TempDir;
 
@@ -1435,8 +1581,8 @@ mod tests {
                 &phenopacket_id,
                 &individual_id,
                 None,
-                Some("2001-01-29"), //TODO
-                None,
+                Some(default_datetime().to_string().as_str()),
+                Some(default_iso_age().as_str()),
                 Some("MALE"),
                 None,
                 None,
@@ -1448,12 +1594,10 @@ mod tests {
         let individual = phenopacket.subject.as_ref().unwrap();
 
         assert_eq!(individual.sex, Sex::Male as i32);
+        assert_eq!(individual.date_of_birth, Some(default_timestamp()));
         assert_eq!(
-            individual.date_of_birth,
-            Some(Timestamp {
-                seconds: 980726400,
-                nanos: 0,
-            })
+            individual.time_at_last_encounter,
+            Some(default_age_element())
         );
     }
 
@@ -1468,7 +1612,7 @@ mod tests {
                 &phenopacket_id,
                 "ALIVE",
                 Some(&default_iso_age()),
-                None,
+                Some(default_disease_oc().id.as_str()),
                 Some(322),
             )
             .unwrap();
@@ -1481,10 +1625,60 @@ mod tests {
             Some(VitalStatus {
                 status: Status::Alive.into(),
                 time_of_death: Some(default_age_element()),
-                cause_of_death: None,
+                cause_of_death: Some(default_disease_oc()),
                 survival_time_in_days: 322,
             })
         );
+    }
+
+    #[rstest]
+    fn test_insert_quantitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+
+        let phenopacket_id = default_phenopacket_id();
+        let measurement_val = 1.1;
+
+        builder
+            .insert_quantitative_measurement(
+                phenopacket_id.as_str(),
+                measurement_val,
+                Some(default_iso_age().as_str()),
+                default_quant_loinc().id.as_str(),
+                default_uo_term().id.as_str(),
+                Some(default_reference_range()),
+            )
+            .unwrap();
+
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let measurements = phenopacket.measurements.clone();
+        assert_eq!(measurements.len(), 1);
+
+        let quant_measurement = measurements.first().unwrap();
+        assert_eq!(quant_measurement, &default_quant_measurement());
+    }
+
+    #[rstest]
+    fn test_insert_qualitative_measurement(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+
+        let phenopacket_id = default_phenopacket_id();
+        let measurement_val = "Present";
+
+        builder
+            .insert_qualitative_measurement(
+                phenopacket_id.as_str(),
+                measurement_val,
+                Some(default_iso_age().as_str()),
+                default_qual_loinc().id.as_str(),
+            )
+            .unwrap();
+
+        let phenopacket = builder.subject_to_phenopacket.get(&phenopacket_id).unwrap();
+        let measurements = phenopacket.measurements.clone();
+        assert_eq!(measurements.len(), 1);
+
+        let qual_measurement = measurements.first().unwrap();
+        assert_eq!(qual_measurement, &default_qual_measurement());
     }
 
     #[rstest]
@@ -1504,7 +1698,10 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let pp_id = "test_id".to_string();
 
-        builder.ensure_resource(&pp_id, &DatabaseRef::omim());
+        builder.ensure_resource(
+            &pp_id,
+            &ResourceRef::from(KnownResourcePrefixes::OMIM).with_latest(),
+        );
 
         let pp = builder.build().first().unwrap().clone();
         let omim_resrouce = pp.meta_data.as_ref().unwrap().resources.first().unwrap();

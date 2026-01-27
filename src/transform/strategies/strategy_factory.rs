@@ -5,7 +5,8 @@ use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
 use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
-    AliasMapStrategy, MappingStrategy, MultiHPOColExpansionStrategy, OntologyNormaliserStrategy,
+    AliasMapStrategy, DateToAgeStrategy, MappingStrategy, MultiHPOColExpansionStrategy,
+    OntologyNormaliserStrategy,
 };
 
 pub struct StrategyFactory {
@@ -45,7 +46,7 @@ impl StrategyFactory {
             },
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
-                ontology_prefix,
+                ontology: ontology_prefix,
                 data_context_kind,
             } => {
                 let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
@@ -56,6 +57,7 @@ impl StrategyFactory {
                 )))
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
+            StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
         }
     }
 }
@@ -65,8 +67,8 @@ mod tests {
     use super::*;
     use crate::config::context::ContextKind;
     use crate::config::strategy_config::StrategyConfig;
-    use crate::ontology::OntologyRef;
     use crate::test_suite::ontology_mocking::MockOntologyRegistry;
+    use crate::test_suite::resource_references::MONDO_REF;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
@@ -86,6 +88,19 @@ mod tests {
         assert!(
             result.is_ok(),
             "Should successfully create AliasMapStrategy"
+        );
+    }
+
+    #[rstest]
+    fn test_try_from_config_date_to_age() {
+        let mut factory = create_test_factory();
+        let config = StrategyConfig::DateToAge;
+
+        let result = factory.try_from_config(&config);
+
+        assert!(
+            result.is_ok(),
+            "Should successfully create DateToAgeStrategy"
         );
     }
 
@@ -119,7 +134,7 @@ mod tests {
     fn test_try_from_config_ontology_normalizer() {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
-            ontology_prefix: OntologyRef::new("mondo".to_string(), None).clone(),
+            ontology: MONDO_REF.clone(),
             data_context_kind: ContextKind::DiseaseLabelOrId,
         };
 

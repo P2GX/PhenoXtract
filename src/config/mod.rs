@@ -9,8 +9,9 @@ pub use self::strategy_config::StrategyConfig;
 mod config_loader;
 pub use self::config_loader::ConfigLoader;
 pub mod context;
-pub mod credentials;
 pub mod loader_config;
+pub(crate) mod resource_config;
+pub(crate) mod resource_config_factory;
 pub mod table_context;
 
 pub use self::table_context::TableContext;

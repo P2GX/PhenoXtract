@@ -1,6 +1,4 @@
-use crate::ontology::resource_references::OntologyRef;
 use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
-use std::error::Error as StdError;
 use std::fmt::Debug;
 use thiserror::Error;
 #[derive(Debug, Error)]
@@ -38,13 +36,9 @@ pub enum ClientError {
 }
 
 #[derive(Debug, Error)]
-pub enum OntologyFactoryError {
-    #[error("Failed to build ontology '{ontology}'")]
-    CantBuild {
-        #[source]
-        source: Box<dyn StdError + Send + Sync>,
-        ontology: OntologyRef,
-    },
+pub enum FactoryError {
+    #[error("Failed to build ontology '{reason}'")]
+    CantBuild { reason: String },
 }
 
 #[derive(Debug, Error)]

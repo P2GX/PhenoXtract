@@ -6,8 +6,6 @@ pub(crate) mod ontology_bidict;
 pub mod ontology_factory;
 pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
-pub use resource_references::DatabaseRef;
-pub use resource_references::OntologyRef;
 pub mod loinc_client;
 pub mod omim_client;
 pub mod traits;

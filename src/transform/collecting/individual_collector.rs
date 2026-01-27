@@ -20,6 +20,19 @@ impl Collect for IndividualCollector {
         let subject_sex =
             get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
 
+        let time_at_last_encounter = match get_single_multiplicity_element(
+            patient_cdfs,
+            Context::AgeAtLastEncounter,
+            Context::None,
+        )? {
+            Some(value) => Some(value),
+            None => get_single_multiplicity_element(
+                patient_cdfs,
+                Context::DateAtLastEncounter,
+                Context::None,
+            )?,
+        };
+
         let subject_id = patient_cdfs[0]
             .get_subject_id_col()
             .str()?
@@ -31,7 +44,7 @@ impl Collect for IndividualCollector {
             subject_id,
             None,
             date_of_birth.as_deref(),
-            None,
+            time_at_last_encounter.as_deref(),
             subject_sex.as_deref(),
             None,
             None,
@@ -54,8 +67,18 @@ impl IndividualCollector {
             get_single_multiplicity_element(patient_cdfs, Context::VitalStatus, Context::None)?;
 
         if let Some(status) = status {
-            let time_of_death =
-                get_single_multiplicity_element(patient_cdfs, Context::AgeOfDeath, Context::None)?;
+            let time_of_death = match get_single_multiplicity_element(
+                patient_cdfs,
+                Context::AgeOfDeath,
+                Context::None,
+            )? {
+                Some(value) => Some(value),
+                None => get_single_multiplicity_element(
+                    patient_cdfs,
+                    Context::DateOfDeath,
+                    Context::None,
+                )?,
+            };
 
             let cause_of_death = get_single_multiplicity_element(
                 patient_cdfs,
@@ -91,11 +114,17 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_disease_oc, default_iso_age,
+    };
+    use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
-    use phenopackets::schema::v2::core::{Individual, MetaData, Sex, TimeElement, VitalStatus};
+    use phenopackets::schema::v2::core::{
+        Age, Individual, MetaData, Sex, TimeElement, VitalStatus,
+    };
     use polars::datatypes::AnyValue;
     use polars::frame::DataFrame;
     use polars::prelude::Column;
@@ -123,6 +152,10 @@ mod tests {
             .with_identifier(Identifier::Regex("dob".to_string()))
             .with_data_context(Context::DateOfBirth);
 
+        let tale_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("time_at_last_encounter".to_string()))
+            .with_data_context(Context::AgeAtLastEncounter);
+
         let time_of_death_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_of_death".to_string()))
             .with_data_context(Context::AgeOfDeath);
@@ -135,6 +168,10 @@ mod tests {
             .with_identifier(Identifier::Regex("vital_status".to_string()))
             .with_data_context(Context::VitalStatus);
 
+        let cause_of_death_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("cause_of_death".to_string()))
+            .with_data_context(Context::CauseOfDeath);
+
         let survival_time_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("survival_time".to_string()))
             .with_data_context(Context::SurvivalTimeDays);
@@ -144,9 +181,11 @@ mod tests {
             vec![
                 id_sc,
                 dob_sc,
+                tale_sc,
                 sex_sc,
                 vital_status_sc,
                 time_of_death_sc,
+                cause_of_death_sc,
                 survival_time_sc,
             ],
         )
@@ -155,21 +194,30 @@ mod tests {
     #[fixture]
     fn individual_info_df(patient_id: String) -> DataFrame {
         let id_col = Column::new("subject_id".into(), [patient_id]);
-
         let subject_sex_col = Column::new("sex".into(), [AnyValue::String("MALE")]);
         let vital_status_col = Column::new("vital_status".into(), [AnyValue::String("ALIVE")]);
-
         let dob_col = Column::new("dob".into(), [AnyValue::String("1960-02-05")]);
+        let tale_col = Column::new(
+            "time_at_last_encounter".into(),
+            [AnyValue::String(default_iso_age().as_str())],
+        );
         let time_of_death_col =
             Column::new("time_of_death".into(), [AnyValue::String("2001-01-29")]);
+        let cause_of_death_col = Column::new(
+            "cause_of_death".into(),
+            [AnyValue::String(default_disease_oc().label.as_str())],
+        );
         let survival_time_col = Column::new("survival_time".into(), [AnyValue::Int32(155)]);
+
         DataFrame::new(vec![
             id_col,
             subject_sex_col,
             vital_status_col,
             time_of_death_col,
+            cause_of_death_col,
             survival_time_col,
             dob_col,
+            tale_col,
         ])
         .unwrap()
     }
@@ -211,8 +259,13 @@ mod tests {
                         nanos: 0,
                     })),
                 }),
-                cause_of_death: None,
+                cause_of_death: Some(default_disease_oc()),
                 survival_time_in_days: 155,
+            }),
+            time_at_last_encounter: Some(TimeElement {
+                element: Some(Element::Age(Age {
+                    iso8601duration: default_iso_age(),
+                })),
             }),
             ..Default::default()
         };
@@ -220,7 +273,10 @@ mod tests {
         let mut expected_phenopacket = Phenopacket {
             id: phenopacket_id.to_string(),
             subject: Some(indiv),
-            meta_data: Some(MetaData::default()),
+            meta_data: Some(MetaData {
+                resources: vec![mondo_meta_data_resource()],
+                ..Default::default()
+            }),
             ..Default::default()
         };
 

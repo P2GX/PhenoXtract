@@ -1,15 +1,33 @@
 #![allow(unused)]
-
-use crate::config::credentials::LoincCredentials;
 use crate::ontology::error::BiDictError;
-use crate::ontology::traits::BIDict;
-use regex::bytes::Regex;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
+use crate::ontology::traits::{BiDict, HasVersion};
+use crate::utils::check_curie_format;
+use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoincRelease {
+    pub version: String,
+    pub release_date: String,
+    pub relma_version: String,
+    pub number_of_loincs: i64,
+    pub max_loinc: String,
+    pub download_url: String,
+    #[serde(rename = "downloadMD5Hash")]
+    pub download_md5_hash: String,
+}
+impl From<LoincRelease> for ResourceRef {
+    fn from(value: LoincRelease) -> Self {
+        ResourceRef::from(KnownResourcePrefixes::LOINC).with_version(&value.version)
+    }
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct LoincResponse {
@@ -91,18 +109,24 @@ pub struct LoincClient {
     password: String,
     cache: RwLock<HashMap<String, String>>,
     loinc_id_regex: Regex,
+    reference: OnceLock<ResourceRef>,
 }
 
 impl LoincClient {
-    const LOINC_PREFIX: &'static str = "LOINC:";
-    pub fn new(loinc_credentials: LoincCredentials) -> Self {
+    pub fn new(user_name: String, password: String, reference: Option<ResourceRef>) -> Self {
+        let reference_lock = match reference {
+            Some(r) if r.version() != "latest" && !r.version().is_empty() => OnceLock::from(r),
+            _ => OnceLock::new(),
+        };
+
         Self {
             client: Client::new(),
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
-            user_name: loinc_credentials.username,
-            password: loinc_credentials.password,
+            user_name,
+            password,
             cache: RwLock::new(HashMap::new()),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
+            reference: reference_lock,
         }
     }
 
@@ -138,7 +162,7 @@ impl LoincClient {
             if self.is_loinc_curie(key) {
                 let loinc_number = key.split(":").last().unwrap().to_string();
                 cache_write.insert(loinc_number, entry.to_string());
-            } else if self.loinc_id_regex.is_match(key.as_bytes()) {
+            } else if self.loinc_id_regex.is_match(key) {
                 let loinc_curie = Self::format_loinc_curie(key);
                 cache_write.insert(loinc_curie, entry.to_string());
             }
@@ -146,26 +170,29 @@ impl LoincClient {
     }
 
     fn format_loinc_curie(loinc_number: &str) -> String {
-        format!("{}{}", Self::LOINC_PREFIX, loinc_number)
+        format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
     fn is_loinc_curie(&self, query: &str) -> bool {
-        match query.split(':').next_back() {
-            None => false,
-            Some(loinc_number) => {
-                query.starts_with(Self::LOINC_PREFIX)
-                    && self.loinc_id_regex.is_match(loinc_number.as_bytes())
-            }
-        }
+        check_curie_format(
+            query,
+            Some(KnownResourcePrefixes::LOINC.to_string().as_str()),
+            Some(&self.loinc_id_regex),
+        )
     }
 }
 
 impl Default for LoincClient {
     fn default() -> Self {
-        Self::new(LoincCredentials::default())
+        let username =
+            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
+        let password =
+            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
+
+        Self::new(username, password, None)
     }
 }
 
-impl BIDict for LoincClient {
+impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
             self.get_label(id_or_label)
@@ -178,7 +205,6 @@ impl BIDict for LoincClient {
         if let Some(label) = self.cache_read(id) {
             return Ok(label);
         }
-
         let loinc_search_results = self.query(id)?;
 
         for result in loinc_search_results {
@@ -212,11 +238,29 @@ impl BIDict for LoincClient {
             Some(id) => Ok(id),
         }
     }
+
+    fn reference(&self) -> &ResourceRef {
+        self.reference.get_or_init(|| {
+            let res: LoincRelease = self
+                .client
+                .get("https://loinc.regenstrief.org/api/v1/Loinc")
+                .basic_auth(&self.user_name, Some(&self.password))
+                .send()
+                .expect("Loinc client request failed")
+                .json()
+                .expect("Loinc client request failed");
+
+            ResourceRef::from(res)
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_qual_loinc, default_quant_loinc,
+    };
     use dotenvy::dotenv;
     use rstest::{fixture, rstest};
     use std::env;
@@ -224,31 +268,29 @@ mod tests {
     #[fixture]
     fn loinc_client() -> LoincClient {
         dotenv().ok();
-        LoincClient::new(LoincCredentials::default())
+
+        LoincClient::default()
     }
 
     #[rstest]
-    fn test_get_term(loinc_client: LoincClient) {
-        let res = loinc_client.get_label("LOINC:97062-4");
-        assert_eq!(res.unwrap(), "History of High blood glucose");
+    fn test_get_label(loinc_client: LoincClient) {
+        let res = loinc_client.get_label(default_quant_loinc().id.as_str());
+        assert_eq!(res.unwrap(), default_quant_loinc().label);
     }
 
     #[rstest]
     fn test_get_id(loinc_client: LoincClient) {
-        let term = "Glucose [Measurement] in Urine";
-        let res = loinc_client.get_id(term);
+        let label = default_qual_loinc().label;
+        let res = loinc_client.get_id(label.as_str());
 
-        assert!(res.is_ok(), "Should find an ID for term: {}", term);
-        assert!(
-            res.unwrap().starts_with("LOINC:"),
-            "ID should have the LOINC: prefix"
-        );
+        assert!(res.is_ok(), "Should find an ID for term: {}", label);
+        assert_eq!(res.unwrap(), default_qual_loinc().id);
     }
 
     #[rstest]
     fn test_get_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("LOINC:{}", id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
 
         let label_res = loinc_client.get(id_input);
         let label_res_with_prefix = loinc_client.get(&id_input_with_prefix);
@@ -258,7 +300,7 @@ mod tests {
     #[rstest]
     fn test_get_term_id_prefix(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("LOINC:{}", id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
 
         let label_res = loinc_client.get_label(id_input);
         let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
@@ -268,7 +310,7 @@ mod tests {
     #[rstest]
     fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "97062-4";
-        let id_input_with_prefix = format!("LOINC:{}", id_input);
+        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
         let label_res = loinc_client.get(&id_input_with_prefix);
 
         assert!(

@@ -63,6 +63,53 @@
       }
     }
   ],
+  "measurements": [
+    {
+      "assay": {
+        "id": "LOINC:8302-2",
+        "label": "Body height"
+      },
+      "timeObserved": {
+        "age": {
+          "iso8601duration": "P69Y7M18D"
+        }
+      },
+      "value": {
+        "quantity": {
+          "unit": {
+            "id": "UO:0000015",
+            "label": "centimeter"
+          },
+          "value": 175.0,
+          "referenceRange": {
+            "unit": {
+              "id": "UO:0000015",
+              "label": "centimeter"
+            },
+            "low": 150.0,
+            "high": 200.0
+          }
+        }
+      }
+    },
+    {
+      "assay": {
+        "id": "LOINC:5802-4",
+        "label": "Nitrite [Presence] in Urine by Test strip"
+      },
+      "timeObserved": {
+        "age": {
+          "iso8601duration": "P69Y7M18D"
+        }
+      },
+      "value": {
+        "ontologyClass": {
+          "id": "PATO:0000460",
+          "label": "abnormal"
+        }
+      }
+    }
+  ],
   "interpretations": [
     {
       "id": "my_cohort-P001-MONDO:0008258",
@@ -171,6 +218,30 @@
         "version": "2025-07-25",
         "namespacePrefix": "GENO",
         "iriPrefix": "http://purl.obolibrary.org/obo/GENO_$1"
+      },
+      {
+        "id": "loinc",
+        "name": "Logical Observation Identifiers Names and Codes",
+        "url": "https://loinc.org/",
+        "version": "2.81",
+        "namespacePrefix": "loinc",
+        "iriPrefix": "https://loinc.org/$1"
+      },
+      {
+        "id": "uo",
+        "name": "Units of measurement ontology",
+        "url": "http://purl.obolibrary.org/obo/uo.json",
+        "version": "2026-01-09",
+        "namespacePrefix": "UO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/UO_$1"
+      },
+      {
+        "id": "pato",
+        "name": "Phenotype And Trait Ontology",
+        "url": "http://purl.obolibrary.org/obo/pato.json",
+        "version": "2025-05-14",
+        "namespacePrefix": "PATO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/PATO_$1"
       }
     ]
   }
