@@ -2,33 +2,7 @@ use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::CollectorError;
-use polars::datatypes::{DataType, StringChunked};
-use polars::error::PolarsError;
-
-/// Extracts the columns from the cdf which have
-/// Building Block ID = bb_id
-/// data_context = data_context
-/// header_context = header_context
-/// and converts them to StringChunked
-pub(crate) fn get_stringified_cols_with_data_context_in_bb<'a>(
-    cdf: &'a ContextualizedDataFrame,
-    bb_id: Option<&'a str>,
-    data_context: &'a Context,
-    header_context: &'a Context,
-) -> Result<Vec<StringChunked>, CollectorError> {
-    let cols = bb_id.map_or(vec![], |bb_id| {
-        cdf.filter_columns()
-            .where_building_block(Filter::Is(bb_id))
-            .where_header_context(Filter::Is(header_context))
-            .where_data_context(Filter::Is(data_context))
-            .collect()
-    });
-
-    Ok(cols
-        .iter()
-        .map(|col| col.str().cloned())
-        .collect::<Result<Vec<StringChunked>, PolarsError>>()?)
-}
+use polars::datatypes::DataType;
 
 /// Extracts a uniquely-defined value from matching contexts given a collection of CDFs.
 ///
@@ -181,6 +155,32 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier(Identifier::from("age"))
                     .with_data_context(context.clone()),
+            ],
+        );
+        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
+
+        let sme = get_single_multiplicity_element(&[cdf], context, Context::None);
+        assert!(sme.is_err());
+    }
+
+    #[rstest]
+    fn test_get_stringified_cols_with_data_context_in_bb() {
+        let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
+        let context = Context::AgeAtLastEncounter;
+
+        let df = DataFrame::new(vec![
+            subject_col.clone(),
+            Column::new("age".into(), &[46, 22]),
+        ])
+        .unwrap();
+        let tc = TableContext::new(
+            "tc".to_string(),
+            vec![
+                subject_sc,
+                SeriesContext::default()
+                    .with_identifier(Identifier::from("age"))
+                    .with_data_context(context.clone())
+                    .with_building_block_id(Some("B".to_string())),
             ],
         );
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();

@@ -289,6 +289,47 @@ impl ContextualizedDataFrame {
             Ok(None)
         }
     }
+
+    /// Looks for columns in the CDF which have
+    ///
+    /// - Building Block ID = bb_id
+    /// - data_context = data_context
+    /// - header_context = header_context
+    /// - and which are non-null
+    ///
+    /// and returns their names
+    pub(crate) fn get_non_null_linked_cols_with_context(
+        &self,
+        bb_id: Option<&str>,
+        data_context: &Context,
+        header_context: &Context,
+    ) -> Vec<String> {
+        bb_id.map_or(vec![], |bb_id| {
+            self.filter_columns()
+                .where_building_block(Filter::Is(bb_id))
+                .where_header_context(Filter::Is(header_context))
+                .where_data_context(Filter::Is(data_context))
+                .where_data_type(Filter::IsNot(&DataType::Null))
+                .collect_owned_names()
+        })
+    }
+
+    /// Converts provided columns to StringChunked.
+    /// If they don't exist in the CDF, or if they aren't of String datatype, an error will be thrown.
+    pub(crate) fn get_stringified_cols(
+        &self,
+        col_names: Vec<String>,
+    ) -> Result<Vec<&StringChunked>, CollectorError> {
+        let mut stringified_cols = vec![];
+
+        for col_name in col_names {
+            let col = self.data().column(&col_name)?;
+            let stringified_col = col.str()?;
+            stringified_cols.push(stringified_col);
+        }
+
+        Ok(stringified_cols)
+    }
 }
 
 #[cfg(test)]
