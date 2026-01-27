@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use std::any::Any;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -62,6 +63,9 @@ impl Collect for QualitativeMeasurementCollector {
         }
 
         Ok(())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

@@ -9,6 +9,7 @@ use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct InterpretationCollector;
@@ -85,6 +86,9 @@ impl Collect for InterpretationCollector {
         }
 
         Ok(())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

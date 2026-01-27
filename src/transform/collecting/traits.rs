@@ -11,6 +11,8 @@ pub trait Collect: Debug + AsAny {
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError>;
+
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait AsAny {

@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct HpoInCellsCollector;
@@ -53,6 +54,9 @@ impl Collect for HpoInCellsCollector {
         }
 
         Ok(())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

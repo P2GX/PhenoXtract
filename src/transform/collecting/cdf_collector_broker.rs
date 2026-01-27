@@ -1,4 +1,5 @@
 use crate::extract::ContextualizedDataFrame;
+use crate::transform;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::disease_collector::DiseaseCollector;
 use crate::transform::collecting::hpo_in_cells_collector::HpoInCellsCollector;
@@ -10,6 +11,7 @@ use crate::transform::collecting::quantitative_measurement_collector::Quantitati
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use phenopackets::schema::v2::Phenopacket;
+use std::any::Any;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -82,8 +84,30 @@ impl CdfCollectorBroker {
 }
 impl PartialEq for CdfCollectorBroker {
     fn eq(&self, other: &Self) -> bool {
-        self.phenopacket_builder == other.phenopacket_builder
-            && self.collectors.len() == other.collectors.len()
+        if self.phenopacket_builder != other.phenopacket_builder {
+            return false;
+        }
+
+        if self.collectors.len() != other.collectors.len() {
+            return false;
+        }
+
+        let mut self_ids: Vec<_> = self
+            .collectors
+            .iter()
+            .map(|col| transform::collecting::traits::AsAny::as_any(col).type_id())
+            .collect();
+
+        let mut other_ids: Vec<_> = other
+            .collectors
+            .iter()
+            .map(|col| transform::collecting::traits::AsAny::as_any(col).type_id())
+            .collect();
+
+        self_ids.sort();
+        other_ids.sort();
+
+        self_ids == other_ids
     }
 }
 
@@ -94,7 +118,9 @@ mod tests {
     use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::transform;
     use rstest::{fixture, rstest};
+    use std::any::Any;
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
@@ -131,6 +157,9 @@ mod tests {
 
             Ok(())
         }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
     }
 
     fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
@@ -155,7 +184,9 @@ mod tests {
         broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
 
         for collector in broker.collectors {
-            let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
+            let mock = transform::collecting::traits::AsAny::as_any(&collector)
+                .downcast_ref::<MockCollector>()
+                .unwrap();
 
             assert_eq!(mock.call_count.get(), 2);
 
