@@ -108,6 +108,6 @@ pub(crate) fn default_config_meta_data() -> MetaData {
         .expect("FATAL: Failed to parse configuration");
 
     config
-        .get::<MetaData>("pipeline.meta_data")
-        .expect("FATAL: Missing or invalid 'pipeline.meta_data' section")
+        .get::<MetaData>("pipeline_config.meta_data")
+        .expect("FATAL: Missing or invalid 'pipeline_config.meta_data' section")
 }
