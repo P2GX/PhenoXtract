@@ -307,10 +307,6 @@ impl PhenopacketBuilder {
         gene_variant_data: &PathogenicGeneVariantData,
         subject_sex: Option<String>,
     ) -> Result<(), PhenopacketBuilderError> {
-        if matches!(gene_variant_data, &PathogenicGeneVariantData::None) {
-            self.get_or_create_phenopacket(phenopacket_id);
-            return Ok(());
-        }
 
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
 
@@ -1033,9 +1029,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_no_variants_no_genes(temp_dir: TempDir) {
+    fn test_upsert_interpretation_no_variants_no_genes(
+        basic_pp_with_disease_info: Phenopacket,
+        temp_dir: TempDir,
+    ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-
         let disease_id = default_disease_oc().id.clone();
 
         builder
@@ -1048,14 +1046,9 @@ mod tests {
             )
             .unwrap();
 
-        assert!(
-            builder
-                .subject_to_phenopacket
-                .values()
-                .next()
-                .unwrap()
-                .interpretations
-                .is_empty()
+        assert_eq!(
+            &basic_pp_with_disease_info,
+            builder.subject_to_phenopacket.values().next().unwrap()
         );
     }
 
