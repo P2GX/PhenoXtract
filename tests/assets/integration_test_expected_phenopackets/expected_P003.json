@@ -26,7 +26,7 @@
   ],
   "metaData": {
     "created": "2025-10-25T08:49:30.496822Z",
-    "created_by": "The Collector",
+    "createdBy": "The Collector",
     "resources": [
       {
         "id": "hp",
