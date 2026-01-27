@@ -61,7 +61,7 @@ data_sources:
 "#;
 
 pub(crate) static PIPELINE_CONFIG: &[u8] = br#"
-pipeline:
+pipeline_config:
   transform_strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
