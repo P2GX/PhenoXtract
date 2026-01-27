@@ -1,7 +1,7 @@
 use dotenvy::dotenv;
 use phenoxtract::ontology::error::BiDictError;
 use phenoxtract::ontology::omim_client::OmimClient;
-use phenoxtract::ontology::traits::BIDict;
+use phenoxtract::ontology::traits::BiDict;
 
 #[test]
 fn test_omim_client() {

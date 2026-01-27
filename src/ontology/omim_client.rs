@@ -1,6 +1,7 @@
-// OMIM client for querying BioPortal (including BIDict)
+// OMIM client for querying BioPortal (including BiDict)
 use crate::ontology::error::BiDictError;
-use crate::ontology::traits::BIDict;
+use crate::ontology::resource_references::ResourceRef;
+use crate::ontology::traits::BiDict;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,12 +23,13 @@ pub struct OmimResult {
 
 // client for querying OMIM terms via BioPortal with caching
 // Supports querying by ID (numeric or `OMIM:` CURIE) or by label/synonym.
-// Implements the `BIDict` trait for bidirectional lookups.
+// Implements the `BiDict` trait for bidirectional lookups.
 #[derive(Debug)]
 pub struct OmimClient {
     client: Client,
     api_key: String,
     cache: RwLock<HashMap<String, String>>,
+    resource_ref: ResourceRef,
 }
 
 impl OmimClient {
@@ -41,6 +43,7 @@ impl OmimClient {
             client: Client::new(),
             api_key,
             cache: RwLock::new(HashMap::new()),
+            resource_ref: ResourceRef::new("OMIM", Some("latest")),
         }
     }
 
@@ -50,6 +53,7 @@ impl OmimClient {
             client: Client::new(),
             api_key,
             cache: RwLock::new(HashMap::new()),
+            resource_ref: ResourceRef::new("OMIM", Some("latest")),
         }
     }
 
@@ -159,7 +163,7 @@ impl OmimClient {
     }
 }
 
-impl BIDict for OmimClient {
+impl BiDict for OmimClient {
     /// Get the label or OMIM ID for a given query.
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         if id_or_label.chars().all(|c| c.is_ascii_digit()) || id_or_label.starts_with("OMIM:") {
@@ -206,5 +210,9 @@ impl BIDict for OmimClient {
         }
 
         Ok(Box::leak(format!("OMIM:{}", result.id).into_boxed_str()))
+    }
+
+    fn reference(&self) -> &ResourceRef {
+        &self.resource_ref
     }
 }
