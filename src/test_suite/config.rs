@@ -70,8 +70,8 @@ pipeline_config:
         output_dir: "some/dir"
         create_dir: true
   meta_data:
-    created_by: "The Collector"
-    submitted_by: "Magnus Knut Hansen"
+    created_by: "PhenoXtract Test Suit"
+    submitted_by: "Someone"
     cohort_name: "Cohort-1"
     hp_resource:
       id: "HP"

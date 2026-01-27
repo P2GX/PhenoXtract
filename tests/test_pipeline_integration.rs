@@ -446,7 +446,7 @@ fn test_pipeline_integration(
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
-        BuilderMetaData::new(cohort_name, "The Collector", "Someone"),
+        BuilderMetaData::new(cohort_name, "Integration Test", "Someone"),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
         BiDictLibrary::new("HPO", vec![hpo_dict]),
