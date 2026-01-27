@@ -46,6 +46,15 @@ impl OmimClient {
             resource_ref: ResourceRef::new("OMIM", Some("latest")),
         }
     }
+}
+
+impl Default for OmimClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl OmimClient {
 
     /// Creates a new OMIM client with an explicit API key
     pub fn new_with_key(api_key: String) -> Self {
@@ -80,7 +89,7 @@ impl OmimClient {
             .get(&url)
             .header("Authorization", format!("apikey token={}", self.api_key))
             .send()
-            .map_err(|e| BiDictError::Request(e))?;
+            .map_err(BiDictError::Request)?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -92,14 +101,13 @@ impl OmimClient {
             return Err(BiDictError::NotFound(id.to_string()));
         }
 
-        let mut result: OmimResult = resp.json().map_err(|e| BiDictError::Request(e))?;
+        let mut result: OmimResult = resp.json().map_err(BiDictError::Request)?;
 
         // Extract ID from @id field if not present in id field
-        if result.id.is_empty() && !result.at_id.is_empty() {
-            // Extract the numeric ID from the URI: http://purl.bioontology.org/ontology/OMIM/147920 -> 147920
-            if let Some(last_part) = result.at_id.split('/').last() {
-                result.id = last_part.to_string();
-            }
+        if result.id.is_empty() && !result.at_id.is_empty()
+            && let Some(last_part) = result.at_id.split('/').next_back()
+        {
+            result.id = last_part.to_string();
         }
         if result.id.is_empty() {
             result.id = id_trimmed.to_string();
@@ -120,7 +128,7 @@ impl OmimClient {
             .client
             .get(&url)
             .send()
-            .map_err(|e| BiDictError::Request(e))?;
+            .map_err(BiDictError::Request)?;
 
         if !resp.status().is_success() {
             return Err(BiDictError::NotFound(label.to_string()));
@@ -131,7 +139,7 @@ impl OmimClient {
             collection: Vec<OmimResult>,
         }
 
-        let search_resp: SearchResponse = resp.json().map_err(|e| BiDictError::Request(e))?;
+        let search_resp: SearchResponse = resp.json().map_err(BiDictError::Request)?;
 
         // Return first matching term and extract ID from @id if necessary
         let mut result = search_resp
@@ -141,10 +149,10 @@ impl OmimClient {
             .ok_or(BiDictError::NotFound(label.to_string()))?;
 
         // Extract ID from @id field if not present
-        if result.id.is_empty() && !result.at_id.is_empty() {
-            if let Some(last_part) = result.at_id.split('/').last() {
-                result.id = last_part.to_string();
-            }
+        if result.id.is_empty() && !result.at_id.is_empty()
+            && let Some(last_part) = result.at_id.split('/').next_back()
+        {
+            result.id = last_part.to_string();
         }
 
         Ok(result)
