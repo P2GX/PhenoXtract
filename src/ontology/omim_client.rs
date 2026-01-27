@@ -55,7 +55,6 @@ impl Default for OmimClient {
 }
 
 impl OmimClient {
-
     /// Creates a new OMIM client with an explicit API key
     pub fn new_with_key(api_key: String) -> Self {
         OmimClient {
@@ -104,7 +103,8 @@ impl OmimClient {
         let mut result: OmimResult = resp.json().map_err(BiDictError::Request)?;
 
         // Extract ID from @id field if not present in id field
-        if result.id.is_empty() && !result.at_id.is_empty()
+        if result.id.is_empty()
+            && !result.at_id.is_empty()
             && let Some(last_part) = result.at_id.split('/').next_back()
         {
             result.id = last_part.to_string();
@@ -124,11 +124,7 @@ impl OmimClient {
             encoded_label, self.api_key
         );
 
-        let resp = self
-            .client
-            .get(&url)
-            .send()
-            .map_err(BiDictError::Request)?;
+        let resp = self.client.get(&url).send().map_err(BiDictError::Request)?;
 
         if !resp.status().is_success() {
             return Err(BiDictError::NotFound(label.to_string()));
@@ -149,7 +145,8 @@ impl OmimClient {
             .ok_or(BiDictError::NotFound(label.to_string()))?;
 
         // Extract ID from @id field if not present
-        if result.id.is_empty() && !result.at_id.is_empty()
+        if result.id.is_empty()
+            && !result.at_id.is_empty()
             && let Some(last_part) = result.at_id.split('/').next_back()
         {
             result.id = last_part.to_string();
