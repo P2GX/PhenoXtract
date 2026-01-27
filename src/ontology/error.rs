@@ -53,6 +53,8 @@ pub enum BiDictError {
     NotFound(String),
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("Invalid OMIM id format: {0}")]
+    InvalidId(String),
     #[error("Cache error: {reason}")]
     Caching { reason: String },
 }
