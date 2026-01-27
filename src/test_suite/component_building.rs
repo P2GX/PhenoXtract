@@ -1,11 +1,9 @@
-use crate::config::MetaData;
 use crate::ontology::loinc_client::LoincClient;
-use crate::test_suite::config::PIPELINE_CONFIG;
+use crate::test_suite::config::default_config_meta_data;
 use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY, PATO_DICT, UO_DICT};
 use crate::test_suite::resource_references::HPO_REF;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
-use config::{Config, File, FileFormat};
 use dotenvy::dotenv;
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
@@ -52,7 +50,7 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
     dotenv().ok();
 
     PhenopacketBuilder::new(
-        phenopacket_builder_metadata().into(),
+        default_config_meta_data().into(),
         Box::new(hgnc_client),
         Box::new(hgvs_client),
         build_test_hpo_bidict_library(),
@@ -61,18 +59,4 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_loinc_bidict_library(),
         build_test_pato_bidict_library(),
     )
-}
-
-pub(crate) fn phenopacket_builder_metadata() -> MetaData {
-    let yaml_str = std::str::from_utf8(PIPELINE_CONFIG)
-        .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
-
-    let config = Config::builder()
-        .add_source(File::from_str(yaml_str, FileFormat::Yaml))
-        .build()
-        .expect("FATAL: Failed to parse configuration");
-
-    config
-        .get::<MetaData>("pipeline_config.meta_data")
-        .expect("FATAL: Missing or invalid 'pipeline_config.meta_data' section")
 }

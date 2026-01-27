@@ -93,7 +93,7 @@ mod tests {
     use crate::config::table_context::SeriesContext;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::component_building::phenopacket_builder_metadata;
+    use crate::test_suite::config::default_config_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_iso_age, default_phenopacket_id, default_quant_loinc, default_quant_measurement,
         default_quant_value, default_reference_range, default_uo_term, generate_quant_measurement,
@@ -210,8 +210,8 @@ mod tests {
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
                 resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
-                submitted_by: phenopacket_builder_metadata().submitted_by,
-                created_by: phenopacket_builder_metadata().created_by,
+                submitted_by: default_config_meta_data().submitted_by,
+                created_by: default_config_meta_data().created_by,
                 ..Default::default()
             }),
             ..Default::default()
