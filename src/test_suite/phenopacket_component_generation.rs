@@ -2,7 +2,7 @@ use crate::ontology::traits::BiDict;
 use crate::test_suite::cdf_generation::default_patient_id;
 use crate::test_suite::config::default_config_meta_data;
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
-use crate::transform::data_processing::parsing::try_parse_string_datetime;
+use chrono::{NaiveDate, NaiveDateTime};
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -70,15 +70,24 @@ pub(crate) fn default_iso_age() -> String {
     "P10Y4M21D".to_string()
 }
 
-pub(crate) fn default_timestamp() -> Timestamp {
-    let dt = try_parse_string_datetime("2005-10-01T12:34:56Z").unwrap();
+pub(crate) fn default_date() -> NaiveDate {
+    NaiveDate::from_ymd_opt(2005, 10, 1).unwrap()
+}
 
+pub(crate) fn default_datetime() -> NaiveDateTime {
+    default_date().and_hms_opt(12, 34, 56).unwrap()
+}
+
+/// Corresponds to the default datetime, not the default date
+pub(crate) fn default_timestamp() -> Timestamp {
+    let dt = default_datetime();
     Timestamp {
         seconds: dt.and_utc().timestamp(),
         nanos: dt.and_utc().timestamp_subsec_nanos() as i32,
     }
 }
 
+/// Corresponds to the default datetime, not the default date
 pub(crate) fn default_timestamp_element() -> TimeElement {
     TimeElement {
         element: Some(Element::Timestamp(default_timestamp())),
