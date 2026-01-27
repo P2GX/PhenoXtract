@@ -19,7 +19,7 @@ impl TryFrom<PhenoXtractConfig> for Phenoxtract {
     type Error = ConstructionError;
 
     fn try_from(value: PhenoXtractConfig) -> Result<Self, Self::Error> {
-        let pipeline = Pipeline::try_from(value.pipeline)?;
+        let pipeline = Pipeline::try_from(value.pipeline_config)?;
         let data_sources = value.data_sources;
         Ok(Self {
             pipeline,
