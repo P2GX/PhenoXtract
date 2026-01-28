@@ -100,6 +100,12 @@ impl From<Vec<String>> for Identifier {
     }
 }
 
+impl From<Vec<&str>> for Identifier {
+    fn from(value: Vec<&str>) -> Self {
+        Identifier::Multi(value.iter().map(|s| s.to_string()).collect())
+    }
+}
+
 impl From<&[String]> for Identifier {
     fn from(value: &[String]) -> Self {
         Identifier::Multi(value.to_vec())
