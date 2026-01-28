@@ -274,22 +274,6 @@ fn remove_created_from_metadata(pp: &mut Phenopacket) {
     }
 }
 
-#[macro_export]
-macro_rules! skip_in_ci {
-    ($test_name:expr) => {
-        if std::env::var("CI").is_ok() {
-            println!("Skipping {} in CI environment", $test_name);
-            return;
-        }
-    };
-    () => {
-        if std::env::var("CI").is_ok() {
-            println!("Skipping {} in CI environment", module_path!());
-            return;
-        }
-    };
-}
-
 fn remove_id_from_variation_descriptor(pp: &mut Phenopacket) {
     for interpretation in pp.interpretations.iter_mut() {
         if let Some(diagnosis) = &mut interpretation.diagnosis {
@@ -370,16 +354,20 @@ fn test_pipeline_integration(
     let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
 
-    let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(PathBuf::from(file!()).parent().unwrap().join("assets"));
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        PathBuf::from(file!())
+            .parent()
+            .unwrap()
+            .join("assets/integration_test"),
+    );
 
     //Configure data sources and contexts
-    let csv_path = assets_path.clone().join("csv_data.csv");
-    let csv_path_2 = assets_path.clone().join("csv_data_2.csv");
-    let csv_path_3 = assets_path.clone().join("csv_data_3.csv");
-    let csv_path_4 = assets_path.clone().join("csv_data_4.csv");
-    let csv_path_5 = assets_path.clone().join("csv_data_5.csv");
-    let excel_path = assets_path.clone().join("excel_data.xlsx");
+    let csv_path = assets_dir.clone().join("input_data/data.csv");
+    let csv_path_2 = assets_dir.clone().join("input_data/csv_data_2.csv");
+    let csv_path_3 = assets_dir.clone().join("input_data/csv_data_3.csv");
+    let csv_path_4 = assets_dir.clone().join("input_data/csv_data_4.csv");
+    let csv_path_5 = assets_dir.clone().join("input_data/csv_data_5.csv");
+    let excel_path = assets_dir.clone().join("input_data/excel_data.xlsx");
 
     let mut data_sources = [
         DataSource::Csv(CSVDataSource::new(
@@ -461,7 +449,7 @@ fn test_pipeline_integration(
         CdfCollectorBroker::with_default_collectors(phenopacket_builder),
     );
 
-    let output_dir = assets_path.join("do_not_push");
+    let output_dir = assets_dir.join("output_phenopackets");
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).unwrap();
     }
@@ -475,7 +463,7 @@ fn test_pipeline_integration(
     //create a phenopacket_ID -> expected phenopacket HashMap
     //and for each expected Phenopacket set the meta_data.created to None
     let expected_phenopackets_files =
-        fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
+        fs::read_dir(assets_dir.join("expected_phenopackets")).unwrap();
 
     let mut expected_phenopackets: HashMap<String, Phenopacket> = HashMap::new();
     for expected_pp_file in expected_phenopackets_files {
@@ -489,8 +477,7 @@ fn test_pipeline_integration(
         expected_phenopackets.insert(expected_pp.id.clone(), expected_pp);
     }
 
-    //go through the extracted phenopackets, set the meta_data.created to None
-    //and assert equality with the corresponding expected phenopacket
+    //go through the extracted phenopackets and assert equality with the corresponding expected phenopacket
     for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
         if let Ok(extracted_pp_file) = extracted_pp_file
             && extracted_pp_file.path().extension() == Some(OsStr::new("json"))

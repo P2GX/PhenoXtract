@@ -16,7 +16,7 @@ target
 .idea/
 .vscode/
 
-tests/assets/do_not_push/*
+tests/assets/integration_test/output_phenopackets/*
 
 ~$*
 
