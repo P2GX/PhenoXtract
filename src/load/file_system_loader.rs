@@ -1,8 +1,9 @@
 use crate::load::error::LoadError;
 use crate::load::traits::Loadable;
-use log::{debug, warn};
+use log::debug;
 use phenopackets::schema::v2::Phenopacket;
 use serde::Deserialize;
+use serde_json::Value;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
@@ -26,6 +27,24 @@ impl FileSystemLoader {
             create_dir,
         }
     }
+
+    pub fn remove_default_survival_time(phenopacket: &mut Value) -> Result<(), LoadError> {
+        if let Some(vital_status) = phenopacket.pointer_mut("/subject/vitalStatus")
+            && let Some(vital_status_obj) = vital_status.as_object_mut()
+        {
+            let should_remove = vital_status_obj
+                .get("survivalTimeInDays")
+                .and_then(|v| v.as_i64())
+                .map(|days| days == 0)
+                .unwrap_or(false);
+
+            if should_remove {
+                vital_status_obj.remove("survivalTimeInDays");
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Loadable for FileSystemLoader {
@@ -48,20 +67,31 @@ impl Loadable for FileSystemLoader {
     /// * `Err(LoadError)` if a file cannot be created due to an I/O error (e.g., permissions).
     fn load(&self, phenopackets: &[Phenopacket]) -> Result<(), LoadError> {
         if !phenopackets.is_empty() && self.create_dir {
-            fs::create_dir_all(self.out_path.as_path())?;
+            fs::create_dir_all(self.out_path.as_path()).map_err(|err| LoadError::NoStorage {
+                reason: err.to_string(),
+            })?;
         }
-
         for pp in phenopackets.iter() {
-            let file = File::create(self.out_path.join(format!("{}.json", pp.id)))?;
+            let file =
+                File::create(self.out_path.join(format!("{}.json", pp.id))).map_err(|err| {
+                    LoadError::CantStore {
+                        pp_id: pp.id.clone(),
+                        reason: err.to_string(),
+                    }
+                })?;
+
             debug!("Storing file to: {:?}", file);
-            let res = serde_json::to_writer_pretty(file, pp);
-            if res.is_err() {
-                warn!(
-                    "Could not save Phenopacket for subject: {}. Error: {:?}",
-                    pp.clone().subject.unwrap().id.as_str(),
-                    res
-                )
-            }
+            let mut pp_value =
+                serde_json::to_value(pp).map_err(|_| LoadError::ConversionError {
+                    pp_id: pp.id.clone(),
+                    format: "json".to_string(),
+                })?;
+
+            Self::remove_default_survival_time(&mut pp_value)?;
+            serde_json::to_writer_pretty(file, &pp_value).map_err(|err| LoadError::CantStore {
+                pp_id: pp.id.clone(),
+                reason: err.to_string(),
+            })?;
         }
 
         Ok(())
@@ -71,6 +101,9 @@ impl Loadable for FileSystemLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_suite::cdf_generation::default_patient_id;
+    use crate::test_suite::phenopacket_component_generation::default_phenopacket_id;
+    use phenopackets::schema::v2::core::{Individual, VitalStatus};
     use rstest::*;
     use std::fs;
     use tempfile::tempdir;
@@ -84,7 +117,14 @@ mod tests {
         };
 
         let phenopacket = Phenopacket {
-            id: "test123".to_string(),
+            id: default_phenopacket_id(),
+            subject: Some(Individual {
+                id: default_patient_id(),
+                vital_status: Some(VitalStatus {
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
             ..Default::default()
         };
 
@@ -92,12 +132,15 @@ mod tests {
             .load(std::slice::from_ref(&phenopacket))
             .expect("load should succeed");
 
-        let output_path = tmp_dir.path().join("test123.json");
+        let output_path = tmp_dir
+            .path()
+            .join(format!("{}.json", default_phenopacket_id()));
         assert!(output_path.exists(), "Expected file to be created");
 
         let contents = fs::read_to_string(&output_path).unwrap();
-        let json: Phenopacket = serde_json::from_str(&contents).unwrap();
+        let json: Value = serde_json::from_str(&contents).unwrap();
 
-        assert_eq!(json.id, phenopacket.id);
+        assert_eq!(json.get("id").unwrap().as_str().unwrap(), phenopacket.id);
+        assert!(!contents.contains("survivalTimeInDays"));
     }
 }
