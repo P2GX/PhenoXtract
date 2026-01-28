@@ -47,8 +47,7 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::config::loader_config::LoaderConfig;
-    use crate::config::meta_data::MetaData;
-    use crate::config::resource_config::ResourceConfig;
+
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
     use crate::config::table_context::{
@@ -59,16 +58,12 @@ mod tests {
     use crate::extract::data_source::DataSource;
     use crate::extract::excel_data_source::ExcelDatasource;
     use crate::extract::extraction_config::ExtractionConfig;
-    use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::config::get_full_config_bytes;
-    use crate::test_suite::phenopacket_component_generation::{
-        default_cohort_id, default_meta_data,
-    };
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
-    use std::env;
     use std::fs::File as StdFile;
     use std::io::Write;
     use std::str::FromStr;
@@ -265,27 +260,9 @@ version = "2025-09-01"
 
         let config: PhenoXtractConfig = ConfigLoader::load(file_path).unwrap();
 
-        let loinc_username =
-            env::var("LOINC_USERNAME").expect("LOINC_USERNAME must be set in .env or environment");
-        let loinc_password =
-            env::var("LOINC_PASSWORD").expect("LOINC_PASSWORD must be set in .env or environment");
-
         let expected_config = PhenoXtractConfig {
             pipeline_config: PipelineConfig::new(
-                MetaData::new(
-                    Some(&default_meta_data().created_by),
-                    Some(&default_meta_data().submitted_by),
-                    &default_cohort_id(),
-                    Some(ResourceConfig::new(KnownResourcePrefixes::HP).with_version("2025-09-01")),
-                    vec![],
-                    vec![
-                        ResourceConfig::new(KnownResourcePrefixes::LOINC)
-                            .with_version("2.80")
-                            .with_credentials(loinc_username, loinc_password),
-                    ],
-                    vec![ResourceConfig::new(KnownResourcePrefixes::UO).with_version("2026-01-09")],
-                    vec![],
-                ),
+                default_meta_data(),
                 vec![
                     StrategyConfig::AliasMap,
                     StrategyConfig::MultiHpoColExpansion,
