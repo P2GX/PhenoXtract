@@ -6,6 +6,9 @@ use phenoxtract::ontology::traits::BiDict;
 #[test]
 fn test_omim_client() {
     dotenv().ok();
+    let label = "Bleeding disorder, platelet-type, 9";
+    let omim_id = "OMIM:614200";
+    let synonym_1: &str = "GLYCOPROTEIN Ia DEFICIENCY";
     // Skip test if API key is not available (e.g., in CI)
     let api_key = match std::env::var("BIOPORTAL_API_KEY") {
         Ok(key) => key,
@@ -16,21 +19,24 @@ fn test_omim_client() {
     };
     let client = OmimClient::new_with_key(api_key);
 
+
     // Test by ID - with better error handling
-    match client.get_label("OMIM:614200") {
-        Ok(label) => println!("OMIM:614200 -> {}", label),
-        Err(e) => println!("Failed to get label for OMIM:614200: {}", e),
-    }
+    let fatched_label = client.get_label(&omim_id).expect("Failed to get label by ID");
+    assert_eq!(fatched_label, label, "Label should match expected value");
+
+    let fetched_id = client.get_id(label).expect("Failed to get ID by synonym");
+    
+    assert_eq!(fetched_id, omim_id, "ID should match expected OMIM ID");
 
     // Test by label - with better error handling
-    match client.get_id("Bleeding disorder, platelet-type, 9") {
+    match client.get_id(label) {
         Ok(id) => {
-            println!("Bleeding disorder, platelet-type, 9 -> {}", id);
+            println!("{} -> {}", label, id);
 
             // Test by synonym - with better error handling
-            match client.get_id("GLYCOPROTEIN Ia DEFICIENCY") {
+            match client.get_id(synonym_1) {
                 Ok(id_syn) => {
-                    println!("GLYCOPROTEIN Ia DEFICIENCY -> {}", id_syn);
+                    println!("{} -> {}", synonym_1, id_syn);
                     assert_eq!(id, id_syn, "IDs should match for the same disease");
                 }
                 Err(e) => println!("Failed to get ID by synonym: {}", e),
