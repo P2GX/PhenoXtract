@@ -7,4 +7,5 @@ pub mod ontology_factory;
 pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
 pub mod loinc_client;
+pub mod omim_client;
 pub mod traits;
