@@ -11,6 +11,7 @@ use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
 };
 use crate::transform::strategies::traits::Strategy;
+use chrono::NaiveDateTime;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
 use polars::prelude::{AnyValue, Column, DataType, TimeUnit};
@@ -250,16 +251,7 @@ impl DateToAgeStrategy {
             })?
         };
 
-        let diff = date_diff(dob_object, date_object);
-        let dur = Duration::new(
-            diff.years as f32,
-            diff.months as f32,
-            diff.days as f32,
-            0f32,
-            0f32,
-            0f32,
-        );
-        Ok(dur.to_string())
+        Self::date_differencer(subject_id, dob_object, date_object)
     }
 
     fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
@@ -267,6 +259,35 @@ impl DateToAgeStrategy {
             .into_iter()
             .zip(AGE_CONTEXTS)
             .collect()
+    }
+
+    fn date_differencer(
+        subject_id: &str,
+        dob: NaiveDateTime,
+        date: NaiveDateTime,
+    ) -> Result<String, StrategyError> {
+        if dob == date {
+            Ok("P0Y".to_string())
+        } else {
+            let diff = date_diff(dob, date);
+            if diff.years < 0 || diff.months < 0 || diff.days < 0 {
+                Err(StrategyError::NegativeAge {
+                    subject_id: subject_id.to_string(),
+                    date_of_birth: dob.to_string(),
+                    date: date.to_string(),
+                })
+            } else {
+                let dur = Duration::new(
+                    diff.years as f32,
+                    diff.months as f32,
+                    diff.days as f32,
+                    0f32,
+                    0f32,
+                    0f32,
+                );
+                Ok(dur.to_string())
+            }
+        }
     }
 }
 
@@ -277,6 +298,8 @@ mod tests {
     use crate::config::context::AGE_CONTEXTS;
     use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::SeriesContext;
+    use crate::test_suite::cdf_generation::default_patient_id;
+    use crate::test_suite::phenopacket_component_generation::default_datetime;
     use chrono::NaiveDateTime;
     use chrono::{Datelike, NaiveDate};
     use polars::datatypes::TimeUnit;
@@ -738,5 +761,42 @@ mod tests {
         );
         assert_eq!(hm[&Context::OnsetDate], Context::OnsetAge);
         assert_eq!(hm[&Context::DateOfDeath], Context::AgeOfDeath);
+    }
+
+    #[rstest]
+    fn test_date_differencer_positive_dur() {
+        let dob = default_datetime();
+        let date = dob
+            .date()
+            .with_year(dob.year() + 1)
+            .unwrap()
+            .and_time(dob.time());
+        assert_eq!(
+            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).unwrap(),
+            "P1Y".to_string()
+        );
+    }
+
+    #[rstest]
+    fn test_date_differencer_zero_dur() {
+        let dob = default_datetime();
+        let date = dob;
+        assert_eq!(
+            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).unwrap(),
+            "P0Y".to_string()
+        );
+    }
+
+    #[rstest]
+    fn test_date_differencer_negative_dur() {
+        let dob = default_datetime();
+        let date = dob
+            .date()
+            .with_year(dob.year() - 1)
+            .unwrap()
+            .and_time(dob.time());
+        assert!(
+            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).is_err()
+        );
     }
 }

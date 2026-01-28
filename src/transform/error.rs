@@ -215,6 +215,14 @@ pub enum StrategyError {
         unparseable_date: String,
     },
     #[error(
+        "Date of event occurs earlier than the date of birth of {subject_id}. Date of birth: {date_of_birth}, Date: {date}"
+    )]
+    NegativeAge {
+        subject_id: String,
+        date_of_birth: String,
+        date: String,
+    },
+    #[error(
         "The column {column_name} had datatype {found_datatype}. Only the datatypes {allowed_datatypes:?} are accepted."
     )]
     DataTypeError {
