@@ -2,33 +2,7 @@ use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::CollectorError;
-use polars::datatypes::{DataType, StringChunked};
-use polars::error::PolarsError;
-
-/// Extracts the columns from the cdf which have
-/// Building Block ID = bb_id
-/// data_context = data_context
-/// header_context = header_context
-/// and converts them to StringChunked
-pub(crate) fn get_stringified_cols_with_data_context_in_bb<'a>(
-    cdf: &'a ContextualizedDataFrame,
-    bb_id: Option<&'a str>,
-    data_context: &'a Context,
-    header_context: &'a Context,
-) -> Result<Vec<StringChunked>, CollectorError> {
-    let cols = bb_id.map_or(vec![], |bb_id| {
-        cdf.filter_columns()
-            .where_building_block(Filter::Is(bb_id))
-            .where_header_context(Filter::Is(header_context))
-            .where_data_context(Filter::Is(data_context))
-            .collect()
-    });
-
-    Ok(cols
-        .iter()
-        .map(|col| col.str().cloned())
-        .collect::<Result<Vec<StringChunked>, PolarsError>>()?)
-}
+use polars::datatypes::DataType;
 
 /// Extracts a uniquely-defined value from matching contexts given a collection of CDFs.
 ///

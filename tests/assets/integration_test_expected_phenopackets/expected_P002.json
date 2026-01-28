@@ -99,7 +99,7 @@
       "diagnosis": {
         "disease": {
           "id": "MONDO:0000359",
-          "label": "spondylocostal dysostosis"
+          "label": "Spondylocostal Dysostosis"
         },
         "genomicInterpretations": [
           {
@@ -118,7 +118,7 @@
     {
       "term": {
         "id": "MONDO:0000359",
-        "label": "spondylocostal dysostosis"
+        "label": "Spondylocostal Dysostosis"
       },
       "onset": {
         "age": {
@@ -128,7 +128,10 @@
     }
   ],
   "metaData": {
+    "phenopacketSchemaVersion": "2.0",
     "created": "2025-11-05T16:15:26.923186Z",
+    "createdBy": "Integration Test",
+    "submittedBy": "Someone",
     "resources": [
       {
         "id": "hp",

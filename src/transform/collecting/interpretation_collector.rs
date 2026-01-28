@@ -3,12 +3,12 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::collecting::utils;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct InterpretationCollector;
@@ -18,7 +18,7 @@ impl Collect for InterpretationCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let subject_sex =
             get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
@@ -40,20 +40,20 @@ impl Collect for InterpretationCollector {
                     .map(|col| col.str())
                     .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-                let stringified_linked_hgnc_cols =
-                    utils::get_stringified_cols_with_data_context_in_bb(
-                        patient_cdf,
+                let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_non_null_linked_cols_with_context(
                         bb_id,
                         &Context::HgncSymbolOrId,
                         &Context::None,
-                    )?;
-                let stringified_linked_hgvs_cols =
-                    utils::get_stringified_cols_with_data_context_in_bb(
-                        patient_cdf,
+                    ),
+                )?;
+                let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_non_null_linked_cols_with_context(
                         bb_id,
                         &Context::Hgvs,
                         &Context::None,
-                    )?;
+                    ),
+                )?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     let genes = stringified_linked_hgnc_cols
@@ -69,18 +69,15 @@ impl Collect for InterpretationCollector {
                         PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
                             .map_err(CollectorError::GeneVariantData)?;
 
+                    if matches!(gene_variant_data, PathogenicGeneVariantData::None) {
+                        continue;
+                    }
+
                     for stringified_disease_col in stringified_disease_cols.iter() {
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
-                            let subject_id = patient_cdf
-                                .get_subject_id_col()
-                                .str()?
-                                .get(0)
-                                .expect("subject_id missing");
-
                             builder.upsert_interpretation(
-                                subject_id,
-                                phenopacket_id,
+                                patient_id,
                                 disease,
                                 &gene_variant_data,
                                 subject_sex.clone(),
@@ -93,6 +90,9 @@ impl Collect for InterpretationCollector {
 
         Ok(())
     }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -102,6 +102,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_cohort_id, default_disease_oc, default_phenopacket_id,
     };
@@ -109,6 +110,7 @@ mod tests {
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
     };
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
     use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
     use phenopackets::schema::v2::Phenopacket;
@@ -260,23 +262,26 @@ mod tests {
         .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id().to_string();
+        let patient_id = default_patient_id();
 
         InterpretationCollector
-            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
+            .collect(&mut builder, &[patient_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![
                     mondo_meta_data_resource(),
                     hgnc_meta_data_resource(),
                     geno_meta_data_resource(),
                 ],
+                created_by: default_meta_data().created_by,
+                submitted_by: default_meta_data().submitted_by,
                 ..Default::default()
             }),
             ..Default::default()
@@ -284,5 +289,62 @@ mod tests {
 
         pretty_assertions::assert_eq!(phenopackets.len(), 1);
         assert_phenopackets(&mut phenopackets[0], &mut expected_phenopacket);
+    }
+
+    #[rstest]
+    fn test_collect_interpretations_no_genetic_data(temp_dir: TempDir) {
+        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
+        let disease_col = Column::new(
+            "diseases".into(),
+            [AnyValue::String(default_disease_oc().label.as_str())],
+        );
+        let gene_col = Column::new("gene".into(), [AnyValue::Null]);
+        let hgvs_col1 = Column::new("hgvs1".into(), [AnyValue::Null]);
+        let hgvs_col2 = Column::new("hgvs2".into(), [AnyValue::Null]);
+
+        let diseases_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("diseases".to_string()))
+            .with_data_context(Context::DiseaseLabelOrId)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let gene_sc = SeriesContext::default()
+            .with_identifier(Identifier::Regex("gene".to_string()))
+            .with_data_context(Context::HgncSymbolOrId)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let hgvs_sc1 = SeriesContext::default()
+            .with_identifier(Identifier::Regex("hgvs1".to_string()))
+            .with_data_context(Context::Hgvs)
+            .with_building_block_id(Some("Block_3".to_string()));
+        let hgvs_sc2 = SeriesContext::default()
+            .with_identifier(Identifier::Regex("hgvs2".to_string()))
+            .with_data_context(Context::Hgvs)
+            .with_building_block_id(Some("Block_3".to_string()));
+
+        let patient_cdf = ContextualizedDataFrame::new(
+            TableContext::new(
+                "test",
+                vec![patient_sc, diseases_sc, hgvs_sc1, hgvs_sc2, gene_sc],
+            ),
+            DataFrame::new(vec![
+                patient_col,
+                disease_col,
+                hgvs_col1,
+                hgvs_col2,
+                gene_col,
+            ])
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let phenopacket_id = default_phenopacket_id().to_string();
+
+        InterpretationCollector
+            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
+            .unwrap();
+
+        let phenopackets = builder.build();
+        assert!(phenopackets.is_empty());
     }
 }
