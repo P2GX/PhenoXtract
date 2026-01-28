@@ -11,6 +11,7 @@ use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
 };
 use crate::transform::strategies::traits::Strategy;
+use crate::transform::utils::cow_cast;
 use chrono::NaiveDateTime;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
@@ -93,13 +94,18 @@ impl Strategy for DateToAgeStrategy {
                     DataType::Int64 => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Date => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Datetime(..) => Cow::Owned(date_col.cast(&DataType::String)?),
+                    DataType::Null => Cow::Owned(date_col.cast(&DataType::String)?),
                     other_datatype => {
                         return Err(StrategyError::DataTypeError {
                             column_name: date_col_name.clone(),
+                            strategy: "DateToAge".to_string(),
                             allowed_datatypes: vec![
                                 DataType::String,
+                                DataType::Int32,
+                                DataType::Int64,
                                 DataType::Date,
                                 DataType::Datetime(TimeUnit::Milliseconds, None),
+                                DataType::Null,
                             ],
                             found_datatype: other_datatype.clone(),
                         });

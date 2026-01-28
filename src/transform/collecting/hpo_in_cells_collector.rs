@@ -4,7 +4,10 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::DataType;
 use std::any::Any;
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct HpoInCellsCollector;
@@ -33,7 +36,12 @@ impl Collect for HpoInCellsCollector {
                 )?;
 
                 for hpo_col in hpo_cols {
-                    let hpo_column = hpo_col.str()?;
+                    let casted_hpo_col = cow_cast(
+                        &hpo_col,
+                        DataType::String,
+                        vec![DataType::String, DataType::Null],
+                    )?;
+                    let hpo_column = casted_hpo_col.str()?;
 
                     for row_idx in 0..hpo_column.len() {
                         let hpo = hpo_column.get(row_idx);

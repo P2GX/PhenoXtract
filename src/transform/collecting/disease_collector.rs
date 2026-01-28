@@ -4,7 +4,8 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use polars::datatypes::StringChunked;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::{DataType, StringChunked};
 use polars::error::PolarsError;
 use std::any::Any;
 
@@ -29,11 +30,7 @@ impl Collect for DiseaseCollector {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let stringified_disease_cols = patient_cdf
-                    .get_columns(sc_id)
-                    .iter()
-                    .map(|col| col.str())
-                    .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
+                let disease_cols = patient_cdf.get_columns(sc_id);
 
                 let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
                     bb_id,
@@ -41,7 +38,15 @@ impl Collect for DiseaseCollector {
                 )?;
 
                 for row_idx in 0..patient_cdf.data().height() {
-                    for stringified_disease_col in stringified_disease_cols.iter() {
+                    for disease_col in disease_cols.iter() {
+                        let casted_disease_col = cow_cast(
+                            &disease_col,
+                            DataType::String,
+                            vec![DataType::String, DataType::Null],
+                        )?;
+
+                        let stringified_disease_col = casted_disease_col.str()?;
+
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
                             let disease_onset =

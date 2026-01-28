@@ -223,12 +223,13 @@ pub enum StrategyError {
         date: String,
     },
     #[error(
-        "The column {column_name} had datatype {found_datatype}. Only the datatypes {allowed_datatypes:?} are accepted."
+        "The column {column_name} had datatype {found_datatype} in strategy {strategy}. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]
     DataTypeError {
         column_name: String,
-        allowed_datatypes: Vec<DataType>,
+        strategy: String,
         found_datatype: DataType,
+        allowed_datatypes: Vec<DataType>,
     },
 }
 
@@ -290,6 +291,14 @@ pub enum CollectorError {
     GeneVariantData(String),
     #[error("Blah: {0}")]
     ContextError(String),
+    #[error(
+        "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
+    )]
+    DataTypeError {
+        column_name: String,
+        found_datatype: DataType,
+        allowed_datatypes: Vec<DataType>,
+    },
 }
 
 impl From<DataProcessingError> for CollectorError {

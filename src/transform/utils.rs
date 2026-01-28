@@ -2,15 +2,17 @@ use crate::constants::ISO8601_DUR_PATTERN;
 use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
 };
-use crate::transform::error::PhenopacketBuilderError;
+use crate::transform::error::{CollectorError, PhenopacketBuilderError};
 use chrono::{TimeZone, Utc};
 use phenopackets::schema::v2::core::Sex;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::{Age as IndividualAge, TimeElement};
 use pivot::hgvs::ChromosomalSex;
+use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column};
 use prost_types::Timestamp;
 use regex::Regex;
+use std::borrow::Cow;
 
 pub(crate) fn is_iso8601_duration(dur_string: &str) -> bool {
     let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
@@ -102,6 +104,25 @@ pub(crate) fn chromosomal_sex_from_str(
                 })
             }
         }
+    }
+}
+
+pub(crate) fn cow_cast(
+    col: &'_ Column,
+    output_dtype: DataType,
+    allowed_datatypes: Vec<DataType>,
+) -> Result<Cow<'_, Column>, CollectorError> {
+    let col_dtype = col.dtype();
+    if col_dtype == &output_dtype {
+        Ok(Cow::Borrowed(&col))
+    } else if allowed_datatypes.contains(col_dtype) {
+        Ok(Cow::Owned(col.cast(&output_dtype)?))
+    } else {
+        Err(CollectorError::DataTypeError {
+            column_name: col.name().to_string(),
+            allowed_datatypes,
+            found_datatype: col_dtype.clone(),
+        })
     }
 }
 

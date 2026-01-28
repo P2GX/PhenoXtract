@@ -4,6 +4,8 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::DataType;
 use std::any::Any;
 
 #[allow(dead_code)]
@@ -48,6 +50,21 @@ impl Collect for QuantitativeMeasurementCollector {
                 )?;
 
                 for quant_measurement_col in quant_measurement_cols {
+                    let casted_quant_col = cow_cast(
+                        &quant_measurement_col,
+                        DataType::Float64,
+                        vec![
+                            DataType::String,
+                            DataType::Float64,
+                            DataType::Float32,
+                            DataType::Int64,
+                            DataType::Int32,
+                            DataType::Null,
+                        ],
+                    )?;
+
+                    let stringified_qual_measurement_col = casted_quant_col.str()?;
+
                     let floatified_quant_measurement_col = quant_measurement_col.f64()?;
 
                     for row_idx in 0..floatified_quant_measurement_col.len() {

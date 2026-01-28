@@ -4,6 +4,8 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::DataType;
 use std::any::Any;
 
 #[allow(dead_code)]
@@ -38,10 +40,21 @@ impl Collect for QualitativeMeasurementCollector {
                 )?;
 
                 for qual_measurement_col in qual_measurement_cols {
-                    let stringified_quant_measurement_col = qual_measurement_col.str()?;
+                    let casted_qual_col = cow_cast(
+                        &qual_measurement_col,
+                        DataType::String,
+                        vec![
+                            DataType::String,
+                            DataType::Int64,
+                            DataType::Int32,
+                            DataType::Null,
+                        ],
+                    )?;
 
-                    for row_idx in 0..stringified_quant_measurement_col.len() {
-                        let qual_measurement = stringified_quant_measurement_col.get(row_idx);
+                    let stringified_qual_measurement_col = casted_qual_col.str()?;
+
+                    for row_idx in 0..stringified_qual_measurement_col.len() {
+                        let qual_measurement = stringified_qual_measurement_col.get(row_idx);
                         if let Some(qual_measurement) = qual_measurement {
                             let time_observed = if let Some(time_observed_col) = &time_observed_col
                             {
