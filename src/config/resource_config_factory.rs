@@ -14,12 +14,12 @@ pub(crate) struct ResourceConfigFactory {
 impl ResourceConfigFactory {
     const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
 
-    pub fn build(&mut self, config: ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
+    pub fn build(&mut self, config: &ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
         if config
             .id
             .eq_ignore_ascii_case(KnownResourcePrefixes::LOINC.as_ref())
         {
-            Self::build_loinc_client(&config)
+            Self::build_loinc_client(config)
         } else {
             match self.ontology_factory.build_bidict(
                 &ResourceRef::new(config.id.clone(), config.version.clone()),
@@ -122,7 +122,7 @@ mod tests {
             }),
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
 
         assert!(
             result.is_ok(),
@@ -143,7 +143,7 @@ mod tests {
             }),
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
         assert!(
             result.is_ok(),
             "Should handle 'loinc' (lowercase) same as 'LOINC'"
@@ -160,7 +160,7 @@ mod tests {
             secrets: None,
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
 
         match result {
             Err(FactoryError::CantBuild { reason }) => {
@@ -185,7 +185,7 @@ mod tests {
             }),
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
 
         match result {
             Err(FactoryError::CantBuild { reason }) => {
@@ -205,7 +205,7 @@ mod tests {
             secrets: None,
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
 
         assert!(result.is_ok());
     }
@@ -220,7 +220,7 @@ mod tests {
             secrets: None,
         };
 
-        let result = factory.build(config);
+        let result = factory.build(&config);
 
         let err = result.err().unwrap();
 
