@@ -19,13 +19,14 @@ fn test_omim_client() {
     };
     let client = OmimClient::new_with_key(api_key);
 
-
     // Test by ID - with better error handling
-    let fatched_label = client.get_label(&omim_id).expect("Failed to get label by ID");
+    let fatched_label = client
+        .get_label(&omim_id)
+        .expect("Failed to get label by ID");
     assert_eq!(fatched_label, label, "Label should match expected value");
 
     let fetched_id = client.get_id(label).expect("Failed to get ID by synonym");
-    
+
     assert_eq!(fetched_id, omim_id, "ID should match expected OMIM ID");
 
     // Test by label - with better error handling
