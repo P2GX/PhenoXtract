@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::collecting::utils;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
@@ -41,20 +40,20 @@ impl Collect for InterpretationCollector {
                     .map(|col| col.str())
                     .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
 
-                let stringified_linked_hgnc_cols =
-                    utils::get_stringified_cols_with_data_context_in_bb(
-                        patient_cdf,
+                let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_non_null_linked_cols_with_context(
                         bb_id,
                         &Context::HgncSymbolOrId,
                         &Context::None,
-                    )?;
-                let stringified_linked_hgvs_cols =
-                    utils::get_stringified_cols_with_data_context_in_bb(
-                        patient_cdf,
+                    ),
+                )?;
+                let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_non_null_linked_cols_with_context(
                         bb_id,
                         &Context::Hgvs,
                         &Context::None,
-                    )?;
+                    ),
+                )?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     let genes = stringified_linked_hgnc_cols
