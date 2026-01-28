@@ -1,6 +1,6 @@
 // OMIM client for querying BioPortal (including BiDict)
 use crate::ontology::error::BiDictError;
-use crate::ontology::resource_references::ResourceRef;
+use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::BiDict;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -156,8 +156,15 @@ impl OmimClient {
     }
 
     /// Read a value from the internal cache.
-    fn cache_read(&self, key: &str) -> Option<String> {
-        self.cache.read().ok()?.get(key).cloned()
+    fn cache_read(&self, key: &str) -> Option<&str> {
+        {
+            let cache_read = self.cache.read().ok()?;
+            if let Some(value) = cache_read.get(key) {
+                Some(Box::leak(value.clone().into_boxed_str()))
+            } else {
+                None
+            }
+        }
     }
 
     /// Write a value to the internal cache.
@@ -184,7 +191,7 @@ impl BiDict for OmimClient {
         Self::validate_id_format(id)?;
 
         if let Some(label) = self.cache_read(id) {
-            return Ok(Box::leak(label.into_boxed_str()));
+            return Ok(label);
         }
 
         let result = self.query_by_id(id)?;
@@ -196,13 +203,16 @@ impl BiDict for OmimClient {
             self.cache_write(syn, &format!("OMIM:{}", result.id));
         }
 
-        Ok(Box::leak(result.label.into_boxed_str()))
+        match self.cache_read(id) {
+            None => Err(BiDictError::NotFound(id.into())),
+            Some(label) => Ok(label),
+        }
     }
 
     /// Get the OMIM ID for a given label or synonym (stores label and synonyms in cache).
     fn get_id(&self, label: &str) -> Result<&str, BiDictError> {
         if let Some(id) = self.cache_read(label) {
-            return Ok(Box::leak(id.into_boxed_str()));
+            return Ok(id);
         }
 
         let result = self.query_by_label(label)?;
@@ -214,7 +224,11 @@ impl BiDict for OmimClient {
             self.cache_write(syn, &format!("OMIM:{}", result.id));
         }
 
-        Ok(Box::leak(format!("OMIM:{}", result.id).into_boxed_str()))
+        let omim_id = format!("{}:{}", KnownResourcePrefixes::OMIM.to_string(), result.id);
+        match self.cache_read(&omim_id) {
+            Some(id) => Ok(id),
+            None => Err(BiDictError::NotFound(label.into())),
+        }
     }
 
     fn reference(&self) -> &ResourceRef {
