@@ -53,6 +53,10 @@ pub(crate) fn is_curie(query: &str) -> Option<(&str, &str)> {
     }
 }
 
+pub(crate) fn phenopacket_schema_version() -> String {
+    "2.0".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::utils::{check_curie_format, is_curie};

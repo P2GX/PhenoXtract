@@ -8,6 +8,7 @@ use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use polars::datatypes::StringChunked;
 use polars::error::PolarsError;
+use std::any::Any;
 
 #[derive(Debug)]
 pub struct InterpretationCollector;
@@ -17,7 +18,7 @@ impl Collect for InterpretationCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let subject_sex =
             get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
@@ -71,15 +72,8 @@ impl Collect for InterpretationCollector {
                     for stringified_disease_col in stringified_disease_cols.iter() {
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
-                            let subject_id = patient_cdf
-                                .get_subject_id_col()
-                                .str()?
-                                .get(0)
-                                .expect("subject_id missing");
-
                             builder.upsert_interpretation(
-                                subject_id,
-                                phenopacket_id,
+                                patient_id,
                                 disease,
                                 &gene_variant_data,
                                 subject_sex.clone(),
@@ -92,6 +86,9 @@ impl Collect for InterpretationCollector {
 
         Ok(())
     }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -101,6 +98,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_cohort_id, default_disease_oc, default_phenopacket_id,
     };
@@ -108,6 +106,7 @@ mod tests {
         geno_meta_data_resource, hgnc_meta_data_resource, mondo_meta_data_resource,
     };
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::ga4gh::vrsatile::v1::{Expression, GeneDescriptor, VcfRecord};
     use phenopackets::ga4gh::vrsatile::v1::{MoleculeContext, VariationDescriptor};
     use phenopackets::schema::v2::Phenopacket;
@@ -259,23 +258,26 @@ mod tests {
         .unwrap();
 
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = default_phenopacket_id().to_string();
+        let patient_id = default_patient_id();
 
         InterpretationCollector
-            .collect(&mut builder, &[patient_cdf], &phenopacket_id)
+            .collect(&mut builder, &[patient_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![
                     mondo_meta_data_resource(),
                     hgnc_meta_data_resource(),
                     geno_meta_data_resource(),
                 ],
+                created_by: default_meta_data().created_by,
+                submitted_by: default_meta_data().submitted_by,
                 ..Default::default()
             }),
             ..Default::default()
