@@ -61,6 +61,9 @@ mod tests {
     use crate::extract::extraction_config::ExtractionConfig;
     use crate::ontology::resource_references::KnownResourcePrefixes;
     use crate::test_suite::config::get_full_config_bytes;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_cohort_id, default_meta_data,
+    };
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
@@ -270,9 +273,9 @@ version = "2025-09-01"
         let expected_config = PhenoXtractConfig {
             pipeline_config: PipelineConfig::new(
                 MetaData::new(
-                    Some("Rouven Reuter"),
-                    Some("Magnus Knut Hansen"),
-                    "Arkham Asylum 2025",
+                    Some(&default_meta_data().created_by),
+                    Some(&default_meta_data().submitted_by),
+                    &default_cohort_id(),
                     Some(ResourceConfig::new(KnownResourcePrefixes::HP).with_version("2025-09-01")),
                     vec![],
                     vec![
