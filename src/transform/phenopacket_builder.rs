@@ -651,7 +651,7 @@ impl PhenopacketBuilder {
         Ok(())
     }
 
-    fn get_or_create_phenopacket(&mut self, patient_id: &str) -> &mut Phenopacket {
+    pub(crate) fn get_or_create_phenopacket(&mut self, patient_id: &str) -> &mut Phenopacket {
         let phenopacket_id = self.generate_phenopacket_id(patient_id);
         self.subject_to_phenopacket
             .entry(phenopacket_id.clone())
