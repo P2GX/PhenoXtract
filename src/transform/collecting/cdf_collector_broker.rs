@@ -92,20 +92,17 @@ impl PartialEq for CdfCollectorBroker {
             return false;
         }
 
-        let mut self_ids: Vec<_> = self
+        let self_ids: Vec<_> = self
             .collectors
             .iter()
             .map(|col| col.as_any().type_id())
             .collect();
 
-        let mut other_ids: Vec<_> = other
+        let other_ids: Vec<_> = other
             .collectors
             .iter()
             .map(|col| col.as_any().type_id())
             .collect();
-
-        self_ids.sort();
-        other_ids.sort();
 
         self_ids == other_ids
     }

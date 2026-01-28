@@ -70,7 +70,7 @@ pipeline_config:
         output_dir: "some/dir"
         create_dir: true
   meta_data:
-    created_by: "PhenoXtract Test Suit"
+    created_by: "PhenoXtract Test Suite"
     submitted_by: "Someone"
     cohort_name: "Cohort-1"
     hp_resource:
