@@ -35,13 +35,10 @@ pub struct OmimClient {
 impl OmimClient {
     /// Creates a new OMIM client.
     /// Expects: `BIOPORTAL_API_KEY` environment variable to be set
-    pub fn new() -> Self {
-        let api_key =
-            env::var("BIOPORTAL_API_KEY").expect("BIOPORTAL_API_KEY must be set in environment");
-
+    pub fn new(bioportal_api_key: &str) -> Self {
         OmimClient {
             client: Client::new(),
-            api_key,
+            api_key: bioportal_api_key.to_string(),
             cache: RwLock::new(HashMap::new()),
             resource_ref: ResourceRef::new("OMIM", Some("latest")),
         }
@@ -50,7 +47,11 @@ impl OmimClient {
 
 impl Default for OmimClient {
     fn default() -> Self {
-        Self::new()
+        Self::new(
+            env::var("BIOPORTAL_API_KEY")
+                .expect("BIOPORTAL_API_KEY must be set in environment")
+                .as_str(),
+        )
     }
 }
 
