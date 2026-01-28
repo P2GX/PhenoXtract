@@ -257,8 +257,14 @@ pub(crate) fn default_meta_data() -> MetaData {
     let yaml_str = std::str::from_utf8(PIPELINE_CONFIG_FILE)
         .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
 
+    let config_str_with_env_vars = shellexpand::env(&yaml_str)
+        .expect("Shell expansion of config file failed. Environment variables not found?");
+
     let config = Config::builder()
-        .add_source(File::from_str(yaml_str, FileFormat::Yaml))
+        .add_source(File::from_str(
+            config_str_with_env_vars.as_ref(),
+            FileFormat::Yaml,
+        ))
         .build()
         .expect("FATAL: Failed to parse configuration");
 
