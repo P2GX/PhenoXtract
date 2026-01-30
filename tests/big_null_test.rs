@@ -216,14 +216,7 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
         OboLibraryProvider::default(),
     )));
 
-    let hp_ref = ResourceRef::hp().with_version("2025-09-01");
-    let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
-    let uo_ref = ResourceRef::uo().with_version("2026-01-09");
     let pato_ref = ResourceRef::pato().with_version("2025-05-14");
-
-    let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
-    let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
-    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
 
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
@@ -247,10 +240,6 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            onto_factory.build_bidict(&hp_ref, None).unwrap(),
-            ContextKind::HpoLabelOrId,
-        )),
-        Box::new(OntologyNormaliserStrategy::new(
             onto_factory.build_bidict(&pato_ref, None).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
@@ -269,9 +258,9 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
         BuilderMetaData::new(cohort_name, "Big Null Test", "Someone"),
         Box::new(build_hgnc_test_client(temp_dir.path())),
         Box::new(build_hgvs_test_client(temp_dir.path())),
-        BiDictLibrary::new("HPO", vec![hpo_dict]),
-        BiDictLibrary::new("DISEASE", vec![mondo_dict]),
-        BiDictLibrary::new("UNIT", vec![uo_dict]),
+        BiDictLibrary::new("HPO", vec![]),
+        BiDictLibrary::new("DISEASE", vec![]),
+        BiDictLibrary::new("UNIT", vec![]),
         BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
         BiDictLibrary::new("QUAL", vec![pato_dict]),
     );
