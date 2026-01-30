@@ -14,7 +14,7 @@ use crate::transform::strategies::traits::Strategy;
 use chrono::NaiveDateTime;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
-use polars::prelude::{AnyValue, Column, DataType, TimeUnit};
+use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -93,15 +93,20 @@ impl Strategy for DateToAgeStrategy {
                     DataType::Int64 => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Date => Cow::Owned(date_col.cast(&DataType::String)?),
                     DataType::Datetime(..) => Cow::Owned(date_col.cast(&DataType::String)?),
+                    DataType::Null => Cow::Owned(date_col.cast(&DataType::String)?),
                     other_datatype => {
                         return Err(StrategyError::DataTypeError {
                             column_name: date_col_name.clone(),
+                            strategy: "DateToAge".to_string(),
                             allowed_datatypes: vec![
-                                DataType::String,
-                                DataType::Date,
-                                DataType::Datetime(TimeUnit::Milliseconds, None),
+                                DataType::String.to_string(),
+                                DataType::Int32.to_string(),
+                                DataType::Int64.to_string(),
+                                DataType::Date.to_string(),
+                                "Datetime".to_string(),
+                                DataType::Null.to_string(),
                             ],
-                            found_datatype: other_datatype.clone(),
+                            found_datatype: other_datatype.to_string(),
                         });
                     }
                 };
@@ -143,7 +148,7 @@ impl Strategy for DateToAgeStrategy {
 
                 table
                     .builder()
-                    .replace_column(date_col_name, ages_column.take_materialized_series())?
+                    .replace_col(date_col_name, ages_column.take_materialized_series())?
                     .build()?;
             }
 

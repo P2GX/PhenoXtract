@@ -1,9 +1,12 @@
 use crate::config::context::{Context, ContextKind};
+use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::DataType;
 use std::any::Any;
 
 #[allow(dead_code)]
@@ -38,10 +41,19 @@ impl Collect for QualitativeMeasurementCollector {
                 )?;
 
                 for qual_measurement_col in qual_measurement_cols {
-                    let stringified_quant_measurement_col = qual_measurement_col.str()?;
+                    let allowed_datatypes = {
+                        let mut v = vec![DataType::String, DataType::Null];
+                        v.extend_from_slice(PolarsNumericTypes::ints());
+                        v
+                    };
 
-                    for row_idx in 0..stringified_quant_measurement_col.len() {
-                        let qual_measurement = stringified_quant_measurement_col.get(row_idx);
+                    let casted_qual_col =
+                        cow_cast(qual_measurement_col, DataType::String, allowed_datatypes)?;
+
+                    let stringified_qual_measurement_col = casted_qual_col.str()?;
+
+                    for row_idx in 0..stringified_qual_measurement_col.len() {
+                        let qual_measurement = stringified_qual_measurement_col.get(row_idx);
                         if let Some(qual_measurement) = qual_measurement {
                             let time_observed = if let Some(time_observed_col) = &time_observed_col
                             {
@@ -120,7 +132,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("nitrate in urine".into())
                     .with_data_context(Context::QualitativeMeasurement {
@@ -130,7 +142,7 @@ mod tests {
                 vec![measurements.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed".into())
                     .with_data_context(Context::OnsetAge)

@@ -216,7 +216,7 @@ impl Strategy for MappingStrategy {
                 });
                 table
                     .builder()
-                    .replace_column(
+                    .replace_col(
                         &col_name,
                         mapped_column.cast(&self.out_dtype).map_err(|_| {
                             DataProcessingError::CastingError {
@@ -321,7 +321,7 @@ mod tests {
         let series = Series::new("sex".into(), vec![5.6]);
         table
             .builder()
-            .replace_column("sex", series.clone())
+            .replace_col("sex", series.clone())
             .unwrap()
             .build()
             .unwrap();

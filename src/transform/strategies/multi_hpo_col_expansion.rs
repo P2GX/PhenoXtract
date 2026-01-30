@@ -116,8 +116,8 @@ impl Strategy for MultiHPOColExpansionStrategy {
 
             let cdf_builder = table.builder();
             cdf_builder
-                .bulk_insert_columns_with_series_context(inserts.as_slice())?
-                .drop_many_series_context(contexts_to_drop.as_slice())?
+                .insert_scs_alongside_cols(inserts.as_slice())?
+                .drop_scs_alongside_cols(contexts_to_drop.as_slice())?
                 .build()?;
         }
 

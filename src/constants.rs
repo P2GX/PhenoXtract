@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+use polars::prelude::DataType;
+
 pub const DATE_FORMATS: &[&str] = &[
     "%Y",       // just the year (will be interpreted as the 1st of January)
     "%Y-%m-%d", // Date only
@@ -18,3 +21,30 @@ pub const DATETIME_FORMATS: &[&str] = &[
 ];
 
 pub const ISO8601_DUR_PATTERN: &str = r"^P(\d+Y)?(\d+M)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$";
+
+pub(crate) struct PolarsNumericTypes;
+
+impl PolarsNumericTypes {
+    const ALL: [DataType; 4] = [
+        DataType::Float64,
+        DataType::Float32,
+        DataType::Int64,
+        DataType::Int32,
+    ];
+
+    const INTS: [DataType; 2] = [DataType::Int64, DataType::Int32];
+
+    const FLOATS: [DataType; 2] = [DataType::Float64, DataType::Float32];
+
+    pub(crate) const fn all() -> &'static [DataType; 4] {
+        &Self::ALL
+    }
+
+    pub(crate) const fn ints() -> &'static [DataType; 2] {
+        &Self::INTS
+    }
+
+    pub(crate) const fn floats() -> &'static [DataType; 2] {
+        &Self::FLOATS
+    }
+}

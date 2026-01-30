@@ -1,0 +1,14 @@
+{
+  "id": "my_cohort-P1",
+  "subject": {
+    "id": "P1",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "metaData": {
+    "created": "2026-01-30T11:08:38.215984Z",
+    "createdBy": "Big Null Test",
+    "submittedBy": "Someone",
+    "phenopacketSchemaVersion": "2.0"
+  }
+}

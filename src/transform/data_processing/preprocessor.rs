@@ -45,7 +45,7 @@ impl CdfPreprocessor {
                 }
             });
             cdf.builder()
-                .replace_column(&col_name, trimmed_col.into_series())?
+                .replace_col(&col_name, trimmed_col.into_series())?
                 .build()?;
         }
         Ok(())
@@ -76,7 +76,7 @@ impl CdfPreprocessor {
             if is_all_integers {
                 let casted = column.cast(&DataType::Int64)?;
                 cdf.builder()
-                    .replace_column(
+                    .replace_col(
                         casted.name().to_string().as_str(),
                         casted.take_materialized_series(),
                     )?
@@ -115,7 +115,7 @@ impl CdfPreprocessor {
 
             let casted_series = polars_column_cast_ambivalent(column).take_materialized_series();
             cdf.builder()
-                .replace_column(col_name.as_str(), casted_series)?
+                .replace_col(col_name.as_str(), casted_series)?
                 .build()?;
         }
 

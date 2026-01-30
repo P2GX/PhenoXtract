@@ -6,6 +6,7 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::utils::HpoColMaker;
 use log::warn;
+use polars::datatypes::DataType;
 use std::any::Any;
 use std::collections::HashSet;
 
@@ -37,6 +38,10 @@ impl Collect for HpoInHeaderCollector {
 
                 for hpo_col in hpo_cols {
                     let hpo_id = HpoColMaker::new().decode_column_header(hpo_col).0;
+
+                    if hpo_col.dtype() == &DataType::Null {
+                        continue;
+                    }
 
                     let boolified_hpo_col = hpo_col.bool()?;
 
@@ -142,7 +147,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("phenotypes".into())
                     .with_data_context(Context::HpoLabelOrId)
@@ -150,7 +155,7 @@ mod tests {
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
                     .with_data_context(Context::OnsetAge)

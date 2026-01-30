@@ -116,7 +116,7 @@ impl Strategy for AgeToIso8601Strategy {
                 });
                 table
                     .builder()
-                    .replace_column(&col_name, mapped_column.into_series())?
+                    .replace_col(&col_name, mapped_column.into_series())?
                     .build()?;
             }
         }
