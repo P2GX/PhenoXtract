@@ -40,8 +40,8 @@ jobs:
       #  uses: Swatinem/rust-cache@v2.8.0
 
       - name: Test
-        run: cargo test --color always --all-features --lib --all-targets --workspace
-      # run: cargo nextest run --workspace --lib --all-targets --all-features
+        run: cargo nextest run --workspace --lib --all-targets --all-features
+      # run: cargo test --color always --all-features --lib --all-targets --workspace
 
   format:
     name: Code Format
