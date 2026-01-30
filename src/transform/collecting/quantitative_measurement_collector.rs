@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
@@ -50,18 +51,14 @@ impl Collect for QuantitativeMeasurementCollector {
                 )?;
 
                 for quant_measurement_col in quant_measurement_cols {
-                    let casted_quant_col = cow_cast(
-                        quant_measurement_col,
-                        DataType::Float64,
-                        vec![
-                            DataType::String,
-                            DataType::Float64,
-                            DataType::Float32,
-                            DataType::Int64,
-                            DataType::Int32,
-                            DataType::Null,
-                        ],
-                    )?;
+                    let allowed_datatypes = {
+                        let mut v = vec![DataType::String, DataType::Null];
+                        v.extend_from_slice(PolarsNumericTypes::all());
+                        v
+                    };
+
+                    let casted_quant_col =
+                        cow_cast(quant_measurement_col, DataType::Float64, allowed_datatypes)?;
 
                     let floatified_quant_measurement_col = casted_quant_col.f64()?;
 
@@ -165,7 +162,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("height".into())
                     .with_data_context(Context::QuantitativeMeasurement {
@@ -176,7 +173,7 @@ mod tests {
                 vec![measurements.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed".into())
                     .with_data_context(Context::OnsetAge)
@@ -184,7 +181,7 @@ mod tests {
                 vec![time_observed.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("ref_low".into())
                     .with_data_context(Context::ReferenceRangeLow)
@@ -192,7 +189,7 @@ mod tests {
                 vec![ref_low.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("ref_high".into())
                     .with_data_context(Context::ReferenceRangeHigh)

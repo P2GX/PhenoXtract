@@ -330,6 +330,17 @@ impl ContextualizedDataFrame {
 
         Ok(stringified_cols)
     }
+
+    pub(crate) fn get_dangling_scs(&self) -> Vec<Identifier> {
+        let mut dangling_scs = vec![];
+        for sc in self.series_contexts() {
+            let sc_id = sc.get_identifier().clone();
+            if self.get_columns(&sc_id).is_empty() {
+                dangling_scs.push(sc_id);
+            }
+        }
+        dangling_scs
+    }
 }
 
 #[cfg(test)]
@@ -623,13 +634,13 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self
     }
 
-    pub fn add_series_context(self, sc: SeriesContext) -> Result<Self, StrategyError> {
+    pub fn insert_sc(self, sc: SeriesContext) -> Result<Self, StrategyError> {
         self.cdf.context.context_mut().push(sc);
 
         Ok(self.mark_dirty())
     }
 
-    pub fn replace_column(
+    pub fn replace_col(
         self,
         col_name: &str,
         replacement_data: Series,
@@ -638,7 +649,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
 
         Ok(self.mark_dirty())
     }
-    pub fn drop_scs_and_cols_with_context(
+    pub fn drop_scs_alongside_cols_with_context(
         mut self,
         header_context: &Context,
         data_context: &Context,
@@ -650,14 +661,13 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             .where_data_context(Filter::Is(data_context))
             .collect_owned_names();
 
-        let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
-        self = self.remove_many_columns(col_refs.as_slice())?;
-        self = self.remove_scs_with_context(header_context, data_context);
+        self = self.drop_cols(&col_names)?;
+        self = self.drop_scs_with_context(header_context, data_context);
 
         Ok(self.mark_dirty())
     }
 
-    pub fn insert_columns_with_series_context(
+    pub fn insert_sc_alongside_cols(
         self,
         sc: SeriesContext,
         cols: &[Column],
@@ -683,51 +693,72 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn bulk_insert_columns_with_series_context(
+    pub fn insert_scs_alongside_cols(
         mut self,
         inserts: &[(SeriesContext, Vec<Column>)],
     ) -> Result<Self, StrategyError> {
         for (sc, cols) in inserts.iter() {
-            self = self.insert_columns_with_series_context(sc.clone(), cols)?;
+            self = self.insert_sc_alongside_cols(sc.clone(), cols)?;
         }
 
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_series_context(mut self, sc_id: &Identifier) -> Result<Self, StrategyError> {
+    pub fn drop_sc_alongside_cols(mut self, sc_id: &Identifier) -> Result<Self, StrategyError> {
         let col_names: Vec<String> = self
             .cdf
             .filter_columns()
             .where_identifier(Filter::Is(sc_id))
             .collect_owned_names();
-
-        let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
-        self = self.remove_many_columns(col_refs.as_slice())?;
-        self = self.remove_series_context(sc_id);
+        self = self.drop_cols(&col_names)?;
+        self = self.drop_sc(sc_id);
 
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_many_series_context(
-        mut self,
-        sc_ids: &[Identifier],
-    ) -> Result<Self, StrategyError> {
+    pub fn drop_scs_alongside_cols(mut self, sc_ids: &[Identifier]) -> Result<Self, StrategyError> {
         for sc_id in sc_ids {
-            self = self.drop_series_context(sc_id)?;
+            self = self.drop_sc_alongside_cols(sc_id)?;
         }
 
         Ok(self.mark_dirty())
     }
 
-    fn remove_series_context(self, to_remove: &Identifier) -> Self {
+    pub fn drop_scs(mut self, sc_ids: &[Identifier]) -> Result<Self, StrategyError> {
+        for sc_id in sc_ids {
+            self = self.drop_sc(sc_id);
+        }
+        Ok(self.mark_dirty())
+    }
+
+    pub fn drop_null_cols_alongside_scs(mut self) -> Result<Self, StrategyError> {
+        let null_col_names = self
+            .cdf
+            .filter_columns()
+            .where_data_type(Filter::Is(&DataType::Null))
+            .collect_owned_names();
+
+        self = self.drop_cols(&null_col_names)?;
+        self = self.drop_dangling_scs()?;
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn drop_dangling_scs(mut self) -> Result<Self, StrategyError> {
+        let dangling_scs = self.cdf.get_dangling_scs();
+        self = self.drop_scs(dangling_scs.as_slice())?;
+        Ok(self.mark_dirty())
+    }
+
+    fn drop_sc(self, to_remove: &Identifier) -> Self {
         self.cdf
             .context
             .context_mut()
             .retain(|sc| sc.get_identifier() != to_remove);
-        self
+        self.mark_dirty()
     }
 
-    fn remove_column(self, col_name: &str) -> Result<Self, StrategyError> {
+    fn drop_col(self, col_name: &str) -> Result<Self, StrategyError> {
         self.cdf
             .data
             .drop_in_place(col_name)
@@ -740,15 +771,15 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    fn remove_many_columns(mut self, col_names: &[&str]) -> Result<Self, StrategyError> {
+    fn drop_cols(mut self, col_names: &Vec<String>) -> Result<Self, StrategyError> {
         for col_name in col_names {
-            self = self.remove_column(col_name)?;
+            self = self.drop_col(col_name)?;
         }
 
         Ok(self.mark_dirty())
     }
 
-    fn remove_scs_with_context(self, header_context: &Context, data_context: &Context) -> Self {
+    fn drop_scs_with_context(self, header_context: &Context, data_context: &Context) -> Self {
         self.cdf.context.context_mut().retain(|sc| {
             sc.get_header_context() != header_context || sc.get_data_context() != data_context
         });
@@ -893,7 +924,7 @@ mod builder_tests {
         let original_context_no = cdf.context().context().len();
 
         cdf.builder()
-            .remove_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
+            .drop_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
             .build_dirty();
 
         assert_eq!(cdf.context().context().len(), original_context_no - 2);
@@ -910,7 +941,7 @@ mod builder_tests {
         let original_col_height = cdf.data().height();
 
         cdf.builder()
-            .remove_scs_with_context(&Context::VitalStatus, &Context::None)
+            .drop_scs_with_context(&Context::VitalStatus, &Context::None)
             .build_dirty();
 
         assert_eq!(cdf.context().context().len(), original_context_no);
@@ -929,7 +960,7 @@ mod builder_tests {
         let original_col_no = cdf.data().width();
 
         cdf.builder()
-            .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
+            .drop_scs_alongside_cols_with_context(&Context::None, &Context::SubjectId)
             .unwrap()
             .build_dirty();
 
@@ -948,7 +979,7 @@ mod builder_tests {
         let original_col_height = cdf.data().height();
 
         cdf.builder()
-            .drop_scs_and_cols_with_context(&Context::VitalStatus, &Context::None)
+            .drop_scs_alongside_cols_with_context(&Context::VitalStatus, &Context::None)
             .unwrap()
             .build_dirty();
 
@@ -977,7 +1008,7 @@ mod builder_tests {
         assert!(!filter_sc.is_empty());
 
         cdf.builder()
-            .drop_scs_and_cols_with_context(&Context::None, &Context::SubjectId)
+            .drop_scs_alongside_cols_with_context(&Context::None, &Context::SubjectId)
             .unwrap()
             .build_dirty();
 
@@ -1001,7 +1032,7 @@ mod builder_tests {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let result = cdf.builder().remove_column("nonexistent");
+        let result = cdf.builder().drop_col("nonexistent");
         assert!(result.is_err());
     }
 
@@ -1013,7 +1044,7 @@ mod builder_tests {
         let expected_width = cdf.data().width() - 2;
 
         cdf.builder()
-            .remove_many_columns(&["different", "age"])
+            .drop_cols(&vec!["different".to_string(), "age".to_string()])
             .unwrap()
             .build_dirty();
         assert_eq!(cdf.data().width(), expected_width);
@@ -1030,7 +1061,7 @@ mod builder_tests {
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.builder()
-            .remove_series_context(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc(&Identifier::Regex("bronchitis".to_string()))
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
@@ -1043,7 +1074,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 1;
 
         cdf.builder()
-            .drop_series_context(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc_alongside_cols(&Identifier::Regex("bronchitis".to_string()))
             .unwrap()
             .build_dirty();
 
@@ -1059,7 +1090,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 2;
 
         cdf.builder()
-            .drop_many_series_context(&[
+            .drop_scs_alongside_cols(&[
                 Identifier::Regex("age".to_string()),
                 Identifier::Regex("overweight".to_string()),
             ])
@@ -1083,7 +1114,7 @@ mod builder_tests {
             SeriesContext::default().with_identifier(Identifier::Regex("test_col".to_string()));
 
         cdf.builder()
-            .insert_columns_with_series_context(sc, &[new_col])
+            .insert_sc_alongside_cols(sc, &[new_col])
             .unwrap()
             .build_dirty();
 
@@ -1110,7 +1141,7 @@ mod builder_tests {
         let inserts = vec![(sc1, vec![col_d]), (sc2, vec![col_e])];
 
         cdf.builder()
-            .bulk_insert_columns_with_series_context(&inserts)
+            .insert_scs_alongside_cols(&inserts)
             .unwrap()
             .build_dirty();
 
@@ -1127,7 +1158,7 @@ mod builder_tests {
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
         let transformed_vec = vec![1001, 1002, 1003];
         cdf.builder()
-            .replace_column(
+            .replace_col(
                 "subject_id",
                 Series::new("subject_id".to_string().into(), transformed_vec),
             )

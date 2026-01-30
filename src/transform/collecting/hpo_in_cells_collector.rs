@@ -4,7 +4,6 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use crate::transform::utils::cow_cast;
 use polars::datatypes::DataType;
 use std::any::Any;
 
@@ -35,15 +34,14 @@ impl Collect for HpoInCellsCollector {
                 )?;
 
                 for hpo_col in hpo_cols {
-                    let casted_hpo_col = cow_cast(
-                        hpo_col,
-                        DataType::String,
-                        vec![DataType::String, DataType::Null],
-                    )?;
-                    let hpo_column = casted_hpo_col.str()?;
+                    if hpo_col.dtype() == &DataType::Null {
+                        continue;
+                    }
 
-                    for row_idx in 0..hpo_column.len() {
-                        let hpo = hpo_column.get(row_idx);
+                    let stringified_hpo_col = hpo_col.str()?;
+
+                    for row_idx in 0..stringified_hpo_col.len() {
+                        let hpo = stringified_hpo_col.get(row_idx);
                         if let Some(hpo) = hpo {
                             let hpo_onset = if let Some(onset_col) = &onset_column {
                                 onset_col.get(row_idx)
@@ -120,7 +118,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("phenotypes".into())
                     .with_data_context(Context::HpoLabelOrId)
@@ -128,7 +126,7 @@ mod tests {
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
                     .with_data_context(Context::OnsetAge)

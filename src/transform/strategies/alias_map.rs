@@ -92,7 +92,7 @@ impl Strategy for AliasMapStrategy {
 
                 table
                     .builder()
-                    .replace_column(&col_name, recast_series)?
+                    .replace_col(&col_name, recast_series)?
                     .build()?;
             }
 

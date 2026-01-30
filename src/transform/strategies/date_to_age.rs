@@ -148,7 +148,7 @@ impl Strategy for DateToAgeStrategy {
 
                 table
                     .builder()
-                    .replace_column(date_col_name, ages_column.take_materialized_series())?
+                    .replace_col(date_col_name, ages_column.take_materialized_series())?
                     .build()?;
             }
 

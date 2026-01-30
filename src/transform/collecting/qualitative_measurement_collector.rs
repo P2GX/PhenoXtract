@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
@@ -40,16 +41,14 @@ impl Collect for QualitativeMeasurementCollector {
                 )?;
 
                 for qual_measurement_col in qual_measurement_cols {
-                    let casted_qual_col = cow_cast(
-                        qual_measurement_col,
-                        DataType::String,
-                        vec![
-                            DataType::String,
-                            DataType::Int64,
-                            DataType::Int32,
-                            DataType::Null,
-                        ],
-                    )?;
+                    let allowed_datatypes = {
+                        let mut v = vec![DataType::String, DataType::Null];
+                        v.extend_from_slice(PolarsNumericTypes::ints());
+                        v
+                    };
+
+                    let casted_qual_col =
+                        cow_cast(qual_measurement_col, DataType::String, allowed_datatypes)?;
 
                     let stringified_qual_measurement_col = casted_qual_col.str()?;
 
@@ -133,7 +132,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("nitrate in urine".into())
                     .with_data_context(Context::QualitativeMeasurement {
@@ -143,7 +142,7 @@ mod tests {
                 vec![measurements.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed".into())
                     .with_data_context(Context::OnsetAge)

@@ -107,6 +107,8 @@ pub(crate) fn chromosomal_sex_from_str(
     }
 }
 
+/// Efficiently casts to a datatype of ones choice.
+/// NOTE: casting from string to bool unfortunately does not work. The function cast_to_bool can be used instead.
 pub(crate) fn cow_cast(
     col: &'_ Column,
     output_dtype: DataType,

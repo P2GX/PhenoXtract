@@ -4,7 +4,6 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use crate::transform::utils::cow_cast;
 use polars::datatypes::DataType;
 use std::any::Any;
 
@@ -38,13 +37,11 @@ impl Collect for DiseaseCollector {
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
-                        let casted_disease_col = cow_cast(
-                            disease_col,
-                            DataType::String,
-                            vec![DataType::String, DataType::Null],
-                        )?;
+                        if disease_col.dtype() == &DataType::Null {
+                            continue;
+                        }
 
-                        let stringified_disease_col = casted_disease_col.str()?;
+                        let stringified_disease_col = disease_col.str()?;
 
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
@@ -129,7 +126,7 @@ mod tests {
         );
 
         cdf.builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("disease".into())
                     .with_data_context(Context::DiseaseLabelOrId)
@@ -137,7 +134,7 @@ mod tests {
                 vec![disease_col].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
                     .with_data_context(Context::OnsetAge)
