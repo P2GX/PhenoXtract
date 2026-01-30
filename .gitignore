@@ -17,6 +17,7 @@ target
 .vscode/
 
 tests/assets/integration_test/output_phenopackets/*
+tests/assets/big_null_test/output_phenopackets/*
 
 ~$*
 

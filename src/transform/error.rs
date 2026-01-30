@@ -223,7 +223,7 @@ pub enum StrategyError {
         date: String,
     },
     #[error(
-        "The column {column_name} had datatype {found_datatype} in strategy {strategy}. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
+        "The column {column_name} had datatype {found_datatype} in strategy {strategy}. Only the datatypes {allowed_datatypes:?} are accepted."
     )]
     DataTypeError {
         column_name: String,
