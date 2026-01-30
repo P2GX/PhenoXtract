@@ -116,28 +116,28 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
         let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
 
-        if let Some(hp_resource) = config.meta_data.hp_resource {
+        if let Some(hp_resource) = &config.meta_data.hp_resource {
             let hpo_bidict = resource_factory.build(hp_resource)?;
             hpo_bidict_library.add_bidict(hpo_bidict);
         };
 
-        for disease_resource in config.meta_data.disease_resources {
+        for disease_resource in &config.meta_data.disease_resources {
             let disease_bidict = resource_factory.build(disease_resource)?;
             disease_bidict_library.add_bidict(disease_bidict);
         }
 
-        for assay_resource in config.meta_data.assay_resources {
+        for assay_resource in &config.meta_data.assay_resources {
             let assay_bidict = resource_factory.build(assay_resource)?;
             assay_bidict_library.add_bidict(assay_bidict);
         }
 
-        for unit_ontology_ref in config.meta_data.unit_resources {
+        for unit_ontology_ref in &config.meta_data.unit_resources {
             let unit_bidict = resource_factory.build(unit_ontology_ref)?;
             unit_bidict_library.add_bidict(unit_bidict);
         }
 
         for qualitative_measurement_ontology_ref in
-            config.meta_data.qualitative_measurement_resources
+            &config.meta_data.qualitative_measurement_resources
         {
             let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
             qualitative_measurement_bidict_library.add_bidict(qual_bidict);
@@ -145,6 +145,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut strategy_factory = StrategyFactory::new(resource_factory.into_ontology_factory());
         let phenopacket_builder = PhenopacketBuilder::new(
+            config.meta_data.into(),
             Box::new(CachedHGNCClient::default()),
             Box::new(CachedHGVSClient::default()),
             hpo_bidict_library,
@@ -162,10 +163,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let tf_module = TransformerModule::new(
             strategies,
-            CdfCollectorBroker::with_default_collectors(
-                phenopacket_builder,
-                config.meta_data.cohort_name.clone(),
-            ),
+            CdfCollectorBroker::with_default_collectors(phenopacket_builder),
         );
 
         let loader_module = LoaderFactory::try_from_config(config.loader)?;
@@ -185,7 +183,7 @@ impl TryFrom<PhenoXtractConfig> for Pipeline {
     type Error = ConstructionError;
 
     fn try_from(config: PhenoXtractConfig) -> Result<Self, Self::Error> {
-        Pipeline::try_from(config.pipeline)
+        Pipeline::try_from(config.pipeline_config)
     }
 }
 
@@ -230,7 +228,7 @@ mod tests {
 
         let configs_from_sources = [
             Pipeline::try_from(config.clone()).expect("Failed to convert config from config"),
-            Pipeline::try_from(config.pipeline.clone())
+            Pipeline::try_from(config.pipeline_config.clone())
                 .expect("Failed to convert config from pipeline"),
             Pipeline::try_from(file_path).expect("Failed to convert config from path"),
         ];

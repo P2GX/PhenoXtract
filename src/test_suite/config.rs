@@ -1,4 +1,4 @@
-pub(crate) static DATA_SOURCES_CONFIG: &[u8] = br#"
+pub(crate) static DATA_SOURCES_CONFIG_FILE: &[u8] = br#"
 data_sources:
   - type: "csv"
     source: "./data/example.csv"
@@ -60,8 +60,8 @@ data_sources:
         patients_are_rows: true
 "#;
 
-pub(crate) static PIPELINE_CONFIG: &[u8] = br#"
-pipeline:
+pub(crate) static PIPELINE_CONFIG_FILE: &[u8] = br#"
+pipeline_config:
   transform_strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
@@ -70,9 +70,9 @@ pipeline:
         output_dir: "some/dir"
         create_dir: true
   meta_data:
-    created_by: Rouven Reuter
-    submitted_by: Magnus Knut Hansen
-    cohort_name: "Arkham Asylum 2025"
+    created_by: "PhenoXtract Test Suite"
+    submitted_by: "Someone"
+    cohort_name: "Cohort-1"
     hp_resource:
       id: "HP"
       version: "2025-09-01"
@@ -87,11 +87,11 @@ pipeline:
             password: $LOINC_PASSWORD
 "#;
 
-/// Alternative: Get the combined config as bytes
 pub(crate) fn get_full_config_bytes() -> Vec<u8> {
-    let data_sources =
-        std::str::from_utf8(DATA_SOURCES_CONFIG).expect("Invalid UTF-8 in DATA_SOURCES_CONFIG");
-    let pipeline = std::str::from_utf8(PIPELINE_CONFIG).expect("Invalid UTF-8 in PIPELINE_CONFIG");
+    let data_sources = std::str::from_utf8(DATA_SOURCES_CONFIG_FILE)
+        .expect("Invalid UTF-8 in DATA_SOURCES_CONFIG");
+    let pipeline =
+        std::str::from_utf8(PIPELINE_CONFIG_FILE).expect("Invalid UTF-8 in PIPELINE_CONFIG");
 
     format!("{}\n{}", data_sources.trim(), pipeline.trim()).into_bytes()
 }

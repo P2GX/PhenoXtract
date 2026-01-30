@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use std::any::Any;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -14,7 +15,7 @@ impl Collect for QualitativeMeasurementCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
             let qualitative_measurement_scs = patient_cdf
@@ -50,7 +51,7 @@ impl Collect for QualitativeMeasurementCollector {
                             };
 
                             builder.insert_qualitative_measurement(
-                                phenopacket_id,
+                                patient_id,
                                 qual_measurement,
                                 time_observed,
                                 assay_id,
@@ -63,14 +64,18 @@ impl Collect for QualitativeMeasurementCollector {
 
         Ok(())
     }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::table_context::SeriesContext;
-    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_iso_age, default_pato_qual_measurement, default_phenopacket_id, default_qual_loinc,
         default_qual_measurement, generate_qual_measurement,
@@ -79,6 +84,7 @@ mod tests {
         loinc_meta_data_resource, pato_meta_data_resource,
     };
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::{MetaData, OntologyClass};
     use polars::datatypes::AnyValue;
@@ -140,9 +146,9 @@ mod tests {
     #[rstest]
     fn test_collect_qualitative_measurement(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = default_phenopacket_id();
+        let patient_id = default_patient_id();
         QualitativeMeasurementCollector
-            .collect(&mut builder, &[qual_measurement_cdf()], &pp_id)
+            .collect(&mut builder, &[qual_measurement_cdf()], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
@@ -152,10 +158,13 @@ mod tests {
         let measurement2 = generate_qual_measurement(default_qual_loinc(), pato_absent(), None);
 
         let mut expected_phenopacket = Phenopacket {
-            id: pp_id,
+            id: default_phenopacket_id(),
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![loinc_meta_data_resource(), pato_meta_data_resource()],
+                created_by: default_meta_data().created_by,
+                submitted_by: default_meta_data().submitted_by,
                 ..Default::default()
             }),
             ..Default::default()

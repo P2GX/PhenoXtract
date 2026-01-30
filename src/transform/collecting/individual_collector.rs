@@ -4,6 +4,7 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
+use std::any::Any;
 #[derive(Debug)]
 pub struct IndividualCollector;
 
@@ -12,7 +13,7 @@ impl Collect for IndividualCollector {
         &self,
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let date_of_birth =
             get_single_multiplicity_element(patient_cdfs, Context::DateOfBirth, Context::None)?;
@@ -33,15 +34,8 @@ impl Collect for IndividualCollector {
             )?,
         };
 
-        let subject_id = patient_cdfs[0]
-            .get_subject_id_col()
-            .str()?
-            .get(0)
-            .expect("subject_id missing");
-
         builder.upsert_individual(
-            phenopacket_id,
-            subject_id,
+            patient_id,
             None,
             date_of_birth.as_deref(),
             time_at_last_encounter.as_deref(),
@@ -51,9 +45,12 @@ impl Collect for IndividualCollector {
             None,
         )?;
 
-        Self::collect_vitality_status(builder, patient_cdfs, phenopacket_id)?;
+        Self::collect_vitality_status(builder, patient_cdfs, patient_id)?;
 
         Ok(())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -61,7 +58,7 @@ impl IndividualCollector {
     fn collect_vitality_status(
         builder: &mut PhenopacketBuilder,
         patient_cdfs: &[ContextualizedDataFrame],
-        phenopacket_id: &str,
+        patient_id: &str,
     ) -> Result<(), CollectorError> {
         let status =
             get_single_multiplicity_element(patient_cdfs, Context::VitalStatus, Context::None)?;
@@ -97,7 +94,7 @@ impl IndividualCollector {
                 .transpose()?;
 
             builder.upsert_vital_status(
-                phenopacket_id,
+                patient_id,
                 status.as_ref(),
                 time_of_death.as_deref(),
                 cause_of_death.as_deref(),
@@ -113,12 +110,16 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::phenopacket_component_generation::default_meta_data;
+    use crate::test_suite::phenopacket_component_generation::default_phenopacket_id;
     use crate::test_suite::phenopacket_component_generation::{
         default_disease_oc, default_iso_age,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
+    use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::time_element::Element;
     use phenopackets::schema::v2::core::vital_status::Status;
@@ -139,7 +140,7 @@ mod tests {
 
     #[fixture]
     fn patient_id() -> String {
-        "P001".to_string()
+        default_patient_id()
     }
 
     #[fixture]
@@ -236,16 +237,15 @@ mod tests {
         patient_id: String,
     ) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let phenopacket_id = "pp_id".to_string();
 
         IndividualCollector
-            .collect(&mut builder, &[individual_info_cdf], &phenopacket_id)
+            .collect(&mut builder, &[individual_info_cdf], &patient_id)
             .unwrap();
 
         let mut phenopackets = builder.build();
 
         let indiv = Individual {
-            id: patient_id.to_string(),
+            id: patient_id,
             date_of_birth: Some(Timestamp {
                 seconds: -312595200,
                 nanos: 0,
@@ -271,10 +271,13 @@ mod tests {
         };
 
         let mut expected_phenopacket = Phenopacket {
-            id: phenopacket_id.to_string(),
+            id: default_phenopacket_id(),
             subject: Some(indiv),
             meta_data: Some(MetaData {
+                phenopacket_schema_version: phenopacket_schema_version(),
                 resources: vec![mondo_meta_data_resource()],
+                submitted_by: default_meta_data().submitted_by,
+                created_by: default_meta_data().created_by,
                 ..Default::default()
             }),
             ..Default::default()

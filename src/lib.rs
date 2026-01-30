@@ -9,6 +9,7 @@ pub mod pipeline;
 #[cfg(test)]
 mod test_suite;
 
+pub mod phenoxtract;
 pub mod transform;
 pub(crate) mod utils;
 mod validation;
