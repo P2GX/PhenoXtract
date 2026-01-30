@@ -30,6 +30,7 @@ use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env::home_dir;
 use std::ffi::OsStr;
@@ -318,6 +319,29 @@ fn remove_version_from_loinc(pp: &mut Phenopacket) {
     }
 }
 
+// We remove the survival time in the loader. However, the Phenopacket struct can not be constructed if that field is missing.
+fn ensure_survival_time(pp: &mut Value) {
+    #[allow(clippy::collapsible_if)]
+    if let Some(individual) = pp.get_mut("subject") {
+        if let Some(vital_status_value) = individual.get_mut("vitalStatus") {
+            if let Some(vital_status) = vital_status_value.as_object_mut() {
+                if vital_status.get("survivalTimeInDays").is_none() {
+                    vital_status.insert("survivalTimeInDays".to_string(), Value::Number(0.into()));
+                }
+            }
+        }
+    }
+}
+
+fn load_phenopacket(path: PathBuf) -> Phenopacket {
+    let data = fs::read_to_string(path).unwrap();
+    let mut expected_pp: Value = serde_json::from_str(&data).unwrap();
+
+    ensure_survival_time(&mut expected_pp);
+
+    serde_json::from_value::<Phenopacket>(expected_pp).unwrap()
+}
+
 fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
     let pkg_name = env!("CARGO_PKG_NAME");
 
@@ -474,20 +498,14 @@ fn test_pipeline_integration(
 
     //create a phenopacket_ID -> expected phenopacket HashMap
     //and for each expected Phenopacket set the meta_data.created to None
-    let expected_phenopackets_files =
-        fs::read_dir(assets_path.join("integration_test_expected_phenopackets")).unwrap();
-
-    let mut expected_phenopackets: HashMap<String, Phenopacket> = HashMap::new();
-    for expected_pp_file in expected_phenopackets_files {
-        let data = fs::read_to_string(expected_pp_file.unwrap().path()).unwrap();
-        let mut expected_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-
-        if let Some(meta) = &mut expected_pp.meta_data {
-            meta.created = None;
-        }
-
-        expected_phenopackets.insert(expected_pp.id.clone(), expected_pp);
-    }
+    let mut expected_phenopackets: HashMap<String, Phenopacket> =
+        fs::read_dir(assets_path.join("integration_test_expected_phenopackets"))
+            .unwrap()
+            .map(|entry| {
+                let phenopacket = load_phenopacket(entry.unwrap().path());
+                (phenopacket.id.clone(), phenopacket)
+            })
+            .collect();
 
     //go through the extracted phenopackets, set the meta_data.created to None
     //and assert equality with the corresponding expected phenopacket
@@ -495,9 +513,7 @@ fn test_pipeline_integration(
         if let Ok(extracted_pp_file) = extracted_pp_file
             && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
         {
-            let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
-            let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-
+            let mut extracted_pp = load_phenopacket(extracted_pp_file.path());
             let expected_pp = expected_phenopackets.get_mut(&extracted_pp.id).unwrap();
 
             assert_phenopackets(&mut extracted_pp, expected_pp);

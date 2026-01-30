@@ -5,6 +5,7 @@ use crate::test_suite::config::PIPELINE_CONFIG_FILE;
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
+use dotenvy::dotenv;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -254,6 +255,7 @@ pub(crate) fn default_phenotype_oc() -> OntologyClass {
 }
 
 pub(crate) fn default_meta_data() -> MetaData {
+    dotenv().ok();
     let yaml_str = std::str::from_utf8(PIPELINE_CONFIG_FILE)
         .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
 
