@@ -485,9 +485,8 @@ fn test_pipeline_integration(
     pipeline.run(&mut data_sources).unwrap();
 
     //create a phenopacket_ID -> expected phenopacket HashMap
-    //and for each expected Phenopacket set the meta_data.created to None
     let mut expected_phenopackets: HashMap<String, Phenopacket> =
-        fs::read_dir(assets_path.join("integration_test_expected_phenopackets"))
+        fs::read_dir(assets_dir.join("expected_phenopackets"))
             .unwrap()
             .map(|entry| {
                 let phenopacket = load_phenopacket(entry.unwrap().path());
