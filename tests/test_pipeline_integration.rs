@@ -320,13 +320,13 @@ fn remove_version_from_loinc(pp: &mut Phenopacket) {
 }
 
 // We remove the survival time in the loader. However, the Phenopacket struct can not be constructed if that field is missing.
-fn insert_survival_time(pp: &mut Value) {
+fn ensure_survival_time(pp: &mut Value) {
     #[allow(clippy::collapsible_if)]
     if let Some(individual) = pp.get_mut("subject") {
         if let Some(vital_status_value) = individual.get_mut("vitalStatus") {
-            if let Some(vita_status) = vital_status_value.as_object_mut() {
-                if vita_status.get("survivalTimeInDays").is_none() {
-                    vita_status.insert("survivalTimeInDays".to_string(), Value::Number(0.into()));
+            if let Some(vital_status) = vital_status_value.as_object_mut() {
+                if vital_status.get("survivalTimeInDays").is_none() {
+                    vital_status.insert("survivalTimeInDays".to_string(), Value::Number(0.into()));
                 }
             }
         }
@@ -337,7 +337,7 @@ fn load_phenopacket(path: PathBuf) -> Phenopacket {
     let data = fs::read_to_string(path).unwrap();
     let mut expected_pp: Value = serde_json::from_str(&data).unwrap();
 
-    insert_survival_time(&mut expected_pp);
+    ensure_survival_time(&mut expected_pp);
 
     serde_json::from_value::<Phenopacket>(expected_pp).unwrap()
 }
