@@ -228,8 +228,8 @@ pub enum StrategyError {
     DataTypeError {
         column_name: String,
         strategy: String,
-        found_datatype: DataType,
-        allowed_datatypes: Vec<DataType>,
+        found_datatype: String,
+        allowed_datatypes: Vec<String>,
     },
 }
 

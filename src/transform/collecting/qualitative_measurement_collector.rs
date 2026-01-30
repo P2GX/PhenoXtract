@@ -41,7 +41,7 @@ impl Collect for QualitativeMeasurementCollector {
 
                 for qual_measurement_col in qual_measurement_cols {
                     let casted_qual_col = cow_cast(
-                        &qual_measurement_col,
+                        qual_measurement_col,
                         DataType::String,
                         vec![
                             DataType::String,

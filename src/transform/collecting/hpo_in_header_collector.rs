@@ -8,7 +8,6 @@ use crate::transform::utils::{HpoColMaker, cow_cast};
 use log::warn;
 use polars::datatypes::DataType;
 use std::any::Any;
-use std::borrow::Cow;
 use std::collections::HashSet;
 
 #[derive(Debug)]
@@ -41,7 +40,7 @@ impl Collect for HpoInHeaderCollector {
                     let hpo_id = HpoColMaker::new().decode_column_header(hpo_col).0;
 
                     let casted_hpo_col = cow_cast(
-                        &hpo_col,
+                        hpo_col,
                         DataType::Boolean,
                         vec![DataType::Boolean, DataType::String, DataType::Null],
                     )?;

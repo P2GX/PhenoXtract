@@ -290,21 +290,18 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
     let mut pipeline = Pipeline::new(transformer_module, loader);
 
     //Run the pipeline on the data sources
-    pipeline.run(&mut data_sources).unwrap();
+    pipeline.run(&mut data_sources).expect("Pipeline failed");
 
     //create a phenopacket_ID -> expected phenopacket HashMap
-    //and for each expected Phenopacket set the meta_data.created to None
-    let expected_phenopackets_files =
-        fs::read_dir(assets_dir.join("expected_phenopackets")).unwrap();
+    let expected_phenopackets_files = fs::read_dir(assets_dir.join("expected_phenopackets"))
+        .expect("Could not find expected_phenopackets dir");
 
     let mut expected_phenopackets: HashMap<String, Phenopacket> = HashMap::new();
     for expected_pp_file in expected_phenopackets_files {
-        let data = fs::read_to_string(expected_pp_file.unwrap().path()).unwrap();
-        let mut expected_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-
-        if let Some(meta) = &mut expected_pp.meta_data {
-            meta.created = None;
-        }
+        let data = fs::read_to_string(expected_pp_file.unwrap().path())
+            .expect("Could not find expected_phenopackets file");
+        let expected_pp: Phenopacket =
+            serde_json::from_str(&data).expect("Could not load expected phenopacket");
 
         expected_phenopackets.insert(expected_pp.id.clone(), expected_pp);
     }

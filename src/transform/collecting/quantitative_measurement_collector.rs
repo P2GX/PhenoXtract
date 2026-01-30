@@ -51,7 +51,7 @@ impl Collect for QuantitativeMeasurementCollector {
 
                 for quant_measurement_col in quant_measurement_cols {
                     let casted_quant_col = cow_cast(
-                        &quant_measurement_col,
+                        quant_measurement_col,
                         DataType::Float64,
                         vec![
                             DataType::String,
@@ -63,9 +63,7 @@ impl Collect for QuantitativeMeasurementCollector {
                         ],
                     )?;
 
-                    let stringified_qual_measurement_col = casted_quant_col.str()?;
-
-                    let floatified_quant_measurement_col = quant_measurement_col.f64()?;
+                    let floatified_quant_measurement_col = casted_quant_col.f64()?;
 
                     for row_idx in 0..floatified_quant_measurement_col.len() {
                         let quant_measurement = floatified_quant_measurement_col.get(row_idx);

@@ -5,8 +5,7 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::utils::cow_cast;
-use polars::datatypes::{DataType, StringChunked};
-use polars::error::PolarsError;
+use polars::datatypes::DataType;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -40,7 +39,7 @@ impl Collect for DiseaseCollector {
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
                         let casted_disease_col = cow_cast(
-                            &disease_col,
+                            disease_col,
                             DataType::String,
                             vec![DataType::String, DataType::Null],
                         )?;

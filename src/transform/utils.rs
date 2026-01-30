@@ -114,7 +114,7 @@ pub(crate) fn cow_cast(
 ) -> Result<Cow<'_, Column>, CollectorError> {
     let col_dtype = col.dtype();
     if col_dtype == &output_dtype {
-        Ok(Cow::Borrowed(&col))
+        Ok(Cow::Borrowed(col))
     } else if allowed_datatypes.contains(col_dtype) {
         Ok(Cow::Owned(col.cast(&output_dtype)?))
     } else {

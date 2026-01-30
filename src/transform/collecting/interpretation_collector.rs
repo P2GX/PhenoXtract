@@ -6,8 +6,8 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
-use polars::datatypes::StringChunked;
-use polars::error::PolarsError;
+use crate::transform::utils::cow_cast;
+use polars::datatypes::DataType;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -34,11 +34,7 @@ impl Collect for InterpretationCollector {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let stringified_disease_cols = patient_cdf
-                    .get_columns(sc_id)
-                    .iter()
-                    .map(|col| col.str())
-                    .collect::<Result<Vec<&StringChunked>, PolarsError>>()?;
+                let disease_cols = patient_cdf.get_columns(sc_id);
 
                 let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
                     patient_cdf.get_non_null_linked_cols_with_context(
@@ -73,7 +69,14 @@ impl Collect for InterpretationCollector {
                         continue;
                     }
 
-                    for stringified_disease_col in stringified_disease_cols.iter() {
+                    for disease_col in disease_cols.iter() {
+                        let casted_disease_col = cow_cast(
+                            disease_col,
+                            DataType::String,
+                            vec![DataType::String, DataType::Null],
+                        )?;
+                        let stringified_disease_col = casted_disease_col.str()?;
+
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
                             builder.upsert_interpretation(
