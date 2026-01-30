@@ -38,6 +38,8 @@ jobs:
 
       #- name: Rust Cache
       #  uses: Swatinem/rust-cache@v2.8.0
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
 
       - name: Test
         run: cargo nextest run --workspace --lib --all-targets --all-features
