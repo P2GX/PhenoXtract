@@ -1,3 +1,5 @@
+use crate::caching::ephemeral_cache::EphemeralCache;
+use crate::caching::traits::Caching;
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
@@ -16,12 +18,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-struct CacheKey {
+struct CacheOntologyKey {
     ontology: ResourceRef,
     file_name: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CachedOntology {
     ontology: Arc<FullCsrOntology>,
     bidict: OnceLock<Arc<OntologyBiDict>>,
@@ -29,7 +31,7 @@ struct CachedOntology {
 
 #[derive(Debug)]
 pub struct CachedOntologyFactory {
-    cache: HashMap<CacheKey, CachedOntology>,
+    cache: EphemeralCache<CacheOntologyKey, CachedOntology>,
     registry: Box<dyn OntologyRegistry<PathBuf> + Send + Sync>,
 }
 
@@ -71,7 +73,7 @@ pub struct CachedOntologyFactory {
 impl CachedOntologyFactory {
     pub fn new(registry: Box<dyn OntologyRegistry<PathBuf> + Send + Sync>) -> Self {
         Self {
-            cache: HashMap::new(),
+            cache: EphemeralCache::new(HashMap::new()),
             registry,
         }
     }
@@ -105,12 +107,12 @@ impl CachedOntologyFactory {
         ontology: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let cache_key = CacheKey {
+        let cache_key = CacheOntologyKey {
             ontology: ontology.clone(),
             file_name: file_name.map(str::to_string),
         };
 
-        if let Some(onto) = self.cache.get(&cache_key) {
+        if let Ok(onto) = self.cache.read(&cache_key) {
             return Ok(onto.ontology.clone());
         }
 
@@ -126,13 +128,13 @@ impl CachedOntologyFactory {
         let ontology_build = Self::init_ontolius(ontology_path)
             .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
 
-        self.cache.insert(
-            cache_key,
-            CachedOntology {
+        self.cache.write(
+            &cache_key,
+            &CachedOntology {
                 ontology: ontology_build.clone(),
                 bidict: OnceLock::new(),
             },
-        );
+        )?;
 
         Ok(ontology_build)
     }
@@ -163,14 +165,14 @@ impl CachedOntologyFactory {
         ontology_ref: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let key = CacheKey {
+        let key = CacheOntologyKey {
             ontology: ontology_ref.clone(),
             file_name: file_name.map(str::to_string),
         };
 
         self.build_ontology(ontology_ref, file_name)?;
 
-        let cached = self.cache.get(&key).expect("Just inserted");
+        let cached = self.cache.read(&key).expect("Just inserted");
 
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
@@ -303,15 +305,22 @@ mod tests {
     fn test_build_ontology_success() -> Result<(), FactoryError> {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
-        let mut factory = CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
+        let mut factory: CachedOntologyFactory =
+            CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default()));
+
         let result = factory.build_ontology(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);
 
-        assert!(factory.cache.contains_key(&CacheKey {
-            ontology: ontology.clone(),
-            file_name: None,
-        }));
+        assert!(
+            factory
+                .cache
+                .read(&CacheOntologyKey {
+                    ontology: ontology.clone(),
+                    file_name: None,
+                })
+                .is_ok()
+        );
 
         Ok(())
     }
@@ -325,10 +334,15 @@ mod tests {
 
         assert!(Arc::strong_count(&result) >= 1);
 
-        assert!(factory.cache.contains_key(&CacheKey {
-            ontology: ontology.clone(),
-            file_name: None,
-        }));
+        assert!(
+            factory
+                .cache
+                .read(&CacheOntologyKey {
+                    ontology: ontology.clone(),
+                    file_name: None,
+                })
+                .is_ok()
+        );
 
         Ok(())
     }
@@ -342,10 +356,15 @@ mod tests {
 
         assert!(Arc::strong_count(&result) >= 1);
 
-        assert!(factory.cache.contains_key(&CacheKey {
-            ontology: ontology.clone(),
-            file_name: None,
-        }));
+        assert!(
+            factory
+                .cache
+                .read(&CacheOntologyKey {
+                    ontology: ontology.clone(),
+                    file_name: None,
+                })
+                .is_ok()
+        );
 
         Ok(())
     }
