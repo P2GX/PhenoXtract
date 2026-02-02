@@ -1,24 +1,17 @@
-use phenopackets::schema::v2::Phenopacket;
-use phenoxtract::Pipeline;
-use phenoxtract::config::context::{Context, ContextKind};
-use phenoxtract::config::table_context::{
-    AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
-};
-use phenoxtract::extract::ExcelDatasource;
-use phenoxtract::extract::extraction_config::ExtractionConfig;
-use phenoxtract::extract::{CSVDataSource, DataSource};
-use phenoxtract::load::FileSystemLoader;
-use phenoxtract::ontology::resource_references::ResourceRef;
-
-use directories::ProjectDirs;
 use dotenvy::dotenv;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
-use phenopackets::schema::v2::core::genomic_interpretation::Call;
+use phenoxtract::Pipeline;
+use phenoxtract::config::context::{Context, ContextKind};
+use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
+use phenoxtract::extract::ExcelDatasource;
+use phenoxtract::extract::extraction_config::ExtractionConfig;
+use phenoxtract::extract::{CSVDataSource, DataSource};
+use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::CachedOntologyFactory;
-use phenoxtract::ontology::error::RegistryError;
 use phenoxtract::ontology::loinc_client::LoincClient;
+use phenoxtract::ontology::resource_references::ResourceRef;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::phenopacket_builder::BuilderMetaData;
@@ -27,17 +20,15 @@ use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::strategies::{DateToAgeStrategy, OntologyNormaliserStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
-use pivot::hgnc::{CachedHGNCClient, HGNCClient};
-use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
-use serde_json::Value;
-use std::collections::HashMap;
-use std::env::home_dir;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
-use integration_tests::{build_hgnc_test_client, build_hgvs_test_client, cohort_name, hp_ref, mondo_ref, no_info_alias, ontology_registry_dir, pato_ref, temp_dir, uo_ref, vital_status_aliases};
+use integration_tests::{
+    build_hgnc_test_client, build_hgvs_test_client, cohort_name,
+    compare_expected_and_extracted_phenopackets, hp_ref, mondo_ref, no_info_alias,
+    ontology_registry_dir, pato_ref, temp_dir, tests_assets, uo_ref, vital_status_aliases,
+};
 
 #[fixture]
 fn csv_context(no_info_alias: AliasMap) -> TableContext {
@@ -238,15 +229,14 @@ fn test_pipeline_integration(
     csv_context_5: TableContext,
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
-    cohort_name: String,
     hp_ref: ResourceRef,
     mondo_ref: ResourceRef,
     uo_ref: ResourceRef,
     pato_ref: ResourceRef,
+    tests_assets: PathBuf,
+    cohort_name: String,
 ) {
-    
-    //Set-up
-
+    // Set up
     let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
         ontology_registry_dir().expect("ontology_registry_dir could not be created"),
         BioRegistryMetadataProvider::default(),
@@ -258,8 +248,7 @@ fn test_pipeline_integration(
     let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
 
-    let assets_dir =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets/integration_test");
+    let assets_dir = tests_assets.join("integration_test");
 
     //Configure data sources and contexts
     let csv_path = assets_dir.clone().join("input_data/csv_data.csv");
@@ -329,6 +318,7 @@ fn test_pipeline_integration(
     ];
 
     //Create the pipeline
+
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
@@ -347,7 +337,8 @@ fn test_pipeline_integration(
         CdfCollectorBroker::with_default_collectors(phenopacket_builder),
     );
 
-    let output_dir = assets_dir.join("output_phenopackets");
+    let output_dir_name = "extracted_phenopackets";
+    let output_dir = assets_dir.join(output_dir_name);
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).unwrap();
     }
@@ -358,25 +349,9 @@ fn test_pipeline_integration(
     //Run the pipeline on the data sources
     pipeline.run(&mut data_sources).unwrap();
 
-    //create a phenopacket_ID -> expected phenopacket HashMap
-    let mut expected_phenopackets: HashMap<String, Phenopacket> =
-        fs::read_dir(assets_dir.join("expected_phenopackets"))
-            .unwrap()
-            .map(|entry| {
-                let phenopacket = load_phenopacket(entry.unwrap().path());
-                (phenopacket.id.clone(), phenopacket)
-            })
-            .collect();
-
-    //go through the extracted phenopackets and assert equality with the corresponding expected phenopacket
-    for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
-        if let Ok(extracted_pp_file) = extracted_pp_file
-            && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
-        {
-            let mut extracted_pp = load_phenopacket(extracted_pp_file.path());
-            let expected_pp = expected_phenopackets.get_mut(&extracted_pp.id).unwrap();
-
-            assert_phenopackets(&mut extracted_pp, expected_pp);
-        }
-    }
+    compare_expected_and_extracted_phenopackets(
+        assets_dir,
+        output_dir_name,
+        "extracted_phenopackets",
+    );
 }
