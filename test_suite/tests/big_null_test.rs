@@ -1,21 +1,16 @@
-use phenopackets::schema::v2::Phenopacket;
 use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Context, ContextKind};
-use phenoxtract::config::table_context::{
-    AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
-};
+use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::ResourceRef;
 
-use directories::ProjectDirs;
 use dotenvy::dotenv;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenoxtract::ontology::CachedOntologyFactory;
-use phenoxtract::ontology::error::RegistryError;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
@@ -25,28 +20,15 @@ use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::strategies::{DateToAgeStrategy, OntologyNormaliserStrategy};
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
-use pivot::hgnc::{CachedHGNCClient, HGNCClient};
-use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
-use std::collections::HashMap;
-use std::env::home_dir;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
-
-#[fixture]
-fn temp_dir() -> TempDir {
-    tempfile::tempdir().expect("Failed to create temporary directory")
-}
-
-#[fixture]
-fn vital_status_aliases() -> AliasMap {
-    let mut vs_hash_map: HashMap<String, Option<String>> = HashMap::default();
-    vs_hash_map.insert("Yes".to_string(), Some("ALIVE".to_string()));
-    vs_hash_map.insert("No".to_string(), Some("DECEASED".to_string()));
-    AliasMap::new(vs_hash_map, OutputDataType::String)
-}
+use test_suite::{
+    build_hgnc_test_client, build_hgvs_test_client, cohort_name,
+    compare_expected_and_extracted_phenopackets, ontology_registry_dir, pato_ref, temp_dir,
+    tests_assets, vital_status_aliases,
+};
 
 #[fixture]
 fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
@@ -162,69 +144,22 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
     )
 }
 
-fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
-    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
-}
-
-fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
-    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
-}
-
-fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
-    remove_created_from_metadata(actual);
-    remove_created_from_metadata(expected);
-    pretty_assertions::assert_eq!(actual, expected);
-}
-
-fn remove_created_from_metadata(pp: &mut Phenopacket) {
-    if let Some(meta) = &mut pp.meta_data {
-        meta.created = None;
-    }
-}
-
-fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
-    let pkg_name = env!("CARGO_PKG_NAME");
-
-    let phenox_cache_dir = if let Some(project_dir) = ProjectDirs::from("", "", pkg_name) {
-        project_dir.cache_dir().to_path_buf()
-    } else if let Some(home_dir) = home_dir() {
-        home_dir.join(pkg_name)
-    } else {
-        return Err(RegistryError::CantEstablishRegistryDir);
-    };
-
-    if !phenox_cache_dir.exists() {
-        fs::create_dir_all(&phenox_cache_dir)?;
-    }
-
-    let ontology_registry_dir = phenox_cache_dir.join("ontology_registry");
-
-    if !ontology_registry_dir.exists() {
-        fs::create_dir_all(&ontology_registry_dir)?;
-    }
-    Ok(ontology_registry_dir.to_owned())
-}
-
 #[rstest]
-fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
-    //Set-up
-    let cohort_name = "my_cohort";
-
+fn big_null_test(
+    csv_context: TableContext,
+    temp_dir: TempDir,
+    pato_ref: ResourceRef,
+    tests_assets: PathBuf,
+    cohort_name: String,
+) {
+    // Set up
     let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
         ontology_registry_dir().expect("ontology_registry_dir could not be created"),
         BioRegistryMetadataProvider::default(),
         OboLibraryProvider::default(),
     )));
-
-    let pato_ref = ResourceRef::pato().with_version("2025-05-14");
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
-
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-        PathBuf::from(file!())
-            .parent()
-            .unwrap()
-            .join("assets/big_null_test"),
-    );
+    let assets_dir = tests_assets.join("big_null_test");
 
     //Configure data sources and contexts
     let csv_path = assets_dir.clone().join("input_data/data.csv");
@@ -251,7 +186,6 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
 
     //Create the pipeline
 
-    // load variables in .env into environment. This is needed for the default LoincCredentials.
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
@@ -270,7 +204,8 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
         CdfCollectorBroker::with_default_collectors(phenopacket_builder),
     );
 
-    let output_dir = assets_dir.join("output_phenopackets");
+    let output_dir_name = "extracted_phenopackets";
+    let output_dir = assets_dir.join(output_dir_name);
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir).unwrap();
     }
@@ -281,31 +216,9 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
     //Run the pipeline on the data sources
     pipeline.run(&mut data_sources).expect("Pipeline failed");
 
-    //create a phenopacket_ID -> expected phenopacket HashMap
-    let expected_phenopackets_files = fs::read_dir(assets_dir.join("expected_phenopackets"))
-        .expect("Could not find expected_phenopackets dir");
-
-    let mut expected_phenopackets: HashMap<String, Phenopacket> = HashMap::new();
-    for expected_pp_file in expected_phenopackets_files {
-        let data = fs::read_to_string(expected_pp_file.unwrap().path())
-            .expect("Could not find expected_phenopackets file");
-        let expected_pp: Phenopacket =
-            serde_json::from_str(&data).expect("Could not load expected phenopacket");
-
-        expected_phenopackets.insert(expected_pp.id.clone(), expected_pp);
-    }
-
-    //go through the extracted phenopackets and assert equality with the corresponding expected phenopacket
-    for extracted_pp_file in fs::read_dir(output_dir).unwrap() {
-        if let Ok(extracted_pp_file) = extracted_pp_file
-            && extracted_pp_file.path().extension() == Some(OsStr::new("json"))
-        {
-            let data = fs::read_to_string(extracted_pp_file.path()).unwrap();
-            let mut extracted_pp: Phenopacket = serde_json::from_str(&data).unwrap();
-
-            let expected_pp = expected_phenopackets.get_mut(&extracted_pp.id).unwrap();
-
-            assert_phenopackets(&mut extracted_pp, expected_pp);
-        }
-    }
+    compare_expected_and_extracted_phenopackets(
+        assets_dir,
+        output_dir_name,
+        "extracted_phenopackets",
+    );
 }
