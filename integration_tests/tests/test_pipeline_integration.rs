@@ -378,12 +378,8 @@ fn test_pipeline_integration(
     let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
 
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-        PathBuf::from(file!())
-            .parent()
-            .unwrap()
-            .join("assets/integration_test"),
-    );
+    let assets_dir =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets/integration_test");
 
     //Configure data sources and contexts
     let csv_path = assets_dir.clone().join("input_data/csv_data.csv");

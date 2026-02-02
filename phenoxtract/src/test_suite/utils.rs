@@ -66,7 +66,7 @@ fn remove_version_from_loinc(pp: &mut Phenopacket) {
 }
 
 fn assets_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/assets")
 }
 pub(crate) fn mock_ontology_path() -> PathBuf {
     let assets_path = assets_path();

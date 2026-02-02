@@ -219,12 +219,7 @@ fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
     let pato_ref = ResourceRef::pato().with_version("2025-05-14");
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
 
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-        PathBuf::from(file!())
-            .parent()
-            .unwrap()
-            .join("assets/big_null_test"),
-    );
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets/big_null_test");
 
     //Configure data sources and contexts
     let csv_path = assets_dir.clone().join("input_data/data.csv");
