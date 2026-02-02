@@ -1,3 +1,4 @@
+use crate::caching::error::CacheError;
 use std::fmt::Debug;
 use thiserror::Error;
 
