@@ -1,4 +1,3 @@
-use crate::caching::error::CacheError;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -30,6 +29,8 @@ pub enum ClientError {
 pub enum FactoryError {
     #[error("Failed to build ontology '{reason}'")]
     CantBuild { reason: String },
+    #[error(transparent)]
+    CacheError(#[from] CacheError),
 }
 
 #[derive(Debug, Error)]
