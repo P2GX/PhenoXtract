@@ -37,7 +37,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tempfile::TempDir;
-use integration_tests::{cohort_name, no_info_alias, ontology_registry_dir, temp_dir, vital_status_aliases};
+use integration_tests::{build_hgnc_test_client, build_hgvs_test_client, cohort_name, hp_ref, mondo_ref, no_info_alias, ontology_registry_dir, pato_ref, temp_dir, uo_ref, vital_status_aliases};
 
 #[fixture]
 fn csv_context(no_info_alias: AliasMap) -> TableContext {
@@ -239,7 +239,12 @@ fn test_pipeline_integration(
     excel_context: Vec<TableContext>,
     temp_dir: TempDir,
     cohort_name: String,
+    hp_ref: ResourceRef,
+    mondo_ref: ResourceRef,
+    uo_ref: ResourceRef,
+    pato_ref: ResourceRef,
 ) {
+    
     //Set-up
 
     let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
@@ -247,11 +252,6 @@ fn test_pipeline_integration(
         BioRegistryMetadataProvider::default(),
         OboLibraryProvider::default(),
     )));
-
-    let hp_ref = ResourceRef::hp().with_version("2025-09-01");
-    let mondo_ref = ResourceRef::mondo().with_version("2026-01-06");
-    let uo_ref = ResourceRef::uo().with_version("2026-01-09");
-    let pato_ref = ResourceRef::pato().with_version("2025-05-14");
 
     let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
     let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
@@ -329,8 +329,6 @@ fn test_pipeline_integration(
     ];
 
     //Create the pipeline
-
-    // load variables in .env into environment. This is needed for the default LoincCredentials.
     dotenv().ok();
 
     let phenopacket_builder = PhenopacketBuilder::new(
