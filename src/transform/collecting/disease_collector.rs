@@ -4,7 +4,6 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use polars::datatypes::DataType;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -37,10 +36,6 @@ impl Collect for DiseaseCollector {
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
-                        if disease_col.dtype() == &DataType::Null {
-                            continue;
-                        }
-
                         let stringified_disease_col = disease_col.str()?;
 
                         let disease = stringified_disease_col.get(row_idx);

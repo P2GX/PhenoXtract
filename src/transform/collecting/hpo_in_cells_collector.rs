@@ -4,7 +4,6 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
-use polars::datatypes::DataType;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -34,10 +33,6 @@ impl Collect for HpoInCellsCollector {
                 )?;
 
                 for hpo_col in hpo_cols {
-                    if hpo_col.dtype() == &DataType::Null {
-                        continue;
-                    }
-
                     let stringified_hpo_col = hpo_col.str()?;
 
                     for row_idx in 0..stringified_hpo_col.len() {

@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
@@ -119,6 +120,8 @@ pub enum DataProcessingError {
     PolarsError(#[from] PolarsError),
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
 }
 #[derive(Debug, Error)]
 pub enum TransformError {
@@ -180,12 +183,6 @@ fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
-    #[error("Could not {transformation} column '{col_name}' for table '{table_name}'")]
-    BuilderError {
-        transformation: String,
-        col_name: String,
-        table_name: String,
-    },
     #[error(
         "{message}. Strategy '{strategy_name}' unable to map: \n {}",
         format_grouped_errors(info)
@@ -197,6 +194,8 @@ pub enum StrategyError {
     },
     #[error(transparent)]
     ValidationError(#[from] PxValidationError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -285,6 +284,8 @@ pub enum CollectorError {
     ParseFloatError(#[from] ParseIntError),
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]

@@ -40,8 +40,13 @@ impl CdfCollectorBroker {
                 .partition_by(vec![subject_id_col.name().as_str()], true)?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_cdf =
+                let mut patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
+
+                patient_cdf
+                    .builder()
+                    .drop_null_cols_alongside_scs()?
+                    .build()?;
 
                 let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
 
@@ -109,14 +114,10 @@ impl PartialEq for CdfCollectorBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::TableContext;
     use crate::config::context::Context;
-    use crate::config::table_context::{Identifier, SeriesContext};
     use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::{generate_minimal_cdf, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use polars::df;
-    use polars::prelude::AnyValue;
     use rstest::{fixture, rstest};
     use std::any::Any;
     use std::cell::{Cell, RefCell};
@@ -176,19 +177,7 @@ mod tests {
     fn test_process(temp_dir: TempDir) {
         let mut broker = build_test_cdf_broker(temp_dir);
 
-        let df = df!(
-        "subject_id" => &["P001", "P002", "P002"],
-        "blah" => &[AnyValue::String("blah"), AnyValue::Null, AnyValue::Null],
-        )
-        .unwrap();
-
-        let sc = SeriesContext::default()
-            .with_data_context(Context::SubjectId)
-            .with_identifier(Identifier::from("subject_id"));
-
-        let tc = TableContext::new("tc".to_string(), vec![sc]);
-
-        let cdf1 = ContextualizedDataFrame::new(tc, df).unwrap();
+        let cdf1 = generate_minimal_cdf(2, 2);
         let cdf2 = generate_minimal_cdf(1, 5);
 
         broker.process(vec![cdf1, cdf2]).unwrap();

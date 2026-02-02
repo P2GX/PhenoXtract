@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
-use crate::transform::error::{CollectorError, DataProcessingError, StrategyError};
+use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
@@ -15,6 +15,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
+use thiserror::Error;
 use validator::Validate;
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
@@ -612,6 +613,7 @@ mod tests {
 }
 
 #[must_use = "Builder must be finalized with .build()"]
+#[derive(Debug)]
 pub struct ContextualizedDataFrameBuilder<'a> {
     cdf: &'a mut ContextualizedDataFrame,
     is_dirty: bool,
@@ -634,7 +636,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self
     }
 
-    pub fn insert_sc(self, sc: SeriesContext) -> Result<Self, StrategyError> {
+    pub fn insert_sc(self, sc: SeriesContext) -> Result<Self, CdfBuilderError> {
         self.cdf.context.context_mut().push(sc);
 
         Ok(self.mark_dirty())
@@ -644,7 +646,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self,
         col_name: &str,
         replacement_data: Series,
-    ) -> Result<Self, StrategyError> {
+    ) -> Result<Self, CdfBuilderError> {
         self.cdf.data.replace(col_name, replacement_data)?;
 
         Ok(self.mark_dirty())
@@ -653,7 +655,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         mut self,
         header_context: &Context,
         data_context: &Context,
-    ) -> Result<Self, StrategyError> {
+    ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<String> = self
             .cdf
             .filter_columns()
@@ -671,21 +673,12 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self,
         sc: SeriesContext,
         cols: &[Column],
-    ) -> Result<Self, StrategyError> {
+    ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<&str> = cols.iter().map(|col| col.name().as_str()).collect();
         check_orphaned_columns(&col_names, sc.get_identifier())?;
 
-        let table_name = self.cdf.context().name().to_string();
-
         for col in cols {
-            self.cdf
-                .data
-                .with_column(col.clone())
-                .map_err(|_| StrategyError::BuilderError {
-                    transformation: "add column".to_string(),
-                    col_name: col.name().to_string(),
-                    table_name: table_name.clone(),
-                })?;
+            self.cdf.data.with_column(col.clone())?;
         }
 
         self.cdf.context.context_mut().push(sc);
@@ -696,7 +689,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     pub fn insert_scs_alongside_cols(
         mut self,
         inserts: &[(SeriesContext, Vec<Column>)],
-    ) -> Result<Self, StrategyError> {
+    ) -> Result<Self, CdfBuilderError> {
         for (sc, cols) in inserts.iter() {
             self = self.insert_sc_alongside_cols(sc.clone(), cols)?;
         }
@@ -704,7 +697,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_sc_alongside_cols(mut self, sc_id: &Identifier) -> Result<Self, StrategyError> {
+    pub fn drop_sc_alongside_cols(mut self, sc_id: &Identifier) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<String> = self
             .cdf
             .filter_columns()
@@ -716,7 +709,10 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_scs_alongside_cols(mut self, sc_ids: &[Identifier]) -> Result<Self, StrategyError> {
+    pub fn drop_scs_alongside_cols(
+        mut self,
+        sc_ids: &[Identifier],
+    ) -> Result<Self, CdfBuilderError> {
         for sc_id in sc_ids {
             self = self.drop_sc_alongside_cols(sc_id)?;
         }
@@ -724,30 +720,38 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_scs(mut self, sc_ids: &[Identifier]) -> Result<Self, StrategyError> {
+    pub fn drop_scs(mut self, sc_ids: &[Identifier]) -> Self {
         for sc_id in sc_ids {
             self = self.drop_sc(sc_id);
         }
-        Ok(self.mark_dirty())
+        self.mark_dirty()
     }
 
-    pub fn drop_null_cols_alongside_scs(mut self) -> Result<Self, StrategyError> {
+    pub fn drop_null_cols_alongside_scs(mut self) -> Result<Self, CdfBuilderError> {
         let null_col_names = self
             .cdf
-            .filter_columns()
-            .where_data_type(Filter::Is(&DataType::Null))
-            .collect_owned_names();
+            .data
+            .get_columns()
+            .iter()
+            .filter_map(|col| {
+                if col.null_count() == col.len() {
+                    Some(col.name().to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<String>>();
 
         self = self.drop_cols(&null_col_names)?;
-        self = self.drop_dangling_scs()?;
+        self = self.drop_dangling_scs();
 
         Ok(self.mark_dirty())
     }
 
-    pub fn drop_dangling_scs(mut self) -> Result<Self, StrategyError> {
+    fn drop_dangling_scs(mut self) -> Self {
         let dangling_scs = self.cdf.get_dangling_scs();
-        self = self.drop_scs(dangling_scs.as_slice())?;
-        Ok(self.mark_dirty())
+        self = self.drop_scs(dangling_scs.as_slice());
+        self.mark_dirty()
     }
 
     fn drop_sc(self, to_remove: &Identifier) -> Self {
@@ -758,20 +762,12 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
-    fn drop_col(self, col_name: &str) -> Result<Self, StrategyError> {
-        self.cdf
-            .data
-            .drop_in_place(col_name)
-            .map_err(|_| StrategyError::BuilderError {
-                transformation: "drop column".to_string(),
-                col_name: col_name.to_string(),
-                table_name: self.cdf.context().name().to_string(),
-            })?;
-
+    fn drop_col(self, col_name: &str) -> Result<Self, CdfBuilderError> {
+        self.cdf.data.drop_in_place(col_name)?;
         Ok(self.mark_dirty())
     }
 
-    fn drop_cols(mut self, col_names: &Vec<String>) -> Result<Self, StrategyError> {
+    fn drop_cols(mut self, col_names: &Vec<String>) -> Result<Self, CdfBuilderError> {
         for col_name in col_names {
             self = self.drop_col(col_name)?;
         }
@@ -813,7 +809,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         header_context: &Context,
         data_context: &Context,
         output_data_type: DataType,
-    ) -> Result<Self, StrategyError> {
+    ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<String> = self
             .cdf
             .filter_columns()
@@ -856,6 +852,20 @@ impl<'b> Drop for ContextualizedDataFrameBuilder<'b> {
                 .to_string();
             panic!(".build() was not called on {struct_name} after modifying data.");
         }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum CdfBuilderError {
+    #[error("Polars error: {0}")]
+    PolarsError(Box<PolarsError>),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+}
+
+impl From<PolarsError> for CdfBuilderError {
+    fn from(err: PolarsError) -> Self {
+        CdfBuilderError::PolarsError(Box::new(err))
     }
 }
 

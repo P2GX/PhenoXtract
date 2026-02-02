@@ -6,7 +6,6 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
-use polars::datatypes::DataType;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -69,9 +68,6 @@ impl Collect for InterpretationCollector {
                     }
 
                     for disease_col in disease_cols.iter() {
-                        if disease_col.dtype() == &DataType::Null {
-                            continue;
-                        }
                         let stringified_disease_col = disease_col.str()?;
 
                         let disease = stringified_disease_col.get(row_idx);
