@@ -1,7 +1,7 @@
 use crate::ontology::CachedOntologyFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::test_suite::resource_references::{HPO_REF, MONDO_REF, PATO_REF, UO_REF};
-use crate::test_suite::utils::mock_ontology_path;
+use crate::test_suite::utils::test_ontology_path;
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontology_registry::enums::{FileType, Version};
@@ -92,7 +92,7 @@ pub(crate) struct MockOntologyRegistry {
 impl Default for MockOntologyRegistry {
     fn default() -> Self {
         Self {
-            registry_path: mock_ontology_path(),
+            registry_path: test_ontology_path(),
         }
     }
 }
