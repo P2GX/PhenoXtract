@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Context, ContextKind};
 use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};

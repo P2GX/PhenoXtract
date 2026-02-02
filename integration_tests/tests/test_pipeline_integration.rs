@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use dotenvy::dotenv;
 use integration_tests::{
     build_hgnc_test_client, build_hgvs_test_client, cohort_name,
