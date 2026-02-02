@@ -34,19 +34,14 @@ impl Collect for InterpretationCollector {
 
                 let disease_cols = patient_cdf.get_columns(sc_id);
 
-                let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
-                    patient_cdf.get_non_null_linked_cols_with_context(
+                let stringified_linked_hgnc_cols =
+                    patient_cdf.get_stringified_cols(patient_cdf.get_linked_cols_with_context(
                         bb_id,
                         &Context::HgncSymbolOrId,
                         &Context::None,
-                    ),
-                )?;
+                    ))?;
                 let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
-                    patient_cdf.get_non_null_linked_cols_with_context(
-                        bb_id,
-                        &Context::Hgvs,
-                        &Context::None,
-                    ),
+                    patient_cdf.get_linked_cols_with_context(bb_id, &Context::Hgvs, &Context::None),
                 )?;
 
                 for row_idx in 0..patient_cdf.data().height() {

@@ -248,14 +248,6 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
     ]
 }
 
-fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
-    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
-}
-
-fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
-    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
-}
-
 fn assert_phenopackets(actual: &mut Phenopacket, expected: &mut Phenopacket) {
     remove_created_from_metadata(actual);
     remove_created_from_metadata(expected);

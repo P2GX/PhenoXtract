@@ -296,10 +296,9 @@ impl ContextualizedDataFrame {
     /// - Building Block ID = bb_id
     /// - data_context = data_context
     /// - header_context = header_context
-    /// - and which are non-null
     ///
     /// and returns their names
-    pub(crate) fn get_non_null_linked_cols_with_context(
+    pub(crate) fn get_linked_cols_with_context(
         &self,
         bb_id: Option<&str>,
         data_context: &Context,
@@ -310,7 +309,6 @@ impl ContextualizedDataFrame {
                 .where_building_block(Filter::Is(bb_id))
                 .where_header_context(Filter::Is(header_context))
                 .where_data_context(Filter::Is(data_context))
-                .where_data_type(Filter::IsNot(&DataType::Null))
                 .collect_owned_names()
         })
     }
@@ -1291,18 +1289,18 @@ mod builder_tests {
     }
 
     #[rstest]
-    fn test_get_non_null_linked_cols_with_context() {
+    fn test_get_linked_cols_with_context() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         assert_eq!(
-            cdf.get_non_null_linked_cols_with_context(
+            cdf.get_linked_cols_with_context(
                 Some("block_1"),
                 &Context::AgeAtLastEncounter,
                 &Context::None
             ),
-            vec!["age".to_string()]
+            vec!["age".to_string(), "null".to_string()]
         )
     }
 
