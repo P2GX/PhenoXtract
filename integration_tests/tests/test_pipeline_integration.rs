@@ -1,4 +1,9 @@
 use dotenvy::dotenv;
+use integration_tests::{
+    build_hgnc_test_client, build_hgvs_test_client, cohort_name,
+    compare_expected_and_extracted_phenopackets, hp_ref, mondo_ref, no_info_alias,
+    ontology_registry_dir, pato_ref, temp_dir, tests_assets, uo_ref, vital_status_aliases,
+};
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
@@ -24,11 +29,6 @@ use rstest::{fixture, rstest};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use integration_tests::{
-    build_hgnc_test_client, build_hgvs_test_client, cohort_name,
-    compare_expected_and_extracted_phenopackets, hp_ref, mondo_ref, no_info_alias,
-    ontology_registry_dir, pato_ref, temp_dir, tests_assets, uo_ref, vital_status_aliases,
-};
 
 #[fixture]
 fn csv_context(no_info_alias: AliasMap) -> TableContext {
