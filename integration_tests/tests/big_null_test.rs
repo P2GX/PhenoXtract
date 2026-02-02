@@ -34,6 +34,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tempfile::TempDir;
+use integration_tests::cohort_name;
 
 #[fixture]
 fn temp_dir() -> TempDir {
@@ -206,9 +207,8 @@ fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
 }
 
 #[rstest]
-fn big_null_test(csv_context: TableContext, temp_dir: TempDir) {
+fn big_null_test(csv_context: TableContext, temp_dir: TempDir, cohort_name: String,) {
     //Set-up
-    let cohort_name = "my_cohort";
 
     let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
         ontology_registry_dir().expect("ontology_registry_dir could not be created"),
