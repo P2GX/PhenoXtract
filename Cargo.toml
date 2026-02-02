@@ -36,7 +36,9 @@ ontology-registry = "0.2.0"
 directories = "6.0.0"
 shellexpand = "3.1.1"
 num-traits = "0.2.19"
-urlencoding = "2.1.3"
+ratelimit = "0.10.0"
+securiety = "0.2.0"
+
 
 [dev-dependencies]
 rstest = "0.26.1"

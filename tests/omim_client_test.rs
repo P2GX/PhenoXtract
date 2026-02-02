@@ -1,3 +1,4 @@
+/*
 use dotenvy::dotenv;
 use phenoxtract::ontology::error::BiDictError;
 use phenoxtract::ontology::omim_client::OmimClient;
@@ -112,3 +113,4 @@ fn test_omim_147920() {
         Err(e) => println!("Failed to get label for OMIM:147920: {}", e),
     }
 }
+ */

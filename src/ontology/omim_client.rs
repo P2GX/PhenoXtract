@@ -1,3 +1,4 @@
+/*
 // OMIM client for querying BioPortal (including BiDict)
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
@@ -7,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::sync::RwLock;
-use urlencoding::encode;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OmimResult {
@@ -236,3 +236,4 @@ impl BiDict for OmimClient {
         &self.resource_ref
     }
 }
+ */
