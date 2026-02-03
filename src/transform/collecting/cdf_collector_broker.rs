@@ -15,19 +15,13 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct CdfCollectorBroker {
     phenopacket_builder: PhenopacketBuilder,
-    cohort_name: String,
     collectors: Vec<Box<dyn Collect>>,
 }
 
 impl CdfCollectorBroker {
-    pub fn new(
-        phenopacket_builder: PhenopacketBuilder,
-        cohort_name: String,
-        collectors: Vec<Box<dyn Collect>>,
-    ) -> Self {
+    pub fn new(phenopacket_builder: PhenopacketBuilder, collectors: Vec<Box<dyn Collect>>) -> Self {
         CdfCollectorBroker {
             phenopacket_builder,
-            cohort_name,
             collectors,
         }
     }
@@ -36,8 +30,7 @@ impl CdfCollectorBroker {
         &mut self,
         cdfs: Vec<ContextualizedDataFrame>,
     ) -> Result<Vec<Phenopacket>, CollectorError> {
-        let mut phenopacket_id_to_dfs: HashMap<String, Vec<ContextualizedDataFrame>> =
-            HashMap::new();
+        let mut patient_id_to_dfs: HashMap<String, Vec<ContextualizedDataFrame>> = HashMap::new();
 
         for cdf in cdfs {
             let subject_id_col = cdf.get_subject_id_col();
@@ -51,21 +44,20 @@ impl CdfCollectorBroker {
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
 
                 let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
-                let phenopacket_id = self.generate_phenopacket_id(patient_id.as_ref());
 
-                phenopacket_id_to_dfs
-                    .entry(phenopacket_id)
+                patient_id_to_dfs
+                    .entry(patient_id.to_string())
                     .or_default()
                     .push(patient_cdf);
             }
         }
 
-        for (phenopacket_id, patient_cdfs) in phenopacket_id_to_dfs {
+        for (patient_id, patient_cdfs) in patient_id_to_dfs {
             for collector in &mut self.collectors {
                 collector.collect(
                     &mut self.phenopacket_builder,
                     &patient_cdfs,
-                    phenopacket_id.as_str(),
+                    patient_id.as_str(),
                 )?;
             }
         }
@@ -73,13 +65,9 @@ impl CdfCollectorBroker {
         Ok(self.phenopacket_builder.build())
     }
 
-    pub fn with_default_collectors(
-        phenopacket_builder: PhenopacketBuilder,
-        cohort_name: String,
-    ) -> Self {
+    pub fn with_default_collectors(phenopacket_builder: PhenopacketBuilder) -> Self {
         CdfCollectorBroker::new(
             phenopacket_builder,
-            cohort_name,
             vec![
                 Box::new(IndividualCollector),
                 Box::new(HpoInCellsCollector),
@@ -91,16 +79,30 @@ impl CdfCollectorBroker {
             ],
         )
     }
-
-    fn generate_phenopacket_id(&self, patient_id: &str) -> String {
-        format!("{}-{}", self.cohort_name, patient_id)
-    }
 }
-
 impl PartialEq for CdfCollectorBroker {
     fn eq(&self, other: &Self) -> bool {
-        self.phenopacket_builder == other.phenopacket_builder
-            && self.cohort_name == other.cohort_name
+        if self.phenopacket_builder != other.phenopacket_builder {
+            return false;
+        }
+
+        if self.collectors.len() != other.collectors.len() {
+            return false;
+        }
+
+        let self_ids: Vec<_> = self
+            .collectors
+            .iter()
+            .map(|col| col.as_any().type_id())
+            .collect();
+
+        let other_ids: Vec<_> = other
+            .collectors
+            .iter()
+            .map(|col| col.as_any().type_id())
+            .collect();
+
+        self_ids == other_ids
     }
 }
 
@@ -109,10 +111,10 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
+    use crate::test_suite::cdf_generation::{generate_minimal_cdf, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::phenopacket_component_generation::default_cohort_id;
     use rstest::{fixture, rstest};
+    use std::any::Any;
     use std::cell::{Cell, RefCell};
     use std::fmt::Debug;
     use tempfile::TempDir;
@@ -149,15 +151,16 @@ mod tests {
 
             Ok(())
         }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
     }
 
     fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
-        let cohort_id = default_cohort_id();
 
         CdfCollectorBroker::new(
             builder,
-            cohort_id.to_string(),
             vec![
                 Box::new(MockCollector::default()),
                 Box::new(MockCollector::default()),
@@ -182,25 +185,9 @@ mod tests {
             let mut seen = mock.seen_pps.borrow().clone();
             seen.sort();
 
-            let expected_cohort_id = default_cohort_id();
-
-            let expected = [
-                format!("{}-P0", expected_cohort_id),
-                format!("{}-P1", expected_cohort_id),
-            ];
+            let expected = generate_patient_ids(2);
             assert_eq!(seen, expected);
             assert_eq!(mock.seen_pps.borrow().len(), 2);
         }
-    }
-
-    #[rstest]
-    fn test_generate_phenopacket_id(temp_dir: TempDir) {
-        let broker = build_test_cdf_broker(temp_dir);
-        let p_id = default_patient_id();
-
-        assert_eq!(
-            broker.generate_phenopacket_id(&p_id),
-            format!("{}-{}", default_cohort_id(), p_id)
-        );
     }
 }
