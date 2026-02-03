@@ -8,6 +8,7 @@ use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
 use securiety::curie_parser::CurieParser;
+use securiety::traits::CurieParsing;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
@@ -80,7 +81,6 @@ impl BioPortalClient {
     fn check_curie_local_id(&self, input: &str) -> Result<String, BiDictError> {
         let normalised = if let Some((p, r)) = crate::utils::is_curie(input) {
             if p.eq_ignore_ascii_case(&self.prefix) && p != self.prefix {
-                // rebuild with canonical prefix
                 format!("{}:{}", self.prefix, r)
             } else {
                 input.to_string()
