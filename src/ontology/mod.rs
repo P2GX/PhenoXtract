@@ -9,5 +9,4 @@ pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
 pub mod bioportal_client;
 pub mod loinc_client;
-pub mod omim_client;
 pub mod traits;
