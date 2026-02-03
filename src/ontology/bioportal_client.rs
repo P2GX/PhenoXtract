@@ -433,10 +433,7 @@ mod tests {
     // Test helper: build client
     // -------------------------
     fn test_client(base_url: String) -> BioPortalClient {
-        dotenvy::dotenv().ok();
-
-        let api_key =
-            std::env::var("BIOPORTAL_API_KEY").expect("BIOPORTAL_API_KEY must be set for tests");
+        let api_key = "TEST_KEY".to_string();
 
         let rate_limiter = Ratelimiter::builder(1000, Duration::from_secs(1))
             .max_tokens(1000)
@@ -447,7 +444,7 @@ mod tests {
         BioPortalClient {
             client: Client::new(),
             base_url,
-            api_key, // <- now in scope
+            api_key,
             ontology: "OMIM".to_string(),
             prefix: "OMIM".to_string(),
             local_id_regex: Some(Regex::new(r"^\d+$").unwrap()),
