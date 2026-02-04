@@ -153,7 +153,7 @@ impl BioPortalClient {
     /* Build a configured BioPortal client.
      - `api_key`: BioPortal API key
      - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-     - `prefix`: canonical CURIE prefix you want to output (we keep it as given; you want uppercase)
+     - `prefix`: canonical CURIE prefix you want to output
      - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
      - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
     */
@@ -298,22 +298,6 @@ impl BioPortalClient {
     }
 }
 
-impl Default for BioPortalClient {
-    fn default() -> Self {
-        let api_key = std::env::var("BIOPORTAL_API_KEY")
-            .expect("BIOPORTAL_API_KEY must be set in .env or environment");
-
-        // Beispielwerte: musst du passend setzen oder einen weiteren Default-Builder nutzen
-        BioPortalClient::new_with_key(
-            api_key,
-            "OMIM".to_string(),
-            "OMIM",
-            None,
-            Some(regex::Regex::new(r"^\d+$").unwrap()),
-        )
-        .expect("Failed to build BioPortalClient")
-    }
-}
 
 impl BiDict for BioPortalClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
