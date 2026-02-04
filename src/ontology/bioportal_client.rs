@@ -298,7 +298,6 @@ impl BioPortalClient {
     }
 }
 
-
 impl BiDict for BioPortalClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
         /*
