@@ -59,8 +59,7 @@ pub struct BioPortalClient {
     api_key: String,
 
     ontology: String,
-    prefix: String, // alternativ KnownResourcePrefixes?
-    // but could be less flexible for other ontologies
+    prefix: String,
     local_id_regex: Option<Regex>,
     iri_prefix: String,
 
@@ -280,41 +279,27 @@ impl BiDict for BioPortalClient {
         This function performs only lightweight heuristics for routing; strict CURIE validation
         is handled by `securiety` inside `get_label` when needed.
         */
-        if is_curie(id_or_label).is_some()
-            || self
-                .local_id_regex
-                .as_ref()
-                .map(|re| re.is_match(id_or_label))
-                .unwrap_or(false)
-        {
-            self.get_label(id_or_label)
-        } else {
-            self.get_id(id_or_label)
+        if is_curie(id_or_label).is_none() {
+            return Err(BiDictError::InvalidId(id_or_label.to_owned()));
         }
+        self.get_label(id_or_label)
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         /*
-        Resolves an identifier to its preferred label (id -> label).
+        Resolves a CURIE identifier to its preferred label (id -> label).
 
-        Accepts either a CURIE (validated and parsed via `securiety`) or a bare local id
-        (when configured via `local_id_regex`). Uses the in-memory cache first; on cache miss,
-        fetches the class record from BioPortal, then caches canonical mappings:
-        - canonical CURIE -> label
-        - label -> canonical CURIE
-        - each synonym -> canonical CURIE
-        Returns the label as `&str` backed by an append-only cache.
+        STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
         */
+        if is_curie(id).is_none() {
+            return Err(BiDictError::InvalidId(id.to_owned()));
+        }
+
         if let Ok(label) = self.get(id) {
             return Ok(label);
         }
 
-        let local_id: String = if is_curie(id).is_some() {
-            self.check_curie_local_id(id)?.to_string()
-        } else {
-            id.to_string()
-        };
-
+        let local_id = self.check_curie_local_id(id)?;
         let canonical_curie = self.format_curie(&local_id);
 
         if let Ok(label) = self.get(&canonical_curie) {
@@ -322,7 +307,6 @@ impl BiDict for BioPortalClient {
         }
 
         let result = self.query_by_id(&local_id)?;
-
         if result.label.is_empty() {
             return Err(BiDictError::NotFound(canonical_curie));
         }
@@ -331,6 +315,8 @@ impl BiDict for BioPortalClient {
             .insert(canonical_curie.to_string(), result.label.to_string().into());
         self.cache
             .insert(result.label.to_string(), canonical_curie.to_string().into());
+
+        // Optional: cache synonyms -> canonical CURIE (keep if you want)
         for syn in result.synonym {
             self.cache.insert(syn, canonical_curie.to_string().into());
         }
@@ -390,7 +376,6 @@ mod tests {
     use mockito::{Matcher, Server};
     use regex::Regex;
 
-    // -------------------------
     // Test helper: build client
     // -------------------------
     fn test_client(base_url: String) -> BioPortalClient {
@@ -416,9 +401,8 @@ mod tests {
         }
     }
 
-    // -------------------------
-    // 1) Unit tests (pure logic)
-    // -------------------------
+    // 1) Unit tests
+    // --------------
 
     #[test]
     fn test_extract_local_id_from_iri() {
@@ -618,8 +602,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------
-    // 3) BiDict behaviour tests (routing + caching)
+    // 3) BiDict behaviour tests (caching + strict CURIE handling)
     // -------------------------------------------------
 
     #[test]
@@ -701,5 +684,23 @@ mod tests {
         // 2nd: synonym should now resolve from cache without another search
         let id2 = client.get_id("Kabuki syndrome type 1").unwrap();
         assert_eq!(id2, "OMIM:147920");
+    }
+
+    #[test]
+    fn test_get_rejects_non_curie() {
+        let server = Server::new();
+        let client = test_client(server.url());
+
+        let err = client.get("147920").unwrap_err();
+        match err {
+            BiDictError::InvalidId(_) => {}
+            other => panic!("expected InvalidId, got {other:?}"),
+        }
+
+        let err2 = client.get("Kabuki syndrome 1").unwrap_err();
+        match err2 {
+            BiDictError::InvalidId(_) => {}
+            other => panic!("expected InvalidId, got {other:?}"),
+        }
     }
 }
