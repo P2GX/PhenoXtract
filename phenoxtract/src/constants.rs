@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use polars::prelude::DataType;
 
 pub const DATE_FORMATS: &[&str] = &[
@@ -34,6 +33,7 @@ impl PolarsNumericTypes {
 
     const INTS: [DataType; 2] = [DataType::Int64, DataType::Int32];
 
+    #[allow(dead_code)]
     const FLOATS: [DataType; 2] = [DataType::Float64, DataType::Float32];
 
     pub(crate) const fn all() -> &'static [DataType; 4] {
@@ -44,6 +44,7 @@ impl PolarsNumericTypes {
         &Self::INTS
     }
 
+    #[allow(dead_code)]
     pub(crate) const fn floats() -> &'static [DataType; 2] {
         &Self::FLOATS
     }
