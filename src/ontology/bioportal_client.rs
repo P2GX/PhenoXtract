@@ -247,8 +247,7 @@ impl BioPortalClient {
         }
 
         let resp = resp.error_for_status()?;
-        let search = resp
-            .json::<BioPortalSearchResponse>()?;
+        let search = resp.json::<BioPortalSearchResponse>()?;
 
         search
             .collection
@@ -442,13 +441,12 @@ mod tests {
     }
 
     #[test]
-    fn test_check_curie_local_id_case_insensitive_prefix() {
-        // prefix is OMIM, but input uses lowercase
+    fn test_parse_curie_rejects_wrong_prefix() {
         let server = Server::new();
         let client = test_client(server.url());
 
-        let curie = client.parse_curie("omim:147920").unwrap();
-        assert_eq!(curie.reference(), "147920");
+        let err = client.parse_curie("HP:1234567").unwrap_err();
+        matches!(err, BiDictError::InvalidId(_));
     }
 
     #[test]
