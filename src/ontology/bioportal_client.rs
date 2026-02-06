@@ -5,9 +5,9 @@ use crate::utils::is_curie;
 
 use elsa::sync::FrozenMap;
 use ratelimit::Ratelimiter;
-use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
+use securiety::CurieRegexValidator;
 use securiety::curie_parser::CurieParser;
 use securiety::traits::CurieParsing;
 use serde::Deserialize;
@@ -23,10 +23,7 @@ impl fmt::Debug for BioPortalClient {
             .field("ontology", &self.ontology)
             .field("prefix", &self.prefix)
             .field("iri_prefix", &self.iri_prefix)
-            .field(
-                "local_id_regex",
-                &self.local_id_regex.as_ref().map(|re| re.as_str()),
-            )
+            .field("curie_parser", &"<curie-parser>")
             .field("cache_len", &cache_len)
             .field("api_key", &"<redacted>")
             .field("rate_limiter", &"<ratelimited>")
@@ -60,7 +57,7 @@ pub struct BioPortalClient {
 
     ontology: String,
     prefix: String,
-    local_id_regex: Option<Regex>,
+    curie_parser: CurieParser<CurieRegexValidator>,
     iri_prefix: String,
 
     cache: FrozenMap<String, Box<str>>,
@@ -87,16 +84,10 @@ impl BioPortalClient {
             input.to_string()
         };
 
-        let prefix_key = self.prefix.to_lowercase();
-
-        let curie = match CurieParser::from_prefix(&prefix_key) {
-            Some(parser) => parser
-                .parse(&normalised)
-                .map_err(|_e| BiDictError::InvalidId(input.to_owned()))?,
-            None => CurieParser::general()
-                .parse(&normalised)
-                .map_err(|_e| BiDictError::InvalidId(input.to_owned()))?,
-        };
+        let curie = self
+            .curie_parser
+            .parse(&normalised)
+            .map_err(|_e| BiDictError::InvalidId(input.to_owned()))?;
 
         if !curie.prefix().eq_ignore_ascii_case(&self.prefix) {
             return Err(BiDictError::InvalidId(input.to_owned()));
@@ -119,7 +110,6 @@ impl BioPortalClient {
         }
     }
 }
-
 impl BioPortalClient {
     /* Build a configured BioPortal client.
      - `api_key`: BioPortal API key
@@ -133,12 +123,23 @@ impl BioPortalClient {
         ontology: String,
         prefix: impl Into<String>,
         reference: Option<ResourceRef>,
-        local_id_regex: Option<Regex>,
     ) -> Result<Self, BiDictError> {
+        /* Build a configured BioPortal client.
+         - `api_key`: BioPortal API key
+         - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
+         - `prefix`: canonical CURIE prefix you want to output
+         - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
+        */
         let base_url = "https://data.bioontology.org".to_string();
 
         // keep prefix exactly as configured (you want canonical uppercase output)
         let prefix: String = prefix.into();
+
+        let prefix_key = prefix.to_lowercase();
+        let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
+            Some(parser) => parser,
+            None => CurieParser::general(),
+        };
 
         // BioPortal class IRI pattern (common across ontologies hosted there)
         let iri_prefix = format!("http://purl.bioontology.org/ontology/{}/", ontology);
@@ -162,18 +163,16 @@ impl BioPortalClient {
             api_key,
             ontology,
             prefix,
-            local_id_regex,
+            curie_parser,
             iri_prefix,
             cache: FrozenMap::<String, Box<str>>::new(),
             rate_limiter,
             resource_ref,
         })
     }
-}
 
-impl BioPortalClient {
-    // Build BioPortal "class" endpoint URL.
     fn class_url(&self, local_id: &str) -> Result<Url, BiDictError> {
+        // Build BioPortal "class" endpoint URL.
         let iri = format!("{}{}", self.iri_prefix, local_id);
         let base = format!("{}/ontologies/{}/classes", self.base_url, self.ontology);
 
@@ -214,12 +213,9 @@ impl BioPortalClient {
             .next()
             .filter(|s| !s.is_empty())
     }
-}
 
-// Network calls to BioPortal
-impl BioPortalClient {
-    // Fetch a class by local id via BioPortal "classes" endpoint.
     fn query_by_id(&self, local_id: &str) -> Result<BioPortalClass, BiDictError> {
+        // Fetch a class by local id via BioPortal "classes" endpoint.
         let url = self.class_url(local_id)?;
 
         self.wait_for_rate_limit();
@@ -374,7 +370,6 @@ impl BiDict for BioPortalClient {
 mod tests {
     use super::*;
     use mockito::{Matcher, Server};
-    use regex::Regex;
 
     // Test helper: build client
     // -------------------------
@@ -387,14 +382,24 @@ mod tests {
             .build()
             .unwrap();
 
+        let ontology = "OMIM".to_string();
+        let prefix = "OMIM".to_string();
+
+        // Build the parser once (same approach as in new_with_key)
+        let prefix_key = prefix.to_lowercase();
+        let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
+            Some(parser) => parser,
+            None => CurieParser::general(),
+        };
+
         BioPortalClient {
             client: Client::new(),
             base_url,
             api_key,
-            ontology: "OMIM".to_string(),
-            prefix: "OMIM".to_string(),
-            local_id_regex: Some(Regex::new(r"^\d+$").unwrap()),
+            ontology,
+            prefix,
             iri_prefix: "http://purl.bioontology.org/ontology/OMIM/".to_string(),
+            curie_parser,
             cache: FrozenMap::new(),
             rate_limiter,
             resource_ref: ResourceRef::from("OMIM"),
