@@ -310,7 +310,7 @@ impl BiDict for BioPortalClient {
     /// Caches canonical mappings:
     /// - canonical CURIE -> label
     /// - label -> canonical CURIE
-    /// - each synonym -> canonical CURIE
+    /// - term -> label
     ///
     /// Returns the canonical CURIE as `&str` backed by an append-only cache.
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
