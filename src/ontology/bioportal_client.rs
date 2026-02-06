@@ -123,28 +123,6 @@ impl BioPortalClient {
 }
 
 impl BioPortalClient {
-    /*
-    Read from append-only cache. SAFETY rationale:
-    - The cache stores `Arc<str>` values.
-    - We guarantee the cache is append-only: no overwrite, no remove.
-    - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
-    - We can safely return `&str` tied to `&self`.
-    */
-    fn cache_read(&self, key: &str) -> Option<&str> {
-        match self.cache.get(key) {
-            None => None,
-            Some(s) => Some(s.clone()),
-        }
-    }
-
-    /// Insert only if absent (append-only).
-    /// This avoids invalidating previously returned `&str` references.
-    fn cache_write(&self, key: &str, value: &str) {
-        self.cache.insert(key.into(), value.into());
-    }
-}
-
-impl BioPortalClient {
     /* Build a configured BioPortal client.
      - `api_key`: BioPortal API key
      - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
@@ -328,7 +306,7 @@ impl BiDict for BioPortalClient {
         - each synonym -> canonical CURIE
         Returns the label as `&str` backed by an append-only cache.
         */
-        if let Some(label) = self.cache_read(id) {
+        if let Ok(label) = self.get(id) {
             return Ok(label);
         }
 
@@ -340,7 +318,7 @@ impl BiDict for BioPortalClient {
 
         let canonical_curie = self.format_curie(&local_id);
 
-        if let Some(label) = self.cache_read(&canonical_curie) {
+        if let Ok(label) = self.get(&canonical_curie) {
             return Ok(label);
         }
 
@@ -350,13 +328,16 @@ impl BiDict for BioPortalClient {
             return Err(BiDictError::NotFound(canonical_curie));
         }
 
-        self.cache_write(&canonical_curie, &result.label);
-        self.cache_write(&result.label, &canonical_curie);
-        for syn in &result.synonym {
-            self.cache_write(syn, &canonical_curie);
+        self.cache
+            .insert(canonical_curie.to_string(), result.label.to_string().into());
+        self.cache
+            .insert(result.label.to_string(), canonical_curie.to_string().into());
+        for syn in result.synonym {
+            self.cache.insert(syn, canonical_curie.to_string().into());
         }
 
-        self.cache_read(&canonical_curie)
+        self.cache
+            .get(&canonical_curie)
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
     }
 
@@ -372,7 +353,7 @@ impl BiDict for BioPortalClient {
         - each synonym -> canonical CURIE
         Returns the canonical CURIE as `&str` backed by an append-only cache.
         */
-        if let Some(id) = self.cache_read(term) {
+        if let Ok(id) = self.get(term) {
             return Ok(id);
         }
 
@@ -386,13 +367,16 @@ impl BiDict for BioPortalClient {
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))?;
         let canonical_curie = self.format_curie(local_id);
 
-        self.cache_write(&canonical_curie, &result.label);
-        self.cache_write(&result.label, &canonical_curie);
-        for syn in &result.synonym {
-            self.cache_write(syn, &canonical_curie);
+        self.cache
+            .insert(canonical_curie.to_string(), result.label.to_string().into());
+        self.cache
+            .insert(result.label, canonical_curie.to_string().into());
+        for syn in result.synonym {
+            self.cache.insert(syn, canonical_curie.to_string().into());
         }
 
-        self.cache_read(term)
+        self.cache
+            .get(term)
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))
     }
 
