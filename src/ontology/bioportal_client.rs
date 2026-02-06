@@ -3,6 +3,7 @@ use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
 use crate::utils::is_curie;
 
+use elsa::sync::FrozenMap;
 use ratelimit::Ratelimiter;
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -10,14 +11,13 @@ use reqwest::{StatusCode, Url};
 use securiety::curie_parser::CurieParser;
 use securiety::traits::CurieParsing;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 impl fmt::Debug for BioPortalClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cache_len = self.cache.read().map(|c| c.len()).unwrap_or(0);
+        let cache_len = self.cache.len();
 
         f.debug_struct("BioPortalClient")
             .field("base_url", &self.base_url)
@@ -65,7 +65,7 @@ pub struct BioPortalClient {
     local_id_regex: Option<Regex>,
     iri_prefix: String,
 
-    cache: RwLock<HashMap<String, Arc<str>>>,
+    cache: FrozenMap<String, Box<str>>,
     rate_limiter: Ratelimiter,
 
     resource_ref: ResourceRef,
@@ -130,22 +130,17 @@ impl BioPortalClient {
     - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
     - We can safely return `&str` tied to `&self`.
     */
-    fn cache_read<'a>(&'a self, key: &str) -> Option<&'a str> {
-        let cache = self.cache.read().ok()?;
-        let s: &str = cache.get(key)?.as_ref();
-
-        // Extend lifetime from lock guard to &'a self under the append-only invariant.
-        Some(unsafe { &*(s as *const str) })
+    fn cache_read(&self, key: &str) -> Option<&str> {
+        match self.cache.get(key) {
+            None => None,
+            Some(s) => Some(s.clone()),
+        }
     }
 
     /// Insert only if absent (append-only).
     /// This avoids invalidating previously returned `&str` references.
     fn cache_write(&self, key: &str, value: &str) {
-        if let Ok(mut cache) = self.cache.write() {
-            cache
-                .entry(key.to_string())
-                .or_insert_with(|| Arc::<str>::from(value));
-        }
+        self.cache.insert(key.into(), value.into());
     }
 }
 
@@ -193,7 +188,7 @@ impl BioPortalClient {
             prefix,
             local_id_regex,
             iri_prefix,
-            cache: RwLock::new(HashMap::<String, Arc<str>>::new()),
+            cache: FrozenMap::<String, Box<str>>::new(),
             rate_limiter,
             resource_ref,
         })
@@ -432,7 +427,7 @@ mod tests {
             prefix: "OMIM".to_string(),
             local_id_regex: Some(Regex::new(r"^\d+$").unwrap()),
             iri_prefix: "http://purl.bioontology.org/ontology/OMIM/".to_string(),
-            cache: RwLock::new(HashMap::new()),
+            cache: FrozenMap::new(),
             rate_limiter,
             resource_ref: ResourceRef::from("OMIM"),
         }
