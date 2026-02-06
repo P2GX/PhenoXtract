@@ -1,26 +1,34 @@
 use crate::caching::error::CacheError;
-use std::collections::HashMap;
+use elsa::FrozenMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Debug)]
-pub struct EphemeralCache<Key, Value>
+pub struct FrozenEphemeralCache<Key, Value>
 where
     Key: Eq + Hash,
 {
-    cache: HashMap<Key, Value>,
+    cache: FrozenMap<Key, Box<Value>>,
 }
 
-impl<Key, Value> EphemeralCache<Key, Value>
+impl<Key: Eq + Hash, Value> Default for FrozenEphemeralCache<Key, Value> {
+    fn default() -> Self {
+        FrozenEphemeralCache {
+            cache: FrozenMap::default(),
+        }
+    }
+}
+
+impl<Key, Value> FrozenEphemeralCache<Key, Value>
 where
     Key: Eq + Hash + Clone + Debug,
     Value: Clone,
 {
-    pub fn new(inner: HashMap<Key, Value>) -> Self {
-        EphemeralCache { cache: inner }
+    pub fn new(inner: FrozenMap<Key, Box<Value>>) -> Self {
+        FrozenEphemeralCache { cache: inner }
     }
+
     fn write(&mut self, key: &Key, value: &Value) -> Result<(), CacheError> {
-        self.cache.insert(key.clone(), value.clone());
+        self.cache.insert(key.clone(), Box::new(value.clone()));
 
         Ok(())
     }
@@ -35,21 +43,13 @@ where
     }
 }
 
-impl<Key: Eq + Hash, Value> Default for EphemeralCache<Key, Value> {
-    fn default() -> Self {
-        EphemeralCache {
-            cache: HashMap::new(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_default_cache_is_empty() {
-        let cache = EphemeralCache::<String, String>::new(HashMap::new());
+        let cache = FrozenEphemeralCache::<String, String>::new(FrozenMap::new());
         let result = cache.read(&"nonexistent".to_string());
 
         assert!(result.is_err());
@@ -63,7 +63,7 @@ mod test {
 
     #[test]
     fn test_write_and_read_string() {
-        let mut cache = EphemeralCache::<String, String>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
         let key = "test_key".to_string();
         let value = "test_value".to_string();
 
@@ -77,7 +77,7 @@ mod test {
 
     #[test]
     fn test_write_and_read_integer() {
-        let mut cache = EphemeralCache::<i32, String>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
         let key = 42;
         let value = "forty-two".to_string();
 
@@ -87,7 +87,7 @@ mod test {
 
     #[test]
     fn test_overwrite_existing_key() {
-        let mut cache = EphemeralCache::<String, i32>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
         let key = "counter".to_string();
 
         cache.write(&key, &1).unwrap();
@@ -99,7 +99,7 @@ mod test {
 
     #[test]
     fn test_read_nonexistent_key() {
-        let cache = EphemeralCache::<String, i32>::new(HashMap::new());
+        let cache: FrozenEphemeralCache<String, String> = FrozenEphemeralCache::default();
         let result = cache.read(&"missing".to_string());
 
         assert!(result.is_err());
@@ -114,7 +114,7 @@ mod test {
 
     #[test]
     fn test_multiple_keys() {
-        let mut cache = EphemeralCache::<String, i32>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
 
         cache.write(&"one".to_string(), &1).unwrap();
         cache.write(&"two".to_string(), &2).unwrap();
@@ -134,7 +134,7 @@ mod test {
             values: Vec<i32>,
         }
 
-        let mut cache = EphemeralCache::<String, ComplexData>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
         let key = "complex".to_string();
         let value = ComplexData {
             id: 1,
@@ -152,7 +152,7 @@ mod test {
 
     #[test]
     fn test_cache_with_tuple_keys() {
-        let mut cache = EphemeralCache::<(String, i32), String>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::default();
         let key = ("user".to_string(), 123);
         let value = "data".to_string();
 
@@ -162,7 +162,7 @@ mod test {
 
     #[test]
     fn test_reference_returned_is_valid() {
-        let mut cache = EphemeralCache::<String, Vec<i32>>::new(HashMap::new());
+        let mut cache = FrozenEphemeralCache::<String, Vec<i32>>::new(FrozenMap::new());
         let key = "numbers".to_string();
         let value = vec![1, 2, 3, 4, 5];
 
@@ -175,7 +175,7 @@ mod test {
 
     #[test]
     fn test_error_message_contains_key_debug_output() {
-        let cache = EphemeralCache::<i32, String>::new(HashMap::new());
+        let cache = FrozenEphemeralCache::<i32, String>::new(FrozenMap::new());
         let key = 999;
 
         let result = cache.read(&key);
