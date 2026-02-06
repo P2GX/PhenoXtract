@@ -90,7 +90,7 @@ impl BioPortalClient {
 
     fn wait_for_rate_limit(&self) {
         // Blocks until a token is available.
-        loop {  
+        loop {
             match self.rate_limiter.try_wait() {
                 Ok(_) => return,
                 Err(sleep) => std::thread::sleep(sleep),
@@ -390,7 +390,7 @@ mod tests {
         }
     }
 
-     // Demonstrate that CURIE prefix may differ from BioPortal acronym (e.g. identifiers.org style).
+    // Demonstrate that CURIE prefix may differ from BioPortal acronym (e.g. identifiers.org style).
     fn test_client_snomed_like(base_url: String) -> BioPortalClient {
         let api_key = "TEST_KEY".to_string();
 
@@ -407,7 +407,7 @@ mod tests {
         let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
             Some(parser) => parser,
             None => CurieParser::general(),
-            };
+        };
 
         BioPortalClient {
             client: Client::new(),
@@ -415,7 +415,10 @@ mod tests {
             api_key,
             bioportal_acronym: bioportal_acronym.clone(),
             curie_prefix: curie_prefix.clone(),
-            iri_prefix: format!("http://purl.bioontology.org/ontology/{}/", bioportal_acronym),
+            iri_prefix: format!(
+                "http://purl.bioontology.org/ontology/{}/",
+                bioportal_acronym
+            ),
             curie_parser,
             cache: FrozenMap::new(),
             rate_limiter,
