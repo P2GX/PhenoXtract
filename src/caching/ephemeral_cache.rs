@@ -1,23 +1,35 @@
 use crate::caching::error::CacheError;
+use crate::caching::lru_policy::LruPolicy;
+use crate::caching::traits::CacheRemovalPolicy;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
 #[derive(Debug)]
-pub struct EphemeralCache<Key, Value>
-where
+pub struct EphemeralCache<
+    Key,
+    Value,
+    CachePolicy: CacheRemovalPolicy<Key, Value, HashMap<Key, Value>> = LruPolicy,
+> where
     Key: Eq + Hash,
 {
     cache: HashMap<Key, Value>,
+    cache_policy: CachePolicy,
+    max_capacity: usize,
 }
 
-impl<Key, Value> EphemeralCache<Key, Value>
+impl<Key, Value, CachePolicy> EphemeralCache<Key, Value, CachePolicy>
 where
     Key: Eq + Hash + Clone + Debug,
     Value: Clone,
+    CachePolicy: CacheRemovalPolicy<Key, Value, HashMap<Key, Value>>,
 {
-    pub fn new(inner: HashMap<Key, Value>) -> Self {
-        EphemeralCache { cache: inner }
+    pub fn new(inner: HashMap<Key, Value>, cache_policy: CachePolicy, max_capacity: usize) -> Self {
+        EphemeralCache {
+            cache: inner,
+            cache_policy,
+            max_capacity,
+        }
     }
     fn write(&mut self, key: &Key, value: &Value) -> Result<(), CacheError> {
         self.cache.insert(key.clone(), value.clone());
@@ -35,10 +47,12 @@ where
     }
 }
 
-impl<Key: Eq + Hash, Value> Default for EphemeralCache<Key, Value> {
+impl<Key: Eq + Hash, Value> Default for EphemeralCache<Key, Value, LruPolicy> {
     fn default() -> Self {
         EphemeralCache {
             cache: HashMap::new(),
+            cache_policy: LruPolicy,
+            max_capacity: 10000,
         }
     }
 }
@@ -49,7 +63,7 @@ mod test {
 
     #[test]
     fn test_default_cache_is_empty() {
-        let cache = EphemeralCache::<String, String>::new(HashMap::new());
+        let cache = EphemeralCache::<String, String>::default();
         let result = cache.read(&"nonexistent".to_string());
 
         assert!(result.is_err());
@@ -63,7 +77,7 @@ mod test {
 
     #[test]
     fn test_write_and_read_string() {
-        let mut cache = EphemeralCache::<String, String>::new(HashMap::new());
+        let mut cache = EphemeralCache::default();
         let key = "test_key".to_string();
         let value = "test_value".to_string();
 
