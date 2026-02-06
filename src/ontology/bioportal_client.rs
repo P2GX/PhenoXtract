@@ -12,7 +12,6 @@ use securiety::curie_parser::CurieParser;
 use securiety::traits::CurieParsing;
 use serde::Deserialize;
 use std::fmt;
-use std::sync::Arc;
 use std::time::Duration;
 
 impl fmt::Debug for BioPortalClient {
