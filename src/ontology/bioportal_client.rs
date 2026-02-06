@@ -299,11 +299,6 @@ impl BiDict for BioPortalClient {
         self.cache
             .insert(result.label.to_string(), canonical_curie.to_string().into());
 
-        // Optional: cache synonyms -> canonical CURIE (keep if you want)
-        for syn in result.synonym {
-            self.cache.insert(syn, canonical_curie.to_string().into());
-        }
-
         self.cache
             .get(&canonical_curie)
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
