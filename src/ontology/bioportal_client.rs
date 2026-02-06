@@ -343,7 +343,7 @@ impl BiDict for BioPortalClient {
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))
     }
 
-    fn reference(&self) -> &crate::ontology::resource_references::ResourceRef {
+    fn reference(&self) -> &ResourceRef {
         &self.resource_ref
     }
 }
