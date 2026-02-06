@@ -246,7 +246,7 @@ impl BioPortalClient {
             return Err(BiDictError::NotFound(label.to_string()));
         }
 
-        let resp = resp.error_for_status().map_err(BiDictError::Request)?;
+        let resp = resp.error_for_status()?;
         let search = resp
             .json::<BioPortalSearchResponse>()?;
 
