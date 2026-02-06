@@ -67,12 +67,11 @@ pub struct BioPortalClient {
 }
 
 impl BioPortalClient {
-    /* Parse + validate CURIE using securiety.
-     - Normalise prefix casing for parsing:
-     - input prefix case-insensitive
-     - must match self.prefix
-     - returns local id (reference) as owned String
-    */
+    /// Parse + validate CURIE using securiety.
+    /// - Normalise prefix casing for parsing:
+    /// - input prefix case-insensitive
+    /// - must match self.prefix
+    /// - returns local id (reference) as owned String
     fn check_curie_local_id(&self, input: &str) -> Result<String, BiDictError> {
         let normalised = if let Some((p, r)) = crate::utils::is_curie(input) {
             if p.eq_ignore_ascii_case(&self.prefix) && p != self.prefix {
@@ -111,25 +110,18 @@ impl BioPortalClient {
     }
 }
 impl BioPortalClient {
-    /* Build a configured BioPortal client.
-     - `api_key`: BioPortal API key
-     - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-     - `prefix`: canonical CURIE prefix you want to output
-     - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
-     - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
-    */
+    /// Build a configured BioPortal client.
+    /// - `api_key`: BioPortal API key
+    /// - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
+    /// - `prefix`: canonical CURIE prefix you want to output
+    /// - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
+    /// - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
     pub fn new_with_key(
         api_key: String,
         ontology: String,
         prefix: impl Into<String>,
         reference: Option<ResourceRef>,
     ) -> Result<Self, BiDictError> {
-        // Build a configured BioPortal client.
-        // - `api_key`: BioPortal API key
-        // - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-        // - `prefix`: canonical CURIE prefix you want to output
-        // - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
-        // - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
         let base_url = "https://data.bioontology.org".to_string();
 
         // keep prefix exactly as configured (you want canonical uppercase output)
@@ -317,16 +309,16 @@ impl BiDict for BioPortalClient {
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
     }
 
+    /// Resolves a label or synonym to the canonical identifier (label -> id).
+    /// Uses the in-memory cache first; on cache miss, performs an exact-match BioPortal search,
+    /// extracts the local id from the returned `@id` IRI, and constructs the canonical CURIE.
+    /// Caches canonical mappings:
+    /// - canonical CURIE -> label
+    /// - label -> canonical CURIE
+    /// - each synonym -> canonical CURIE
+    /// Returns the canonical CURIE as `&str` backed by an append-only cache.
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
-        // Resolves a label or synonym to the canonical identifier (label -> id).
 
-        // Uses the in-memory cache first; on cache miss, performs an exact-match BioPortal search,
-        // extracts the local id from the returned `@id` IRI, and constructs the canonical CURIE.
-        // Caches canonical mappings:
-        // - canonical CURIE -> label
-        // - label -> canonical CURIE
-        // - each synonym -> canonical CURIE
-        // Returns the canonical CURIE as `&str` backed by an append-only cache.
         if let Some(id) = self.cache.get(term) {
             return Ok(id);
         }
