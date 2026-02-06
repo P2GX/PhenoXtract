@@ -3,6 +3,7 @@ use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
 use crate::utils::is_curie;
 
+use elsa::sync::FrozenMap;
 use ratelimit::Ratelimiter;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
@@ -10,14 +11,12 @@ use securiety::CurieRegexValidator;
 use securiety::curie_parser::CurieParser;
 use securiety::traits::CurieParsing;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 impl fmt::Debug for BioPortalClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cache_len = self.cache.read().map(|c| c.len()).unwrap_or(0);
+        let cache_len = self.cache.len();
 
         f.debug_struct("BioPortalClient")
             .field("base_url", &self.base_url)
@@ -61,7 +60,7 @@ pub struct BioPortalClient {
     curie_parser: CurieParser<CurieRegexValidator>,
     iri_prefix: String,
 
-    cache: RwLock<HashMap<String, Arc<str>>>,
+    cache: FrozenMap<String, Box<str>>,
     rate_limiter: Ratelimiter,
 
     resource_ref: ResourceRef,
@@ -110,30 +109,15 @@ impl BioPortalClient {
             }
         }
     }
-
-    fn cache_read<'a>(&'a self, key: &str) -> Option<&'a str> {
-        // Read from append-only cache. SAFETY rationale:
-        // - The cache stores `Arc<str>` values.
-        // - We guarantee the cache is append-only: no overwrite, no remove.
-        // - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
-        // - We can safely return `&str` tied to `&self`.
-        let cache = self.cache.read().ok()?;
-        let s: &str = cache.get(key)?.as_ref();
-
-        // Extend lifetime from lock guard to &'a self under the append-only invariant.
-        Some(unsafe { &*(s as *const str) })
-    }
-
-    fn cache_write(&self, key: &str, value: &str) {
-        // Insert only if absent (append-only).
-        // This avoids invalidating previously returned `&str` references.
-        if let Ok(mut cache) = self.cache.write() {
-            cache
-                .entry(key.to_string())
-                .or_insert_with(|| Arc::<str>::from(value));
-        }
-    }
-
+}
+impl BioPortalClient {
+    /* Build a configured BioPortal client.
+     - `api_key`: BioPortal API key
+     - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
+     - `prefix`: canonical CURIE prefix you want to output
+     - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
+     - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
+    */
     pub fn new_with_key(
         api_key: String,
         ontology: String,
@@ -181,7 +165,7 @@ impl BioPortalClient {
             prefix,
             curie_parser,
             iri_prefix,
-            cache: RwLock::new(HashMap::<String, Arc<str>>::new()),
+            cache: FrozenMap::<String, Box<str>>::new(),
             rate_limiter,
             resource_ref,
         })
@@ -302,14 +286,14 @@ impl BiDict for BioPortalClient {
             return Err(BiDictError::InvalidId(id.to_owned()));
         }
 
-        if let Some(label) = self.cache_read(id) {
+        if let Some(label) = self.cache.get(id) {
             return Ok(label);
         }
 
         let local_id = self.check_curie_local_id(id)?;
         let canonical_curie = self.format_curie(&local_id);
 
-        if let Some(label) = self.cache_read(&canonical_curie) {
+        if let Some(label) = self.cache.get(&canonical_curie) {
             return Ok(label);
         }
 
@@ -318,15 +302,18 @@ impl BiDict for BioPortalClient {
             return Err(BiDictError::NotFound(canonical_curie));
         }
 
-        self.cache_write(&canonical_curie, &result.label);
-        self.cache_write(&result.label, &canonical_curie);
+        self.cache
+            .insert(canonical_curie.to_string(), result.label.to_string().into());
+        self.cache
+            .insert(result.label.to_string(), canonical_curie.to_string().into());
 
         // Optional: cache synonyms -> canonical CURIE (keep if you want)
-        for syn in &result.synonym {
-            self.cache_write(syn, &canonical_curie);
+        for syn in result.synonym {
+            self.cache.insert(syn, canonical_curie.to_string().into());
         }
 
-        self.cache_read(&canonical_curie)
+        self.cache
+            .get(&canonical_curie)
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
     }
 
@@ -340,7 +327,7 @@ impl BiDict for BioPortalClient {
         // - label -> canonical CURIE
         // - each synonym -> canonical CURIE
         // Returns the canonical CURIE as `&str` backed by an append-only cache.
-        if let Some(id) = self.cache_read(term) {
+        if let Some(id) = self.cache.get(term) {
             return Ok(id);
         }
 
@@ -354,13 +341,16 @@ impl BiDict for BioPortalClient {
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))?;
         let canonical_curie = self.format_curie(local_id);
 
-        self.cache_write(&canonical_curie, &result.label);
-        self.cache_write(&result.label, &canonical_curie);
-        for syn in &result.synonym {
-            self.cache_write(syn, &canonical_curie);
+        self.cache
+            .insert(canonical_curie.to_string(), result.label.to_string().into());
+        self.cache
+            .insert(result.label, canonical_curie.to_string().into());
+        for syn in result.synonym {
+            self.cache.insert(syn, canonical_curie.to_string().into());
         }
 
-        self.cache_read(term)
+        self.cache
+            .get(term)
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))
     }
 
@@ -403,7 +393,7 @@ mod tests {
             prefix,
             iri_prefix: "http://purl.bioontology.org/ontology/OMIM/".to_string(),
             curie_parser,
-            cache: RwLock::new(HashMap::new()),
+            cache: FrozenMap::new(),
             rate_limiter,
             resource_ref: ResourceRef::from("OMIM"),
         }

@@ -38,7 +38,7 @@ shellexpand = "3.1.1"
 num-traits = "0.2.19"
 ratelimit = "0.10.0"
 securiety = "0.2.6"
-
+elsa = "1.11.2"
 
 [dev-dependencies]
 rstest = "0.26.1"
