@@ -226,7 +226,7 @@ impl BioPortalClient {
             return Err(BiDictError::NotFound(local_id.to_string()));
         }
 
-        let resp = resp.error_for_status().map_err(BiDictError::Request)?;
+        let resp = resp.error_for_status()?;
         resp.json::<BioPortalClass>().map_err(BiDictError::Request)
     }
 
