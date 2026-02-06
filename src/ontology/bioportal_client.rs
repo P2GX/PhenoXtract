@@ -177,7 +177,7 @@ impl BioPortalClient {
 
         url.path_segments_mut()
             .map_err(|_| BiDictError::Caching {
-                reason: "BioPortal base URL cannot be a base".to_string(),
+                reason: format!("Invalid BioPortal class URL (URL does not support path segment mutation): {base}"),
             })?
             .push(&iri);
 
