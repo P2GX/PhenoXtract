@@ -240,8 +240,7 @@ impl BioPortalClient {
             .client
             .get(url)
             .header("Authorization", format!("apikey token={}", self.api_key))
-            .send()
-            .map_err(BiDictError::Request)?;
+            .send()?;
 
         if resp.status() == StatusCode::NOT_FOUND {
             return Err(BiDictError::NotFound(label.to_string()));
@@ -249,8 +248,7 @@ impl BioPortalClient {
 
         let resp = resp.error_for_status().map_err(BiDictError::Request)?;
         let search = resp
-            .json::<BioPortalSearchResponse>()
-            .map_err(BiDictError::Request)?;
+            .json::<BioPortalSearchResponse>()?;
 
         search
             .collection
