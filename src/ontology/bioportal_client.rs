@@ -112,13 +112,11 @@ impl BioPortalClient {
     }
 
     fn cache_read<'a>(&'a self, key: &str) -> Option<&'a str> {
-        /*
-        Read from append-only cache. SAFETY rationale:
-        - The cache stores `Arc<str>` values.
-        - We guarantee the cache is append-only: no overwrite, no remove.
-        - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
-        - We can safely return `&str` tied to `&self`.
-        */
+        // Read from append-only cache. SAFETY rationale:
+        // - The cache stores `Arc<str>` values.
+        // - We guarantee the cache is append-only: no overwrite, no remove.
+        // - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
+        // - We can safely return `&str` tied to `&self`.
         let cache = self.cache.read().ok()?;
         let s: &str = cache.get(key)?.as_ref();
 
@@ -142,12 +140,12 @@ impl BioPortalClient {
         prefix: impl Into<String>,
         reference: Option<ResourceRef>,
     ) -> Result<Self, BiDictError> {
-        /* Build a configured BioPortal client.
-         - `api_key`: BioPortal API key
-         - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-         - `prefix`: canonical CURIE prefix you want to output
-         - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
-        */
+        // Build a configured BioPortal client.
+        // - `api_key`: BioPortal API key
+        // - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
+        // - `prefix`: canonical CURIE prefix you want to output
+        // - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
+        // - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
         let base_url = "https://data.bioontology.org".to_string();
 
         // keep prefix exactly as configured (you want canonical uppercase output)
@@ -285,14 +283,12 @@ impl BioPortalClient {
 
 impl BiDict for BioPortalClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        /*
-        Dispatch helper for BiDict lookups.
+        // Dispatch helper for BiDict lookups.
 
-        Determines whether the input should be treated as an identifier (CURIE or bare local id)
-        or as a label/synonym, and routes to `get_label` (id -> label) or `get_id` (label -> id).
-        This function performs only lightweight heuristics for routing; strict CURIE validation
-        is handled by `securiety` inside `get_label` when needed.
-        */
+        // Determines whether the input should be treated as an identifier (CURIE or bare local id)
+        // or as a label/synonym, and routes to `get_label` (id -> label) or `get_id` (label -> id).
+        // This function performs only lightweight heuristics for routing; strict CURIE validation
+        // is handled by `securiety` inside `get_label` when needed.
         if is_curie(id_or_label).is_none() {
             return Err(BiDictError::InvalidId(id_or_label.to_owned()));
         }
@@ -300,11 +296,8 @@ impl BiDict for BioPortalClient {
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
-        /*
-        Resolves a CURIE identifier to its preferred label (id -> label).
-
-        STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
-        */
+        // Resolves a CURIE identifier to its preferred label (id -> label).
+        // STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
         if is_curie(id).is_none() {
             return Err(BiDictError::InvalidId(id.to_owned()));
         }
@@ -338,17 +331,15 @@ impl BiDict for BioPortalClient {
     }
 
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
-        /*
-        Resolves a label or synonym to the canonical identifier (label -> id).
+        // Resolves a label or synonym to the canonical identifier (label -> id).
 
-        Uses the in-memory cache first; on cache miss, performs an exact-match BioPortal search,
-        extracts the local id from the returned `@id` IRI, and constructs the canonical CURIE.
-        Caches canonical mappings:
-        - canonical CURIE -> label
-        - label -> canonical CURIE
-        - each synonym -> canonical CURIE
-        Returns the canonical CURIE as `&str` backed by an append-only cache.
-        */
+        // Uses the in-memory cache first; on cache miss, performs an exact-match BioPortal search,
+        // extracts the local id from the returned `@id` IRI, and constructs the canonical CURIE.
+        // Caches canonical mappings:
+        // - canonical CURIE -> label
+        // - label -> canonical CURIE
+        // - each synonym -> canonical CURIE
+        // Returns the canonical CURIE as `&str` backed by an append-only cache.
         if let Some(id) = self.cache_read(term) {
             return Ok(id);
         }
