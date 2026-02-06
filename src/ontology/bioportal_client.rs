@@ -265,8 +265,11 @@ impl BiDict for BioPortalClient {
         // or as a label/synonym, and routes to `get_label` (id -> label) or `get_id` (label -> id).
         // This function performs only lightweight heuristics for routing; strict CURIE validation
         // is handled by `securiety` inside `get_label` when needed.
-        let _ = self.parse_curie(id_or_label)?;
-        self.get_label(id_or_label)
+        if self.parse_curie(id_or_label).is_ok() {
+            self.get_label(id_or_label)
+        } else {
+            self.get_id(id_or_label)
+        }
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
@@ -329,6 +332,8 @@ impl BiDict for BioPortalClient {
         let local_id = Self::extract_local_id_from_iri(&result.at_id)
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))?;
         let canonical_curie = self.format_curie(local_id);
+        self.cache
+            .insert(term.to_string(), canonical_curie.to_string().into());
 
         self.cache
             .insert(canonical_curie.to_string(), result.label.to_string().into());
@@ -718,20 +723,40 @@ mod tests {
     }
 
     #[test]
-    fn test_get_rejects_non_curie() {
-        let server = Server::new();
+    fn test_get_accepts_label_and_routes_to_get_id() {
+        let mut server = Server::new();
         let client = test_client(server.url());
 
-        let err = client.get("147920").unwrap_err();
-        match err {
-            BiDictError::InvalidId(_) => {}
-            other => panic!("expected InvalidId, got {other:?}"),
+        let body = r#"
+        {
+        "collection": [
+            {
+            "prefLabel": "KABUKI SYNDROME 1",
+            "@id": "http://purl.bioontology.org/ontology/OMIM/147920",
+            "synonym": ["Kabuki syndrome type 1"]
+            }
+        ]
         }
+        "#;
 
-        let err2 = client.get("Kabuki syndrome 1").unwrap_err();
-        match err2 {
-            BiDictError::InvalidId(_) => {}
-            other => panic!("expected InvalidId, got {other:?}"),
-        }
+        let _m = server
+            .mock("GET", "/search")
+            .match_header(
+                "authorization",
+                Matcher::Exact(format!("apikey token={}", client.api_key)),
+            )
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("q".into(), "Kabuki syndrome 1".into()),
+                Matcher::UrlEncoded("ontologies".into(), "OMIM".into()),
+                Matcher::UrlEncoded("require_exact_match".into(), "true".into()),
+            ]))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(body)
+            .expect(1)
+            .create();
+
+        let id = client.get("Kabuki syndrome 1").unwrap();
+        assert_eq!(id, "OMIM:147920");
     }
 }
