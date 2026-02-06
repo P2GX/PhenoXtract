@@ -39,7 +39,7 @@ impl Collect for QualitativeMeasurementCollector {
 
                 for qual_measurement_col in qual_measurement_cols {
                     let stringified_quant_measurement_col = qual_measurement_col.str()?;
-
+                    dbg!(&stringified_quant_measurement_col);
                     for row_idx in 0..stringified_quant_measurement_col.len() {
                         let qual_measurement = stringified_quant_measurement_col.get(row_idx);
                         if let Some(qual_measurement) = qual_measurement {
