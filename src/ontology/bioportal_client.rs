@@ -110,17 +110,15 @@ impl BioPortalClient {
             }
         }
     }
-}
 
-impl BioPortalClient {
-    /*
-    Read from append-only cache. SAFETY rationale:
-    - The cache stores `Arc<str>` values.
-    - We guarantee the cache is append-only: no overwrite, no remove.
-    - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
-    - We can safely return `&str` tied to `&self`.
-    */
     fn cache_read<'a>(&'a self, key: &str) -> Option<&'a str> {
+        /*
+        Read from append-only cache. SAFETY rationale:
+        - The cache stores `Arc<str>` values.
+        - We guarantee the cache is append-only: no overwrite, no remove.
+        - Therefore, once a value is inserted, its backing `str` remains alive for the lifetime of `self`.
+        - We can safely return `&str` tied to `&self`.
+        */
         let cache = self.cache.read().ok()?;
         let s: &str = cache.get(key)?.as_ref();
 
@@ -128,30 +126,28 @@ impl BioPortalClient {
         Some(unsafe { &*(s as *const str) })
     }
 
-    /// Insert only if absent (append-only).
-    /// This avoids invalidating previously returned `&str` references.
     fn cache_write(&self, key: &str, value: &str) {
+        // Insert only if absent (append-only).
+        // This avoids invalidating previously returned `&str` references.
         if let Ok(mut cache) = self.cache.write() {
             cache
                 .entry(key.to_string())
                 .or_insert_with(|| Arc::<str>::from(value));
         }
     }
-}
 
-impl BioPortalClient {
-    /* Build a configured BioPortal client.
-     - `api_key`: BioPortal API key
-     - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-     - `prefix`: canonical CURIE prefix you want to output
-     - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
-    */
     pub fn new_with_key(
         api_key: String,
         ontology: String,
         prefix: impl Into<String>,
         reference: Option<ResourceRef>,
     ) -> Result<Self, BiDictError> {
+        /* Build a configured BioPortal client.
+         - `api_key`: BioPortal API key
+         - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
+         - `prefix`: canonical CURIE prefix you want to output
+         - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
+        */
         let base_url = "https://data.bioontology.org".to_string();
 
         // keep prefix exactly as configured (you want canonical uppercase output)
@@ -192,11 +188,9 @@ impl BioPortalClient {
             resource_ref,
         })
     }
-}
 
-impl BioPortalClient {
-    // Build BioPortal "class" endpoint URL.
     fn class_url(&self, local_id: &str) -> Result<Url, BiDictError> {
+        // Build BioPortal "class" endpoint URL.
         let iri = format!("{}{}", self.iri_prefix, local_id);
         let base = format!("{}/ontologies/{}/classes", self.base_url, self.ontology);
 
@@ -237,12 +231,9 @@ impl BioPortalClient {
             .next()
             .filter(|s| !s.is_empty())
     }
-}
 
-// Network calls to BioPortal
-impl BioPortalClient {
-    // Fetch a class by local id via BioPortal "classes" endpoint.
     fn query_by_id(&self, local_id: &str) -> Result<BioPortalClass, BiDictError> {
+        // Fetch a class by local id via BioPortal "classes" endpoint.
         let url = self.class_url(local_id)?;
 
         self.wait_for_rate_limit();
