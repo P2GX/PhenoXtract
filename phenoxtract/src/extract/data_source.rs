@@ -9,7 +9,6 @@ use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDatasource;
 use crate::extract::traits::Extractable;
 use log::{info, warn};
-use serde::{Deserialize, Serialize};
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
 use crate::extract::utils::generate_default_column_names;
@@ -20,12 +19,7 @@ use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
 /// An enumeration of all supported data source types.
-///
-/// This enum uses a `tag` to differentiate between source types (e.g., "csv", "excel")
-/// when deserializing from a configuration file.
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-#[serde(tag = "type")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DataSource {
     Csv(CSVDataSource),
     Excel(ExcelDatasource),

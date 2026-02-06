@@ -48,16 +48,16 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::loader_config::LoaderConfig;
 
+    use crate::config::datasource_config::{
+        AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, MappingsConfig,
+        SeriesContextConfig,
+    };
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
     use crate::config::table_context::{
-        AliasMap, CellValue, OutputDataType, SeriesContext, TableContext,
+        CellValue, OutputDataType,
     };
-    use crate::config::{PhenoXtractConfig, PipelineConfig};
-    use crate::extract::csv_data_source::CSVDataSource;
-    use crate::extract::data_source::DataSource;
-    use crate::extract::excel_data_source::ExcelDatasource;
-    use crate::extract::extraction_config::ExtractionConfig;
+    use crate::config::{DataSourceConfig, PhenoXtractConfig, PipelineConfig};
     use crate::test_suite::config::get_full_config_bytes;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use dotenvy::dotenv;
@@ -71,15 +71,10 @@ mod tests {
 
     const YAML_DATA: &[u8] = br#"
 data_sources:
-  - type: "csv"
-    source: "test/path"
+  - source: "test/path"
     separator: ","
-    extraction_config:
-      name: "test_config"
-      has_headers: true
-      patients_are_rows: true
-    context:
-      name: "test_table"
+    has_headers: true
+    patients_are_rows: true
 pipeline_config:
   transform_strategies:
     - "alias_map"
@@ -234,10 +229,9 @@ version = "2025-09-01"
         let mut phenoxtract_config: PhenoXtractConfig = ConfigLoader::load(file_path).unwrap();
         let source = phenoxtract_config.data_sources.pop().unwrap();
         match source {
-            DataSource::Csv(data) => {
-                assert_eq!(data.separator, Some(','));
-                assert_eq!(data.context.name(), "test_table");
-                assert_eq!(data.source.to_str().unwrap(), "test/path");
+            DataSourceConfig::Csv(csv_config) => {
+                assert_eq!(csv_config.separator, Some(','));
+                assert_eq!(csv_config.source.to_str().unwrap(), "test/path");
             }
             _ => panic!("Wrong data source type. Expected Csv."),
         }
@@ -274,91 +268,81 @@ version = "2025-09-01"
             ),
             data_sources: vec![
                 // First data source: CSV
-                DataSource::Csv(CSVDataSource {
+                DataSourceConfig::Csv(CsvConfig {
                     source: PathBuf::from("./data/example.csv"),
                     separator: Some(','),
-                    extraction_config: ExtractionConfig {
-                        name: "Sheet1".to_string(),
-                        has_headers: true,
-                        patients_are_rows: true,
-                    },
-                    context: TableContext::new(
-                        "TestTable".to_string(),
-                        vec![SeriesContext::new(
-                            Identifier::Regex("patient_id".to_string()),
-                            Context::SubjectId,
-                            Context::HpoLabelOrId,
-                            Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                            Some(AliasMap::new(
-                                HashMap::from([
-                                    ("null".to_string(), None),
-                                    ("M".to_string(), Some("Male".to_string())),
-                                    ("102".to_string(), Some("High quantity".to_string())),
-                                    ("169.5".to_string(), Some("Very high quantity".to_string())),
-                                    ("true".to_string(), Some("smoker".to_string())),
-                                ]),
-                                OutputDataType::String,
-                            )),
-                            Some("block_1".to_string()),
-                        )],
-                    ),
+                    has_headers: true,
+                    patients_are_rows: true,
+                    contexts: vec![SeriesContextConfig {
+                        identifier: Identifier::Regex("patient_id".to_string()),
+                        header_context: Context::SubjectId,
+                        data_context: Context::HpoLabelOrId,
+                        fill_missing: Some(CellValue::String(
+                            "Zollinger-Ellison syndrome".to_string(),
+                        )),
+                        alias_map_config: Some(AliasMapConfig {
+                            mappings: MappingsConfig::HashMap(HashMap::from([
+                                ("null".to_string(), None),
+                                ("M".to_string(), Some("Male".to_string())),
+                                ("102".to_string(), Some("High quantity".to_string())),
+                                ("169.5".to_string(), Some("Very high quantity".to_string())),
+                                ("true".to_string(), Some("smoker".to_string())),
+                            ])),
+                            output_data_type: OutputDataType::String,
+                        }),
+                        building_block_id: Some("block_1".to_string()),
+                    }],
                 }),
                 // Second data source: Excel
-                DataSource::Excel(ExcelDatasource {
+                DataSourceConfig::Excel(ExcelWorkbookConfig {
                     source: PathBuf::from("./data/example.excel"),
-                    extraction_configs: vec![
-                        ExtractionConfig {
-                            name: "Sheet1".to_string(),
+                    sheets: vec![
+                        ExcelSheetConfig {
+                            sheet_name: "Sheet1".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                        },
-                        ExtractionConfig {
-                            name: "Sheet2".to_string(),
-                            has_headers: true,
-                            patients_are_rows: true,
-                        },
-                    ],
-                    contexts: vec![
-                        // Context for "Sheet1"
-                        TableContext::new(
-                            "Sheet1".to_string(),
-                            vec![SeriesContext::new(
-                                Identifier::Regex("lab_result_.*".to_string()),
-                                Context::SubjectId,
-                                Context::HpoLabelOrId,
-                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::new(
-                                    HashMap::from([
+                            contexts: vec![SeriesContextConfig {
+                                identifier: Identifier::Regex("lab_result_.*".to_string()),
+                                header_context: Context::SubjectId,
+                                data_context: Context::HpoLabelOrId,
+                                fill_missing: Some(CellValue::String(
+                                    "Zollinger-Ellison syndrome".to_string(),
+                                )),
+                                alias_map_config: Some(AliasMapConfig {
+                                    mappings: MappingsConfig::HashMap(HashMap::from([
                                         ("neoplasma".to_string(), Some("4".to_string())),
                                         ("height".to_string(), Some("1.85".to_string())),
-                                    ]),
-                                    OutputDataType::Float64,
-                                )),
-                                None,
-                            )],
-                        ),
-                        // Context for "Sheet2"
-                        TableContext::new(
-                            "Sheet2".to_string(),
-                            vec![SeriesContext::new(
-                                Identifier::Multi(vec![
+                                    ])),
+                                    output_data_type: OutputDataType::Float64,
+                                }),
+                                building_block_id: None,
+                            }],
+                        },
+                        ExcelSheetConfig {
+                            sheet_name: "Sheet2".to_string(),
+                            has_headers: true,
+                            patients_are_rows: true,
+                            contexts: vec![SeriesContextConfig {
+                                identifier: Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
-                                Context::SubjectId,
-                                Context::HpoLabelOrId,
-                                Some(CellValue::String("Zollinger-Ellison syndrome".to_string())),
-                                Some(AliasMap::new(
-                                    HashMap::from([(
+                                header_context: Context::SubjectId,
+                                data_context: Context::HpoLabelOrId,
+                                fill_missing: Some(CellValue::String(
+                                    "Zollinger-Ellison syndrome".to_string(),
+                                )),
+                                alias_map_config: Some(AliasMapConfig {
+                                    mappings: MappingsConfig::HashMap(HashMap::from([(
                                         "smoker".to_string(),
                                         Some("true".to_string()),
-                                    )]),
-                                    OutputDataType::Boolean,
-                                )),
-                                None,
-                            )],
-                        ),
+                                    )])),
+                                    output_data_type: OutputDataType::Boolean,
+                                }),
+                                building_block_id: None,
+                            }],
+                        },
                     ],
                 }),
             ],

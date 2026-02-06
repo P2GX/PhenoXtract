@@ -1,7 +1,7 @@
 use crate::config::MetaData;
 use crate::ontology::traits::BiDict;
 use crate::test_suite::cdf_generation::default_patient_id;
-use crate::test_suite::config::PIPELINE_CONFIG_FILE;
+use crate::test_suite::config::PHENOXTRACT_CONFIG_FILE;
 use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
@@ -256,7 +256,7 @@ pub(crate) fn default_phenotype_oc() -> OntologyClass {
 
 pub(crate) fn default_meta_data() -> MetaData {
     dotenv().ok();
-    let yaml_str = std::str::from_utf8(PIPELINE_CONFIG_FILE)
+    let yaml_str = std::str::from_utf8(PHENOXTRACT_CONFIG_FILE)
         .expect("FATAL: PIPELINE_CONFIG contains invalid UTF-8");
 
     let config_str_with_env_vars = shellexpand::env(&yaml_str)

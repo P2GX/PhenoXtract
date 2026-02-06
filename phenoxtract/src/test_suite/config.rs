@@ -1,4 +1,4 @@
-pub(crate) static DATA_SOURCES_CONFIG_FILE: &[u8] = br#"
+pub(crate) static PHENOXTRACT_CONFIG_FILE: &[u8] = br#"
 data_sources:
   - type: "csv"
     source: "./data/example.csv"
@@ -58,9 +58,6 @@ data_sources:
       - name: "Sheet2"
         has_headers: true
         patients_are_rows: true
-"#;
-
-pub(crate) static PIPELINE_CONFIG_FILE: &[u8] = br#"
 pipeline_config:
   transform_strategies:
     - "alias_map"
@@ -88,10 +85,9 @@ pipeline_config:
 "#;
 
 pub(crate) fn get_full_config_bytes() -> Vec<u8> {
-    let data_sources = std::str::from_utf8(DATA_SOURCES_CONFIG_FILE)
-        .expect("Invalid UTF-8 in DATA_SOURCES_CONFIG");
-    let pipeline =
-        std::str::from_utf8(PIPELINE_CONFIG_FILE).expect("Invalid UTF-8 in PIPELINE_CONFIG");
-
-    format!("{}\n{}", data_sources.trim(), pipeline.trim()).into_bytes()
+    std::str::from_utf8(PHENOXTRACT_CONFIG_FILE)
+        .expect("Invalid UTF-8 in DATA_SOURCES_CONFIG")
+        .trim()
+        .to_string()
+        .into_bytes()
 }
