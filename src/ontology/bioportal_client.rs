@@ -280,13 +280,13 @@ impl BiDict for BioPortalClient {
 
         let curie = self.parse_curie(id)?;
         let local_id = curie.reference();
-        let canonical_curie = self.format_curie(&local_id);
+        let canonical_curie = self.format_curie(local_id);
 
         if let Some(label) = self.cache.get(&canonical_curie) {
             return Ok(label);
         }
 
-        let result = self.query_by_id(&local_id)?;
+        let result = self.query_by_id(local_id)?;
         if result.label.is_empty() {
             return Err(BiDictError::NotFound(canonical_curie));
         }
@@ -313,6 +313,7 @@ impl BiDict for BioPortalClient {
     /// - canonical CURIE -> label
     /// - label -> canonical CURIE
     /// - each synonym -> canonical CURIE
+    /// 
     /// Returns the canonical CURIE as `&str` backed by an append-only cache.
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
         if let Some(id) = self.cache.get(term) {
