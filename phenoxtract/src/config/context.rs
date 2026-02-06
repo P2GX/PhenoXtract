@@ -62,6 +62,11 @@ pub enum Context {
     ReferenceRangeLow,
     ReferenceRangeHigh,
 
+    // Medical Actions
+    ProcedureLabelOrId,
+    ProcedureBodySide,
+    ProcedureTimeElement,
+
     // other
     ObservationStatus,
     MultiHpoId,
