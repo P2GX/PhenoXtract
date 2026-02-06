@@ -295,14 +295,14 @@ impl BiDict for BioPortalClient {
             return Err(BiDictError::InvalidId(id.to_owned()));
         }
 
-        if let Ok(label) = self.get(id) {
+        if let Some(label) = self.cache.get(id) {
             return Ok(label);
         }
 
         let local_id = self.check_curie_local_id(id)?;
         let canonical_curie = self.format_curie(&local_id);
 
-        if let Ok(label) = self.get(&canonical_curie) {
+        if let Some(label) = self.cache.get(&canonical_curie) {
             return Ok(label);
         }
 
@@ -338,7 +338,7 @@ impl BiDict for BioPortalClient {
         - each synonym -> canonical CURIE
         Returns the canonical CURIE as `&str` backed by an append-only cache.
         */
-        if let Ok(id) = self.get(term) {
+        if let Some(id) = self.cache.get(term) {
             return Ok(id);
         }
 
