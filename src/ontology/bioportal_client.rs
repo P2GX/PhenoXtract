@@ -20,8 +20,8 @@ impl fmt::Debug for BioPortalClient {
 
         f.debug_struct("BioPortalClient")
             .field("base_url", &self.base_url)
-            .field("ontology", &self.ontology)
-            .field("prefix", &self.prefix)
+            .field("bioportal_acronym", &self.bioportal_acronym)
+            .field("curie_prefix", &self.curie_prefix)
             .field("iri_prefix", &self.iri_prefix)
             .field("curie_parser", &"<curie-parser>")
             .field("cache_len", &cache_len)
@@ -55,8 +55,8 @@ pub struct BioPortalClient {
     base_url: String,
     api_key: String,
 
-    ontology: String,
-    prefix: String,
+    bioportal_acronym: String,
+    curie_prefix: String,
     curie_parser: CurieParser<CurieRegexValidator>,
     iri_prefix: String,
 
@@ -68,10 +68,8 @@ pub struct BioPortalClient {
 
 impl BioPortalClient {
     /// Parse + validate CURIE using securiety.
-    /// - Normalise prefix casing for parsing:
-    /// - input prefix case-insensitive
-    /// - must match self.prefix
-    /// - returns local id (reference) as owned String
+    /// - input must be a CURIE
+    /// - prefix must match this client's configured CURIE prefix (case-insensitive)
     fn parse_curie(&self, input: &str) -> Result<Curie, BiDictError> {
         let curie = self
             .curie_parser
@@ -79,7 +77,7 @@ impl BioPortalClient {
             .map_err(|_e| BiDictError::InvalidId(input.to_owned()))?;
 
         // Enforce prefix matches this client (case-insensitive)
-        if !curie.prefix().eq_ignore_ascii_case(&self.prefix) {
+        if !curie.prefix().eq_ignore_ascii_case(&self.curie_prefix) {
             return Err(BiDictError::InvalidId(input.to_owned()));
         }
 
@@ -87,12 +85,12 @@ impl BioPortalClient {
     }
 
     fn format_curie(&self, local_id: &str) -> String {
-        format!("{}:{}", self.prefix, local_id)
+        format!("{}:{}", self.curie_prefix, local_id)
     }
 
     fn wait_for_rate_limit(&self) {
         // Blocks until a token is available.
-        loop {
+        loop {  
             match self.rate_limiter.try_wait() {
                 Ok(_) => return,
                 Err(sleep) => std::thread::sleep(sleep),
@@ -101,10 +99,20 @@ impl BioPortalClient {
     }
 }
 impl BioPortalClient {
+    /// Convenience constructor: assume CURIE prefix == BioPortal acronym (pragmatic default).
+    pub fn new_with_key_for_ontology(
+        api_key: String,
+        bioportal_acronym: String,
+        reference: Option<ResourceRef>,
+    ) -> Result<Self, BiDictError> {
+        let curie_prefix = bioportal_acronym.clone();
+        Self::new_with_key(api_key, bioportal_acronym, curie_prefix, reference)
+    }
+
     /// Build a configured BioPortal client.
     /// - `api_key`: BioPortal API key
-    /// - `ontology`: BioPortal ontology acronym (e.g. "OMIM", "HP")
-    /// - `prefix`: canonical CURIE prefix you want to output
+    /// - `ontology`: BioPortal ontology acronym used in API paths (e.g. "SNOMEDCT", "HP")
+    /// - `prefix`: CURIE namespace used for input/output (often same as `ontology`, may differ)
     /// - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
     /// - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
     pub fn new_with_key(
@@ -116,9 +124,10 @@ impl BioPortalClient {
         let base_url = "https://data.bioontology.org".to_string();
 
         // keep prefix exactly as configured (you want canonical uppercase output)
-        let prefix: String = prefix.into();
+        let curie_prefix: String = prefix.into();
 
-        let prefix_key = prefix.to_lowercase();
+        // Build parser once, tied to the configured CURIE namespace
+        let prefix_key = curie_prefix.to_lowercase();
         let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
             Some(parser) => parser,
             None => CurieParser::general(),
@@ -138,14 +147,14 @@ impl BioPortalClient {
 
         // ResourceRef is what BiDict::reference() returns.
         // If caller did not provide one, derive from prefix and use latest.
-        let resource_ref = reference.unwrap_or_else(|| ResourceRef::from(prefix.as_str()));
+        let resource_ref = reference.unwrap_or_else(|| ResourceRef::from(curie_prefix.as_str()));
 
         Ok(Self {
             client: Client::new(),
             base_url,
             api_key,
-            ontology,
-            prefix,
+            bioportal_acronym: ontology,
+            curie_prefix,
             curie_parser,
             iri_prefix,
             cache: FrozenMap::<String, Box<str>>::new(),
@@ -157,7 +166,10 @@ impl BioPortalClient {
     fn class_url(&self, local_id: &str) -> Result<Url, BiDictError> {
         // Build BioPortal "class" endpoint URL.
         let iri = format!("{}{}", self.iri_prefix, local_id);
-        let base = format!("{}/ontologies/{}/classes", self.base_url, self.ontology);
+        let base = format!(
+            "{}/ontologies/{}/classes",
+            self.base_url, self.bioportal_acronym
+        );
 
         let mut url = Url::parse(&base).map_err(|e| BiDictError::Caching {
             reason: format!("Invalid BioPortal base URL '{base}': {e}"),
@@ -182,7 +194,7 @@ impl BioPortalClient {
 
         url.query_pairs_mut()
             .append_pair("q", query)
-            .append_pair("ontologies", &self.ontology)
+            .append_pair("ontologies", &self.bioportal_acronym)
             .append_pair("require_exact_match", "true");
 
         Ok(url)
@@ -354,11 +366,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let ontology = "OMIM".to_string();
-        let prefix = "OMIM".to_string();
+        let bioportal_acronym = "OMIM".to_string();
+        let curie_prefix = "OMIM".to_string();
 
         // Build the parser once (same approach as in new_with_key)
-        let prefix_key = prefix.to_lowercase();
+        let prefix_key = curie_prefix.to_lowercase();
         let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
             Some(parser) => parser,
             None => CurieParser::general(),
@@ -368,8 +380,8 @@ mod tests {
             client: Client::new(),
             base_url,
             api_key,
-            ontology,
-            prefix,
+            bioportal_acronym,
+            curie_prefix,
             iri_prefix: "http://purl.bioontology.org/ontology/OMIM/".to_string(),
             curie_parser,
             cache: FrozenMap::new(),
@@ -378,6 +390,38 @@ mod tests {
         }
     }
 
+     // Demonstrate that CURIE prefix may differ from BioPortal acronym (e.g. identifiers.org style).
+    fn test_client_snomed_like(base_url: String) -> BioPortalClient {
+        let api_key = "TEST_KEY".to_string();
+
+        let rate_limiter = Ratelimiter::builder(1000, Duration::from_secs(1))
+            .max_tokens(1000)
+            .initial_available(1000)
+            .build()
+            .unwrap();
+
+        let bioportal_acronym = "SNOMEDCT".to_string();
+        let curie_prefix = "snomedct".to_string();
+
+        let prefix_key = curie_prefix.to_lowercase();
+        let curie_parser = match CurieParser::from_prefix(prefix_key.as_str()) {
+            Some(parser) => parser,
+            None => CurieParser::general(),
+            };
+
+        BioPortalClient {
+            client: Client::new(),
+            base_url,
+            api_key,
+            bioportal_acronym: bioportal_acronym.clone(),
+            curie_prefix: curie_prefix.clone(),
+            iri_prefix: format!("http://purl.bioontology.org/ontology/{}/", bioportal_acronym),
+            curie_parser,
+            cache: FrozenMap::new(),
+            rate_limiter,
+            resource_ref: ResourceRef::from(curie_prefix.as_str()),
+        }
+    }
     // 1) Unit tests
     // --------------
 
@@ -404,6 +448,22 @@ mod tests {
 
         let curie = client.parse_curie("omim:147920").unwrap();
         assert_eq!(curie.reference(), "147920");
+    }
+
+    #[test]
+    fn test_prefix_can_differ_from_ontology() {
+        let server = Server::new();
+        let client = test_client_snomed_like(server.url());
+
+        // Client is configured to accept "snomedct:*"
+        assert!(client.parse_curie("snomedct:90391002").is_ok());
+
+        // "SNOMEDCT:*" should be rejected because CURIE prefix != configured namespace
+        let err = client.parse_curie("SNOMEDCT:90391002").unwrap_err();
+        match err {
+            BiDictError::InvalidId(_) => {}
+            other => panic!("expected InvalidId, got {other:?}"),
+        }
     }
 
     #[test]
