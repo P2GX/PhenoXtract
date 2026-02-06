@@ -77,19 +77,16 @@ pub(crate) fn validate_subject_id_col_no_nulls(
 
 pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), ValidationError> {
     let mut error = ValidationError::new("dangling_series_context");
-
-    for sc in cdf.series_contexts() {
-        if cdf.get_columns(sc.get_identifier()).is_empty() {
-            error.add_param(Cow::from("series_context"), &sc);
-            let error_message = format!(
-                "SeriesContext identifier '{}' does not point to any column",
-                sc.get_identifier(),
-            );
-            return Err(error.with_message(Cow::Owned(error_message)));
-        }
+    let dangling_scs = cdf.get_dangling_scs();
+    if !dangling_scs.is_empty() {
+        error.add_param(Cow::from("series_contexts"), &dangling_scs);
+        let error_message = format!(
+            "The SeriesContexts with identifiers '{dangling_scs:?}' do not point to any column",
+        );
+        Err(error.with_message(Cow::Owned(error_message)))
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -265,7 +262,8 @@ mod tests {
 
     #[rstest]
     fn test_validate_dangling_sc() {
-        let sc = SeriesContext::default().with_identifier(Identifier::from("no-column"));
+        let sc_id = Identifier::from("no-column");
+        let sc = SeriesContext::default().with_identifier(sc_id.clone());
         let result = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
@@ -290,10 +288,10 @@ mod tests {
                         let f = field.first().unwrap();
                         assert_eq!(f.code, "dangling_series_context");
                         assert!(f.message.clone().unwrap().to_string().contains("no-column"));
-                        let extracted_sc: SeriesContext =
-                            from_value(f.params.get("series_context").unwrap().clone()).unwrap();
+                        let extracted_sc_ids: Vec<Identifier> =
+                            from_value(f.params.get("series_contexts").unwrap().clone()).unwrap();
 
-                        assert_eq!(sc, extracted_sc);
+                        assert_eq!(vec![sc_id], extracted_sc_ids);
                     }
                     _ => panic!("Expected ValidationCrateError"),
                 }

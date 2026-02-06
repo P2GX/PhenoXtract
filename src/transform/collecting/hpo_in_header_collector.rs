@@ -142,7 +142,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("phenotypes".into())
                     .with_data_context(Context::HpoLabelOrId)
@@ -150,7 +150,7 @@ mod tests {
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
                     .with_data_context(Context::OnsetAge)

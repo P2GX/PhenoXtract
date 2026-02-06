@@ -40,8 +40,13 @@ impl CdfCollectorBroker {
                 .partition_by(vec![subject_id_col.name().as_str()], true)?;
 
             for patient_df in patient_dfs.iter() {
-                let patient_cdf =
+                let mut patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
+
+                patient_cdf
+                    .builder()
+                    .drop_null_cols_alongside_scs()?
+                    .build()?;
 
                 let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
 
@@ -172,10 +177,10 @@ mod tests {
     fn test_process(temp_dir: TempDir) {
         let mut broker = build_test_cdf_broker(temp_dir);
 
-        let patient_cdf_1 = generate_minimal_cdf(2, 2);
-        let patient_cdf_2 = generate_minimal_cdf(1, 5);
+        let cdf1 = generate_minimal_cdf(2, 2);
+        let cdf2 = generate_minimal_cdf(1, 5);
 
-        broker.process(vec![patient_cdf_1, patient_cdf_2]).unwrap();
+        broker.process(vec![cdf1, cdf2]).unwrap();
 
         for collector in broker.collectors {
             let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();

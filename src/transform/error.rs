@@ -1,4 +1,5 @@
 use crate::config::context::{Context, ContextKind};
+use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
@@ -119,6 +120,8 @@ pub enum DataProcessingError {
     PolarsError(#[from] PolarsError),
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
 }
 #[derive(Debug, Error)]
 pub enum TransformError {
@@ -180,12 +183,6 @@ fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
-    #[error("Could not {transformation} column '{col_name}' for table '{table_name}'")]
-    BuilderError {
-        transformation: String,
-        col_name: String,
-        table_name: String,
-    },
     #[error(
         "{message}. Strategy '{strategy_name}' unable to map: \n {}",
         format_grouped_errors(info)
@@ -197,6 +194,8 @@ pub enum StrategyError {
     },
     #[error(transparent)]
     ValidationError(#[from] PxValidationError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
     DataProcessing(#[from] Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -223,12 +222,13 @@ pub enum StrategyError {
         date: String,
     },
     #[error(
-        "The column {column_name} had datatype {found_datatype}. Only the datatypes {allowed_datatypes:?} are accepted."
+        "The column {column_name} had datatype {found_datatype} in strategy {strategy}. Only the datatypes {allowed_datatypes:?} are accepted."
     )]
     DataTypeError {
         column_name: String,
-        allowed_datatypes: Vec<DataType>,
-        found_datatype: DataType,
+        strategy: String,
+        found_datatype: String,
+        allowed_datatypes: Vec<String>,
     },
 }
 
@@ -285,11 +285,21 @@ pub enum CollectorError {
     #[error(transparent)]
     PhenopacketBuilderError(#[from] PhenopacketBuilderError),
     #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
+    #[error(transparent)]
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
     #[error("Blah: {0}")]
     ContextError(String),
+    #[error(
+        "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
+    )]
+    DataTypeError {
+        column_name: String,
+        found_datatype: DataType,
+        allowed_datatypes: Vec<DataType>,
+    },
 }
 
 impl From<DataProcessingError> for CollectorError {

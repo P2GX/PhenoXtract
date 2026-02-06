@@ -33,10 +33,10 @@ impl Collect for HpoInCellsCollector {
                 )?;
 
                 for hpo_col in hpo_cols {
-                    let hpo_column = hpo_col.str()?;
+                    let stringified_hpo_col = hpo_col.str()?;
 
-                    for row_idx in 0..hpo_column.len() {
-                        let hpo = hpo_column.get(row_idx);
+                    for row_idx in 0..stringified_hpo_col.len() {
+                        let hpo = stringified_hpo_col.get(row_idx);
                         if let Some(hpo) = hpo {
                             let hpo_onset = if let Some(onset_col) = &onset_column {
                                 onset_col.get(row_idx)
@@ -113,7 +113,7 @@ mod tests {
 
         patient_cdf
             .builder()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("phenotypes".into())
                     .with_data_context(Context::HpoLabelOrId)
@@ -121,7 +121,7 @@ mod tests {
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
-            .insert_columns_with_series_context(
+            .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
                     .with_data_context(Context::OnsetAge)

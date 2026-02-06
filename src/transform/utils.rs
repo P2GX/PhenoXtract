@@ -2,15 +2,17 @@ use crate::constants::ISO8601_DUR_PATTERN;
 use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
 };
-use crate::transform::error::PhenopacketBuilderError;
+use crate::transform::error::{CollectorError, PhenopacketBuilderError};
 use chrono::{TimeZone, Utc};
 use phenopackets::schema::v2::core::Sex;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::{Age as IndividualAge, TimeElement};
 use pivot::hgvs::ChromosomalSex;
+use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column};
 use prost_types::Timestamp;
 use regex::Regex;
+use std::borrow::Cow;
 
 pub(crate) fn is_iso8601_duration(dur_string: &str) -> bool {
     let re = Regex::new(ISO8601_DUR_PATTERN).unwrap();
@@ -105,12 +107,35 @@ pub(crate) fn chromosomal_sex_from_str(
     }
 }
 
+/// Efficiently casts to a datatype of ones choice.
+/// NOTE: casting from string to bool unfortunately does not work. The function cast_to_bool can be used instead.
+pub(crate) fn cow_cast(
+    col: &'_ Column,
+    output_dtype: DataType,
+    allowed_datatypes: Vec<DataType>,
+) -> Result<Cow<'_, Column>, CollectorError> {
+    let col_dtype = col.dtype();
+    if col_dtype == &output_dtype {
+        Ok(Cow::Borrowed(col))
+    } else if allowed_datatypes.contains(col_dtype) {
+        Ok(Cow::Owned(col.strict_cast(&output_dtype)?))
+    } else {
+        Err(CollectorError::DataTypeError {
+            column_name: col.name().to_string(),
+            allowed_datatypes,
+            found_datatype: col_dtype.clone(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_iso_age,
     };
+    use polars::prelude::NamedFrom;
+    use polars::series::Series;
     use rstest::rstest;
 
     #[rstest]
@@ -263,5 +288,75 @@ mod tests {
         assert!(result.is_none());
         let result = try_parse_timestamp("2020-20-15T09:17:39Z");
         assert!(result.is_none());
+    }
+
+    #[rstest]
+    fn test_cow_cast() {
+        let str_col = Column::new("col".into(), vec!["2.0", "3.4", "5.6"]);
+        let cow_float_col = cow_cast(
+            &str_col,
+            DataType::Float64,
+            vec![DataType::String, DataType::Null],
+        )
+        .unwrap();
+        assert_eq!(cow_float_col.dtype(), &DataType::Float64);
+        assert_eq!(
+            cow_float_col.as_materialized_series(),
+            &Series::new("col".into(), vec![2.0, 3.4, 5.6])
+        );
+    }
+
+    #[rstest]
+    fn test_cow_cast_null() {
+        let null_col = Column::new(
+            "col".into(),
+            vec![AnyValue::Null, AnyValue::Null, AnyValue::Null],
+        );
+        let cow_str_col = cow_cast(
+            &null_col,
+            DataType::String,
+            vec![DataType::String, DataType::Null],
+        )
+        .unwrap();
+        assert_eq!(cow_str_col.dtype(), &DataType::String);
+        assert_eq!(cow_str_col.get(0).unwrap(), AnyValue::Null);
+    }
+
+    #[rstest]
+    fn test_cow_cast_string_to_string() {
+        let str_col = Column::new("col".into(), vec!["2.0", "3.4", "5.6"]);
+        let cow_str_col = cow_cast(
+            &str_col,
+            DataType::String,
+            vec![DataType::String, DataType::Null],
+        )
+        .unwrap();
+        assert_eq!(cow_str_col.dtype(), &DataType::String);
+        assert_eq!(
+            cow_str_col.as_materialized_series(),
+            str_col.as_materialized_series()
+        );
+    }
+
+    #[rstest]
+    fn test_cow_cast_disallowed() {
+        let str_col = Column::new("col".into(), vec!["2.0", "3.4", "5.6"]);
+        let result = cow_cast(
+            &str_col,
+            DataType::Float64,
+            vec![DataType::Int32, DataType::Null],
+        );
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    fn test_cow_cast_fail() {
+        let str_col = Column::new("col".into(), vec!["blah", "3.4", "5.6"]);
+        let result = cow_cast(
+            &str_col,
+            DataType::Float64,
+            vec![DataType::String, DataType::Null],
+        );
+        assert!(result.is_err());
     }
 }
