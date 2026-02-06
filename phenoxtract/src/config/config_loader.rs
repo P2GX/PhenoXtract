@@ -54,9 +54,7 @@ mod tests {
     };
     use crate::config::strategy_config::StrategyConfig;
     use crate::config::table_context::Identifier;
-    use crate::config::table_context::{
-        CellValue, OutputDataType,
-    };
+    use crate::config::table_context::{CellValue, OutputDataType};
     use crate::config::{DataSourceConfig, PhenoXtractConfig, PipelineConfig};
     use crate::test_suite::config::get_full_config_bytes;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
