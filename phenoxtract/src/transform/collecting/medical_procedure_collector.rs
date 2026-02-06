@@ -222,7 +222,7 @@ mod tests {
         collector
             .collect(&mut builder, &[cdf], &patient_id)
             .unwrap();
-
+        // TODO: Needs to be finished once the ppb function is implemented
         let mut phenopackets = builder.build();
     }
 }
