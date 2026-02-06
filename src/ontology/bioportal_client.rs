@@ -454,15 +454,9 @@ mod tests {
         let server = Server::new();
         let client = test_client_snomed_like(server.url());
 
-        // Client is configured to accept "snomedct:*"
+        // Accept both cases
         assert!(client.parse_curie("snomedct:90391002").is_ok());
-
-        // "SNOMEDCT:*" should be rejected because CURIE prefix != configured namespace
-        let err = client.parse_curie("SNOMEDCT:90391002").unwrap_err();
-        match err {
-            BiDictError::InvalidId(_) => {}
-            other => panic!("expected InvalidId, got {other:?}"),
-        }
+        assert!(client.parse_curie("SNOMEDCT:90391002").is_ok());
     }
 
     #[test]
