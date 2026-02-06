@@ -310,7 +310,7 @@ impl BiDict for BioPortalClient {
         if is_curie(id_or_label).is_none() {
             return Err(BiDictError::InvalidId(id_or_label.to_owned()));
         }
-            self.get_label(id_or_label)
+        self.get_label(id_or_label)
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
@@ -350,7 +350,6 @@ impl BiDict for BioPortalClient {
         self.cache_read(&canonical_curie)
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
     }
-        
 
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
         /*
@@ -399,7 +398,6 @@ mod tests {
     use mockito::{Matcher, Server};
     use regex::Regex;
 
-    // -------------------------
     // Test helper: build client
     // -------------------------
     fn test_client(base_url: String) -> BioPortalClient {
@@ -425,9 +423,8 @@ mod tests {
         }
     }
 
-    // -------------------------
-    // 1) Unit tests (pure logic)
-    // -------------------------
+    // 1) Unit tests
+    // --------------
 
     #[test]
     fn test_extract_local_id_from_iri() {
@@ -627,8 +624,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------
-    // 3) BiDict behaviour tests (routing + caching)
+    // 3) BiDict behaviour tests (caching + strict CURIE handling)
     // -------------------------------------------------
 
     #[test]
@@ -710,5 +706,23 @@ mod tests {
         // 2nd: synonym should now resolve from cache without another search
         let id2 = client.get_id("Kabuki syndrome type 1").unwrap();
         assert_eq!(id2, "OMIM:147920");
+    }
+
+    #[test]
+    fn test_get_rejects_non_curie() {
+        let server = Server::new();
+        let client = test_client(server.url());
+
+        let err = client.get("147920").unwrap_err();
+        match err {
+            BiDictError::InvalidId(_) => {}
+            other => panic!("expected InvalidId, got {other:?}"),
+        }
+
+        let err2 = client.get("Kabuki syndrome 1").unwrap_err();
+        match err2 {
+            BiDictError::InvalidId(_) => {}
+            other => panic!("expected InvalidId, got {other:?}"),
+        }
     }
 }
