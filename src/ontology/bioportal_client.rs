@@ -129,8 +129,8 @@ impl BioPortalClient {
 
         // Rate limiter: 4 requests / second (token bucket)
         let rate_limiter = Ratelimiter::builder(4, Duration::from_secs(1))
-            .max_tokens(4)
-            .initial_available(4)
+            .max_tokens(15)
+            .initial_available(15)
             .build()
             .map_err(|e| BiDictError::Caching {
                 reason: format!("Failed to build ratelimiter: {e}"),
