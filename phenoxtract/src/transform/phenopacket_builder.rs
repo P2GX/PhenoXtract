@@ -738,6 +738,17 @@ impl PhenopacketBuilder {
                 .push(resource);
         }
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn insert_medical_procedure(
+        &mut self,
+        _patient_id: &str,
+        _procedure_code: &str,
+        _body_part: Option<&str>,
+        _procedure_time_element: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        todo!()
+    }
 }
 
 impl PartialEq for PhenopacketBuilder {

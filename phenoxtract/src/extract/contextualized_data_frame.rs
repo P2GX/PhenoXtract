@@ -223,11 +223,12 @@ impl ContextualizedDataFrame {
             } else if linked_cols.is_empty() {
                 Ok(None)
             } else {
-                Err(CollectorError::ExpectedAtMostOneLinkedColumnWithContexts {
+                Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
                     table_name: self.context().name().to_string(),
                     bb_id: bb_id.to_string(),
                     contexts: data_contexts.to_vec(),
-                    amount_found: linked_cols.len(),
+                    n_found: linked_cols.len(),
+                    n_expected: 1,
                 })
             }
         } else {
