@@ -5,6 +5,7 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use std::any::Any;
+
 #[derive(Debug)]
 pub struct IndividualCollector;
 
