@@ -100,13 +100,13 @@ impl BioPortalClient {
 }
 impl BioPortalClient {
     /// Convenience constructor: assume CURIE prefix == BioPortal acronym (pragmatic default).
-    pub fn new_with_key_for_ontology(
+    pub fn new(
         api_key: String,
         bioportal_acronym: String,
         reference: Option<ResourceRef>,
     ) -> Result<Self, BiDictError> {
         let curie_prefix = bioportal_acronym.clone();
-        Self::new_with_key(api_key, bioportal_acronym, curie_prefix, reference)
+        Self::new_with_prefix(api_key, bioportal_acronym, curie_prefix, reference)
     }
 
     /// Build a configured BioPortal client.
@@ -115,7 +115,7 @@ impl BioPortalClient {
     /// - `prefix`: CURIE namespace used for input/output (often same as `ontology`, may differ)
     /// - `reference`: optional ResourceRef override (otherwise derived from prefix, version=latest)
     /// - `local_id_regex`: optional regex to treat bare local IDs as IDs (e.g. OMIM: digits-only)
-    pub fn new_with_key(
+    pub fn new_with_prefix(
         api_key: String,
         ontology: String,
         prefix: impl Into<String>,
