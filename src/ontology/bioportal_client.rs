@@ -1,13 +1,13 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
-use crate::utils::is_curie;
 
 use elsa::sync::FrozenMap;
 use ratelimit::Ratelimiter;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
 use securiety::CurieRegexValidator;
+use securiety::curie::Curie;
 use securiety::curie_parser::CurieParser;
 use securiety::traits::CurieParsing;
 use serde::Deserialize;
@@ -72,27 +72,18 @@ impl BioPortalClient {
     /// - input prefix case-insensitive
     /// - must match self.prefix
     /// - returns local id (reference) as owned String
-    fn check_curie_local_id(&self, input: &str) -> Result<String, BiDictError> {
-        let normalised = if let Some((p, r)) = crate::utils::is_curie(input) {
-            if p.eq_ignore_ascii_case(&self.prefix) && p != self.prefix {
-                format!("{}:{}", self.prefix, r)
-            } else {
-                input.to_string()
-            }
-        } else {
-            input.to_string()
-        };
-
+    fn parse_curie(&self, input: &str) -> Result<Curie, BiDictError> {
         let curie = self
             .curie_parser
-            .parse(&normalised)
+            .parse(input)
             .map_err(|_e| BiDictError::InvalidId(input.to_owned()))?;
 
+        // Enforce prefix matches this client (case-insensitive)
         if !curie.prefix().eq_ignore_ascii_case(&self.prefix) {
             return Err(BiDictError::InvalidId(input.to_owned()));
         }
 
-        Ok(curie.reference().to_string())
+        Ok(curie)
     }
 
     fn format_curie(&self, local_id: &str) -> String {
@@ -265,24 +256,21 @@ impl BiDict for BioPortalClient {
         // or as a label/synonym, and routes to `get_label` (id -> label) or `get_id` (label -> id).
         // This function performs only lightweight heuristics for routing; strict CURIE validation
         // is handled by `securiety` inside `get_label` when needed.
-        if is_curie(id_or_label).is_none() {
-            return Err(BiDictError::InvalidId(id_or_label.to_owned()));
-        }
+        let _ = self.parse_curie(id_or_label)?;
         self.get_label(id_or_label)
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         // Resolves a CURIE identifier to its preferred label (id -> label).
         // STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
-        if is_curie(id).is_none() {
-            return Err(BiDictError::InvalidId(id.to_owned()));
-        }
+        let _ = self.parse_curie(id)?;
 
         if let Some(label) = self.cache.get(id) {
             return Ok(label);
         }
 
-        let local_id = self.check_curie_local_id(id)?;
+        let curie = self.parse_curie(id)?;
+        let local_id = curie.reference();
         let canonical_curie = self.format_curie(&local_id);
 
         if let Some(label) = self.cache.get(&canonical_curie) {
@@ -318,7 +306,6 @@ impl BiDict for BioPortalClient {
     /// - each synonym -> canonical CURIE
     /// Returns the canonical CURIE as `&str` backed by an append-only cache.
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
-
         if let Some(id) = self.cache.get(term) {
             return Ok(id);
         }
@@ -415,8 +402,8 @@ mod tests {
         let server = Server::new();
         let client = test_client(server.url());
 
-        let local = client.check_curie_local_id("omim:147920").unwrap();
-        assert_eq!(local, "147920");
+        let curie = client.parse_curie("omim:147920").unwrap();
+        assert_eq!(curie.reference(), "147920");
     }
 
     #[test]
@@ -424,7 +411,7 @@ mod tests {
         let server = Server::new();
         let client = test_client(server.url());
 
-        let err = client.check_curie_local_id("HP:1234567").unwrap_err();
+        let err = client.parse_curie("HP:1234567").unwrap_err();
         match err {
             BiDictError::InvalidId(_) => {}
             other => panic!("expected InvalidId, got {other:?}"),
