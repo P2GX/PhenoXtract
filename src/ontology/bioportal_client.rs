@@ -60,8 +60,7 @@ pub struct BioPortalClient {
     api_key: String,
 
     ontology: String,
-    prefix: String, // alternativ KnownResourcePrefixes?
-    // but could be less flexible for other ontologies
+    prefix: String,
     local_id_regex: Option<Regex>,
     iri_prefix: String,
 
@@ -308,41 +307,27 @@ impl BiDict for BioPortalClient {
         This function performs only lightweight heuristics for routing; strict CURIE validation
         is handled by `securiety` inside `get_label` when needed.
         */
-        if is_curie(id_or_label).is_some()
-            || self
-                .local_id_regex
-                .as_ref()
-                .map(|re| re.is_match(id_or_label))
-                .unwrap_or(false)
-        {
-            self.get_label(id_or_label)
-        } else {
-            self.get_id(id_or_label)
+        if is_curie(id_or_label).is_none() {
+            return Err(BiDictError::InvalidId(id_or_label.to_owned()));
         }
+            self.get_label(id_or_label)
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         /*
-        Resolves an identifier to its preferred label (id -> label).
+        Resolves a CURIE identifier to its preferred label (id -> label).
 
-        Accepts either a CURIE (validated and parsed via `securiety`) or a bare local id
-        (when configured via `local_id_regex`). Uses the in-memory cache first; on cache miss,
-        fetches the class record from BioPortal, then caches canonical mappings:
-        - canonical CURIE -> label
-        - label -> canonical CURIE
-        - each synonym -> canonical CURIE
-        Returns the label as `&str` backed by an append-only cache.
+        STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
         */
+        if is_curie(id).is_none() {
+            return Err(BiDictError::InvalidId(id.to_owned()));
+        }
+
         if let Some(label) = self.cache_read(id) {
             return Ok(label);
         }
 
-        let local_id: String = if is_curie(id).is_some() {
-            self.check_curie_local_id(id)?.to_string()
-        } else {
-            id.to_string()
-        };
-
+        let local_id = self.check_curie_local_id(id)?;
         let canonical_curie = self.format_curie(&local_id);
 
         if let Some(label) = self.cache_read(&canonical_curie) {
@@ -350,13 +335,14 @@ impl BiDict for BioPortalClient {
         }
 
         let result = self.query_by_id(&local_id)?;
-
         if result.label.is_empty() {
             return Err(BiDictError::NotFound(canonical_curie));
         }
 
         self.cache_write(&canonical_curie, &result.label);
         self.cache_write(&result.label, &canonical_curie);
+
+        // Optional: cache synonyms -> canonical CURIE (keep if you want)
         for syn in &result.synonym {
             self.cache_write(syn, &canonical_curie);
         }
@@ -364,6 +350,7 @@ impl BiDict for BioPortalClient {
         self.cache_read(&canonical_curie)
             .ok_or_else(|| BiDictError::NotFound(canonical_curie))
     }
+        
 
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
         /*
