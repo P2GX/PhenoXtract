@@ -31,12 +31,6 @@ impl PhenopacketAccessors for Phenopacket {
             .push(resource)
     }
 
-    fn get_interpretation(&self, id: &str) -> Option<&Interpretation> {
-        let index = self.interpretations.iter().position(|inter| inter.id == id);
-
-        self.interpretations.get(index?)
-    }
-
     fn get_mut_interpretation(&mut self, id: &str) -> Option<&mut Interpretation> {
         let index = self.interpretations.iter().position(|inter| inter.id == id);
 
@@ -58,19 +52,6 @@ impl PhenopacketAccessors for Phenopacket {
                 }
             })
             .collect::<Vec<&PhenotypicFeature>>()
-    }
-
-    fn get_mut_phenotypes_by_id(&mut self, id: &str) -> Vec<&mut PhenotypicFeature> {
-        self.phenotypic_features
-            .iter_mut()
-            .filter(|feature| {
-                if let Some(t) = &feature.r#type {
-                    t.id == id
-                } else {
-                    false
-                }
-            })
-            .collect::<Vec<&mut PhenotypicFeature>>()
     }
 
     fn push_phenotype(&mut self, phenotypes: PhenotypicFeature) {

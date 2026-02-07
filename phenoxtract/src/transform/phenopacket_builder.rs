@@ -20,9 +20,8 @@ use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Diagnosis, Disease, GenomicInterpretation, Individual, Interpretation, Measurement,
-    OntologyClass, PhenotypicFeature, Quantity, ReferenceRange, Sex, Value as ValueStruct,
-    VitalStatus,
+    Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, OntologyClass,
+    PhenotypicFeature, Quantity, ReferenceRange, Sex, Value as ValueStruct, VitalStatus,
 };
 use pivot::hgnc::{GeneQuery, HGNCData};
 use pivot::hgvs::{AlleleCount, HGVSData};
