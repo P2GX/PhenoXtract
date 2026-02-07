@@ -675,9 +675,7 @@ impl PhenopacketBuilder {
             });
         }
 
-        pp.phenotypic_features
-            .iter_mut()
-            .find(|p| p.r#type.as_ref().map(|t| &t.id) == Some(&target_id))
+        pp.get_first_mut_phenotype_by_id(&target_id)
             .expect("PhenotypicFeature was just created or already existed")
     }
     fn get_or_create_interpretation(
@@ -753,7 +751,7 @@ mod tests {
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
-    use phenopackets::schema::v2::core::{MetaData, Resource};
+    use phenopackets::schema::v2::core::{Individual, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
     use tempfile::TempDir;

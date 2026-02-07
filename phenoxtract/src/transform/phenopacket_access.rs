@@ -54,6 +54,16 @@ impl PhenopacketAccessors for Phenopacket {
             .collect::<Vec<&PhenotypicFeature>>()
     }
 
+    fn get_first_mut_phenotype_by_id(&mut self, id: &str) -> Option<&mut PhenotypicFeature> {
+        self.phenotypic_features.iter_mut().find(|feature| {
+            if let Some(t) = &feature.r#type {
+                t.id == id
+            } else {
+                false
+            }
+        })
+    }
+
     fn push_phenotype(&mut self, phenotypes: PhenotypicFeature) {
         self.phenotypic_features.push(phenotypes)
     }

@@ -11,6 +11,7 @@ pub(crate) trait PhenopacketAccessors {
     fn push_interpretation(&mut self, interpretation: Interpretation);
 
     fn get_phenotypes_by_id(&self, id: &str) -> Vec<&PhenotypicFeature>;
+    fn get_first_mut_phenotype_by_id(&mut self, id: &str) -> Option<&mut PhenotypicFeature>;
     fn push_phenotype(&mut self, phenotypes: PhenotypicFeature);
     fn push_measurement(&mut self, measurement: Measurement);
 
