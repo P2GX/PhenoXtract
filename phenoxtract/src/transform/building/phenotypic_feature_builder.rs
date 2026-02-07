@@ -74,14 +74,7 @@ impl<'a> PhenotypicFeatureBuilder<'a> {
     }
 
     pub fn apply(self) -> Result<(), PhenopacketBuilderError> {
-        if self
-            .pp_builder
-            .ctx
-            .dictionary_registry
-            .hpo
-            .get_bidicts()
-            .is_empty()
-        {
+        if self.pp_builder.ctx.dictionary_registry.hpo.is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: "HPO".to_string(),
             });
