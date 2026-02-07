@@ -29,9 +29,9 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct BuilderMetaData {
-    cohort_name: String,
-    created_by: String,
-    submitted_by: String,
+    pub cohort_name: String,
+    pub created_by: String,
+    pub submitted_by: String,
 }
 
 impl BuilderMetaData {
