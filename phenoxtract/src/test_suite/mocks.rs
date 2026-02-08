@@ -1,0 +1,191 @@
+use crate::test_suite::utils::test_ontology_path;
+use crate::transform::error::PhenopacketBuilderError;
+use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
+use crate::transform::traits::PhenopacketBuilding;
+use mockall::mock;
+use mockall::predicate::*;
+use ontology_registry::enums::{FileType, Version};
+use ontology_registry::error::OntologyRegistryError;
+use ontology_registry::traits::OntologyRegistry;
+use phenopackets::schema::v2::Phenopacket;
+use std::fs;
+use std::path::PathBuf;
+
+mock! {
+    pub PhenopacketBuilding {}
+    impl PhenopacketBuilding for PhenopacketBuilding {
+        fn build(&self) -> Vec<Phenopacket>;
+
+        // Added <'a> here
+        fn upsert_individual<'a>(
+            &mut self,
+            patient_id: &'a str, // explicit 'a
+            alternate_ids: Option<&'a [&'a str]>, // explicit 'a inside Option and Slice
+            date_of_birth: Option<&'a str>,
+            time_at_last_encounter: Option<&'a str>,
+            sex: Option<&'a str>,
+            karyotypic_sex: Option<&'a str>,
+            gender: Option<&'a str>,
+            taxonomy: Option<&'a str>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn upsert_vital_status<'a>(
+            &mut self,
+            patient_id: &'a str,
+            status: &'a str,
+            time_of_death: Option<&'a str>,
+            cause_of_death: Option<&'a str>,
+            survival_time_in_days: Option<u32>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn upsert_phenotypic_feature<'a>(
+            &mut self,
+            patient_id: &'a str,
+            phenotype: &'a str,
+            description: Option<&'a str>,
+            excluded: Option<bool>,
+            severity: Option<&'a str>,
+            modifiers: Option<Vec<&'a str>>, // explicit 'a inside Vec
+            onset: Option<&'a str>,
+            resolution: Option<&'a str>,
+            evidence: Option<&'a str>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn upsert_interpretation<'a>(
+            &mut self,
+            patient_id: &'a str,
+            disease: &'a str,
+            gene_variant_data: &'a PathogenicGeneVariantData,
+            subject_sex: Option<String>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn insert_disease<'a>(
+            &mut self,
+            patient_id: &'a str,
+            disease: &'a str,
+            excluded: Option<bool>,
+            onset: Option<&'a str>,
+            resolution: Option<&'a str>,
+            disease_stage: Option<&'a [&'a str]>,
+            clinical_tnm_finding: Option<&'a [&'a str]>,
+            primary_site: Option<&'a str>,
+            laterality: Option<&'a str>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn insert_quantitative_measurement<'a>(
+            &mut self,
+            patient_id: &'a str,
+            quant_measurement: f64,
+            time_observed: Option<&'a str>,
+            assay_id: &'a str,
+            unit_id: &'a str,
+            reference_range: Option<(f64, f64)>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn insert_qualitative_measurement<'a>(
+            &mut self,
+            patient_id: &'a str,
+            qual_measurement: &'a str,
+            time_observed: Option<&'a str>,
+            assay_id: &'a str,
+        ) -> Result<(), PhenopacketBuilderError>;
+
+        // Added <'a> here
+        fn insert_medical_procedure<'a>(
+            &mut self,
+            patient_id: &'a str,
+            procedure_code: &'a str,
+            body_part: Option<&'a str>,
+            procedure_time_element: Option<&'a str>,
+        ) -> Result<(), PhenopacketBuilderError>;
+    }
+}
+
+//TODO: Switch to mockall
+#[derive(Debug)]
+pub(crate) struct MockOntologyRegistry {
+    registry_path: PathBuf,
+}
+
+impl Default for MockOntologyRegistry {
+    fn default() -> Self {
+        Self {
+            registry_path: test_ontology_path(),
+        }
+    }
+}
+
+impl OntologyRegistry<PathBuf> for MockOntologyRegistry {
+    fn register(
+        &self,
+        ontology_id: &str,
+        version: &Version,
+        file_type: &FileType,
+    ) -> Result<PathBuf, OntologyRegistryError> {
+        if version.to_string() == Version::Latest.to_string() {
+            let entries =
+                fs::read_dir(self.registry_path.clone()).expect("Failed to read registry path");
+
+            for entry in entries {
+                let entry = entry.expect("Failed to read entry");
+                let path = entry.path();
+                let file_name = path
+                    .file_name()
+                    .expect("No, filename")
+                    .to_str()
+                    .expect("Conversion error");
+
+                let found_ontology_id = file_name
+                    .split("_")
+                    .last()
+                    .unwrap()
+                    .split(".")
+                    .next()
+                    .unwrap()
+                    .to_string();
+                if found_ontology_id == ontology_id {
+                    return Ok(path);
+                }
+            }
+        }
+
+        let file_name = format!("{version}_{ontology_id}{}", file_type.as_file_ending());
+        let file_path = self.registry_path.join(file_name);
+
+        if !file_path.exists() {
+            return Err(OntologyRegistryError::UnableToRegister {
+                reason: format!(
+                    "Ontology not found at {}, when mocking OntologyRegistry",
+                    file_path.to_str().unwrap()
+                ),
+            });
+        }
+
+        Ok(file_path)
+    }
+
+    #[allow(unused)]
+    fn unregister(
+        &self,
+        ontology_id: &str,
+        version: &Version,
+        file_type: &FileType,
+    ) -> Result<(), OntologyRegistryError> {
+        todo!()
+    }
+
+    #[allow(unused)]
+    fn get(&self, ontology_id: &str, version: &Version, file_type: &FileType) -> Option<PathBuf> {
+        todo!()
+    }
+    #[allow(unused)]
+    fn list(&self) -> Vec<String> {
+        todo!()
+    }
+}

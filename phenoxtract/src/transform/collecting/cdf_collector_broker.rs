@@ -10,6 +10,7 @@ use crate::transform::collecting::qualitative_measurement_collector::Qualitative
 use crate::transform::collecting::quantitative_measurement_collector::QuantitativeMeasurementCollector;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::traits::PhenopacketBuilding;
 use phenopackets::schema::v2::Phenopacket;
 use std::collections::HashMap;
 
@@ -140,7 +141,7 @@ mod tests {
     impl Collect for MockCollector {
         fn collect(
             &self,
-            _: &mut PhenopacketBuilder,
+            _: &mut dyn PhenopacketBuilding,
             patient_cdfs: &[ContextualizedDataFrame],
             phenopacket_id: &str,
         ) -> Result<(), CollectorError> {

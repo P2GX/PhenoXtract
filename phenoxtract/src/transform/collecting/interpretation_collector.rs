@@ -6,6 +6,7 @@ use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
+use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -14,7 +15,7 @@ pub struct InterpretationCollector;
 impl Collect for InterpretationCollector {
     fn collect(
         &self,
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError> {

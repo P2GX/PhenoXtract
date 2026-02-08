@@ -2,9 +2,9 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::traits::PhenopacketBuilding;
 use polars::prelude::StringChunked;
 use std::any::Any;
 
@@ -16,7 +16,7 @@ struct ProcedureIterator<'a> {
 }
 
 struct ProcedureIterElement<'a> {
-    pub procedure: &'a str,
+    pub procedure: Option<&'a str>,
     pub body_part: Option<&'a str>,
     pub time_element: Option<&'a str>,
 }
@@ -45,7 +45,7 @@ impl<'a> Iterator for ProcedureIterator<'a> {
             return None;
         }
 
-        let procedure = self.procedure_col.get(self.current_index)?;
+        let procedure = self.procedure_col.get(self.current_index);
 
         let body_part = self
             .body_part_col
@@ -73,7 +73,7 @@ pub struct MedicalProcedureCollector;
 impl Collect for MedicalProcedureCollector {
     fn collect(
         &self,
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError> {
@@ -107,12 +107,14 @@ impl Collect for MedicalProcedureCollector {
                 );
 
                 for procedure_values in procedure_iterator {
-                    builder.insert_medical_procedure(
-                        patient_id,
-                        procedure_values.procedure,
-                        procedure_values.body_part,
-                        procedure_values.time_element,
-                    )?
+                    if procedure_values.procedure.is_some() {
+                        builder.insert_medical_procedure(
+                            patient_id,
+                            procedure_values.procedure.unwrap(),
+                            procedure_values.body_part,
+                            procedure_values.time_element,
+                        )?
+                    }
                 }
             }
         }
@@ -133,19 +135,13 @@ mod tests {
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::phenopacket_component_generation::default_procedure;
     use crate::test_suite::phenopacket_component_generation::{
-        default_phenotype, default_procedure_body_side_oc, default_timestamp,
+        default_procedure_body_side_oc, default_timestamp,
     };
 
-    use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::mocks::MockPhenopacketBuilding;
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series, TimeUnit};
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
 
     #[fixture]
     fn cdf() -> ContextualizedDataFrame {
@@ -210,19 +206,25 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_procedure(temp_dir: TempDir, cdf: ContextualizedDataFrame) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_procedure(cdf: ContextualizedDataFrame) {
+        let mut builder = MockPhenopacketBuilding::new();
         let collector = MedicalProcedureCollector;
 
         let patient_id = default_patient_id();
 
-        let mut fractured_nose_excluded = default_phenotype().clone();
-        fractured_nose_excluded.excluded = true;
+        builder
+            .expect_insert_medical_procedure()
+            .withf(|id, name, body_site, date| {
+                id == "P0"
+                    && name == "blood transfusion"
+                    && *body_site == Some("skin of forearm")
+                    && *date == Some("1970-01-01 00:00:00.000000000")
+            })
+            .times(1)
+            .returning(|_, _, _, _| Ok(()));
 
         collector
             .collect(&mut builder, &[cdf], &patient_id)
             .unwrap();
-        // TODO: Needs to be finished once the ppb function is implemented
-        let mut phenopackets = builder.build();
     }
 }
