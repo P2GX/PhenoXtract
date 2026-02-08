@@ -147,7 +147,7 @@ impl PhenopacketBuilder {
 
         let phenopacket = self.get_or_create_phenopacket(patient_id);
 
-        let individual = phenopacket.get_mut_individual();
+        let individual = phenopacket.get_or_create_individual_mut();
         individual.id = patient_id.to_string();
 
         if let Some(date_of_birth) = date_of_birth {
@@ -222,19 +222,18 @@ impl PhenopacketBuilder {
 
         let survival_time_in_days = survival_time_in_days.unwrap_or(0);
 
-        let phenopacket = self.get_or_create_phenopacket(patient_id);
-        match phenopacket.set_vital_status(VitalStatus {
+        let phenopacket = self
+            .get_or_create_phenopacket(patient_id)
+            .get_or_create_individual_mut();
+
+        phenopacket.id = patient_id.to_string();
+        phenopacket.vital_status = Some(VitalStatus {
             status,
             time_of_death,
             cause_of_death,
             survival_time_in_days,
-        }) {
-            true => Ok(()),
-            false => Err(PhenopacketBuilderError::MissingPrerequisiteError {
-                missing: "Individual".to_string(),
-                required_for: "VitalStatus".to_string(),
-            }),
-        }
+        });
+        Ok(())
     }
 
     /// Upserts a phenotypic feature within a specific phenopacket.
@@ -668,14 +667,14 @@ impl PhenopacketBuilder {
         let pp = self.get_or_create_phenopacket(patient_id);
         let target_id = phenotype.id.clone();
 
-        if pp.get_phenotypes_by_id(&target_id).is_empty() {
+        if pp.phenotypes_with_type_id(&target_id).is_empty() {
             pp.push_phenotype(PhenotypicFeature {
                 r#type: Some(phenotype),
                 ..Default::default()
             });
         }
 
-        pp.get_first_mut_phenotype_by_id(&target_id)
+        pp.first_phenotype_with_type_id_mut(&target_id)
             .expect("PhenotypicFeature was just created or already existed")
     }
     fn get_or_create_interpretation(
@@ -686,7 +685,7 @@ impl PhenopacketBuilder {
         let phenopacket = self.get_or_create_phenopacket(patient_id);
 
         if phenopacket
-            .get_mut_interpretation(interpretation_id)
+            .find_interpretation_mut(interpretation_id)
             .is_none()
         {
             phenopacket.push_interpretation(Interpretation {
@@ -697,24 +696,24 @@ impl PhenopacketBuilder {
         }
 
         phenopacket
-            .get_mut_interpretation(interpretation_id)
+            .find_interpretation_mut(interpretation_id)
             .expect("Interpretation was just created or already existed")
     }
 
-    fn ensure_resource(&mut self, patient_id: &str, resource_id: &(impl HasPrefixId + HasVersion)) {
+    fn ensure_resource(&mut self, patient_id: &str, resource_ref: &ResourceRef) {
         let needs_resource = self
             .get_or_create_phenopacket(patient_id)
-            .get_resources()
+            .resources()
             .iter()
-            .any(|resource| {
-                resource.id.to_lowercase() == resource_id.prefix_id().to_lowercase()
-                    && resource.version.to_lowercase() == resource.version.to_lowercase()
+            .all(|resource| {
+                resource.id.to_lowercase() != resource_ref.prefix_id().to_lowercase()
+                    && resource.version.to_lowercase() != resource_ref.version().to_lowercase()
             });
 
         if needs_resource {
             let resource = self
                 .resource_resolver
-                .resolve(resource_id)
+                .resolve(resource_ref)
                 .expect("Could not resolve resource");
 
             let phenopacket = self.get_or_create_phenopacket(patient_id);
@@ -1682,7 +1681,7 @@ mod tests {
     #[rstest]
     fn test_ensure_resource(temp_dir: TempDir) {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
-        let pp_id = "test_id".to_string();
+        let pp_id = default_phenopacket_id();
 
         builder.ensure_resource(
             &pp_id,
