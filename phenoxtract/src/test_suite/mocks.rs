@@ -21,8 +21,8 @@ mock! {
 
         fn upsert_individual<'a>(
             &mut self,
-            patient_id: &'a str, // explicit 'a
-            alternate_ids: Option<&'a [&'a str]>, // explicit 'a inside Option and Slice
+            patient_id: &'a str,
+            alternate_ids: Option<&'a [&'a str]>,
             date_of_birth: Option<&'a str>,
             time_at_last_encounter: Option<&'a str>,
             sex: Option<&'a str>,
