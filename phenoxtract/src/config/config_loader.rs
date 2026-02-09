@@ -84,9 +84,9 @@ pipeline_config:
       output_dir: "some/dir"
       create_dir: true
   meta_data:
-    created_by: "Rouven Reuter"
-    submitted_by: "Magnus Knut Hansen"
-    cohort_name: "Arkham Asylum 2025"
+    created_by: "PhenoXtract creators"
+    submitted_by: "PhenoXtract submitters"
+    cohort_name: "my_cohort"
     hp_resource:
       id: "hp"
       version: "2025-09-01"
