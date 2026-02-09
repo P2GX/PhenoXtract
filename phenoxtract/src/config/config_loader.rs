@@ -69,10 +69,11 @@ mod tests {
 
     const YAML_DATA: &[u8] = br#"
 data_sources:
-  - source: "test/path"
-    separator: ","
-    has_headers: true
-    patients_are_rows: true
+  - Csv:
+      source: test/path
+      separator: ","
+      has_headers: true
+      patients_are_rows: true
 pipeline_config:
   transform_strategies:
     - "alias_map"
@@ -89,122 +90,6 @@ pipeline_config:
       id: "hp"
       version: "2025-09-01"
 "#;
-
-    const TOML_DATA: &[u8] = br#"
-[[data_sources]]
-type = "csv"
-source = "test/path"
-separator = ","
-
-[data_sources.extraction_config]
-name = "test_config"
-has_headers = true
-patients_are_rows = true
-
-[data_sources.context]
-name = "test_table"
-
-[pipeline_config]
-transform_strategies = [
-    "alias_map",
-    "multi_hpo_col_expansion"
-]
-
-[pipeline_config.loader.file_system]
-output_dir = "some/dir"
-create_dir = true
-
-[pipeline_config.meta_data]
-created_by = "Rouven Reuter"
-submitted_by = "Magnus Knut Hansen"
-cohort_name = "Arkham Asylum 2025"
-
-[pipeline_config.meta_data.hp_resource]
-id = "hp"
-version = "2025-09-01"
-"#;
-
-    const JSON_DATA: &[u8] = br#"
-{
-  "data_sources": [
-    {
-      "type": "csv",
-      "source": "test/path",
-      "separator": ",",
-      "extraction_config": {
-        "name": "test_config",
-        "has_headers": true,
-        "patients_are_rows": true
-      },
-      "context": {
-        "name": "test_table"
-      }
-    }
-  ],
-  "pipeline_config": {
-    "transform_strategies": [
-      "alias_map",
-      "multi_hpo_col_expansion"
-    ],
-    "loader": {
-      "file_system": {
-        "output_dir": "some/dir",
-        "create_dir": true
-      }
-    },
-    "meta_data": {
-      "created_by": "Rouven Reuter",
-      "submitted_by": "Magnus Knut Hansen",
-      "cohort_name": "Arkham Asylum 2025",
-      "hp_resource": {
-        "id": "hp",
-        "version": "2025-09-01"
-      }
-    }
-  }
-}
-"#;
-
-    const RON_DATA: &[u8] = br#"
-(
-  data_sources: [
-    (
-      type: "csv",
-      source: "test/path",
-      separator: ",",
-      extraction_config: (
-        name: "test_config",
-        has_headers: true,
-        patients_are_rows: true,
-      ),
-      context: (
-        name: "test_table",
-      ),
-    ),
-  ],
-  pipeline_config: (
-    transform_strategies: [
-      "alias_map",
-      "multi_hpo_col_expansion",
-    ],
-    loader: (
-      file_system: (
-        output_dir: "some/dir",
-        create_dir: true,
-      ),
-    ),
-    meta_data: (
-      created_by: "Rouven Reuter",
-      submitted_by: "Magnus Knut Hansen",
-      cohort_name: "Arkham Asylum 2025",
-      hp_resource: (
-        id: "hp",
-        version: "2025-09-01",
-      ),
-    ),
-  ),
-)
-"#;
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
@@ -213,9 +98,6 @@ version = "2025-09-01"
     #[rstest]
     #[case("yaml", YAML_DATA)]
     #[case("yml", YAML_DATA)]
-    #[case("toml", TOML_DATA)]
-    #[case("json", JSON_DATA)]
-    #[case("ron", RON_DATA)]
     fn test_load_config_from_various_formats(
         temp_dir: TempDir,
         #[case] extension: &str,

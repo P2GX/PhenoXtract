@@ -31,15 +31,8 @@ mod tests {
     use super::validate_unique_data_sources;
     use crate::config::DataSourceConfig;
     use crate::config::datasource_config::{CsvConfig, ExcelWorkbookConfig};
-    use crate::config::table_context::TableContext;
-    use crate::extract::csv_data_source::CSVDataSource;
-    use crate::extract::data_source::DataSource;
-    use crate::extract::excel_data_source::ExcelDatasource;
-    use crate::extract::extraction_config::ExtractionConfig;
-    use crate::extract::traits::HasSource;
     use rstest::{fixture, rstest};
     use std::path::PathBuf;
-    use std::str::FromStr;
     use std::vec;
 
     #[fixture]

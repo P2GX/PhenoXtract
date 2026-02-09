@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum DataSourceConfig {
     Csv(CsvConfig),
     Excel(ExcelWorkbookConfig),
@@ -13,7 +14,9 @@ pub enum DataSourceConfig {
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct CsvConfig {
     pub source: PathBuf,
+    #[serde(default)]
     pub separator: Option<char>,
+    #[serde(default)]
     pub contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
@@ -22,12 +25,14 @@ pub struct CsvConfig {
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct ExcelWorkbookConfig {
     pub source: PathBuf,
+    #[serde(default)]
     pub sheets: Vec<ExcelSheetConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct ExcelSheetConfig {
     pub sheet_name: String,
+    #[serde(default)]
     pub contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
@@ -36,10 +41,15 @@ pub struct ExcelSheetConfig {
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct SeriesContextConfig {
     pub identifier: Identifier,
+    #[serde(default)]
     pub header_context: Context,
+    #[serde(default)]
     pub data_context: Context,
+    #[serde(default)]
     pub fill_missing: Option<CellValue>,
+    #[serde(default)]
     pub alias_map_config: Option<AliasMapConfig>,
+    #[serde(default)]
     pub building_block_id: Option<String>,
 }
 
@@ -50,6 +60,7 @@ pub struct AliasMapConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(untagged)]
 pub enum MappingsConfig {
     Path(PathBuf),
     HashMap(HashMap<String, Option<String>>),
