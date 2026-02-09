@@ -124,10 +124,10 @@ impl Collect for MedicalProcedureCollector {
                 );
 
                 for procedure_values in procedure_iterator {
-                    if procedure_values.procedure.is_some() {
+                    if let Some(procedure) = procedure_values.procedure {
                         builder.insert_medical_procedure(
                             patient_id,
-                            procedure_values.procedure.unwrap(),
+                            procedure,
                             procedure_values.body_part,
                             procedure_values.time_element,
                             procedure_values.treatment_target,

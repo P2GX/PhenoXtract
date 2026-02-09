@@ -3,11 +3,11 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
 
-pub(crate) struct MedicalActionData {
-    pub(crate) treatment_target_col: Option<StringChunked>,
-    pub(crate) treatment_intent_col: Option<StringChunked>,
-    pub(crate) response_to_treatment_col: Option<StringChunked>,
-    pub(crate) treatment_termination_reason_col: Option<StringChunked>,
+pub(super) struct MedicalActionData {
+    pub(super) treatment_target_col: Option<StringChunked>,
+    pub(super) treatment_intent_col: Option<StringChunked>,
+    pub(super) response_to_treatment_col: Option<StringChunked>,
+    pub(super) treatment_termination_reason_col: Option<StringChunked>,
 }
 
 pub(super) struct MedicalAction<'a> {
@@ -18,7 +18,7 @@ pub(super) struct MedicalAction<'a> {
 }
 
 impl MedicalActionData {
-    pub(crate) fn new(
+    pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
     ) -> Result<Self, CollectorError> {
