@@ -275,12 +275,6 @@ impl BiDict for BioPortalClient {
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         // Resolves a CURIE identifier to its preferred label (id -> label).
         // STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
-        let _ = self.parse_curie(id)?;
-
-        if let Some(label) = self.cache.get(id) {
-            return Ok(label);
-        }
-
         let curie = self.parse_curie(id)?;
         let local_id = curie.reference();
         let canonical_curie = self.format_curie(local_id);
