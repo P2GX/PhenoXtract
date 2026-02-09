@@ -69,11 +69,12 @@ mod tests {
 
     const YAML_DATA: &[u8] = br#"
 data_sources:
-  - Csv:
-      source: test/path
-      separator: ","
-      has_headers: true
-      patients_are_rows: true
+  - type: "csv"
+    source: "test/path"
+    separator: ","
+    has_headers: true
+    patients_are_rows: true
+
 pipeline_config:
   transform_strategies:
     - "alias_map"
@@ -83,8 +84,8 @@ pipeline_config:
       output_dir: "some/dir"
       create_dir: true
   meta_data:
-    created_by: Rouven Reuter
-    submitted_by: Magnus Knut Hansen
+    created_by: "Rouven Reuter"
+    submitted_by: "Magnus Knut Hansen"
     cohort_name: "Arkham Asylum 2025"
     hp_resource:
       id: "hp"
