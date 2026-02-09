@@ -1,0 +1,4 @@
+patient_id,date_of_birth,age_at_last_encounter,date_at_last_encounter,sex,vital_status,age_of_death,date_of_death,cause_of_death,survival_time_in_days,phenotype,multi_hpo,phenotype_onset_age,HP:1234567,HP:1234567_onset_date,disease,disease_onset_age,gene,hgvs1,hgvs2,disease2,disease2_onset_date,body_height_cm,body_height_cm_measurement_age,nitrate_presence,nitrate_presence_measurement_date
+P1,,,,,,,,,,,,,,,,,,,,,,,,,
+P1,,,,,,,,,,,,,,,,,,,,,,,,,
+P2,,,,,,,,,,,,,,,,,,,,,,,,,
