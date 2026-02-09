@@ -1,17 +1,11 @@
-use crate::ontology::CachedOntologyFactory;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::test_suite::mocks::MockOntologyRegistry;
+use crate::test_suite::mocks::ONTOLOGY_FACTORY;
 use crate::test_suite::resource_references::{HPO_REF, MONDO_REF, PATO_REF, UO_REF};
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(CachedOntologyFactory::new(Box::new(
-        MockOntologyRegistry::default(),
-    ))))
-});
 pub(crate) static MONDO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let mock_mondo_label_to_id: HashMap<String, String> = HashMap::from_iter([
         (

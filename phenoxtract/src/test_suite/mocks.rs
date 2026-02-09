@@ -1,22 +1,24 @@
+use crate::ontology::CachedOntologyFactory;
 use crate::test_suite::utils::test_ontology_path;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::PhenopacketBuilding;
 use mockall::mock;
 use mockall::predicate::*;
+use once_cell::sync::Lazy;
 use ontology_registry::enums::{FileType, Version};
 use ontology_registry::error::OntologyRegistryError;
 use ontology_registry::traits::OntologyRegistry;
 use phenopackets::schema::v2::Phenopacket;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 mock! {
     pub PhenopacketBuilding {}
     impl PhenopacketBuilding for PhenopacketBuilding {
         fn build(&self) -> Vec<Phenopacket>;
 
-        // Added <'a> here
         fn upsert_individual<'a>(
             &mut self,
             patient_id: &'a str, // explicit 'a
@@ -29,7 +31,6 @@ mock! {
             taxonomy: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn upsert_vital_status<'a>(
             &mut self,
             patient_id: &'a str,
@@ -39,7 +40,6 @@ mock! {
             survival_time_in_days: Option<u32>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn upsert_phenotypic_feature<'a>(
             &mut self,
             patient_id: &'a str,
@@ -47,13 +47,12 @@ mock! {
             description: Option<&'a str>,
             excluded: Option<bool>,
             severity: Option<&'a str>,
-            modifiers: Option<Vec<&'a str>>, // explicit 'a inside Vec
+            modifiers: Option<Vec<&'a str>>,
             onset: Option<&'a str>,
             resolution: Option<&'a str>,
             evidence: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn upsert_interpretation<'a>(
             &mut self,
             patient_id: &'a str,
@@ -62,7 +61,6 @@ mock! {
             subject_sex: Option<String>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn insert_disease<'a>(
             &mut self,
             patient_id: &'a str,
@@ -76,7 +74,6 @@ mock! {
             laterality: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn insert_quantitative_measurement<'a>(
             &mut self,
             patient_id: &'a str,
@@ -87,7 +84,6 @@ mock! {
             reference_range: Option<(f64, f64)>,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn insert_qualitative_measurement<'a>(
             &mut self,
             patient_id: &'a str,
@@ -96,7 +92,6 @@ mock! {
             assay_id: &'a str,
         ) -> Result<(), PhenopacketBuilderError>;
 
-        // Added <'a> here
         fn insert_medical_procedure<'a>(
             &mut self,
             patient_id: &'a str,
@@ -107,7 +102,12 @@ mock! {
     }
 }
 
-//TODO: Switch to mockall
+pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(CachedOntologyFactory::new(Box::new(
+        MockOntologyRegistry::default(),
+    ))))
+});
+
 #[derive(Debug)]
 pub(crate) struct MockOntologyRegistry {
     registry_path: PathBuf,
