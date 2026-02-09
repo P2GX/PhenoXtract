@@ -3,13 +3,14 @@ use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
 use crate::utils::check_curie_format;
+use elsa::FrozenMap;
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env;
 use std::str::FromStr;
 use std::sync::{OnceLock, RwLock};
+use std::{env, fmt};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,15 +102,31 @@ pub struct LoincResult {
     pub version_first_released: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct LoincClient {
     client: Client,
     base_url: String,
     user_name: String,
     password: String,
-    cache: RwLock<HashMap<String, String>>,
+    cache: FrozenMap<String, Box<str>>,
     loinc_id_regex: Regex,
     reference: OnceLock<ResourceRef>,
+}
+
+impl fmt::Debug for LoincClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LoincClient")
+            .field("base_url", &self.base_url)
+            .field("user_name", &self.user_name)
+            // Mask the password for security
+            .field("password", &"********")
+            // Client and Regex usually aren't helpful in logs;
+            // we can just indicate they are present.
+            .field("client", &"reqwest::Client")
+            .field("loinc_id_regex", &self.loinc_id_regex.as_str())
+            .field("cache_size", &self.cache.len())
+            .field("reference_initialized", &self.reference.get().is_some())
+            .finish()
+    }
 }
 
 impl LoincClient {
@@ -124,7 +141,7 @@ impl LoincClient {
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
             user_name,
             password,
-            cache: RwLock::new(HashMap::new()),
+            cache: FrozenMap::default(),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
             reference: reference_lock,
         }
@@ -143,30 +160,6 @@ impl LoincClient {
             .json()?;
 
         Ok(loinc_response.results)
-    }
-
-    fn cache_read(&self, key: &str) -> Option<&str> {
-        {
-            let cache_read = self.cache.read().ok()?;
-            if let Some(value) = cache_read.get(key) {
-                Some(Box::leak(value.clone().into_boxed_str()))
-            } else {
-                None
-            }
-        }
-    }
-    fn cache_write(&self, key: &str, entry: &str) {
-        if let Ok(mut cache_write) = self.cache.write() {
-            cache_write.insert(key.to_string(), entry.to_string());
-
-            if self.is_loinc_curie(key) {
-                let loinc_number = key.split(":").last().unwrap().to_string();
-                cache_write.insert(loinc_number, entry.to_string());
-            } else if self.loinc_id_regex.is_match(key) {
-                let loinc_curie = Self::format_loinc_curie(key);
-                cache_write.insert(loinc_curie, entry.to_string());
-            }
-        }
     }
 
     fn format_loinc_curie(loinc_number: &str) -> String {
@@ -202,25 +195,25 @@ impl BiDict for LoincClient {
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
-        if let Some(label) = self.cache_read(id) {
+        if let Some(label) = self.cache.get(id) {
             return Ok(label);
         }
         let loinc_search_results = self.query(id)?;
 
-        for result in loinc_search_results {
-            if Self::format_loinc_curie(&result.loinc_num) == id || result.loinc_num == id {
-                self.cache_write(id, result.long_common_name.as_str());
-            }
-        }
+        let result = loinc_search_results
+            .into_iter()
+            .find(|r| Self::format_loinc_curie(&r.loinc_num) == id || r.loinc_num == id)
+            .ok_or_else(|| BiDictError::NotFound(id.into()))?;
 
-        match self.cache_read(id) {
-            None => Err(BiDictError::NotFound(id.into())),
-            Some(label) => Ok(label),
-        }
+        let label_ref = self
+            .cache
+            .insert(id.to_string(), Box::from(result.long_common_name));
+
+        Ok(label_ref)
     }
 
     fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
-        if let Some(loinc_number) = self.cache_read(term) {
+        if let Some(loinc_number) = self.cache.get(term) {
             return Ok(loinc_number);
         }
 
@@ -230,10 +223,13 @@ impl BiDict for LoincClient {
 
         for loinc_result in loinc_search_results {
             if loinc_result.long_common_name.to_lowercase() == term.to_lowercase() {
-                self.cache_write(term, &Self::format_loinc_curie(&loinc_result.loinc_num));
+                self.cache.insert(
+                    term.to_string(),
+                    Box::from(Self::format_loinc_curie(&loinc_result.loinc_num)),
+                );
             }
         }
-        match self.cache_read(term) {
+        match self.cache.get(term) {
             None => Err(BiDictError::NotFound(term.into())),
             Some(id) => Ok(id),
         }
