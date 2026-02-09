@@ -1,6 +1,5 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;

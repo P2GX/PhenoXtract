@@ -1,7 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
