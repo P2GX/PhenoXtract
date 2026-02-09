@@ -62,8 +62,15 @@ pub struct AliasMapConfig {
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(untagged)]
 pub enum MappingsConfig {
-    Path(PathBuf),
+    Csv(MappingsCsvConfig),
     HashMap(HashMap<String, Option<String>>),
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct MappingsCsvConfig {
+    pub path: PathBuf,
+    pub key_column_name: String,
+    pub alias_column_name: String,
 }
 
 impl CsvConfig {
@@ -131,6 +138,16 @@ impl AliasMapConfig {
         Self {
             mappings,
             output_data_type,
+        }
+    }
+}
+
+impl MappingsCsvConfig {
+    pub fn new(path: PathBuf, key_column_name: String, alias_column_name: String) -> Self {
+        MappingsCsvConfig {
+            path,
+            key_column_name,
+            alias_column_name,
         }
     }
 }

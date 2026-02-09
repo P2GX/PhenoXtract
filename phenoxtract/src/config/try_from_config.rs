@@ -1,7 +1,7 @@
 use crate::Pipeline;
 use crate::config::datasource_config::{
     AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, MappingsConfig,
-    SeriesContextConfig,
+    MappingsCsvConfig, SeriesContextConfig,
 };
 use crate::config::resource_config_factory::ResourceConfigFactory;
 use crate::config::table_context::{AliasMap, SeriesContext};
@@ -21,6 +21,7 @@ use crate::transform::{PhenopacketBuilder, TransformerModule};
 use crate::utils::get_cache_dir;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
+use polars::prelude::{CsvReadOptions, SerReader};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -258,10 +259,41 @@ impl TryFrom<AliasMapConfig> for AliasMap {
     fn try_from(config: AliasMapConfig) -> Result<Self, Self::Error> {
         let hash_map = match config.mappings {
             MappingsConfig::HashMap(hash_map) => hash_map,
-            MappingsConfig::Path(_path) => HashMap::new(),
+            MappingsConfig::Csv(mappings_csv_config) => HashMap::try_from(mappings_csv_config)?,
         };
 
         Ok(AliasMap::new(hash_map, config.output_data_type))
+    }
+}
+
+impl TryFrom<MappingsCsvConfig> for HashMap<String, Option<String>> {
+    type Error = ConstructionError;
+
+    fn try_from(config: MappingsCsvConfig) -> Result<Self, Self::Error> {
+        let mut csv_read_options = CsvReadOptions::default();
+
+        let alias_df = (|| {
+            csv_read_options
+                .try_into_reader_with_file_path(Some(config.path.clone()))?
+                .finish()
+        })()
+            .map_err(|err| ConstructionError::LoadingAliases {
+                path: config.path,
+                err,
+            })?;
+
+        // Extract the two columns
+        let keys = alias_df.column(config.key_column_name.as_str())?.str()?;
+        let aliases = alias_df.column(config.alias_column_name.as_str())?.str()?;
+
+        // Build the HashMap
+        let map = keys
+            .into_iter()
+            .zip(aliases.into_iter())
+            .filter_map(|(k, v)| Some((k?.to_string(), v?.to_string())))
+            .collect::<HashMap<_, _>>();
+
+        Ok(map)
     }
 }
 
