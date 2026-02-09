@@ -2,22 +2,61 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::transform::collecting::medical_actions::medical_action::MedicalActionData;
+use crate::transform::collecting::medical_actions::medical_action::{
+    MedicalActionData, ProcedureData,
+};
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
-use polars::prelude::StringChunked;
 use std::any::Any;
 
-struct ProcedureIterator<'a> {
-    procedure_col: &'a StringChunked,
-    body_part_col: Option<&'a StringChunked>,
-    time_element_col: Option<&'a StringChunked>,
+struct MedicalProcedureIterator<'a> {
+    procedure_data: &'a ProcedureData,
     medical_action_data: &'a MedicalActionData,
+    max_iterations: usize,
     current_index: usize,
 }
 
-struct ProcedureIterElement<'a> {
+impl<'a> MedicalProcedureIterator<'a> {
+    pub fn new(
+        procedure_data: &'a ProcedureData,
+        medical_action_data: &'a MedicalActionData,
+    ) -> Self {
+        Self {
+            procedure_data,
+            medical_action_data,
+            max_iterations: procedure_data.procedure_col.len(),
+            current_index: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for MedicalProcedureIterator<'a> {
+    type Item = MedicalProcedureIterElement<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_index >= self.max_iterations {
+            return None;
+        }
+
+        let procedure_data = self.procedure_data.get(self.current_index);
+
+        let general_medical_action_data = self.medical_action_data.get(self.current_index);
+
+        self.current_index += 1;
+
+        Some(MedicalProcedureIterElement {
+            procedure: procedure_data.procedure,
+            body_part: procedure_data.body_part,
+            time_element: procedure_data.time_element,
+            treatment_target: general_medical_action_data.treatment_target,
+            treatment_intent: general_medical_action_data.treatment_intent,
+            response_to_treatment: general_medical_action_data.response_to_treatment,
+            treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
+        })
+    }
+}
+struct MedicalProcedureIterElement<'a> {
     procedure: Option<&'a str>,
     body_part: Option<&'a str>,
     time_element: Option<&'a str>,
@@ -25,60 +64,6 @@ struct ProcedureIterElement<'a> {
     treatment_intent: Option<&'a str>,
     response_to_treatment: Option<&'a str>,
     treatment_termination_reason: Option<&'a str>,
-}
-impl<'a> ProcedureIterator<'a> {
-    pub fn new(
-        procedure_col: &'a StringChunked,
-        body_part_col: Option<&'a StringChunked>,
-        time_element_col: Option<&'a StringChunked>,
-        medical_action_data: &'a MedicalActionData,
-    ) -> Self {
-        Self {
-            procedure_col,
-            body_part_col,
-            time_element_col,
-            medical_action_data,
-            current_index: 0,
-        }
-    }
-}
-
-impl<'a> Iterator for ProcedureIterator<'a> {
-    type Item = ProcedureIterElement<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let len = self.procedure_col.len();
-
-        if self.current_index >= len {
-            return None;
-        }
-
-        let procedure = self.procedure_col.get(self.current_index);
-
-        let body_part = self
-            .body_part_col
-            .as_ref()
-            .and_then(|col| col.get(self.current_index));
-
-        let time_element = self
-            .time_element_col
-            .as_ref()
-            .and_then(|col| col.get(self.current_index));
-
-        let general_medical_action_data = self.medical_action_data.get(self.current_index);
-
-        self.current_index += 1;
-
-        Some(ProcedureIterElement {
-            procedure,
-            body_part,
-            time_element,
-            treatment_target: general_medical_action_data.treatment_target,
-            treatment_intent: general_medical_action_data.treatment_intent,
-            response_to_treatment: general_medical_action_data.response_to_treatment,
-            treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -98,30 +83,13 @@ impl Collect for MedicalProcedureCollector {
                 .collect();
 
             for procedure_sc in procedures {
-                let body_part_col = patient_cdf.get_single_linked_column_as_str(
-                    procedure_sc.get_building_block_id(),
-                    &[Context::ProcedureBodySide],
-                )?;
-
-                let procedure_time_element_col = patient_cdf.get_single_linked_column_as_str(
-                    procedure_sc.get_building_block_id(),
-                    &[Context::ProcedureTimeElement],
-                )?;
-
-                let procedure_col = patient_cdf
-                    .get_columns(procedure_sc.get_identifier())
-                    .first()
-                    .unwrap_or_else(|| panic!("Found dangling SeriesContext with for identifier {}. Validation should make this impossible.",
-                        procedure_sc.get_identifier())).str()?;
-
+                let procedure_data =
+                    ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())?;
                 let medical_action_data =
                     MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
-                let procedure_iterator = ProcedureIterator::new(
-                    procedure_col,
-                    body_part_col.as_ref(),
-                    procedure_time_element_col.as_ref(),
-                    &medical_action_data,
-                );
+
+                let procedure_iterator =
+                    MedicalProcedureIterator::new(&procedure_data, &medical_action_data);
 
                 for procedure_values in procedure_iterator {
                     if let Some(procedure) = procedure_values.procedure {
@@ -243,7 +211,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("body_site".into())
-                    .with_data_context(Context::ProcedureBodySide)
+                    .with_data_context(Context::ProcedureBodySite)
                     .with_building_block_id(Some("procedure_1".to_string())),
                 vec![body_site.into_column()].as_ref(),
             )

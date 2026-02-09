@@ -69,7 +69,7 @@ pub enum Context {
     TreatmentTerminationReason,
 
     ProcedureLabelOrId,
-    ProcedureBodySide,
+    ProcedureBodySite,
     ProcedureTimeElement,
 
     // other
