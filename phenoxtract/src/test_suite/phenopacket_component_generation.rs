@@ -255,6 +255,27 @@ pub(crate) fn default_procedure_body_side_oc() -> OntologyClass {
     }
 }
 
+pub(crate) fn default_treatment_intent() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C185614".to_string(),
+        label: "Curative Therapy".to_string(),
+    }
+}
+
+pub(crate) fn default_treatment_response() -> OntologyClass {
+    OntologyClass {
+        id: "SNOMED:182987007".to_string(),
+        label: "Fair response to treatment (situation)".to_string(),
+    }
+}
+
+pub(crate) fn default_treatment_termination_reason() -> OntologyClass {
+    OntologyClass {
+        id: "SNOMED:341009".to_string(),
+        label: "ABO incompatibility reaction (disorder)".to_string(),
+    }
+}
+
 pub(crate) fn default_procedure() -> Procedure {
     Procedure {
         code: Some(default_procedure_oc()),

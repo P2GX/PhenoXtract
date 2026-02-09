@@ -85,5 +85,9 @@ pub trait PhenopacketBuilding {
         procedure_code: &str,
         body_part: Option<&str>,
         procedure_time_element: Option<&str>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
 }

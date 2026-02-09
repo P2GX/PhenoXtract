@@ -630,6 +630,10 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         _procedure_code: &str,
         _body_part: Option<&str>,
         _procedure_time_element: Option<&str>,
+        _treatment_target: Option<&str>,
+        _treatment_intent: Option<&str>,
+        _response_to_treatment: Option<&str>,
+        _treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         todo!()
     }

@@ -98,6 +98,10 @@ mock! {
             procedure_code: &'a str,
             body_part: Option<&'a str>,
             procedure_time_element: Option<&'a str>,
+            treatment_target: Option<&'a str>,
+            treatment_intent: Option<&'a str>,
+            response_to_treatment: Option<&'a str>,
+            treatment_termination_reason: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
     }
 }
