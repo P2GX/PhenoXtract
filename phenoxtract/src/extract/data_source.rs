@@ -2,7 +2,6 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::csv_data_source::CsvDataSource;
 use polars::io::SerReader;
 use polars::prelude::{CsvReadOptions, DataFrame};
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -15,15 +14,6 @@ use crate::extract::excel_range_reader::ExcelRangeReader;
 use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
-
-use crate::config::datasource_config::{
-    AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, MappingsConfig,
-    SeriesContextConfig,
-};
-use crate::config::table_context::{AliasMap, SeriesContext};
-use crate::config::{DataSourceConfig, TableContext};
-use crate::error::ConstructionError;
-use crate::extract::extraction_config::ExtractionConfig;
 use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
@@ -187,123 +177,6 @@ impl Extractable for DataSource {
                 Ok(cdf_vec)
             }
         }
-    }
-}
-
-impl TryFrom<DataSourceConfig> for DataSource {
-    type Error = ConstructionError;
-
-    fn try_from(config: DataSourceConfig) -> Result<Self, Self::Error> {
-        match config {
-            DataSourceConfig::Excel(excel_config) => {
-                Ok(DataSource::Excel(ExcelDataSource::try_from(excel_config)?))
-            }
-            DataSourceConfig::Csv(csv_config) => {
-                Ok(DataSource::Csv(CsvDataSource::try_from(csv_config)?))
-            }
-        }
-    }
-}
-
-impl TryFrom<ExcelWorkbookConfig> for ExcelDataSource {
-    type Error = ConstructionError;
-
-    fn try_from(config: ExcelWorkbookConfig) -> Result<Self, Self::Error> {
-        let tcs = config
-            .sheets
-            .clone()
-            .into_iter()
-            .map(TableContext::try_from)
-            .collect::<Result<Vec<TableContext>, ConstructionError>>()?;
-
-        let ecs = config
-            .sheets
-            .into_iter()
-            .map(|sheet_config| ExtractionConfig {
-                name: sheet_config.sheet_name,
-                has_headers: sheet_config.has_headers,
-                patients_are_rows: sheet_config.patients_are_rows,
-            })
-            .collect();
-
-        Ok(ExcelDataSource {
-            source: config.source,
-            contexts: tcs,
-            extraction_configs: ecs,
-        })
-    }
-}
-
-impl TryFrom<ExcelSheetConfig> for TableContext {
-    type Error = ConstructionError;
-
-    fn try_from(config: ExcelSheetConfig) -> Result<Self, Self::Error> {
-        let scs = config
-            .contexts
-            .into_iter()
-            .map(SeriesContext::try_from)
-            .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
-
-        Ok(TableContext::new(config.sheet_name, scs))
-    }
-}
-
-impl TryFrom<CsvConfig> for CsvDataSource {
-    type Error = ConstructionError;
-
-    fn try_from(config: CsvConfig) -> Result<Self, Self::Error> {
-        let scs = config
-            .contexts
-            .into_iter()
-            .map(SeriesContext::try_from)
-            .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
-
-        let tc = TableContext::new("CsvData".to_string(), scs);
-
-        Ok(CsvDataSource {
-            source: config.source,
-            separator: config.separator,
-            extraction_config: ExtractionConfig {
-                name: "CsvData".to_string(),
-                has_headers: config.has_headers,
-                patients_are_rows: config.patients_are_rows,
-            },
-            context: tc,
-        })
-    }
-}
-
-impl TryFrom<SeriesContextConfig> for SeriesContext {
-    type Error = ConstructionError;
-
-    fn try_from(config: SeriesContextConfig) -> Result<Self, Self::Error> {
-        let alias_map = if let Some(am_config) = config.alias_map_config {
-            Some(AliasMap::try_from(am_config)?)
-        } else {
-            None
-        };
-
-        Ok(SeriesContext::new(
-            config.identifier,
-            config.header_context,
-            config.data_context,
-            config.fill_missing,
-            alias_map,
-            config.building_block_id,
-        ))
-    }
-}
-
-impl TryFrom<AliasMapConfig> for AliasMap {
-    type Error = ConstructionError;
-
-    fn try_from(config: AliasMapConfig) -> Result<Self, Self::Error> {
-        let hash_map = match config.mappings {
-            MappingsConfig::HashMap(hash_map) => hash_map,
-            MappingsConfig::Path(_path) => HashMap::new(),
-        };
-
-        Ok(AliasMap::new(hash_map, config.output_data_type))
     }
 }
 
