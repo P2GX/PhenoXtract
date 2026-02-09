@@ -33,7 +33,7 @@ impl PhenopacketAccessors for Phenopacket {
         self.interpretations.push(interpretation)
     }
 
-    fn phenotypes_with_type_id(&self, id: &str) -> Vec<&PhenotypicFeature> {
+    fn phenotypes_with_id(&self, id: &str) -> Vec<&PhenotypicFeature> {
         self.phenotypic_features
             .iter()
             .filter(|feature| {
@@ -46,7 +46,7 @@ impl PhenopacketAccessors for Phenopacket {
             .collect::<Vec<&PhenotypicFeature>>()
     }
 
-    fn first_phenotype_with_type_id_mut(&mut self, id: &str) -> Option<&mut PhenotypicFeature> {
+    fn first_phenotype_with_id_mut(&mut self, id: &str) -> Option<&mut PhenotypicFeature> {
         self.phenotypic_features.iter_mut().find(|feature| {
             if let Some(t) = &feature.r#type {
                 t.id == id
@@ -134,7 +134,7 @@ mod tests {
         pp.push_phenotype(feature.clone());
         pp.push_phenotype(PhenotypicFeature::default());
 
-        let results = pp.phenotypes_with_type_id(&feature.r#type.clone().unwrap().id);
+        let results = pp.phenotypes_with_id(&feature.r#type.clone().unwrap().id);
         assert_eq!(results.len(), 1);
         assert_eq!(
             results[0].r#type.as_ref().unwrap().id,

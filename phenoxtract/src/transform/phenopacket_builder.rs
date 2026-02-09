@@ -667,14 +667,14 @@ impl PhenopacketBuilder {
         let pp = self.get_or_create_phenopacket(patient_id);
         let target_id = phenotype.id.clone();
 
-        if pp.phenotypes_with_type_id(&target_id).is_empty() {
+        if pp.phenotypes_with_id(&target_id).is_empty() {
             pp.push_phenotype(PhenotypicFeature {
                 r#type: Some(phenotype),
                 ..Default::default()
             });
         }
 
-        pp.first_phenotype_with_type_id_mut(&target_id)
+        pp.first_phenotype_with_id_mut(&target_id)
             .expect("PhenotypicFeature was just created or already existed")
     }
     fn get_or_create_interpretation(
