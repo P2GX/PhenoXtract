@@ -63,6 +63,11 @@ pub enum Context {
     ReferenceRangeHigh,
 
     // Medical Actions
+    TreatmentTarget,
+    TreatmentIntent,
+    ResponseToTreatment,
+    TreatmentTerminationReason,
+
     ProcedureLabelOrId,
     ProcedureBodySide,
     ProcedureTimeElement,
