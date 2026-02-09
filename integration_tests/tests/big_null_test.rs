@@ -3,7 +3,7 @@ use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Context, ContextKind};
 use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::extraction_config::ExtractionConfig;
-use phenoxtract::extract::{CSVDataSource, DataSource};
+use phenoxtract::extract::{CsvDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::resource_references::ResourceRef;
 
@@ -165,7 +165,7 @@ fn big_null_test(
     //Configure data sources and contexts
     let csv_path = assets_dir.clone().join("input_data/data.csv");
 
-    let mut data_sources = [DataSource::Csv(CSVDataSource::new(
+    let mut data_sources = [DataSource::Csv(CsvDataSource::new(
         csv_path,
         None,
         csv_context,

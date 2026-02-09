@@ -16,7 +16,7 @@ use validator::Validate;
     function = "validate_extraction_config_links",
     skip_on_field_errors = false
 ))]
-pub struct ExcelDatasource {
+pub struct ExcelDataSource {
     /// The file path to the Excel workbook.
     pub source: PathBuf,
     /// A list of contexts, one for each sheet to be processed from the workbook.
@@ -28,13 +28,13 @@ pub struct ExcelDatasource {
     pub extraction_configs: Vec<ExtractionConfig>,
 }
 
-impl ExcelDatasource {
+impl ExcelDataSource {
     pub fn new(
         source: PathBuf,
         contexts: Vec<TableContext>,
         extraction_configs: Vec<ExtractionConfig>,
     ) -> Self {
-        ExcelDatasource {
+        ExcelDataSource {
             source,
             contexts,
             extraction_configs,
@@ -42,7 +42,7 @@ impl ExcelDatasource {
     }
 }
 
-impl HasSource for ExcelDatasource {
+impl HasSource for ExcelDataSource {
     type Source = PathBuf;
 
     fn source(&self) -> &Self::Source {
