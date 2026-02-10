@@ -1,6 +1,5 @@
 use crate::Pipeline;
-use crate::config::PhenoXtractConfig;
-use crate::error::{ConstructionError, PipelineError};
+use crate::error::PipelineError;
 use crate::extract::DataSource;
 
 pub struct Phenoxtract {
@@ -15,7 +14,7 @@ impl Phenoxtract {
     }
 }
 
-impl TryFrom<PhenoXtractConfig> for Phenoxtract {
+/*impl TryFrom<PhenoXtractConfig> for Phenoxtract {
     type Error = ConstructionError;
 
     fn try_from(value: PhenoXtractConfig) -> Result<Self, Self::Error> {
@@ -26,4 +25,4 @@ impl TryFrom<PhenoXtractConfig> for Phenoxtract {
             data_sources,
         })
     }
-}
+}*/
