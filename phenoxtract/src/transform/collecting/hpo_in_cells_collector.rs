@@ -29,7 +29,7 @@ impl Collect for HpoInCellsCollector {
 
                 let onset_column = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
-                    Context::ONSETS_VARIANTS,
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 for hpo_col in hpo_cols {

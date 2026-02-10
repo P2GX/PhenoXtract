@@ -93,7 +93,7 @@ impl ProcedureData {
                 )?,
                 time_element_col: patient_cdf.get_single_linked_column_as_str(
                     building_block,
-                    Context::TIME_OF_DEATH_VARIANTS,
+                    Context::TIME_OF_PROCEDURE_VARIANTS,
                 )?,
             }),
         }

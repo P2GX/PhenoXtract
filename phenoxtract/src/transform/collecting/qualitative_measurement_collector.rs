@@ -37,7 +37,7 @@ impl Collect for QualitativeMeasurementCollector {
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     qual_measurement_sc.get_building_block_id(),
-                    Context::ONSETS_VARIANTS,
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 for qual_measurement_col in qual_measurement_cols {

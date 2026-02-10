@@ -94,7 +94,29 @@ pub enum Context {
     //...
 }
 
+macro_rules! time_element_contexts {
+    ($context_variant:ident) => {{
+        #[allow(dead_code, unused_variables)]
+        fn assert_exhaustive(t: TimeElementType) {
+            match t {
+                TimeElementType::Age => {}
+                TimeElementType::Date => {}
+            }
+        }
+
+        &[
+            Context::$context_variant(TimeElementType::Age),
+            Context::$context_variant(TimeElementType::Date),
+        ]
+    }};
+}
+
 impl Context {
+    pub const LAST_ENCOUNTER_VARIANTS: &'static [Context] = time_element_contexts!(LastEncounter);
+    pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_contexts!(TimeOfDeath);
+    pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
+        time_element_contexts!(TimeOfProcedure);
+    pub const ONSET_VARIANTS: &'static [Context] = time_element_contexts!(Onset);
     pub fn all_time_based(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
             .filter_map(|kind| match kind {
@@ -130,28 +152,6 @@ impl Context {
             .collect()
     }
 }
-
-macro_rules! time_element_contexts {
-    ($context_variant:ident) => {{
-        #[allow(dead_code, unused_variables)]
-        fn assert_exhaustive(t: TimeElementType) {
-            match t {
-                TimeElementType::Age => {}
-                TimeElementType::Date => {}
-            }
-        }
-
-        &[
-            Context::$context_variant(TimeElementType::Age),
-            Context::$context_variant(TimeElementType::Date),
-        ]
-    }};
-}
-
-pub const ALL_LAST_ENCOUNTER: &[Context] = time_element_contexts!(LastEncounter);
-pub const ALL_TIME_OF_DEATH: &[Context] = time_element_contexts!(TimeOfDeath);
-pub const ALL_TIME_OF_PROCEDURE: &[Context] = time_element_contexts!(TimeOfProcedure);
-pub const ALL_ONSET: &[Context] = time_element_contexts!(Onset);
 
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

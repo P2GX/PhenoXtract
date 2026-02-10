@@ -37,7 +37,7 @@ impl Collect for QuantitativeMeasurementCollector {
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     quant_measurement_sc.get_building_block_id(),
-                    Context::ONSETS_VARIANTS,
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 let ref_low_col = patient_cdf.get_single_linked_column_as_float(

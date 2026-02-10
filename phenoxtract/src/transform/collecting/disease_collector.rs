@@ -30,7 +30,7 @@ impl Collect for DiseaseCollector {
                 let disease_cols = patient_cdf.get_columns(sc_id);
 
                 let stringified_linked_onset_col =
-                    patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSETS_VARIANTS)?;
+                    patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
