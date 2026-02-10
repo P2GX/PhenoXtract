@@ -42,11 +42,12 @@ impl TryFrom<PhenoXtractConfig> for Phenoxtract {
     }
 }
 
-impl TryFrom<PathBuf> for PhenoXtractConfig {
+impl TryFrom<PathBuf> for Phenoxtract {
     type Error = ConstructionError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        Ok(ConfigLoader::load(path)?)
+        let config: PhenoXtractConfig = ConfigLoader::load(path)?;
+        Phenoxtract::try_from(config)
     }
 }
 
@@ -123,27 +124,6 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let loader_module = LoaderFactory::try_from_config(config.loader)?;
 
         Ok(Pipeline::new(tf_module, loader_module))
-    }
-}
-
-impl TryFrom<PhenoXtractConfig> for Pipeline {
-    type Error = ConstructionError;
-
-    fn try_from(config: PhenoXtractConfig) -> Result<Self, Self::Error> {
-        Pipeline::try_from(config.pipeline_config)
-    }
-}
-
-impl TryFrom<PathBuf> for Pipeline {
-    type Error = ConstructionError;
-
-    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        if !path.exists() {
-            return Err(ConstructionError::NoConfigFileFound(path));
-        }
-        let config: PhenoXtractConfig = ConfigLoader::load(path.clone())?;
-
-        Pipeline::try_from(config)
     }
 }
 
@@ -307,12 +287,17 @@ impl TryFrom<MappingsCsvConfig> for HashMap<String, Option<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::table_context::OutputDataType;
     use crate::config::{ConfigLoader, PhenoXtractConfig};
-    use crate::test_suite::config::get_full_config_bytes;
+    use crate::test_suite::config::{
+        CSV_DATASOURCE_CONFIG_FILE, EXCEL_DATASOURCE_CONFIG_FILE, PIPELINE_CONFIG_FILE,
+        get_full_config_bytes,
+    };
     use dotenvy::dotenv;
     use rstest::{fixture, rstest};
-    use std::fs::File as StdFile;
-    use std::io::Write;
+    use std::fmt::Write;
+    use std::fs::{File as StdFile, File};
+    use std::io::Write as StdWrite;
     use tempfile::TempDir;
 
     #[fixture]
@@ -321,7 +306,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_pipeline_config(temp_dir: TempDir) {
+    fn test_try_from_phenoxtract_config(temp_dir: TempDir) {
         dotenv().ok();
         let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).expect("Failed to create config file");
@@ -330,17 +315,177 @@ mod tests {
         let config: PhenoXtractConfig =
             ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
 
-        let configs_from_sources = [
-            Pipeline::try_from(config.clone()).expect("Failed to convert config from config"),
-            Pipeline::try_from(config.pipeline_config.clone())
-                .expect("Failed to convert config from pipeline"),
-            Pipeline::try_from(file_path).expect("Failed to convert config from path"),
-        ];
+        let phenoxtract_from_config =
+            Phenoxtract::try_from(config.clone()).expect("Failed to convert config from config");
+        let phenoxtract_from_path =
+            Phenoxtract::try_from(file_path).expect("Failed to convert config from path");
 
-        let expected_config = configs_from_sources.first().unwrap();
+        assert_eq!(phenoxtract_from_path, phenoxtract_from_config);
 
-        for config in configs_from_sources.iter() {
-            assert_eq!(config, expected_config);
+        assert_eq!(phenoxtract_from_config.data_sources.len(), 2);
+        assert_eq!(
+            phenoxtract_from_config
+                .pipeline
+                .transformer_module
+                .strategies
+                .len(),
+            2
+        );
+    }
+
+    #[rstest]
+    fn test_try_from_pipeline_config(temp_dir: TempDir) {
+        dotenv().ok();
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(PIPELINE_CONFIG_FILE)
+            .expect("Failed to write config file");
+        let config: PipelineConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
+
+        let pipeline_from_config =
+            Pipeline::try_from(config.clone()).expect("Failed to convert config from config");
+
+        assert_eq!(pipeline_from_config.transformer_module.strategies.len(), 2);
+    }
+
+    #[rstest]
+    fn test_try_from_csv_datasource_config(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(CSV_DATASOURCE_CONFIG_FILE)
+            .expect("Failed to write config file");
+        let config: DataSourceConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
+
+        let csv_datasource_from_config =
+            DataSource::try_from(config.clone()).expect("Failed to convert config from config");
+
+        match csv_datasource_from_config {
+            DataSource::Csv(csv_source) => {
+                assert_eq!(csv_source.context.context().len(), 1);
+            }
+            DataSource::Excel(_) => {
+                panic!("Loaded Excel Datasource instead of Csv!")
+            }
         }
+    }
+
+    #[rstest]
+    fn test_try_from_excel_datasource_config(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(EXCEL_DATASOURCE_CONFIG_FILE)
+            .expect("Failed to write config file");
+        let config: DataSourceConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
+
+        let excel_datasource_from_config =
+            DataSource::try_from(config.clone()).expect("Failed to convert config from config");
+
+        match excel_datasource_from_config {
+            DataSource::Csv(_) => {
+                panic!("Loaded Csv Datasource instead of Excel!")
+            }
+            DataSource::Excel(excel_source) => {
+                assert_eq!(excel_source.contexts.len(), 2)
+            }
+        }
+    }
+
+    #[rstest]
+    fn test_try_from_alias_map_config_hash_map(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).expect("Failed to create config file");
+        file.write_all(CSV_DATASOURCE_CONFIG_FILE)
+            .expect("Failed to write config file");
+        let config: DataSourceConfig =
+            ConfigLoader::load(file_path.clone()).expect("Failed to load config loader");
+
+        let csv_datasource_from_config =
+            DataSource::try_from(config.clone()).expect("Failed to convert config from config");
+
+        match csv_datasource_from_config {
+            DataSource::Csv(csv_source) => {
+                let sc = csv_source.context.context().first().unwrap();
+                let am = sc.get_alias_map().unwrap();
+                assert_eq!(am.get_hash_map().len(), 5);
+            }
+            DataSource::Excel(_) => {
+                panic!("Loaded Excel Datasource instead of Csv!")
+            }
+        }
+    }
+
+    #[fixture]
+    fn column_names() -> [&'static str; 3] {
+        ["KEYS", "ALIASES", "JUNK"]
+    }
+    #[fixture]
+    fn keys() -> [&'static str; 3] {
+        ["k1", "k2", "k3"]
+    }
+
+    #[fixture]
+    fn aliases() -> [&'static str; 3] {
+        ["a1", "", "a3"]
+    }
+
+    #[fixture]
+    fn junk() -> [&'static str; 3] {
+        ["123iuh124", "", "asn"]
+    }
+
+    #[fixture]
+    fn mappings_csv_data(
+        column_names: [&'static str; 3],
+        keys: [&'static str; 3],
+        aliases: [&'static str; 3],
+        junk: [&'static str; 3],
+    ) -> Vec<u8> {
+        let mut csv_content = column_names.join(",") + "\n";
+
+        for i in 0..keys.len() {
+            writeln!(&mut csv_content, "{},{},{}", keys[i], aliases[i], junk[i]).unwrap();
+        }
+
+        csv_content.into_bytes()
+    }
+
+    #[rstest]
+    fn test_try_from_alias_map_config_csv_path(temp_dir: TempDir, mappings_csv_data: Vec<u8>) {
+        let mappings_csv_file_path = temp_dir.path().join("csv_data.csv");
+        let mut csv_file = File::create(&mappings_csv_file_path).unwrap();
+        csv_file.write_all(mappings_csv_data.as_slice()).unwrap();
+
+        let alias_map_config = format!(
+            r#"
+                output_data_type: String
+                mappings:
+                  path: "{}"
+                  key_column_name: "KEYS"
+                  alias_column_name: "ALIASES"
+                  "#,
+            mappings_csv_file_path.display()
+        );
+
+        let config_file_path = temp_dir.path().join("config.yaml");
+        let mut config_file = File::create(&config_file_path).unwrap();
+        config_file.write_all(alias_map_config.as_bytes()).unwrap();
+
+        let config: AliasMapConfig =
+            ConfigLoader::load(config_file_path.clone()).expect("Failed to load config loader");
+
+        let alias_map_from_config =
+            AliasMap::try_from(config.clone()).expect("Failed to convert config from config");
+
+        let mut expected_hm = HashMap::new();
+        expected_hm.insert("k1".to_string(), Some("a1".to_string()));
+        expected_hm.insert("k2".to_string(), None);
+        expected_hm.insert("k3".to_string(), Some("a3".to_string()));
+
+        let expected_alias_map = AliasMap::new(expected_hm, OutputDataType::String);
+
+        assert_eq!(alias_map_from_config, expected_alias_map);
     }
 }

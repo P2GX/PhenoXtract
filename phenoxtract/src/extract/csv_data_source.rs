@@ -9,13 +9,13 @@ use validator::Validate;
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Validate)]
 pub struct CsvDataSource {
     /// The file path to the CSV source.
-    pub source: PathBuf,
+    pub(crate) source: PathBuf,
     /// The character used to separate fields in the CSV file (e.g., ',').
-    pub separator: Option<char>,
+    pub(crate) separator: Option<char>,
     /// The context describing how to interpret the resulting DataFrame.
-    pub context: TableContext,
+    pub(crate) context: TableContext,
     /// This configures how the DataFrame is extracted.
-    pub extraction_config: ExtractionConfig,
+    pub(crate) extraction_config: ExtractionConfig,
 }
 
 impl CsvDataSource {

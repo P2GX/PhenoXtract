@@ -2,9 +2,10 @@ use crate::Pipeline;
 use crate::error::PipelineError;
 use crate::extract::DataSource;
 
+#[derive(PartialEq, Debug)]
 pub struct Phenoxtract {
-    pipeline: Pipeline,
-    data_sources: Vec<DataSource>,
+    pub(crate) pipeline: Pipeline,
+    pub(crate) data_sources: Vec<DataSource>,
 }
 
 impl Phenoxtract {

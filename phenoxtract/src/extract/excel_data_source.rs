@@ -18,14 +18,14 @@ use validator::Validate;
 ))]
 pub struct ExcelDataSource {
     /// The file path to the Excel workbook.
-    pub source: PathBuf,
+    pub(crate) source: PathBuf,
     /// A list of contexts, one for each sheet to be processed from the workbook.
     #[validate(custom(function = "validate_unique_sheet_names"))]
-    pub contexts: Vec<TableContext>,
+    pub(crate) contexts: Vec<TableContext>,
 
     /// One extraction config for every worksheet from the workbook that will be extracted.
     #[validate(custom(function = "validate_extraction_config_unique_ids"))]
-    pub extraction_configs: Vec<ExtractionConfig>,
+    pub(crate) extraction_configs: Vec<ExtractionConfig>,
 }
 
 impl ExcelDataSource {

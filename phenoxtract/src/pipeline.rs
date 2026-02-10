@@ -11,8 +11,8 @@ use validator::Validate;
 
 #[derive(Debug)]
 pub struct Pipeline {
-    transformer_module: TransformerModule,
-    loader_module: Box<dyn Loadable>,
+    pub(crate) transformer_module: TransformerModule,
+    pub(crate) loader_module: Box<dyn Loadable>,
 }
 
 impl Pipeline {
