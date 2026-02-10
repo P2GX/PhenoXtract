@@ -3,8 +3,23 @@ use enum_try_as_inner::EnumTryAsInner;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use strum_macros::Display;
+use strum::IntoEnumIterator;
 use strum_macros::EnumDiscriminants;
+use strum_macros::{Display, EnumIter};
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq, EnumIter)]
+#[serde(rename_all = "snake_case")]
+pub enum TimeElementType {
+    Age,
+    Date,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Boundary {
+    Start,
+    End,
+}
 
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
@@ -25,7 +40,7 @@ use strum_macros::EnumDiscriminants;
 )]
 #[derive_err(Debug)]
 #[strum_discriminants(name(ContextKind))]
-#[strum_discriminants(derive(Display, Deserialize, Serialize))]
+#[strum_discriminants(derive(Display, Deserialize, Serialize, EnumIter))]
 #[strum_discriminants(
     doc = "ContextKind is the same as Context, but all variants have their fields stripped. This is useful if you want to consider e.g. the QuantitativeMeasurement variant as a whole as opposed to a specific instance of it."
 )]
@@ -36,10 +51,8 @@ pub enum Context {
     SubjectSex,
     DateOfBirth,
     VitalStatus,
-    DateAtLastEncounter,
-    AgeAtLastEncounter,
-    DateOfDeath,
-    AgeOfDeath,
+    LastEncounter(TimeElementType),
+    TimeOfDeath(TimeElementType),
     CauseOfDeath,
     SurvivalTimeDays,
 
@@ -59,8 +72,7 @@ pub enum Context {
     QualitativeMeasurement {
         assay_id: String,
     },
-    ReferenceRangeLow,
-    ReferenceRangeHigh,
+    ReferenceRange(Boundary),
 
     // Medical Actions
     TreatmentTarget,
@@ -70,34 +82,79 @@ pub enum Context {
 
     ProcedureLabelOrId,
     ProcedureBodySite,
-    DateOfProcedure,
-    AgeAtProcedure,
+    TimeOfProcedure(TimeElementType),
 
     // other
     ObservationStatus,
     MultiHpoId,
-    OnsetDate,
-    OnsetAge,
+    Onset(TimeElementType),
+
     #[default]
     None,
     //...
 }
+
+impl Context {
+    pub fn all_time_based(tt: TimeElementType) -> Vec<Context> {
+        ContextKind::iter()
+            .filter_map(|kind| match kind {
+                ContextKind::LastEncounter => Some(Context::LastEncounter(tt.clone())),
+                ContextKind::TimeOfDeath => Some(Context::TimeOfDeath(tt.clone())),
+                ContextKind::TimeOfProcedure => Some(Context::TimeOfProcedure(tt.clone())),
+                ContextKind::Onset => Some(Context::Onset(tt.clone())),
+
+                // Ensures that we see a compile error, when we add another context using a TimeElementType
+                ContextKind::SubjectId
+                | ContextKind::SubjectSex
+                | ContextKind::DateOfBirth
+                | ContextKind::VitalStatus
+                | ContextKind::CauseOfDeath
+                | ContextKind::SurvivalTimeDays
+                | ContextKind::HpoLabelOrId
+                | ContextKind::DiseaseLabelOrId
+                | ContextKind::HgncSymbolOrId
+                | ContextKind::Hgvs
+                | ContextKind::QuantitativeMeasurement
+                | ContextKind::QualitativeMeasurement
+                | ContextKind::ReferenceRange
+                | ContextKind::TreatmentTarget
+                | ContextKind::TreatmentIntent
+                | ContextKind::ResponseToTreatment
+                | ContextKind::TreatmentTerminationReason
+                | ContextKind::ProcedureLabelOrId
+                | ContextKind::ProcedureBodySite
+                | ContextKind::ObservationStatus
+                | ContextKind::MultiHpoId
+                | ContextKind::None => None,
+            })
+            .collect()
+    }
+}
+
+macro_rules! time_element_contexts {
+    ($context_variant:ident) => {{
+        #[allow(dead_code, unused_variables)]
+        fn assert_exhaustive(t: TimeElementType) {
+            match t {
+                TimeElementType::Age => {}
+                TimeElementType::Date => {}
+            }
+        }
+
+        &[
+            Context::$context_variant(TimeElementType::Age),
+            Context::$context_variant(TimeElementType::Date),
+        ]
+    }};
+}
+
+pub const ALL_LAST_ENCOUNTER: &[Context] = time_element_contexts!(LastEncounter);
+pub const ALL_TIME_OF_DEATH: &[Context] = time_element_contexts!(TimeOfDeath);
+pub const ALL_TIME_OF_PROCEDURE: &[Context] = time_element_contexts!(TimeOfProcedure);
+pub const ALL_ONSET: &[Context] = time_element_contexts!(Onset);
 
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
-
-pub const DATE_CONTEXTS: [Context; 4] = [
-    Context::DateOfBirth,
-    Context::DateAtLastEncounter,
-    Context::OnsetDate,
-    Context::DateOfDeath,
-];
-
-pub const AGE_CONTEXTS: [Context; 3] = [
-    Context::AgeAtLastEncounter,
-    Context::OnsetAge,
-    Context::AgeOfDeath,
-];
