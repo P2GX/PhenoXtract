@@ -378,7 +378,7 @@ impl<'a> ColumnFilter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::ContextKind;
+    use crate::config::context::{ContextKind, TimeElementType};
     use crate::config::table_context::{CellValue, Identifier, SeriesContext};
     use rstest::rstest;
 
@@ -518,7 +518,8 @@ mod tests {
         let series = vec![
             SeriesContext::default().with_data_context(Context::SubjectId),
             SeriesContext::default().with_data_context(Context::HpoLabelOrId),
-            SeriesContext::default().with_data_context(Context::AgeAtLastEncounter),
+            SeriesContext::default()
+                .with_data_context(Context::LastEncounter(TimeElementType::Age)),
         ];
 
         let result = SeriesContextFilter::new(&series)

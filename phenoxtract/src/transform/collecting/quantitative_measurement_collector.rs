@@ -1,4 +1,4 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::{Boundary, Context, ContextKind};
 use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -37,17 +37,17 @@ impl Collect for QuantitativeMeasurementCollector {
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::OnsetAge, Context::OnsetDate],
+                    Context::ONSETS_VARIANTS,
                 )?;
 
                 let ref_low_col = patient_cdf.get_single_linked_column_as_float(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::ReferenceRangeLow],
+                    &[Context::ReferenceRange(Boundary::Start)],
                 )?;
 
                 let ref_high_col = patient_cdf.get_single_linked_column_as_float(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::ReferenceRangeHigh],
+                    &[Context::ReferenceRange(Boundary::End)],
                 )?;
 
                 for quant_measurement_col in quant_measurement_cols {
@@ -106,6 +106,7 @@ impl Collect for QuantitativeMeasurementCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::{Boundary, TimeElementType};
     use crate::config::table_context::SeriesContext;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
@@ -176,7 +177,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed".into())
-                    .with_data_context(Context::OnsetAge)
+                    .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id(Some("height_measurement".to_string())),
                 vec![time_observed.into_column()].as_ref(),
             )
@@ -184,7 +185,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("ref_low".into())
-                    .with_data_context(Context::ReferenceRangeLow)
+                    .with_data_context(Context::ReferenceRange(Boundary::Start))
                     .with_building_block_id(Some("height_measurement".to_string())),
                 vec![ref_low.into_column()].as_ref(),
             )
@@ -192,7 +193,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("ref_high".into())
-                    .with_data_context(Context::ReferenceRangeHigh)
+                    .with_data_context(Context::ReferenceRange(Boundary::End))
                     .with_building_block_id(Some("height_measurement".to_string())),
                 vec![ref_high.into_column()].as_ref(),
             )

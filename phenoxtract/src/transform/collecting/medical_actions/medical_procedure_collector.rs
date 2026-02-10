@@ -130,6 +130,7 @@ mod tests {
         default_procedure_body_side_oc, default_timestamp,
     };
 
+    use crate::config::context::TimeElementType;
     use crate::test_suite::mocks::MockPhenopacketBuilding;
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series, TimeUnit};
@@ -219,7 +220,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("at".into())
-                    .with_data_context(Context::DateOfProcedure)
+                    .with_data_context(Context::TimeOfProcedure(TimeElementType::Date))
                     .with_building_block_id(Some("procedure_1".to_string())),
                 vec![time_element.into_column()].as_ref(),
             )

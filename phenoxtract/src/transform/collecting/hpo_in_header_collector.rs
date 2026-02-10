@@ -32,7 +32,7 @@ impl Collect for HpoInHeaderCollector {
 
                 let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
-                    &[Context::OnsetAge, Context::OnsetDate],
+                    Context::ONSETS_VARIANTS,
                 )?;
 
                 for hpo_col in hpo_cols {
@@ -91,6 +91,7 @@ impl Collect for HpoInHeaderCollector {
 mod tests {
     use super::*;
     use crate::config::TableContext;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{
@@ -153,7 +154,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
-                    .with_data_context(Context::OnsetAge)
+                    .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id(Some("phenotype_1".to_string())),
                 vec![onset.into_column()].as_ref(),
             )
@@ -196,7 +197,7 @@ mod tests {
                 .with_header_context(Context::HpoLabelOrId)
                 .with_identifier(phenotype_col_name.into()),
             SeriesContext::default()
-                .with_data_context(Context::OnsetAge)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("bb1".to_string()))
                 .with_identifier(pneumonia_onset_col.name().to_string().into()),
         ];

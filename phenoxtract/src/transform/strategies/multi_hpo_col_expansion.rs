@@ -219,6 +219,7 @@ impl MultiHPOColExpansionStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
@@ -260,7 +261,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter),
+                    .with_data_context(Context::LastEncounter(TimeElementType::Age)),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Multi_HPOs_Block_A".to_string()))
                     .with_data_context(Context::MultiHpoId)
@@ -323,7 +324,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter),
+                    .with_data_context(Context::LastEncounter(TimeElementType::Age)),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "HP:1111111#A".to_string(),

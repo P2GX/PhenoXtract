@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use phenoxtract::Pipeline;
-use phenoxtract::config::context::{Context, ContextKind};
+use phenoxtract::config::context::{Context, ContextKind, TimeElementType};
 use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CSVDataSource, DataSource};
@@ -44,10 +44,10 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_data_context(Context::DateOfBirth),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("age_at_last_encounter".to_string()))
-                .with_data_context(Context::AgeAtLastEncounter),
+                .with_data_context(Context::LastEncounter(TimeElementType::Age)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("date_at_last_encounter".to_string()))
-                .with_data_context(Context::DateAtLastEncounter),
+                .with_data_context(Context::LastEncounter(TimeElementType::Date)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("sex".to_string()))
                 .with_data_context(Context::SubjectSex),
@@ -57,10 +57,10 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_alias_map(Some(vital_status_aliases)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("age_of_death".to_string()))
-                .with_data_context(Context::AgeOfDeath),
+                .with_data_context(Context::TimeOfDeath(TimeElementType::Age)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("date_of_death".to_string()))
-                .with_data_context(Context::DateOfDeath),
+                .with_data_context(Context::TimeOfDeath(TimeElementType::Date)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("cause_of_death".to_string()))
                 .with_data_context(Context::CauseOfDeath),
@@ -77,7 +77,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_building_block_id(Some("P1".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("phenotype_onset_age".to_string()))
-                .with_data_context(Context::OnsetAge)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("P1".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("HP:1234567".to_string()))
@@ -86,7 +86,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_building_block_id(Some("P2".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("HP:1234567_onset_date".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("P2".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease".to_string()))
@@ -94,7 +94,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_building_block_id(Some("D1".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset_age".to_string()))
-                .with_data_context(Context::OnsetAge)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("D1".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("gene".to_string()))
@@ -114,7 +114,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_building_block_id(Some("D2".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease2_onset_date".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Date))
                 .with_building_block_id(Some("D2".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("body_height_cm".to_string()))
@@ -127,7 +127,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_identifier(Identifier::Regex(
                     "body_height_cm_measurement_age".to_string(),
                 ))
-                .with_data_context(Context::OnsetAge)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("QUANT_M".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("nitrate_presence".to_string()))
@@ -139,7 +139,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_identifier(Identifier::Regex(
                     "nitrate_presence_measurement_date".to_string(),
                 ))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Date))
                 .with_building_block_id(Some("QUAL_M".to_string())),
         ],
     )
