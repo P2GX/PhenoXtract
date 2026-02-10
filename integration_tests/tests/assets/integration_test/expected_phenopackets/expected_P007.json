@@ -1,0 +1,60 @@
+{
+  "id": "my_cohort-P007",
+  "subject": {
+    "id": "P007",
+    "dateOfBirth": "1994-03-21T00:00:00Z",
+    "sex": "UNKNOWN_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0410333",
+        "label": "Seafood allergy"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0410327",
+        "label": "Dairy allergy"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0410329",
+        "label": "Gluten allergy"
+      },
+      "onset": {
+        "age": {
+          "iso8601duration": "P31Y7M"
+        }
+      }
+    }
+  ],
+  "metaData": {
+    "phenopacketSchemaVersion": "2.0",
+    "created": "2025-10-25T08:48:25.436335Z",
+    "createdBy": "Integration Test",
+    "submittedBy": "Someone",
+    "resources": [
+      {
+        "id": "hp",
+        "name": "Human Phenotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/hp.json",
+        "version": "2025-09-01",
+        "namespacePrefix": "HP",
+        "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "my_cohort-P005",
+  "subject": {
+    "id": "P005",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "OTHER_SEX",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0000256",
+        "label": "Macrocephaly"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002090",
+        "label": "Pneumonia"
+      }
+    }
+  ],
+  "metaData": {
+    "phenopacketSchemaVersion": "2.0",
+    "created": "2025-10-25T08:49:30.496822Z",
+    "createdBy": "Integration Test",
+    "submittedBy": "Someone",
+    "resources": [
+      {
+        "id": "hp",
+        "name": "Human Phenotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/hp.json",
+        "version": "2025-09-01",
+        "namespacePrefix": "HP",
+        "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      }
+    ]
+  }
+}
