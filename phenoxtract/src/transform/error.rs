@@ -246,19 +246,15 @@ impl From<PolarsError> for StrategyError {
 
 #[derive(Debug, Error)]
 pub enum CollectorError {
-    #[error("Expected only one column for context '{context}' in table '{table_name}'")]
-    ExpectedSingleColumn {
-        table_name: String,
-        context: Context,
-    },
     #[error(
-        "Expected at most one column with data contexts '{contexts:?}' in the building block '{bb_id}' in table '{table_name}'"
+        "Expected at most '{n_expected}' columns with data contexts '{contexts:?}' in the building block '{bb_id}' in table '{table_name}', but found '{n_found}'."
     )]
-    ExpectedAtMostOneLinkedColumnWithContexts {
+    ExpectedAtMostNLinkedColumnWithContexts {
         table_name: String,
         bb_id: String,
         contexts: Vec<Context>,
-        amount_found: usize,
+        n_found: usize,
+        n_expected: usize,
     },
     #[error(
         "Found multiple values for context data: '{data_context}' header: '{header_context}' for '{patient_id}' when there should only be one."
@@ -313,6 +309,11 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("No {bidict_type} BiDict was found, despite being called.")]
     MissingBiDict { bidict_type: String },
+    #[error("Cannot set {required_for}: prerequisite {missing} is missing.")]
+    MissingPrerequisiteError {
+        missing: String,
+        required_for: String,
+    },
     #[error(transparent)]
     HgvsError(#[from] HGVSError),
     #[error(transparent)]

@@ -36,6 +36,10 @@ impl BiDictLibrary {
         &self.bidicts
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.bidicts.is_empty()
+    }
+
     pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
             if check_curie_format(query, Some(bidict.reference().prefix_id()), None) {
