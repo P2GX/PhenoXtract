@@ -1,17 +1,18 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
+use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
+
 #[derive(Debug)]
 pub struct IndividualCollector;
 
 impl Collect for IndividualCollector {
     fn collect(
         &self,
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError> {
@@ -56,7 +57,7 @@ impl Collect for IndividualCollector {
 
 impl IndividualCollector {
     fn collect_vitality_status(
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError> {

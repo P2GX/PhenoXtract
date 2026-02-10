@@ -296,7 +296,7 @@ impl Default for CachedOntologyFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_suite::ontology_mocking::MockOntologyRegistry;
+    use crate::test_suite::mocks::MockOntologyRegistry;
     use rstest::rstest;
 
     #[rstest]

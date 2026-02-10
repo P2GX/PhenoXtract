@@ -6,6 +6,7 @@ use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
 use dotenvy::dotenv;
+use phenopackets::schema::v2::core::Procedure;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -237,6 +238,49 @@ pub(crate) fn default_phenotype() -> PhenotypicFeature {
     PhenotypicFeature {
         r#type: Some(default_phenotype_oc()),
         ..Default::default()
+    }
+}
+
+pub(crate) fn default_procedure_oc() -> OntologyClass {
+    OntologyClass {
+        id: "MAXO:0000756".to_string(),
+        label: "blood transfusion".to_string(),
+    }
+}
+
+pub(crate) fn default_procedure_body_side_oc() -> OntologyClass {
+    OntologyClass {
+        id: "UBERON:0003403".to_string(),
+        label: "skin of forearm".to_string(),
+    }
+}
+
+pub(crate) fn default_treatment_intent() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C185614".to_string(),
+        label: "Curative Therapy".to_string(),
+    }
+}
+
+pub(crate) fn default_treatment_response() -> OntologyClass {
+    OntologyClass {
+        id: "SNOMED:182987007".to_string(),
+        label: "Fair response to treatment (situation)".to_string(),
+    }
+}
+
+pub(crate) fn default_treatment_termination_reason() -> OntologyClass {
+    OntologyClass {
+        id: "SNOMED:341009".to_string(),
+        label: "ABO incompatibility reaction (disorder)".to_string(),
+    }
+}
+
+pub(crate) fn default_procedure() -> Procedure {
+    Procedure {
+        code: Some(default_procedure_oc()),
+        body_site: Some(default_procedure_body_side_oc()),
+        performed: Some(default_timestamp_element()),
     }
 }
 

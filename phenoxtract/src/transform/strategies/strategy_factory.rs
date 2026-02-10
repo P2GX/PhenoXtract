@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     use crate::config::context::ContextKind;
     use crate::config::strategy_config::StrategyConfig;
-    use crate::test_suite::ontology_mocking::MockOntologyRegistry;
+    use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::resource_references::MONDO_REF;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;

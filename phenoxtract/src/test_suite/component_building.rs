@@ -1,7 +1,6 @@
 use crate::ontology::loinc_client::LoincClient;
-use crate::test_suite::ontology_mocking::{MONDO_BIDICT, ONTOLOGY_FACTORY, PATO_DICT, UO_DICT};
+use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, PATO_DICT, UO_DICT};
 use crate::test_suite::phenopacket_component_generation::default_meta_data;
-use crate::test_suite::resource_references::HPO_REF;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
 use dotenvy::dotenv;
@@ -10,13 +9,7 @@ use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use std::path::Path;
 
 pub(crate) fn build_test_hpo_bidict_library() -> BiDictLibrary {
-    let hpo_bidict = ONTOLOGY_FACTORY
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .build_bidict(&HPO_REF.clone(), None)
-        .unwrap();
-
-    BiDictLibrary::new("HPO", vec![Box::new(hpo_bidict)])
+    BiDictLibrary::new("HPO", vec![Box::new(HPO_DICT.clone())])
 }
 
 pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {

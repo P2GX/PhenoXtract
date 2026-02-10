@@ -2,7 +2,7 @@
 /// The collector should collect gene and variant data which can be interpreted
 /// as one of the enum's branches.
 #[derive(PartialEq, Debug)]
-pub(crate) enum PathogenicGeneVariantData {
+pub enum PathogenicGeneVariantData {
     None,
     CausativeGene(String),
     SingleVariant {

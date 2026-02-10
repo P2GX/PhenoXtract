@@ -1,13 +1,13 @@
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::PhenopacketBuilder;
 use crate::transform::error::CollectorError;
+use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 use std::fmt::Debug;
 
 pub trait Collect: Debug {
     fn collect(
         &self,
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError>;

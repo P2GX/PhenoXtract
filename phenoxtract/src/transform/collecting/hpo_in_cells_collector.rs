@@ -1,9 +1,9 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::PhenopacketBuilder;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
+use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub struct HpoInCellsCollector;
 impl Collect for HpoInCellsCollector {
     fn collect(
         &self,
-        builder: &mut PhenopacketBuilder,
+        builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
     ) -> Result<(), CollectorError> {

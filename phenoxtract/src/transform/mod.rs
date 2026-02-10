@@ -9,7 +9,7 @@ pub(crate) mod data_processing;
 pub mod pathogenic_gene_variant_info;
 mod phenopacket_access;
 pub mod strategies;
-mod traits;
+pub mod traits;
 pub mod transform_module;
 mod utils;
 
