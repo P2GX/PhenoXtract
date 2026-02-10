@@ -36,8 +36,8 @@ pub(crate) fn get_single_multiplicity_element(
         cols_of_element_type.extend(
             patient_cdf
                 .filter_columns()
-                .where_data_context(Filter::Is(&data_context))
-                .where_header_context(Filter::Is(&header_context))
+                .where_data_context(Filter::Is(data_context))
+                .where_header_context(Filter::Is(header_context))
                 .collect(),
         );
     }
