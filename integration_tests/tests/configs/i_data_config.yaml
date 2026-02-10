@@ -1,26 +1,28 @@
 data_sources:
   - type: "excel"
-    source: "/Users/patrick/Downloads/PhenoXtract/i_data.xlsx"
-    contexts:
-      - name: "Cohort"
-        context:
+    source: "/Users/patrick/Downloads/I_DATA/i_data.xlsx"
+    sheets:
+      - sheet_name: "Cohort"
+        has_headers: true
+        patients_are_rows: true
+        contexts:
           - identifier: "PatientId"
             data_context: subject_id
           - identifier: "YOB"
             data_context: date_of_birth
           - identifier: "Living"
             data_context: vital_status
-            alias_map:
-              hash_map:
+            alias_map_config:
+              mappings:
                 "Yes": "ALIVE"
                 "No": "DECEASED"
-              output_dtype: String
+              output_data_type: String
           - identifier: "Age of Death (Years)"
             data_context: age_of_death
-            alias_map:
-              hash_map:
+            alias_map_config:
+              mappings:
                 "less than 1 year": "0"
-              output_dtype: Int64
+              output_data_type: Int64
           - identifier: "Sex"
             data_context: subject_sex
           - identifier: "Most Recent Visit Date"
@@ -28,56 +30,23 @@ data_sources:
           - identifier: "Diagnosis"
             data_context: disease_label_or_id
             building_block_id: "D"
-            alias_map:
-              hash_map:
-                "AGAMMAGLOBULINEMIA": "agammaglobulinemia"
-                "ATAXIA TELANGIECTASIA": "ataxia telangiectasia"
-                "AUTOIMMUNE LYMPHOPROLIFERATIVE SYNDROME (ALPS)": "autoimmune lymphoproliferative syndrome"
-                "AUTOINFLAMMATORY DISEASE": "autoinflammatory disease, X-linked"
-                "CHARGE SYNDROME": "CHARGE syndrome"
-                "CHRONIC GRANULOMATOUS DISEASE": "chronic granulomatous disease"
-                "COMBINED IMMUNE DEFICIENCY": "combined immunodeficiency"
-                "COMMON VARIABLE IMMUNE DEFICIENCY (CVID)": "common variable immunodeficiency"
-                "COMPLEMENT DEFICIENCY": "complement deficiency"
-                "DIGEORGE SYNDROME": "DiGeorge syndrome"
-                "DYSKERATOSIS CONGENITA": "dyskeratosis congenita"
-                "ECTODERMAL DYSPLASIA WITH IMMUNODEFICIENCY (NEMO AND OTHERS)": "ectodermal dysplasia and immune deficiency"
-                "HLH, INCLUDING XLP AND PIGMENTARY DISORDERS": "hemophagocytic syndrome"
-                "HYPER IGE SYNDROME": "hyper-IgE syndrome"
-                "HYPER IGM SYNDROME": "hyper-IgM syndrome"
-                "HYPOGAMMAGLOBULINEMIA": "syndromic agammaglobulinemia"
-                "IGA DEFICIENCY": "dysgammaglobulinemia"
-                "IGG SUBCLASS DEFICIENCY": "selective IgG subclass deficiency"
-                "IMMUNE DEFICIENCY WITH SYNDROMIC FEATURES (NOT OTHERWISE LISTED)": "immunodeficiency disease"
-                "IMMUNE DYSREGULATION": "immune dysregulation, autoimmunity, and autoinflammation"
-                "IMMUNODEFICIENCY UNKNOWN CAUSE": "immunodeficiency disease"
-                "IMMUNODEFICIENCY WITH MYELODYSPLASIA (GATA2 AND OTHERS)": "immunodeficiency disease"
-                "INTERFERONOPATHY (AICARDI-GOUTIERES AND OTHERS)": "type 1 interferonopathy"
-                "LEUKOCYTE ADHESION DEFICIENCY": "leukocyte adhesion deficiency"
-                "MUCOCUTANEOUS CANDIDIASIS": "chronic mucocutaneous candidiasis"
-                "NEUTROPENIA": "neutropenia"
-                "NK CELL DEFECT": "inborn error of immunity"
-                "OMENN SYNDROME": "omenn syndrome"
-                "OTHER IMMUNE DEFICIENCY - KNOWN CAUSE": "immunodeficiency disease"
-                "OTHER NEUTROPHIL PROBLEMS": "neutrophil immunodeficiency syndrome"
-                "OTHER T-CELL PROBLEMS": null
-                "PREDISPOSITION TO SEVERE VIRAL INFECTIONS": "immunodeficiency 83, susceptibility to viral infections"
-                "SEVERE COMBINED IMMUNE DEFICIENCY (SCID)": "severe combined immunodeficiency"
-                "SPECIFIC ANTIBODY DEFICIENCY WITH NORMAL IG CONCENTRATIONS AND NORMAL NUMBERS OF B CELLS": null
-                "SUSCEPTIBILITY TO MYCOBACTERIA (MSMD)": "inherited susceptibility to mycobacterial diseases"
-                "TLR PATHWAY ABNORMALITY": null
-                "TRANSIENT HYPOGAMMAGLOBULINEMIA OF INFANCY WITH NORMAL NUMBERS OF B CELLS": "transient hypogammaglobulinemia of infancy"
-                "WISKOTT-ALDRICH SYNDROME": "Wiskott-Aldrich syndrome"
-              output_dtype: String
+            alias_map_config:
+              mappings:
+                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/disease_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "ALIAS"
+              output_data_type: String
           - identifier: "Onset Age (Years)"
             data_context: onset_age
             building_block_id: "D"
-            alias_map:
-              hash_map:
+            alias_map_config:
+              mappings:
                 "less than 1 year": "0"
-              output_dtype: Int64
-      - name: "Vitals"
-        context:
+              output_data_type: Int64
+      - sheet_name: "Vitals"
+        has_headers: true
+        patients_are_rows: true
+        contexts:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Vitals Date"
@@ -101,8 +70,10 @@ data_sources:
                 assay_id: "LOINC:39156-5"
                 unit_ontology_id: "UO:0000086"
             building_block_id: "M"
-      - name: "Head Circ."
-        context:
+      - sheet_name: "Head Circ."
+        has_headers: true
+        patients_are_rows: true
+        contexts:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Head Circumf Date"
@@ -114,17 +85,21 @@ data_sources:
                 assay_id: "LOINC:9843-4"
                 unit_ontology_id: "UO:0000015"
             building_block_id: "M"
-    extraction_configs:
-      - name: "Cohort"
+      - sheet_name: "Infections"
         has_headers: true
         patients_are_rows: true
-      - name: "Vitals"
-        has_headers: true
-        patients_are_rows: true
-      - name: "Head Circ."
-        has_headers: true
-        patients_are_rows: true
-pipeline:
+        contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Infection"
+            data_context: disease_label_or_id
+            alias_map_config:
+              mappings:
+                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/deft_matcher_results_9e16c341-9e6f-4c04-b680-812a21ca7d28_10-02-2026_22-00-28/infection_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+pipeline_config:
   transform_strategies:
     - alias_map
     - default_mapping: sex_mapping
@@ -132,11 +107,11 @@ pipeline:
     - age_to_iso8601
   loader:
     file_system:
-      output_dir: "/Users/patrick/Downloads/PhenoXtract/i_data_phenopackets/"
+      output_dir: "/Users/patrick/Downloads/I_DATA/i_data_phenopackets"
       create_dir: true
   meta_data:
-    created_by: Rouven Reuter
-    submitted_by: Magnus Knut Hansen
+    created_by: Patrick Nairne
+    submitted_by: Patrick Nairne
     cohort_name: "I_COHORT"
     hp_resource:
       id: "HP"
