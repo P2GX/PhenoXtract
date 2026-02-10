@@ -14,7 +14,7 @@ pub mod loader_config;
 pub(crate) mod resource_config;
 pub(crate) mod resource_config_factory;
 pub mod table_context;
-mod try_from_config;
+pub mod try_from_config;
 
 pub use self::datasource_config::DataSourceConfig;
 
