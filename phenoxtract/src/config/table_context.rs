@@ -22,7 +22,6 @@ use validator::Validate;
 pub struct TableContext {
     name: String,
     #[validate(custom(function = "validate_unique_identifiers"))]
-    #[serde(default)]
     context: Vec<SeriesContext>,
 }
 
@@ -181,22 +180,18 @@ pub struct SeriesContext {
     identifier: Identifier,
 
     /// The semantic context found in the header(s) of the series.
-    #[serde(default = "crate::config::table_context::Context::default")]
     header_context: Context,
     /// The context that applies to every cell within this series.
-    #[serde(default = "crate::config::table_context::Context::default")]
     data_context: Context,
 
     /// A default value to replace empty fields in a cell
     fill_missing: Option<CellValue>,
 
-    #[serde(default)]
     /// A map to replace specific cell values with other strings, ints, floats or bools.
     /// This can be used for aliasing or correcting data, e.g., mapping "N/A" to a standard null representation.
     /// The output datatype of the column will be inferred
     alias_map: Option<AliasMap>,
 
-    #[serde(default)]
     /// An ID that associates this series with a building block of a phenopacket. If the same ID is shared with other series, the pipeline will try to construct a building block from them.
     building_block_id: Option<String>,
 }
