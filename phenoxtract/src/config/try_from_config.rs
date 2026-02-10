@@ -270,30 +270,37 @@ impl TryFrom<MappingsCsvConfig> for HashMap<String, Option<String>> {
     type Error = ConstructionError;
 
     fn try_from(config: MappingsCsvConfig) -> Result<Self, Self::Error> {
-        let mut csv_read_options = CsvReadOptions::default();
+        let csv_read_options = CsvReadOptions::default();
 
         let alias_df = (|| {
             csv_read_options
                 .try_into_reader_with_file_path(Some(config.path.clone()))?
                 .finish()
         })()
-            .map_err(|err| ConstructionError::LoadingAliases {
-                path: config.path,
-                err,
-            })?;
+        .map_err(|err| ConstructionError::LoadingAliases {
+            path: config.path.clone(),
+            err,
+        })?;
 
-        // Extract the two columns
-        let keys = alias_df.column(config.key_column_name.as_str())?.str()?;
-        let aliases = alias_df.column(config.alias_column_name.as_str())?.str()?;
+        let (keys, aliases) = (|| {
+            let keys = alias_df.column(config.key_column_name.as_str())?.str()?;
+            let aliases = alias_df.column(config.alias_column_name.as_str())?.str()?;
+            Ok((keys, aliases))
+        })()
+        .map_err(|err| ConstructionError::LoadingAliases {
+            path: config.path.clone(),
+            err,
+        })?;
 
-        // Build the HashMap
-        let map = keys
-            .into_iter()
-            .zip(aliases.into_iter())
-            .filter_map(|(k, v)| Some((k?.to_string(), v?.to_string())))
-            .collect::<HashMap<_, _>>();
+        let mut hash_map = HashMap::new();
 
-        Ok(map)
+        for (key, alias) in keys.iter().zip(aliases.iter()) {
+            if let Some(key) = key {
+                hash_map.insert(key.to_string(), alias.map(|a| a.to_string()));
+            }
+        }
+
+        Ok(hash_map)
     }
 }
 
