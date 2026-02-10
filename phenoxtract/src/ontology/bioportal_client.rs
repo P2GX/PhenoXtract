@@ -101,12 +101,16 @@ impl BioPortalClient {
 impl BioPortalClient {
     /// Convenience constructor: assume CURIE prefix == BioPortal acronym (pragmatic default).
     pub fn new(
-        api_key: String,
-        bioportal_acronym: String,
+        api_key: &str,
+        bioportal_acronym: &str,
         reference: Option<ResourceRef>,
     ) -> Result<Self, BiDictError> {
-        let curie_prefix = bioportal_acronym.clone();
-        Self::new_with_prefix(api_key, bioportal_acronym, curie_prefix, reference)
+        Self::new_with_prefix(
+            api_key.to_string(),
+            bioportal_acronym.to_string(),
+            bioportal_acronym,
+            reference,
+        )
     }
 
     /// Build a configured BioPortal client.

@@ -7,6 +7,7 @@ pub mod bidict_library;
 pub mod collecting;
 pub(crate) mod data_processing;
 pub mod pathogenic_gene_variant_info;
+mod phenopacket_access;
 pub mod strategies;
 pub mod traits;
 pub mod transform_module;

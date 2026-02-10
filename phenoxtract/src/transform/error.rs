@@ -309,6 +309,11 @@ pub enum PhenopacketBuilderError {
     ParsingError { what: String, value: String },
     #[error("No {bidict_type} BiDict was found, despite being called.")]
     MissingBiDict { bidict_type: String },
+    #[error("Cannot set {required_for}: prerequisite {missing} is missing.")]
+    MissingPrerequisiteError {
+        missing: String,
+        required_for: String,
+    },
     #[error(transparent)]
     HgvsError(#[from] HGVSError),
     #[error(transparent)]

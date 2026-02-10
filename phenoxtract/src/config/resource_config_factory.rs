@@ -1,5 +1,6 @@
 use crate::config::resource_config::{ResourceConfig, Secrets};
 use crate::ontology::CachedOntologyFactory;
+use crate::ontology::bioportal_client::BioPortalClient;
 use crate::ontology::error::FactoryError;
 use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
@@ -20,6 +21,11 @@ impl ResourceConfigFactory {
             .eq_ignore_ascii_case(KnownResourcePrefixes::LOINC.as_ref())
         {
             Self::build_loinc_client(config)
+        } else if config
+            .id
+            .eq_ignore_ascii_case(KnownResourcePrefixes::OMIM.as_ref())
+        {
+            Self::build_bioportal_client(config)
         } else {
             match self.ontology_factory.build_bidict(
                 &ResourceRef::new(config.id.clone(), config.version.clone()),
@@ -92,6 +98,41 @@ impl ResourceConfigFactory {
                 }),
             },
         }
+    }
+
+    fn build_bioportal_client(config: &ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
+        let secrets = config
+            .secrets
+            .as_ref()
+            .ok_or_else(|| FactoryError::CantBuild {
+                reason: format!(
+                    "Can't build BioPortal client for '{}': no secrets provided",
+                    config.id
+                ),
+            })?;
+
+        let token = match secrets {
+            Secrets::Credentials { .. } => {
+                return Err(FactoryError::CantBuild {
+                    reason: format!(
+                        "BioPortal API requires an API Key, not username/password (resource: '{}')",
+                        config.id
+                    ),
+                });
+            }
+            Secrets::Token { token } => token,
+        };
+
+        let resource_ref = ResourceRef::new(config.id.clone(), config.version.clone());
+
+        let client =
+            BioPortalClient::new(token, &config.id, Some(resource_ref)).map_err(|err| {
+                FactoryError::CantBuild {
+                    reason: err.to_string(),
+                }
+            })?;
+
+        Ok(Box::new(client))
     }
 
     pub fn into_ontology_factory(self) -> CachedOntologyFactory {
@@ -232,5 +273,58 @@ mod tests {
         for not_supported in non_configurable_strs {
             assert!(!err.to_string().contains(not_supported));
         }
+    }
+
+    #[test]
+    fn test_build_bioportal_client_success() {
+        let mut factory = ResourceConfigFactory::default();
+        let id: String = KnownResourcePrefixes::OMIM.into();
+        let version = "2025-06-24".to_string();
+
+        let config = ResourceConfig {
+            id: id.clone(),
+            version: Some(version.to_string()),
+            secrets: Some(Secrets::Token {
+                token: "valid_bioportal_api_key".to_string(),
+            }),
+        };
+
+        let client = factory.build(&config).unwrap();
+
+        assert_eq!(
+            client.reference(),
+            &ResourceRef::from(id.as_ref()).with_version(&version)
+        )
+    }
+
+    #[test]
+    fn test_bioportal_missing_secrets() {
+        let mut factory = ResourceConfigFactory::default();
+        let config = ResourceConfig {
+            id: KnownResourcePrefixes::OMIM.into(),
+            secrets: None,
+            ..Default::default()
+        };
+
+        let result = factory.build(&config);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bioportal_wrong_secret_type() {
+        let mut factory = ResourceConfigFactory::default();
+        let config = ResourceConfig {
+            id: KnownResourcePrefixes::OMIM.into(),
+            secrets: Some(Secrets::Credentials {
+                user: "u".into(),
+                password: "p".into(),
+            }),
+            ..Default::default()
+        };
+
+        let result = factory.build(&config);
+
+        assert!(result.is_err());
     }
 }
