@@ -1,5 +1,8 @@
+use crate::extract::ContextualizedDataFrame;
 use crate::ontology::CachedOntologyFactory;
 use crate::test_suite::utils::test_ontology_path;
+use crate::transform::collecting::traits::Collect;
+use crate::transform::error::CollectorError;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::PhenopacketBuilding;
@@ -10,12 +13,33 @@ use ontology_registry::enums::{FileType, Version};
 use ontology_registry::error::OntologyRegistryError;
 use ontology_registry::traits::OntologyRegistry;
 use phenopackets::schema::v2::Phenopacket;
+use std::any::Any;
+use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 mock! {
-    pub PhenopacketBuilding {}
+    pub(crate) Collector {}
+
+    impl Collect for Collector {
+        fn collect(
+            &self,
+            builder: &mut dyn PhenopacketBuilding,
+            patient_cdfs: &[ContextualizedDataFrame],
+            phenopacket_id: &str,
+        ) -> Result<(), CollectorError>;
+
+        fn as_any(&self) -> &dyn Any;
+    }
+
+    impl Debug for Collector {
+        fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
+    }
+}
+
+mock! {
+    pub(crate) PhenopacketBuilding {}
     impl PhenopacketBuilding for PhenopacketBuilding {
         fn build(&self) -> Vec<Phenopacket>;
 
