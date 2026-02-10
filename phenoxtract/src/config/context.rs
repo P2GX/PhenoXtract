@@ -70,7 +70,8 @@ pub enum Context {
 
     ProcedureLabelOrId,
     ProcedureBodySite,
-    ProcedureTimeElement,
+    DateOfProcedure,
+    AgeAtProcedure,
 
     // other
     ObservationStatus,

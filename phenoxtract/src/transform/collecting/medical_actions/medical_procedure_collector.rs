@@ -219,7 +219,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("at".into())
-                    .with_data_context(Context::ProcedureTimeElement)
+                    .with_data_context(Context::DateOfProcedure)
                     .with_building_block_id(Some("procedure_1".to_string())),
                 vec![time_element.into_column()].as_ref(),
             )
