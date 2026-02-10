@@ -197,13 +197,15 @@ impl TryFrom<CsvConfig> for CsvDataSource {
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
 
-        let tc = TableContext::new("CsvData".to_string(), scs);
+        let path_string = config.source.display().to_string();
+
+        let tc = TableContext::new(path_string.clone(), scs);
 
         Ok(CsvDataSource {
             source: config.source,
             separator: config.separator,
             extraction_config: ExtractionConfig {
-                name: "CsvData".to_string(),
+                name: path_string,
                 has_headers: config.has_headers,
                 patients_are_rows: config.patients_are_rows,
             },
