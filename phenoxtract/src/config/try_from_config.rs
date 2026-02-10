@@ -25,7 +25,7 @@ use polars::prelude::{CsvReadOptions, SerReader};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-
+use std::sync::Arc;
 // --- PHENOXTRACT FROM CONFIG ---
 
 impl TryFrom<PhenoXtractConfig> for Phenoxtract {
@@ -250,7 +250,10 @@ impl TryFrom<MappingsCsvConfig> for HashMap<String, Option<String>> {
     type Error = ConstructionError;
 
     fn try_from(config: MappingsCsvConfig) -> Result<Self, Self::Error> {
-        let csv_read_options = CsvReadOptions::default();
+        let csv_read_options = CsvReadOptions::default().with_columns(Some(Arc::new([
+            config.key_column_name.clone().into(),
+            config.alias_column_name.clone().into(),
+        ])));
 
         let alias_df = (|| {
             csv_read_options
@@ -305,6 +308,11 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
+    #[fixture]
+    fn another_temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
     #[rstest]
     fn test_try_from_phenoxtract_config(temp_dir: TempDir) {
         dotenv().ok();
@@ -334,9 +342,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_pipeline_config(temp_dir: TempDir) {
+    fn test_try_from_pipeline_config(another_temp_dir: TempDir) {
         dotenv().ok();
-        let file_path = temp_dir.path().join("config.yaml");
+        let file_path = another_temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).expect("Failed to create config file");
         file.write_all(PIPELINE_CONFIG_FILE)
             .expect("Failed to write config file");
