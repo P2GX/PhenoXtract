@@ -6,6 +6,23 @@ use std::fmt::Display;
 use strum_macros::Display;
 use strum_macros::EnumDiscriminants;
 
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq)]
+enum TimeElementType {
+    GestationalAge,
+    Age,
+    OntologyClass,
+    Timestamp,
+    TimeIntervalStart,
+    TimeIntervalEnd,
+    AgeRangeStart,
+    AgeRangeEnd,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq)]
+enum Boundary {
+    Start,
+    End,
+}
 /// Defines the semantic meaning or type of data in a column (either the header or the data itself).
 ///
 /// This enum is used to tag data with a specific, machine-readable context,
@@ -36,10 +53,8 @@ pub enum Context {
     SubjectSex,
     DateOfBirth,
     VitalStatus,
-    DateAtLastEncounter,
-    AgeAtLastEncounter,
-    DateOfDeath,
-    AgeOfDeath,
+    TimeAtLastEncounter(TimeElementType),
+    TimeOfDeath(TimeElementType),
     CauseOfDeath,
     SurvivalTimeDays,
 
@@ -59,14 +74,13 @@ pub enum Context {
     QualitativeMeasurement {
         assay_id: String,
     },
-    ReferenceRangeLow,
-    ReferenceRangeHigh,
+    ReferenceRange(Boundary),
 
     // other
     ObservationStatus,
     MultiHpoId,
-    OnsetDate,
-    OnsetAge,
+    OnsetTime(TimeElementType),
+    ReleaseTime(TimeElementType),
     #[default]
     None,
     //...
