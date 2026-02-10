@@ -123,18 +123,10 @@ impl ResourceConfigFactory {
             Secrets::Token { token } => token,
         };
 
-        let resource_acronym = BioPortalClient::PREFIX_ACRONYM_MAPPING
-            .iter()
-            .find(|(prefix, _)| prefix.eq_ignore_ascii_case(config.id.as_str()))
-            .map(|(_, acronym)| acronym)
-            .ok_or_else(|| FactoryError::CantBuild {
-                reason: format!("No matching resource acronym found for '{}'", config.id),
-            })?;
-
-        let resource_ref = ResourceRef::new(*resource_acronym, config.version.clone());
+        let resource_ref = ResourceRef::new(config.id.clone(), config.version.clone());
 
         let client =
-            BioPortalClient::new(token, resource_acronym, Some(resource_ref)).map_err(|err| {
+            BioPortalClient::new(token, &config.id, Some(resource_ref)).map_err(|err| {
                 FactoryError::CantBuild {
                     reason: err.to_string(),
                 }
@@ -290,7 +282,7 @@ mod tests {
         let version = "2025-06-24".to_string();
 
         let config = ResourceConfig {
-            id: id.to_lowercase(),
+            id: id.clone(),
             version: Some(version.to_string()),
             secrets: Some(Secrets::Token {
                 token: "valid_bioportal_api_key".to_string(),

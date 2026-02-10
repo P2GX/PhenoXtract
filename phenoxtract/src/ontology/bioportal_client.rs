@@ -67,9 +67,6 @@ pub struct BioPortalClient {
 }
 
 impl BioPortalClient {
-    pub const PREFIX_ACRONYM_MAPPING: &'static [(&'static str, &'static str)] =
-        &[("OMIM", "OMIM"), ("SNOMED", "SNOMEDCT")];
-
     /// Parse + validate CURIE using securiety.
     /// - input must be a CURIE
     /// - prefix must match this client's configured CURIE prefix (case-insensitive)
