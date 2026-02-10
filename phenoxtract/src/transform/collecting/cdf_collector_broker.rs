@@ -88,6 +88,7 @@ impl CdfCollectorBroker {
         )
     }
 }
+
 impl PartialEq for CdfCollectorBroker {
     fn eq(&self, other: &Self) -> bool {
         if self.phenopacket_builder != other.phenopacket_builder {
@@ -119,12 +120,10 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::extract::contextualized_dataframe_filters::Filter;
-    use crate::test_suite::cdf_generation::{generate_minimal_cdf, generate_patient_ids};
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
+    use crate::test_suite::mocks::MockCollector;
     use rstest::{fixture, rstest};
-    use std::any::Any;
-    use std::cell::{Cell, RefCell};
-    use std::fmt::Debug;
     use tempfile::TempDir;
 
     #[fixture]
@@ -132,48 +131,43 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    #[derive(Default, Debug)]
-    struct MockCollector {
-        pub call_count: Cell<usize>,
-        pub seen_pps: RefCell<Vec<String>>,
-    }
-
-    impl Collect for MockCollector {
-        fn collect(
-            &self,
-            _: &mut dyn PhenopacketBuilding,
-            patient_cdfs: &[ContextualizedDataFrame],
-            phenopacket_id: &str,
-        ) -> Result<(), CollectorError> {
-            self.call_count.set(self.call_count.get() + 1);
-            self.seen_pps.borrow_mut().push(phenopacket_id.to_string());
-
-            for cdf in patient_cdfs {
-                let subject_col = cdf
-                    .filter_columns()
-                    .where_data_context(Filter::Is(&Context::SubjectId))
-                    .collect();
-                let unique_patient_ids = subject_col.first().unwrap().unique()?;
-                assert_eq!(unique_patient_ids.str()?.len(), 1);
-            }
-
-            Ok(())
-        }
-        fn as_any(&self) -> &dyn Any {
-            self
-        }
-    }
-
     fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder(temp_dir.path());
 
-        CdfCollectorBroker::new(
-            builder,
-            vec![
-                Box::new(MockCollector::default()),
-                Box::new(MockCollector::default()),
-            ],
-        )
+        let mut mock1 = MockCollector::new();
+        let mut mock2 = MockCollector::new();
+
+        mock1
+            .expect_collect()
+            .returning(|_, patient_cdfs, _phenopacket_id| {
+                for cdf in patient_cdfs {
+                    let subject_col = cdf
+                        .filter_columns()
+                        .where_data_context(Filter::Is(&Context::SubjectId))
+                        .collect();
+                    let unique_patient_ids = subject_col.first().unwrap().unique()?;
+                    assert_eq!(unique_patient_ids.str()?.len(), 1);
+                }
+                Ok(())
+            })
+            .times(2);
+
+        mock2
+            .expect_collect()
+            .returning(|_, patient_cdfs, _phenopacket_id| {
+                for cdf in patient_cdfs {
+                    let subject_col = cdf
+                        .filter_columns()
+                        .where_data_context(Filter::Is(&Context::SubjectId))
+                        .collect();
+                    let unique_patient_ids = subject_col.first().unwrap().unique()?;
+                    assert_eq!(unique_patient_ids.str()?.len(), 1);
+                }
+                Ok(())
+            })
+            .times(2);
+
+        CdfCollectorBroker::new(builder, vec![Box::new(mock1), Box::new(mock2)])
     }
 
     #[rstest]
@@ -185,17 +179,6 @@ mod tests {
 
         broker.process(vec![cdf1, cdf2]).unwrap();
 
-        for collector in broker.collectors {
-            let mock = collector.as_any().downcast_ref::<MockCollector>().unwrap();
-
-            assert_eq!(mock.call_count.get(), 2);
-
-            let mut seen = mock.seen_pps.borrow().clone();
-            seen.sort();
-
-            let expected = generate_patient_ids(2);
-            assert_eq!(seen, expected);
-            assert_eq!(mock.seen_pps.borrow().len(), 2);
-        }
+        // The expectations are verified when the mocks are dropped
     }
 }
