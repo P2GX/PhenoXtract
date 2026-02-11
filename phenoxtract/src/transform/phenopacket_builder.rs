@@ -809,9 +809,11 @@ mod tests {
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_cohort_id, default_datetime, default_disease,
         default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc,
-        default_qual_loinc, default_qual_measurement, default_quant_loinc,
-        default_quant_measurement, default_reference_range, default_timestamp,
-        default_timestamp_element, default_uo_term, generate_phenotype,
+        default_procedure_body_side_oc, default_procedure_oc, default_qual_loinc,
+        default_qual_measurement, default_quant_loinc, default_quant_measurement,
+        default_reference_range, default_timestamp, default_timestamp_element,
+        default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
+        default_uo_term, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -1784,19 +1786,17 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let patient_id = default_patient_id();
 
-        let procedure_code = "NCIT:C15189"; // Example: Biopsy
-        let body_part = "UBERON:0002048"; // Example: Lung
+        let procedure_code = default_procedure_oc();
+        let body_part = default_procedure_body_side_oc();
         let time_str = default_iso_age();
 
-        // 2. Execute method
         let result = builder.parse_procedure(
             &patient_id,
-            procedure_code,
-            Some(body_part),
+            &procedure_code.id,
+            Some(&body_part.id),
             Some(&time_str),
         );
 
-        // 3. Assert Success
         assert!(
             result.is_ok(),
             "Failed to parse procedure: {:?}",
@@ -1804,38 +1804,24 @@ mod tests {
         );
         let procedure = result.unwrap();
 
-        // 4. Validate Content
-        // Check Procedure Code
         assert!(procedure.code.is_some());
-        assert_eq!(procedure.code.unwrap().id, procedure_code);
+        assert_eq!(procedure.code.unwrap(), procedure_code);
 
-        // Check Body Site
         assert!(procedure.body_site.is_some());
-        assert_eq!(procedure.body_site.unwrap().id, body_part);
+        assert_eq!(procedure.body_site.unwrap(), body_part);
 
-        // Check Time
         assert!(procedure.performed.is_some());
         assert_eq!(
             procedure.performed.as_ref().unwrap(),
             &default_age_element()
         );
 
-        // 5. Verify Resource Injection
-        // The builder should have ensured the ontology resources (NCIT, UBERON) were added to the phenopacket
-        let pp = builder.get_or_create_phenopacket(&patient_id);
-        let resource_ids: Vec<String> = pp
-            .meta_data
-            .as_ref()
-            .unwrap()
-            .resources
-            .iter()
-            .map(|r| r.id.clone())
-            .collect();
+        let pp = builder.build().first().unwrap().clone();
+        let resource_ids: Vec<String> = pp.resources().iter().map(|r| r.id.clone()).collect();
 
-        // Assuming your resolve logic maps prefixes to these IDs
         assert!(
-            resource_ids.contains(&"ncit".to_string())
-                || resource_ids.contains(&"NCIT".to_string())
+            resource_ids.contains(&"maxo".to_string())
+                && resource_ids.contains(&"uberon".to_string())
         );
     }
 
@@ -1844,23 +1830,19 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let patient_id = default_patient_id();
 
-        // 1. Define inputs
-        // Note: These must exist in your disease/treatment dictionaries
-        let target_disease = default_disease_oc().id;
-        let intent = "NCIT:C64639"; // Example: Curative
-        let response = "NCIT:C159675"; // Example: Partial Response
-        let termination = "NCIT:C18260"; // Example: Adverse Event
+        let target_disease = default_disease_oc();
+        let intent = default_treatment_intent();
+        let response = default_treatment_response();
+        let termination = default_treatment_termination_reason();
 
-        // 2. Execute method
         let result = builder.parse_medical_action(
             &patient_id,
-            Some(&target_disease),
-            Some(intent),
-            Some(response),
-            Some(termination),
+            Some(&target_disease.id),
+            Some(&intent.label),
+            Some(&response.id),
+            Some(&termination.label),
         );
 
-        // 3. Assert Success
         assert!(
             result.is_ok(),
             "Failed to parse medical action: {:?}",
@@ -1868,22 +1850,22 @@ mod tests {
         );
         let action = result.unwrap();
 
-        // 4. Validate Content
-        // Target (looked up via disease_bidict_lib)
         assert!(action.treatment_target.is_some());
-        assert_eq!(action.treatment_target.unwrap().id, target_disease);
+        assert_eq!(action.treatment_target.unwrap(), target_disease);
 
-        // Intent
         assert!(action.treatment_intent.is_some());
-        assert_eq!(action.treatment_intent.unwrap().id, intent);
+        assert_eq!(action.treatment_intent.unwrap(), intent);
 
-        // Response
         assert!(action.response_to_treatment.is_some());
-        assert_eq!(action.response_to_treatment.unwrap().id, response);
+        assert_eq!(action.response_to_treatment.unwrap(), response);
 
-        // Termination Reason
         assert!(action.treatment_termination_reason.is_some());
-        assert_eq!(action.treatment_termination_reason.unwrap().id, termination);
+        assert_eq!(action.treatment_termination_reason.unwrap(), termination);
+
+        let pp = builder.build().first().unwrap().clone();
+        let resource_ids: Vec<String> = pp.resources().iter().map(|r| r.id.clone()).collect();
+
+        assert!(resource_ids.contains(&"ncit".to_string()));
     }
 
     #[rstest]
@@ -1891,49 +1873,42 @@ mod tests {
         let mut builder = build_test_phenopacket_builder(temp_dir.path());
         let patient_id = default_patient_id();
 
-        // 1. Define inputs
-        let procedure_code = "NCIT:C15189"; // Biopsy
-        let body_part = "UBERON:0002048"; // Lung
-        let intent = "NCIT:C64639"; // Curative
+        let procedure_code = default_procedure_oc();
+        let body_part = default_procedure_body_side_oc();
+        let intent = default_treatment_intent();
 
-        // 2. Execute method
         let result = builder.insert_medical_procedure(
             &patient_id,
-            procedure_code,
-            Some(body_part),
-            Some(&default_iso_age()),       // Procedure time
-            Some(&default_disease_oc().id), // Treatment target
-            Some(intent),                   // Treatment intent
-            None,                           // Response
-            None,                           // Termination
+            &procedure_code.id,
+            Some(&body_part.id),
+            Some(&default_iso_age()),
+            Some(&default_disease_oc().id),
+            Some(&intent.label),
+            None,
+            None,
         );
 
-        // 3. Assert Success
         assert!(
             result.is_ok(),
             "Failed to insert medical procedure: {:?}",
             result.err()
         );
 
-        // 4. Verify Phenopacket Structure
         let phenopacket = builder
             .subject_to_phenopacket
             .get(&default_phenopacket_id())
             .unwrap();
 
-        // Should have 1 medical action
         assert_eq!(phenopacket.medical_actions.len(), 1);
         let medical_action = &phenopacket.medical_actions[0];
 
-        // Check attributes of the wrapper Action
         assert!(medical_action.treatment_target.is_some());
         assert!(medical_action.treatment_intent.is_some());
-        assert_eq!(medical_action.treatment_intent.as_ref().unwrap().id, intent);
+        assert_eq!(medical_action.treatment_intent.as_ref().unwrap(), &intent);
 
-        // Check the specific Procedure Action
         if let Some(Action::Procedure(proc)) = &medical_action.action {
-            assert_eq!(proc.code.as_ref().unwrap().id, procedure_code);
-            assert_eq!(proc.body_site.as_ref().unwrap().id, body_part);
+            assert_eq!(proc.code.as_ref().unwrap(), &procedure_code);
+            assert_eq!(proc.body_site.as_ref().unwrap(), &body_part);
             assert_eq!(proc.performed.as_ref().unwrap(), &default_age_element());
         } else {
             panic!("MedicalAction should be of type Procedure");

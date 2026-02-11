@@ -1,5 +1,7 @@
 use crate::ontology::loinc_client::LoincClient;
-use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, PATO_DICT, UO_DICT};
+use crate::test_suite::ontology_mocking::{
+    HPO_DICT, MAXO_BIDICT, MONDO_BIDICT, NCIT_BIDICT, PATO_DICT, UBERON_BIDICT, UO_DICT,
+};
 use crate::test_suite::phenopacket_component_generation::default_meta_data;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
@@ -28,6 +30,18 @@ pub(crate) fn build_test_pato_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("PATO", vec![Box::new(PATO_DICT.clone())])
 }
 
+pub(crate) fn build_test_anatomy_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("ANATOMY", vec![Box::new(UBERON_BIDICT.clone())])
+}
+
+pub(crate) fn build_test_procedure_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("PROCEDURE", vec![Box::new(MAXO_BIDICT.clone())])
+}
+
+pub(crate) fn build_test_treatment_bidict_library() -> BiDictLibrary {
+    BiDictLibrary::new("TREATMENT", vec![Box::new(NCIT_BIDICT.clone())])
+}
+
 pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
     CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
 }
@@ -51,9 +65,8 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_uo_bidict_library(),
         build_test_loinc_bidict_library(),
         build_test_pato_bidict_library(),
-        //TODO: Add actual bi dicts
-        BiDictLibrary::default(),
-        BiDictLibrary::default(),
-        BiDictLibrary::default(),
+        build_test_procedure_bidict_library(),
+        build_test_anatomy_bidict_library(),
+        build_test_treatment_bidict_library(),
     )
 }
