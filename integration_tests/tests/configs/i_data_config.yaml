@@ -105,7 +105,7 @@ data_sources:
         contexts:
           - identifier: "patientid"
             data_context: subject_id
-          - identifier: "Infection"
+          - identifier: "Condition"
             data_context: hpo_label_or_id
             alias_map_config:
               mappings:
