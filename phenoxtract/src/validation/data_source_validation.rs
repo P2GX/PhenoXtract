@@ -1,5 +1,5 @@
 use crate::config::table_context::TableContext;
-use crate::extract::excel_data_source::ExcelDatasource;
+use crate::extract::excel_data_source::ExcelDataSource;
 use crate::extract::extraction_config::ExtractionConfig;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
@@ -51,7 +51,7 @@ pub(crate) fn validate_extraction_config_unique_ids(
 }
 
 pub(crate) fn validate_extraction_config_links(
-    source: &ExcelDatasource,
+    source: &ExcelDataSource,
 ) -> Result<(), ValidationError> {
     let extraction_ids: HashSet<&str> = source
         .extraction_configs
@@ -198,7 +198,7 @@ mod tests {
 
     #[rstest]
     fn test_links_success_with_matching_names() {
-        let source = ExcelDatasource {
+        let source = ExcelDataSource {
             source: Default::default(),
             extraction_configs: vec![
                 mock_extraction_config("Sheet1"),
@@ -212,7 +212,7 @@ mod tests {
 
     #[rstest]
     fn test_links_success_with_empty_configs() {
-        let source = ExcelDatasource {
+        let source = ExcelDataSource {
             source: Default::default(),
             extraction_configs: vec![],
             contexts: vec![],
@@ -223,7 +223,7 @@ mod tests {
 
     #[rstest]
     fn test_links_failure_missing_extraction_config() {
-        let source = ExcelDatasource {
+        let source = ExcelDataSource {
             source: Default::default(),
             extraction_configs: vec![mock_extraction_config("Sheet1")],
             contexts: vec![mock_table_config("Sheet1"), mock_table_config("Sheet2")],
@@ -246,7 +246,7 @@ mod tests {
 
     #[rstest]
     fn test_links_failure_missing_table_config() {
-        let source = ExcelDatasource {
+        let source = ExcelDataSource {
             source: Default::default(),
             extraction_configs: vec![
                 mock_extraction_config("Sheet1"),
@@ -272,7 +272,7 @@ mod tests {
 
     #[rstest]
     fn test_links_failure_mismatched_names_same_count() {
-        let source = ExcelDatasource {
+        let source = ExcelDataSource {
             source: Default::default(),
             extraction_configs: vec![
                 mock_extraction_config("SheetA"),
