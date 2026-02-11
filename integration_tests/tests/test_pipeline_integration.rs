@@ -331,6 +331,9 @@ fn test_pipeline_integration(
         BiDictLibrary::new("UNIT", vec![uo_dict]),
         BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
         BiDictLibrary::new("QUAL", vec![pato_dict]),
+        BiDictLibrary::new("PROCEDURE", vec![]),
+        BiDictLibrary::new("ANATOMY", vec![]),
+        BiDictLibrary::new("TREATMENT", vec![]),
     );
 
     let transformer_module = TransformerModule::new(
