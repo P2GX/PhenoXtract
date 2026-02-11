@@ -188,7 +188,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         let cause_of_death = match cause_of_death {
             Some(cause_of_death) => {
                 let (disease_term, disease_ref) =
-                    Self::bi_dict_lookup(&self.disease_bidict_lib, cause_of_death)?;
+                    Self::resolve_term(&self.disease_bidict_lib, cause_of_death)?;
                 self.ensure_resource(patient_id, &disease_ref);
                 Some(disease_term)
             }
@@ -281,7 +281,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let (hpo_term, hpo_ref) = Self::bi_dict_lookup(&self.hpo_bidict_lib, phenotype)?;
+        let (hpo_term, hpo_ref) = Self::resolve_term(&self.hpo_bidict_lib, phenotype)?;
 
         let feature = self.get_or_create_phenotypic_feature(patient_id, hpo_term);
 
@@ -317,7 +317,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
         let phenopacket_id = self.generate_phenopacket_id(patient_id);
 
-        let (disease_term, res_ref) = Self::bi_dict_lookup(&self.disease_bidict_lib, disease)?;
+        let (disease_term, res_ref) = Self::resolve_term(&self.disease_bidict_lib, disease)?;
 
         self.ensure_resource(patient_id, &res_ref);
 
@@ -420,7 +420,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             warn!("laterality disease not implemented yet");
         }
 
-        let (disease_term, res_ref) = Self::bi_dict_lookup(&self.disease_bidict_lib, disease)?;
+        let (disease_term, res_ref) = Self::resolve_term(&self.disease_bidict_lib, disease)?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -455,8 +455,8 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         unit_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (unit_term, unit_ref) = Self::bi_dict_lookup(&self.unit_bidict_lib, unit_id)?;
-        let (assay_term, assay_ref) = Self::bi_dict_lookup(&self.assay_bidict_lib, assay_id)?;
+        let (unit_term, unit_ref) = Self::resolve_term(&self.unit_bidict_lib, unit_id)?;
+        let (assay_term, assay_ref) = Self::resolve_term(&self.assay_bidict_lib, assay_id)?;
 
         let mut quantity = Quantity {
             unit: Some(unit_term.clone()),
@@ -507,9 +507,9 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         time_observed: Option<&str>,
         assay_id: &str,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (assay_term, assay_ref) = Self::bi_dict_lookup(&self.assay_bidict_lib, assay_id)?;
+        let (assay_term, assay_ref) = Self::resolve_term(&self.assay_bidict_lib, assay_id)?;
         let (qualitative_measurement_term, qualitative_measurement_ontology_ref) =
-            Self::bi_dict_lookup(&self.qualitative_measurement_bidict_lib, qual_measurement)?;
+            Self::resolve_term(&self.qualitative_measurement_bidict_lib, qual_measurement)?;
 
         let mut measurement_element = Measurement {
             assay: Some(assay_term),
@@ -702,10 +702,10 @@ impl PhenopacketBuilder {
         let mut medical_action = MedicalAction::default();
 
         if let Some(tt) = treatment_target {
-            if let Ok((code, disease_ref)) = Self::bi_dict_lookup(&self.disease_bidict_lib, tt) {
+            if let Ok((code, disease_ref)) = Self::resolve_term(&self.disease_bidict_lib, tt) {
                 medical_action.treatment_target = Some(code);
                 self.ensure_resource(patient_id, &disease_ref);
-            } else if let Ok((code, hpo_ref)) = Self::bi_dict_lookup(&self.hpo_bidict_lib, tt) {
+            } else if let Ok((code, hpo_ref)) = Self::resolve_term(&self.hpo_bidict_lib, tt) {
                 medical_action.treatment_target = Some(code);
                 self.ensure_resource(patient_id, &hpo_ref);
             } else {
@@ -722,21 +722,21 @@ impl PhenopacketBuilder {
 
         if let Some(ti) = treatment_intent {
             let (treatment_intent_oc, treatment_intent_ref) =
-                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, ti)?;
+                Self::resolve_term(&self.treatment_attributes_bi_dict, ti)?;
             medical_action.treatment_intent = Some(treatment_intent_oc);
             self.ensure_resource(patient_id, &treatment_intent_ref);
         }
 
         if let Some(tr) = response_to_treatment {
             let (treatment_response_oc, response_to_treatment_ref) =
-                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, tr)?;
+                Self::resolve_term(&self.treatment_attributes_bi_dict, tr)?;
             medical_action.response_to_treatment = Some(treatment_response_oc);
             self.ensure_resource(patient_id, &response_to_treatment_ref);
         }
 
         if let Some(ttr) = treatment_termination_reason {
             let (treatment_termination_reason_oc, treatment_termination_reason_ref) =
-                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, ttr)?;
+                Self::resolve_term(&self.treatment_attributes_bi_dict, ttr)?;
             medical_action.treatment_termination_reason = Some(treatment_termination_reason_oc);
             self.ensure_resource(patient_id, &treatment_termination_reason_ref);
         };
@@ -753,12 +753,12 @@ impl PhenopacketBuilder {
         let mut procedure = Procedure::default();
 
         let (procedure_oc, procedure_ref) =
-            Self::bi_dict_lookup(&self.procedure_bi_dict, procedure_code)?;
+            Self::resolve_term(&self.procedure_bi_dict, procedure_code)?;
         procedure.code = Some(procedure_oc);
         self.ensure_resource(patient_id, &procedure_ref);
 
         if let Some(bp) = body_part {
-            let (body_part_oc, body_part_ref) = Self::bi_dict_lookup(&self.anatomy_bi_dict, bp)?;
+            let (body_part_oc, body_part_ref) = Self::resolve_term(&self.anatomy_bi_dict, bp)?;
             procedure.body_site = Some(body_part_oc);
             self.ensure_resource(patient_id, &body_part_ref);
         }
@@ -772,7 +772,7 @@ impl PhenopacketBuilder {
         Ok(procedure)
     }
 
-    fn bi_dict_lookup(
+    fn resolve_term(
         bi_dict_lib: &BiDictLibrary,
         label_or_id: &str,
     ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
