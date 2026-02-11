@@ -11,9 +11,9 @@ use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Boundary, Context, ContextKind, TimeElementType};
 use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
-use phenoxtract::extract::ExcelDatasource;
+use phenoxtract::extract::ExcelDataSource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
-use phenoxtract::extract::{CSVDataSource, DataSource};
+use phenoxtract::extract::{CsvDataSource, DataSource};
 use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::loinc_client::LoincClient;
@@ -260,37 +260,37 @@ fn test_pipeline_integration(
     let excel_path = assets_dir.clone().join("input_data/excel_data.xlsx");
 
     let mut data_sources = [
-        DataSource::Csv(CSVDataSource::new(
+        DataSource::Csv(CsvDataSource::new(
             csv_path,
             None,
             csv_context,
             ExtractionConfig::new("CSV_Table".to_string(), false, true),
         )),
-        DataSource::Csv(CSVDataSource::new(
+        DataSource::Csv(CsvDataSource::new(
             csv_path_2,
             None,
             csv_context_2,
             ExtractionConfig::new("CSV_Table_2".to_string(), true, false),
         )),
-        DataSource::Csv(CSVDataSource::new(
+        DataSource::Csv(CsvDataSource::new(
             csv_path_3,
             None,
             csv_context_3,
             ExtractionConfig::new("CSV_Table_3".to_string(), true, false),
         )),
-        DataSource::Csv(CSVDataSource::new(
+        DataSource::Csv(CsvDataSource::new(
             csv_path_4,
             None,
             csv_context_4,
             ExtractionConfig::new("CSV_Table_4".to_string(), true, true),
         )),
-        DataSource::Csv(CSVDataSource::new(
+        DataSource::Csv(CsvDataSource::new(
             csv_path_5,
             None,
             csv_context_5,
             ExtractionConfig::new("CSV_Table_5".to_string(), true, true),
         )),
-        DataSource::Excel(ExcelDatasource::new(
+        DataSource::Excel(ExcelDataSource::new(
             excel_path,
             excel_context,
             vec![

@@ -1,12 +1,12 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::extract::csv_data_source::CSVDataSource;
+use crate::extract::csv_data_source::CsvDataSource;
 use polars::io::SerReader;
 use polars::prelude::{CsvReadOptions, DataFrame};
 use std::fs::File;
 use std::io::BufReader;
 
 use crate::extract::error::ExtractionError;
-use crate::extract::excel_data_source::ExcelDatasource;
+use crate::extract::excel_data_source::ExcelDataSource;
 use crate::extract::traits::Extractable;
 use log::{info, warn};
 
@@ -14,15 +14,14 @@ use crate::extract::excel_range_reader::ExcelRangeReader;
 use crate::extract::utils::generate_default_column_names;
 use calamine::{Reader, Xlsx, open_workbook};
 use either::Either;
-
 use std::sync::Arc;
 use validator::{Validate, ValidationErrors};
 
 /// An enumeration of all supported data source types.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataSource {
-    Csv(CSVDataSource),
-    Excel(ExcelDatasource),
+    Csv(CsvDataSource),
+    Excel(ExcelDataSource),
 }
 
 impl Validate for DataSource {
@@ -413,7 +412,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         file.write_all(csv_data.as_slice()).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
+        let data_source = DataSource::Csv(CsvDataSource::new(
             file_path,
             Some(','),
             table_context_column_wise_header.clone(),
@@ -470,7 +469,7 @@ M,F,M
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data.as_bytes()).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
+        let data_source = DataSource::Csv(CsvDataSource::new(
             file_path,
             Some(','),
             table_context.clone(),
@@ -513,7 +512,7 @@ PID_3,56,M,89"#;
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
+        let data_source = DataSource::Csv(CsvDataSource::new(
             file_path,
             Some(','),
             table_context.clone(),
@@ -558,7 +557,7 @@ PID_3,56,M,89"#;
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
+        let data_source = DataSource::Csv(CsvDataSource::new(
             file_path,
             Some(','),
             table_context.clone(),
@@ -603,7 +602,7 @@ AGE,18,27,89"#;
         let mut file = File::create(&file_path).unwrap();
         file.write_all(test_data).unwrap();
 
-        let data_source = DataSource::Csv(CSVDataSource::new(
+        let data_source = DataSource::Csv(CsvDataSource::new(
             file_path,
             Some(','),
             table_context.clone(),
@@ -702,7 +701,7 @@ AGE,18,27,89"#;
         workbook.save(file_path.clone()).unwrap();
 
         //Now we test the extraction
-        let data_source = DataSource::Excel(ExcelDatasource::new(
+        let data_source = DataSource::Excel(ExcelDataSource::new(
             file_path,
             table_contexts.clone(),
             extraction_configs.clone(),

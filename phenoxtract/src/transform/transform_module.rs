@@ -7,8 +7,8 @@ use phenopackets::schema::v2::Phenopacket;
 
 #[derive(Debug)]
 pub struct TransformerModule {
-    strategies: Vec<Box<dyn Strategy>>,
-    broker: CdfCollectorBroker,
+    pub(crate) strategies: Vec<Box<dyn Strategy>>,
+    pub(crate) broker: CdfCollectorBroker,
 }
 
 impl TransformerModule {
