@@ -51,5 +51,9 @@ pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
         build_test_uo_bidict_library(),
         build_test_loinc_bidict_library(),
         build_test_pato_bidict_library(),
+        //TODO: Add actual bi dicts
+        BiDictLibrary::default(),
+        BiDictLibrary::default(),
+        BiDictLibrary::default(),
     )
 }

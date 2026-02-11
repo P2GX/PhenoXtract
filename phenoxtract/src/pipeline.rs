@@ -153,6 +153,10 @@ impl TryFrom<PipelineConfig> for Pipeline {
             unit_bidict_library,
             assay_bidict_library,
             qualitative_measurement_bidict_library,
+            //TODO: Add actual bi dicts
+            BiDictLibrary::default(),
+            BiDictLibrary::default(),
+            BiDictLibrary::default(),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
