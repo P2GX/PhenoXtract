@@ -696,7 +696,7 @@ impl PhenopacketBuilder {
                 medical_action.treatment_target = Some(code);
                 self.ensure_resource(patient_id, &hpo_ref);
             } else {
-                return Err(Self::cant_complete_term_error(
+                return Err(Self::cant_resolve_term_error(
                     &format!(
                         "{} and {}",
                         self.disease_bidict_lib.get_name(),
@@ -771,10 +771,10 @@ impl PhenopacketBuilder {
 
         bi_dict_lib
             .lookup(label_or_id)
-            .ok_or_else(|| Self::cant_complete_term_error(bi_dict_lib.get_name(), label_or_id))
+            .ok_or_else(|| Self::cant_resolve_term_error(bi_dict_lib.get_name(), label_or_id))
     }
 
-    fn cant_complete_term_error(
+    fn cant_resolve_term_error(
         bi_dict_lib_name: &str,
         label_or_id: &str,
     ) -> PhenopacketBuilderError {
