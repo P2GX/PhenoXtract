@@ -805,6 +805,9 @@ impl PartialEq for PhenopacketBuilder {
             && self.disease_bidict_lib == other.disease_bidict_lib
             && self.unit_bidict_lib == other.unit_bidict_lib
             && self.assay_bidict_lib == other.assay_bidict_lib
+            && self.qualitative_measurement_bidict_lib == other.qualitative_measurement_bidict_lib
+            && self.procedure_bi_dict == other.procedure_bi_dict
+            && self.treatment_attributes_bi_dict == other.treatment_attributes_bi_dict
             && self.anatomy_bi_dict == other.anatomy_bi_dict
             && self.resource_resolver == other.resource_resolver
     }
