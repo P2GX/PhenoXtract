@@ -43,7 +43,7 @@ impl BiDictLibrary {
         self.bidicts.is_empty()
     }
 
-    pub(crate) fn query(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
+    pub(crate) fn lookup(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
             if self.curie_validator.validate(query) {
                 if let Ok(label) = bidict.get_label(query) {
@@ -105,7 +105,7 @@ mod tests {
     fn test_lookup_bidicts_with_valid_label() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
-            .query(&phenotype.label)
+            .lookup(&phenotype.label)
             .unwrap();
 
         assert_eq!(result.0.label, phenotype.label);
@@ -116,7 +116,7 @@ mod tests {
     fn test_lookup_bidicts_with_valid_id() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
-            .query(&phenotype.id)
+            .lookup(&phenotype.id)
             .unwrap();
 
         assert_eq!(result.0.label, phenotype.label);
@@ -136,13 +136,13 @@ mod tests {
             .1
             .to_string();
 
-        let result = bidict_lib.query(loinc_id.as_str());
+        let result = bidict_lib.lookup(loinc_id.as_str());
         assert!(result.is_none());
     }
 
     #[rstest]
     fn test_query_bidicts_invalid_query() {
-        let result = build_test_mondo_bidict_library().query("NonexistentTerm");
+        let result = build_test_mondo_bidict_library().lookup("NonexistentTerm");
 
         assert!(result.is_none());
     }
@@ -150,7 +150,7 @@ mod tests {
     #[rstest]
     fn test_lookup_bidicts_on_empty_library() {
         let library = BiDictLibrary::empty_with_name("EmptyLib");
-        let result = library.query("AnyQuery");
+        let result = library.lookup("AnyQuery");
 
         assert!(result.is_none());
     }
@@ -162,7 +162,7 @@ mod tests {
 
         let expected_ref = library.get_bidicts()[0].reference();
 
-        let result = library.query(&phenotype.label).unwrap();
+        let result = library.lookup(&phenotype.label).unwrap();
 
         assert_eq!(&result.1, expected_ref);
     }
