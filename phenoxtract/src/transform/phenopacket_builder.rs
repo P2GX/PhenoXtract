@@ -18,9 +18,13 @@ use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::medical_action::Action;
+use phenopackets::schema::v2::core::medical_action::Action;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
+    Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
+    OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
+    Value as ValueStruct, VitalStatus,
     Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
     OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
     Value as ValueStruct, VitalStatus,
@@ -71,8 +75,8 @@ pub struct PhenopacketBuilder {
     unit_bidict_lib: BiDictLibrary,
     assay_bidict_lib: BiDictLibrary,
     qualitative_measurement_bidict_lib: BiDictLibrary,
-    procedure_bi_dict_lib: BiDictLibrary,
-    anatomy_bi_dict_lib: BiDictLibrary,
+    procedure_bi_dict: BiDictLibrary,
+    anatomy_bi_dict: BiDictLibrary,
     treatment_attributes_bi_dict: BiDictLibrary,
     resource_resolver: CachedResourceResolver,
 }
@@ -183,8 +187,13 @@ impl PhenopacketBuilding for PhenopacketBuilder {
 
         let cause_of_death = match cause_of_death {
             Some(cause_of_death) => {
-                let (disease_term, disease_ref) =
-                    Self::resolve_term(&self.disease_bidict_lib, cause_of_death)?;
+                let (disease_term, disease_ref) = self
+                    .disease_bidict_lib
+                    .query(cause_of_death)
+                    .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                        what: "disease term".to_string(),
+                        value: cause_of_death.to_string(),
+                    })?;
                 self.ensure_resource(patient_id, &disease_ref);
                 Some(disease_term)
             }
@@ -277,7 +286,18 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
-        let (hpo_term, hpo_ref) = Self::resolve_term(&self.hpo_bidict_lib, phenotype)?;
+        if self.hpo_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "HPO".to_string(),
+            });
+        }
+
+        let (hpo_term, hpo_ref) = self.hpo_bidict_lib.query(phenotype).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "HPO term".to_string(),
+                value: phenotype.to_string(),
+            }
+        })?;
 
         let feature = self.get_or_create_phenotypic_feature(patient_id, hpo_term);
 
@@ -313,7 +333,18 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
         let phenopacket_id = self.generate_phenopacket_id(patient_id);
 
-        let (disease_term, res_ref) = Self::resolve_term(&self.disease_bidict_lib, disease)?;
+        if self.disease_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "disease".to_string(),
+            });
+        }
+
+        let (disease_term, res_ref) = self.disease_bidict_lib.query(disease).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "Disease term".to_string(),
+                value: disease.to_string(),
+            }
+        })?;
 
         self.ensure_resource(patient_id, &res_ref);
 
@@ -416,7 +447,18 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             warn!("laterality disease not implemented yet");
         }
 
-        let (disease_term, res_ref) = Self::resolve_term(&self.disease_bidict_lib, disease)?;
+        if self.disease_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "disease".to_string(),
+            });
+        }
+
+        let (disease_term, res_ref) = self.disease_bidict_lib.query(disease).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "Disease term".to_string(),
+                value: disease.to_string(),
+            }
+        })?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -451,8 +493,31 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         unit_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (unit_term, unit_ref) = Self::resolve_term(&self.unit_bidict_lib, unit_id)?;
-        let (assay_term, assay_ref) = Self::resolve_term(&self.assay_bidict_lib, assay_id)?;
+        if self.unit_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "quantitative measurement".to_string(),
+            });
+        }
+
+        if self.assay_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
+        let (unit_term, unit_ref) = self.unit_bidict_lib.query(unit_id).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "Unit ontology term".to_string(),
+                value: unit_id.to_string(),
+            }
+        })?;
+
+        let (assay_term, assay_ref) = self.assay_bidict_lib.query(assay_id).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "Assay term".to_string(),
+                value: assay_id.to_string(),
+            }
+        })?;
 
         let mut quantity = Quantity {
             unit: Some(unit_term.clone()),
@@ -503,9 +568,32 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         time_observed: Option<&str>,
         assay_id: &str,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (assay_term, assay_ref) = Self::resolve_term(&self.assay_bidict_lib, assay_id)?;
-        let (qualitative_measurement_term, qualitative_measurement_ontology_ref) =
-            Self::resolve_term(&self.qualitative_measurement_bidict_lib, qual_measurement)?;
+        if self.qualitative_measurement_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "qualitative measurement".to_string(),
+            });
+        }
+
+        if self.assay_bidict_lib.is_empty() {
+            return Err(PhenopacketBuilderError::MissingBiDict {
+                bidict_type: "assay".to_string(),
+            });
+        }
+
+        let (assay_term, assay_ref) = self.assay_bidict_lib.query(assay_id).ok_or_else(|| {
+            PhenopacketBuilderError::ParsingError {
+                what: "Assay term".to_string(),
+                value: assay_id.to_string(),
+            }
+        })?;
+
+        let (qualitative_measurement_term, qualitative_measurement_ontology_ref) = self
+            .qualitative_measurement_bidict_lib
+            .query(qual_measurement)
+            .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                what: "Qualitative measurement term".to_string(),
+                value: qual_measurement.to_string(),
+            })?;
 
         let mut measurement_element = Measurement {
             assay: Some(assay_term),
@@ -545,6 +633,14 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         treatment_intent: Option<&str>,
         response_to_treatment: Option<&str>,
         treatment_termination_reason: Option<&str>,
+        patient_id: &str,
+        procedure_code: &str,
+        body_part: Option<&str>,
+        procedure_time_element: Option<&str>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let procedure = self.parse_procedure(
             patient_id,
@@ -553,15 +649,15 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             procedure_time_element,
         )?;
 
-        let medical_action = self.parse_medical_action(
+        let mut medical_action = self.parse_medical_action(
             patient_id,
-            procedure,
             treatment_target,
             treatment_intent,
             response_to_treatment,
             treatment_termination_reason,
         )?;
 
+        medical_action.action = Some(Action::Procedure(procedure));
         let phenopacket = self.get_or_create_phenopacket(patient_id);
         phenopacket.push_medical_action(medical_action);
         Ok(())
@@ -578,9 +674,9 @@ impl PhenopacketBuilder {
         unit_bidict_lib: BiDictLibrary,
         assay_bidict_lib: BiDictLibrary,
         qualitative_measurement_bidict_lib: BiDictLibrary,
-        procedure_bi_dict_lib: BiDictLibrary,
-        anatomy_bi_dict_lib: BiDictLibrary,
-        treatment_attributes_bi_dict: BiDictLibrary,
+        procedure_bi_dict: BiDictLibrary,
+        anatomy_bi_dict: BiDictLibrary,
+        treatment_intent_dict: BiDictLibrary,
     ) -> Self {
         Self {
             meta_data,
@@ -592,9 +688,9 @@ impl PhenopacketBuilder {
             unit_bidict_lib,
             assay_bidict_lib,
             qualitative_measurement_bidict_lib,
-            procedure_bi_dict_lib,
-            anatomy_bi_dict_lib,
-            treatment_attributes_bi_dict,
+            procedure_bi_dict,
+            anatomy_bi_dict,
+            treatment_attributes_bi_dict: treatment_intent_dict,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -633,6 +729,7 @@ impl PhenopacketBuilder {
         pp.first_phenotype_with_id_mut(&target_id)
             .expect("PhenotypicFeature was just created or already existed")
     }
+
 
     fn get_or_create_interpretation(
         &mut self,
@@ -681,7 +778,6 @@ impl PhenopacketBuilder {
     fn parse_medical_action(
         &mut self,
         patient_id: &str,
-        medical_action_type: Action,
         treatment_target: Option<&str>,
         treatment_intent: Option<&str>,
         response_to_treatment: Option<&str>,
@@ -690,15 +786,14 @@ impl PhenopacketBuilder {
         let mut medical_action = MedicalAction::default();
 
         if let Some(tt) = treatment_target {
-            if let Ok((disease_oc, disease_ref)) = Self::resolve_term(&self.disease_bidict_lib, tt)
-            {
-                medical_action.treatment_target = Some(disease_oc);
+            if let Ok((code, disease_ref)) = Self::bi_dict_lookup(&self.disease_bidict_lib, tt) {
+                medical_action.treatment_target = Some(code);
                 self.ensure_resource(patient_id, &disease_ref);
-            } else if let Ok((hpo_oc, hpo_ref)) = Self::resolve_term(&self.hpo_bidict_lib, tt) {
-                medical_action.treatment_target = Some(hpo_oc);
+            } else if let Ok((code, hpo_ref)) = Self::bi_dict_lookup(&self.hpo_bidict_lib, tt) {
+                medical_action.treatment_target = Some(code);
                 self.ensure_resource(patient_id, &hpo_ref);
             } else {
-                return Err(Self::cant_resolve_term_error(
+                return Err(Self::cant_complete_term_error(
                     &format!(
                         "{} and {}",
                         self.disease_bidict_lib.get_name(),
@@ -711,26 +806,24 @@ impl PhenopacketBuilder {
 
         if let Some(ti) = treatment_intent {
             let (treatment_intent_oc, treatment_intent_ref) =
-                Self::resolve_term(&self.treatment_attributes_bi_dict, ti)?;
+                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, ti)?;
             medical_action.treatment_intent = Some(treatment_intent_oc);
             self.ensure_resource(patient_id, &treatment_intent_ref);
         }
 
         if let Some(tr) = response_to_treatment {
             let (treatment_response_oc, response_to_treatment_ref) =
-                Self::resolve_term(&self.treatment_attributes_bi_dict, tr)?;
+                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, tr)?;
             medical_action.response_to_treatment = Some(treatment_response_oc);
             self.ensure_resource(patient_id, &response_to_treatment_ref);
         }
 
         if let Some(ttr) = treatment_termination_reason {
             let (treatment_termination_reason_oc, treatment_termination_reason_ref) =
-                Self::resolve_term(&self.treatment_attributes_bi_dict, ttr)?;
+                Self::bi_dict_lookup(&self.treatment_attributes_bi_dict, ttr)?;
             medical_action.treatment_termination_reason = Some(treatment_termination_reason_oc);
             self.ensure_resource(patient_id, &treatment_termination_reason_ref);
         };
-
-        medical_action.action = Some(medical_action_type);
 
         Ok(medical_action)
     }
@@ -740,16 +833,19 @@ impl PhenopacketBuilder {
         procedure_code: &str,
         body_part: Option<&str>,
         procedure_time_element: Option<&str>,
-    ) -> Result<Action, PhenopacketBuilderError> {
+    ) -> Result<Procedure, PhenopacketBuilderError> {
         let mut procedure = Procedure::default();
 
+        Self::bi_dict_empty_check(&self.procedure_bi_dict)?;
+        Self::bi_dict_empty_check(&self.anatomy_bi_dict)?;
+
         let (procedure_oc, procedure_ref) =
-            Self::resolve_term(&self.procedure_bi_dict_lib, procedure_code)?;
+            Self::bi_dict_lookup(&self.procedure_bi_dict, procedure_code)?;
         procedure.code = Some(procedure_oc);
         self.ensure_resource(patient_id, &procedure_ref);
 
         if let Some(bp) = body_part {
-            let (body_part_oc, body_part_ref) = Self::resolve_term(&self.anatomy_bi_dict_lib, bp)?;
+            let (body_part_oc, body_part_ref) = Self::bi_dict_lookup(&self.anatomy_bi_dict, bp)?;
             procedure.body_site = Some(body_part_oc);
             self.ensure_resource(patient_id, &body_part_ref);
         }
@@ -760,25 +856,29 @@ impl PhenopacketBuilder {
             procedure.performed = Some(parse_time_element);
         }
 
-        Ok(Action::Procedure(procedure))
+        Ok(procedure)
     }
 
-    fn resolve_term(
-        bi_dict_lib: &BiDictLibrary,
-        label_or_id: &str,
-    ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
+    fn bi_dict_empty_check(bi_dict_lib: &BiDictLibrary) -> Result<(), PhenopacketBuilderError> {
         if bi_dict_lib.is_empty() {
             return Err(PhenopacketBuilderError::MissingBiDict {
                 bidict_type: bi_dict_lib.get_name().to_string(),
             });
         }
 
-        bi_dict_lib
-            .lookup(label_or_id)
-            .ok_or_else(|| Self::cant_resolve_term_error(bi_dict_lib.get_name(), label_or_id))
+        Ok(())
     }
 
-    fn cant_resolve_term_error(
+    fn bi_dict_lookup(
+        bi_dict_lib: &BiDictLibrary,
+        label_or_id: &str,
+    ) -> Result<(OntologyClass, ResourceRef), PhenopacketBuilderError> {
+        bi_dict_lib
+            .query(label_or_id)
+            .ok_or_else(|| Self::cant_complete_term_error(bi_dict_lib.get_name(), label_or_id))
+    }
+
+    fn cant_complete_term_error(
         bi_dict_lib_name: &str,
         label_or_id: &str,
     ) -> PhenopacketBuilderError {
@@ -796,10 +896,7 @@ impl PartialEq for PhenopacketBuilder {
             && self.disease_bidict_lib == other.disease_bidict_lib
             && self.unit_bidict_lib == other.unit_bidict_lib
             && self.assay_bidict_lib == other.assay_bidict_lib
-            && self.qualitative_measurement_bidict_lib == other.qualitative_measurement_bidict_lib
-            && self.procedure_bi_dict_lib == other.procedure_bi_dict_lib
-            && self.treatment_attributes_bi_dict == other.treatment_attributes_bi_dict
-            && self.anatomy_bi_dict_lib == other.anatomy_bi_dict_lib
+            && self.anatomy_bi_dict == other.anatomy_bi_dict
             && self.resource_resolver == other.resource_resolver
     }
 }
