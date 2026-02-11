@@ -2,9 +2,10 @@ use crate::Pipeline;
 use crate::error::PipelineError;
 use crate::extract::DataSource;
 
+#[derive(PartialEq, Debug)]
 pub struct Phenoxtract {
-    pipeline: Pipeline,
-    data_sources: Vec<DataSource>,
+    pub(crate) pipeline: Pipeline,
+    pub(crate) data_sources: Vec<DataSource>,
 }
 
 impl Phenoxtract {
@@ -14,15 +15,11 @@ impl Phenoxtract {
     }
 }
 
-/*impl TryFrom<PhenoXtractConfig> for Phenoxtract {
-    type Error = ConstructionError;
-
-    fn try_from(value: PhenoXtractConfig) -> Result<Self, Self::Error> {
-        let pipeline = Pipeline::try_from(value.pipeline_config)?;
-        let data_sources = value.data_sources;
-        Ok(Self {
+impl Phenoxtract {
+    pub fn new(pipeline: Pipeline, data_sources: Vec<DataSource>) -> Phenoxtract {
+        Phenoxtract {
             pipeline,
             data_sources,
-        })
+        }
     }
-}*/
+}

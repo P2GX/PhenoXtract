@@ -1,10 +1,7 @@
-use crate::config::ConfigLoader;
 use crate::config::datasource_config::DataSourceConfig;
 use crate::config::pipeline_config::PipelineConfig;
-use crate::error::ConstructionError;
 use crate::validation::phenoxtractor_config_validation::validate_unique_data_sources;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use validator::Validate;
 
 /// Represents all necessary data to construct and run the table to phenopacket pipeline
@@ -21,13 +18,5 @@ impl PhenoXtractConfig {
     }
     pub fn data_sources(&self) -> Vec<DataSourceConfig> {
         self.data_sources.clone()
-    }
-}
-
-impl TryFrom<PathBuf> for PhenoXtractConfig {
-    type Error = ConstructionError;
-
-    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        Ok(ConfigLoader::load(path)?)
     }
 }
