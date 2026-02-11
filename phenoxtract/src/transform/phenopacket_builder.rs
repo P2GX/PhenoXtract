@@ -565,15 +565,15 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             procedure_time_element,
         )?;
 
-        let mut medical_action = self.parse_medical_action(
+        let medical_action = self.parse_medical_action(
             patient_id,
+            procedure,
             treatment_target,
             treatment_intent,
             response_to_treatment,
             treatment_termination_reason,
         )?;
 
-        medical_action.action = Some(Action::Procedure(procedure));
         let phenopacket = self.get_or_create_phenopacket(patient_id);
         phenopacket.push_medical_action(medical_action);
         Ok(())
@@ -694,6 +694,7 @@ impl PhenopacketBuilder {
     fn parse_medical_action(
         &mut self,
         patient_id: &str,
+        medical_action_type: Action,
         treatment_target: Option<&str>,
         treatment_intent: Option<&str>,
         response_to_treatment: Option<&str>,
@@ -741,6 +742,8 @@ impl PhenopacketBuilder {
             self.ensure_resource(patient_id, &treatment_termination_reason_ref);
         };
 
+        medical_action.action = Some(medical_action_type);
+
         Ok(medical_action)
     }
     fn parse_procedure(
@@ -749,7 +752,7 @@ impl PhenopacketBuilder {
         procedure_code: &str,
         body_part: Option<&str>,
         procedure_time_element: Option<&str>,
-    ) -> Result<Procedure, PhenopacketBuilderError> {
+    ) -> Result<Action, PhenopacketBuilderError> {
         let mut procedure = Procedure::default();
 
         let (procedure_oc, procedure_ref) =
@@ -769,7 +772,7 @@ impl PhenopacketBuilder {
             procedure.performed = Some(parse_time_element);
         }
 
-        Ok(procedure)
+        Ok(Action::Procedure(procedure))
     }
 
     fn resolve_term(
@@ -822,11 +825,11 @@ mod tests {
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_cohort_id, default_datetime, default_disease,
         default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc,
-        default_procedure_body_side_oc, default_procedure_oc, default_qual_loinc,
-        default_qual_measurement, default_quant_loinc, default_quant_measurement,
-        default_reference_range, default_timestamp, default_timestamp_element,
-        default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
-        default_uo_term, generate_phenotype,
+        default_procedure, default_procedure_body_side_oc, default_procedure_oc,
+        default_qual_loinc, default_qual_measurement, default_quant_loinc,
+        default_quant_measurement, default_reference_range, default_timestamp,
+        default_timestamp_element, default_treatment_intent, default_treatment_response,
+        default_treatment_termination_reason, default_uo_term, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -1817,17 +1820,22 @@ mod tests {
         );
         let procedure = result.unwrap();
 
-        assert!(procedure.code.is_some());
-        assert_eq!(procedure.code.unwrap(), procedure_code);
+        match procedure {
+            Action::Procedure(procedure) => {
+                assert!(procedure.code.is_some());
+                assert_eq!(procedure.code.unwrap(), procedure_code);
 
-        assert!(procedure.body_site.is_some());
-        assert_eq!(procedure.body_site.unwrap(), body_part);
+                assert!(procedure.body_site.is_some());
+                assert_eq!(procedure.body_site.unwrap(), body_part);
 
-        assert!(procedure.performed.is_some());
-        assert_eq!(
-            procedure.performed.as_ref().unwrap(),
-            &default_age_element()
-        );
+                assert!(procedure.performed.is_some());
+                assert_eq!(
+                    procedure.performed.as_ref().unwrap(),
+                    &default_age_element()
+                );
+            }
+            _ => panic!("Failed to parse procedure: {:?}", procedure),
+        }
 
         let pp = builder.build().first().unwrap().clone();
         let resource_ids: Vec<String> = pp.resources().iter().map(|r| r.id.clone()).collect();
@@ -1850,6 +1858,7 @@ mod tests {
 
         let result = builder.parse_medical_action(
             &patient_id,
+            Action::Procedure(default_procedure()),
             Some(&target_disease.id),
             Some(&intent.label),
             Some(&response.id),

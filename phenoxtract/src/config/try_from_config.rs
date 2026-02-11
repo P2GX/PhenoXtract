@@ -122,9 +122,9 @@ impl TryFrom<PipelineConfig> for Pipeline {
             assay_bidict_library,
             qualitative_measurement_bidict_library,
             // TODO: Update with procedure, anatomy and treatment bi dict lib
-            BiDictLibrary::empty_with_name("PROCEDURE"),
-            BiDictLibrary::empty_with_name("ANATOMY"),
-            BiDictLibrary::empty_with_name("TREATMENT"),
+            BiDictLibrary::default(),
+            BiDictLibrary::default(),
+            BiDictLibrary::default(),
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
