@@ -770,7 +770,7 @@ impl PhenopacketBuilder {
         }
 
         bi_dict_lib
-            .query(label_or_id)
+            .lookup(label_or_id)
             .ok_or_else(|| Self::cant_complete_term_error(bi_dict_lib.get_name(), label_or_id))
     }
 
@@ -1774,5 +1774,166 @@ mod tests {
             builder.generate_phenopacket_id(&p_id),
             format!("{}-{}", default_cohort_id(), p_id)
         );
+    }
+
+    #[rstest]
+    fn test_parse_procedure(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let patient_id = default_patient_id();
+
+        let procedure_code = "NCIT:C15189"; // Example: Biopsy
+        let body_part = "UBERON:0002048"; // Example: Lung
+        let time_str = default_iso_age();
+
+        // 2. Execute method
+        let result = builder.parse_procedure(
+            &patient_id,
+            procedure_code,
+            Some(body_part),
+            Some(&time_str),
+        );
+
+        // 3. Assert Success
+        assert!(
+            result.is_ok(),
+            "Failed to parse procedure: {:?}",
+            result.err()
+        );
+        let procedure = result.unwrap();
+
+        // 4. Validate Content
+        // Check Procedure Code
+        assert!(procedure.code.is_some());
+        assert_eq!(procedure.code.unwrap().id, procedure_code);
+
+        // Check Body Site
+        assert!(procedure.body_site.is_some());
+        assert_eq!(procedure.body_site.unwrap().id, body_part);
+
+        // Check Time
+        assert!(procedure.performed.is_some());
+        assert_eq!(
+            procedure.performed.as_ref().unwrap(),
+            &default_age_element()
+        );
+
+        // 5. Verify Resource Injection
+        // The builder should have ensured the ontology resources (NCIT, UBERON) were added to the phenopacket
+        let pp = builder.get_or_create_phenopacket(&patient_id);
+        let resource_ids: Vec<String> = pp
+            .meta_data
+            .as_ref()
+            .unwrap()
+            .resources
+            .iter()
+            .map(|r| r.id.clone())
+            .collect();
+
+        // Assuming your resolve logic maps prefixes to these IDs
+        assert!(
+            resource_ids.contains(&"ncit".to_string())
+                || resource_ids.contains(&"NCIT".to_string())
+        );
+    }
+
+    #[rstest]
+    fn test_parse_medical_action(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let patient_id = default_patient_id();
+
+        // 1. Define inputs
+        // Note: These must exist in your disease/treatment dictionaries
+        let target_disease = default_disease_oc().id;
+        let intent = "NCIT:C64639"; // Example: Curative
+        let response = "NCIT:C159675"; // Example: Partial Response
+        let termination = "NCIT:C18260"; // Example: Adverse Event
+
+        // 2. Execute method
+        let result = builder.parse_medical_action(
+            &patient_id,
+            Some(&target_disease),
+            Some(intent),
+            Some(response),
+            Some(termination),
+        );
+
+        // 3. Assert Success
+        assert!(
+            result.is_ok(),
+            "Failed to parse medical action: {:?}",
+            result.err()
+        );
+        let action = result.unwrap();
+
+        // 4. Validate Content
+        // Target (looked up via disease_bidict_lib)
+        assert!(action.treatment_target.is_some());
+        assert_eq!(action.treatment_target.unwrap().id, target_disease);
+
+        // Intent
+        assert!(action.treatment_intent.is_some());
+        assert_eq!(action.treatment_intent.unwrap().id, intent);
+
+        // Response
+        assert!(action.response_to_treatment.is_some());
+        assert_eq!(action.response_to_treatment.unwrap().id, response);
+
+        // Termination Reason
+        assert!(action.treatment_termination_reason.is_some());
+        assert_eq!(action.treatment_termination_reason.unwrap().id, termination);
+    }
+
+    #[rstest]
+    fn test_insert_medical_procedure(temp_dir: TempDir) {
+        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let patient_id = default_patient_id();
+
+        // 1. Define inputs
+        let procedure_code = "NCIT:C15189"; // Biopsy
+        let body_part = "UBERON:0002048"; // Lung
+        let intent = "NCIT:C64639"; // Curative
+
+        // 2. Execute method
+        let result = builder.insert_medical_procedure(
+            &patient_id,
+            procedure_code,
+            Some(body_part),
+            Some(&default_iso_age()),       // Procedure time
+            Some(&default_disease_oc().id), // Treatment target
+            Some(intent),                   // Treatment intent
+            None,                           // Response
+            None,                           // Termination
+        );
+
+        // 3. Assert Success
+        assert!(
+            result.is_ok(),
+            "Failed to insert medical procedure: {:?}",
+            result.err()
+        );
+
+        // 4. Verify Phenopacket Structure
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
+
+        // Should have 1 medical action
+        assert_eq!(phenopacket.medical_actions.len(), 1);
+        let medical_action = &phenopacket.medical_actions[0];
+
+        // Check attributes of the wrapper Action
+        assert!(medical_action.treatment_target.is_some());
+        assert!(medical_action.treatment_intent.is_some());
+        assert_eq!(medical_action.treatment_intent.as_ref().unwrap().id, intent);
+
+        // Check the specific Procedure Action
+        if let Some(Action::Procedure(proc)) = &medical_action.action {
+            assert_eq!(proc.code.as_ref().unwrap().id, procedure_code);
+            assert_eq!(proc.body_site.as_ref().unwrap().id, body_part);
+            assert_eq!(proc.performed.as_ref().unwrap(), &default_age_element());
+        } else {
+            panic!("MedicalAction should be of type Procedure");
+        }
     }
 }
