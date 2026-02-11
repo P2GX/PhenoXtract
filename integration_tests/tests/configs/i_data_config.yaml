@@ -1,6 +1,6 @@
 data_sources:
   - type: "excel"
-    source: "/Users/patrick/Downloads/I_DATA/i_data.xlsx"
+    source: "/Users/patrick/Downloads/I_DATA/i_data_edited/i_data_edited.xlsx"
     sheets:
       - sheet_name: "Cohort"
         has_headers: true
