@@ -95,7 +95,21 @@ data_sources:
             data_context: disease_label_or_id
             alias_map_config:
               mappings:
-                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/deft_matcher_results_9e16c341-9e6f-4c04-b680-812a21ca7d28_10-02-2026_22-00-28/infection_aliases.csv"
+                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/infections/infection_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+      - sheet_name: "Condition"
+        has_headers: true
+        patients_are_rows: true
+        contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Infection"
+            data_context: hpo_label_or_id
+            alias_map_config:
+              mappings:
+                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/conditions/condition_aliases.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
