@@ -3,51 +3,69 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
-use crate::transform::collecting::medical_actions::procedure_data::ProcedureData;
+use crate::transform::collecting::medical_actions::treatment_data::TreatmentData;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
-struct MedicalProcedureIterator<'a> {
-    procedure_data: &'a ProcedureData,
+struct MedicalTreatmentIterator<'a> {
+    treatment_data: &'a TreatmentData,
     medical_action_data: &'a MedicalActionData,
     max_iterations: usize,
     current_index: usize,
 }
 
-impl<'a> MedicalProcedureIterator<'a> {
+impl<'a> MedicalTreatmentIterator<'a> {
     pub fn new(
-        procedure_data: &'a ProcedureData,
+        treatment_data: &'a TreatmentData,
         medical_action_data: &'a MedicalActionData,
     ) -> Self {
         Self {
-            procedure_data,
+            treatment_data,
             medical_action_data,
-            max_iterations: procedure_data.procedure_col.len(),
+            max_iterations: treatment_data.len(),
             current_index: 0,
         }
     }
 }
 
-impl<'a> Iterator for MedicalProcedureIterator<'a> {
-    type Item = MedicalProcedureIterElement<'a>;
+impl<'a> Iterator for MedicalTreatmentIterator<'a> {
+    type Item = MedicalTreatmentIterElement<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_index >= self.max_iterations {
             return None;
         }
 
-        let procedure_data = self.procedure_data.get(self.current_index);
+        let treatment = &self.treatment_data.get(self.current_index);
+        let general_medical_action_data = &self.medical_action_data.get(self.current_index);
 
-        let general_medical_action_data = self.medical_action_data.get(self.current_index);
+        let mut unit = None;
+        let mut value = None;
+        let mut reference_range = None;
+
+        match &self.treatment_data.cumulative_dose {
+            Some(cumulative_dose) => {
+                if let Some(cumulative_dose_entry) = cumulative_dose.get(self.current_index) {
+                    unit = Some(cumulative_dose_entry.unit);
+                    value = Some(cumulative_dose_entry.value);
+                    reference_range = cumulative_dose_entry.reference_range
+                };
+            }
+            _ => {}
+        };
 
         self.current_index += 1;
 
-        Some(MedicalProcedureIterElement {
-            procedure: procedure_data.procedure,
-            body_part: procedure_data.body_part,
-            time_element: procedure_data.time_element,
+        Some(MedicalTreatmentIterElement {
+            agent: treatment.agent,
+            route_of_administration: treatment.route_of_administration,
+            dose_intervals: vec![],
+            drug_type: treatment.drug_type,
+            unit,
+            value,
+            reference_range,
             treatment_target: general_medical_action_data.treatment_target,
             treatment_intent: general_medical_action_data.treatment_intent,
             response_to_treatment: general_medical_action_data.response_to_treatment,
@@ -55,10 +73,14 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
         })
     }
 }
-struct MedicalProcedureIterElement<'a> {
-    procedure: Option<&'a str>,
-    body_part: Option<&'a str>,
-    time_element: Option<&'a str>,
+struct MedicalTreatmentIterElement<'a> {
+    agent: Option<&'a str>,
+    route_of_administration: Option<&'a str>,
+    dose_intervals: Vec<usize>, // TODO
+    drug_type: Option<&'a str>,
+    unit: Option<&'a str>,
+    value: Option<f64>,
+    reference_range: Option<(f64, f64)>,
     treatment_target: Option<&'a str>,
     treatment_intent: Option<&'a str>,
     response_to_treatment: Option<&'a str>,
@@ -66,9 +88,9 @@ struct MedicalProcedureIterElement<'a> {
 }
 
 #[derive(Debug)]
-pub struct MedicalProcedureCollector;
+pub struct MedicalTreatmentCollector;
 
-impl Collect for MedicalProcedureCollector {
+impl Collect for MedicalTreatmentCollector {
     fn collect(
         &self,
         builder: &mut dyn PhenopacketBuilding,
@@ -83,24 +105,26 @@ impl Collect for MedicalProcedureCollector {
 
             for procedure_sc in procedures {
                 let procedure_data =
-                    ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())?;
+                    TreatmentData::new(patient_cdf, procedure_sc.get_building_block_id())?;
                 let medical_action_data =
                     MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
 
                 let procedure_iterator =
-                    MedicalProcedureIterator::new(&procedure_data, &medical_action_data);
+                    MedicalTreatmentIterator::new(&procedure_data, &medical_action_data);
 
-                for procedure_values in procedure_iterator {
-                    if let Some(procedure) = procedure_values.procedure {
-                        builder.insert_medical_procedure(
+                for treatment_values in procedure_iterator {
+                    if let Some(agent) = treatment_values.agent {
+                        builder.insert_medical_treatment(
                             patient_id,
-                            procedure,
-                            procedure_values.body_part,
-                            procedure_values.time_element,
-                            procedure_values.treatment_target,
-                            procedure_values.treatment_intent,
-                            procedure_values.response_to_treatment,
-                            procedure_values.treatment_termination_reason,
+                            agent,
+                            treatment_values.route_of_administration,
+                            treatment_values.dose_intervals,
+                            treatment_values.drug_type,
+                            treatment_values.cumulative_dose,
+                            treatment_values.treatment_target,
+                            treatment_values.treatment_intent,
+                            treatment_values.response_to_treatment,
+                            treatment_values.treatment_termination_reason,
                         )?
                     }
                 }
@@ -263,7 +287,7 @@ mod tests {
     #[rstest]
     fn test_collect_procedure(procedure_cdf: ContextualizedDataFrame) {
         let mut builder = MockPhenopacketBuilding::new();
-        let collector = MedicalProcedureCollector;
+        let collector = MedicalTreatmentCollector;
 
         let patient_id = default_patient_id();
 

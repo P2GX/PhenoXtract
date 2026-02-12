@@ -272,6 +272,14 @@ pub enum CollectorError {
         patient_id: String,
         phenotype: String,
     },
+    #[error(
+        "Expected context '{context}' to be part of a building block in table '{table_name}' for patient '{patient_id}'."
+    )]
+    ExpectedBuildingBlock {
+        table_name: String,
+        patient_id: String,
+        context: ContextKind,
+    },
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]

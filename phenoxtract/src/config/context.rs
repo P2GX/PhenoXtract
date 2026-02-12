@@ -68,6 +68,14 @@ pub enum Context {
     ResponseToTreatment,
     TreatmentTerminationReason,
 
+    TreatmentAgent,
+    RouteOfAdministration,
+    DoseIntervals,
+    DrugType,
+    CumulativeDose {
+        unit_ontology_id: String,
+    },
+
     ProcedureLabelOrId,
     ProcedureBodySite,
     DateOfProcedure,
