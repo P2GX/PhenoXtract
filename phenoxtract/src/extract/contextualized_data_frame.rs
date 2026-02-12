@@ -348,6 +348,7 @@ mod tests {
     use super::*;
     use crate::config::context::{Context, TimeElementType};
     use crate::config::traits::SeriesContextBuilding;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::prelude::*;
     use regex::Regex;
@@ -370,20 +371,26 @@ mod tests {
             vec![
                 SeriesContext::default()
                     .with_identifier(vec!["subject_id"])
+                    .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id("block_1"),
-                SeriesContext::from_identifier("age")
+                SeriesContext::default()
+                    .with_identifier(Identifier::Regex("age".to_string()))
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
-                SeriesContext::from_identifier("bronchitis")
+                SeriesContext::default()
+                    .with_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
-                SeriesContext::from_identifier("overweight")
+                SeriesContext::default()
+                    .with_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
-                SeriesContext::from_identifier("sex")
+                SeriesContext::default()
+                    .with_identifier("sex")
                     .with_data_context(Context::SubjectSex)
+                    .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
                     .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
             ],
         )
@@ -905,6 +912,7 @@ mod builder_tests {
     use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
     use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
@@ -935,24 +943,33 @@ mod builder_tests {
             vec![
                 SeriesContext::default()
                     .with_identifier(vec!["subject_id"])
+                    .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
+                    .with_building_block_id("block_1"),
                     .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier("age")
+                    .with_identifier("age")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
+                    .with_identifier("bronchitis")
                     .with_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
+                    .with_identifier("overweight")
                     .with_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier("null")
+                    .with_identifier("null")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
+                    .with_building_block_id("block_1"),
                     .with_building_block_id("block_1"),
             ],
         )

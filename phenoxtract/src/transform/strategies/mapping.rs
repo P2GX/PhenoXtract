@@ -245,7 +245,7 @@ impl Strategy for MappingStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{SeriesContext, TableContext};
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
@@ -261,9 +261,9 @@ mod tests {
         let tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::from_identifier("sex".to_string())
+                SeriesContext::from_identifier(Identifier::Regex("sex".to_string()))
                     .with_data_context(Context::SubjectSex),
-                SeriesContext::from_identifier("sub_id".to_string())
+                SeriesContext::from_identifier(Identifier::Regex("sub_id".to_string()))
                     .with_data_context(Context::SubjectId),
             ],
         );

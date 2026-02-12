@@ -185,7 +185,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::config::table_context::{SeriesContext, TableContext};
+    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
@@ -321,7 +321,9 @@ mod tests {
             vec![
                 SeriesContext::default()
                     .with_identifier("patient_id")
+                    .with_identifier("patient_id")
                     .with_data_context(Context::SubjectId)
+                    .with_building_block_id("Block_1"),
                     .with_building_block_id("Block_1"),
             ],
         )
@@ -335,7 +337,10 @@ mod tests {
                 SeriesContext::default()
                     .with_identifier("age")
                     .with_building_block_id("Block_2"),
+                    .with_identifier("age")
+                    .with_building_block_id("Block_2"),
                 SeriesContext::default()
+                    .with_identifier("subject_id")
                     .with_identifier("subject_id")
                     .with_data_context(Context::SubjectId),
             ],
@@ -349,7 +354,9 @@ mod tests {
             vec![
                 SeriesContext::default()
                     .with_identifier("1")
+                    .with_identifier("1")
                     .with_data_context(Context::SubjectId)
+                    .with_building_block_id("Block_1"),
                     .with_building_block_id("Block_1"),
             ],
         )
@@ -361,6 +368,7 @@ mod tests {
             "fourth_sheet".to_string(),
             vec![
                 SeriesContext::default()
+                    .with_identifier("1")
                     .with_identifier("1")
                     .with_data_context(Context::SubjectId),
             ],
