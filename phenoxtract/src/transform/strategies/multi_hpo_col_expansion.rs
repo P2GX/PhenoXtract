@@ -211,7 +211,7 @@ impl MultiHPOColExpansionStrategy {
         let new_sc = SeriesContext::from_identifier(Identifier::Multi(new_hpo_col_names.clone()))
             .with_header_context(Context::HpoLabelOrId)
             .with_data_context(Context::ObservationStatus)
-            .with_building_block_id(building_block_id.map(|bb_id| bb_id));
+            .with_building_block_id(building_block_id);
 
         (new_hpo_cols, new_sc)
     }
