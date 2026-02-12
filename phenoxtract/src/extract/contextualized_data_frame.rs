@@ -347,6 +347,7 @@ impl ContextualizedDataFrame {
 mod tests {
     use super::*;
     use crate::config::context::{Context, TimeElementType};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::prelude::*;
     use regex::Regex;
@@ -368,26 +369,26 @@ mod tests {
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec!["subject_id".to_string()]))
+                    .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("bronchitis".to_string()))
+                    .with_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("overweight".to_string()))
+                    .with_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("sex".to_string()))
+                    .with_identifier("sex")
                     .with_data_context(Context::SubjectSex)
-                    .with_building_block_id(Some("block_1".to_string())), // BB is not realistic here, but it tests good with the test_get_single_linked_column
+                    .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
             ],
         )
     }
@@ -908,6 +909,7 @@ impl From<PolarsError> for CdfBuilderError {
 mod builder_tests {
     use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
     use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
@@ -937,26 +939,26 @@ mod builder_tests {
             "table".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec!["subject_id".to_string()]))
+                    .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
+                    .with_identifier("age")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("bronchitis".to_string()))
+                    .with_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("overweight".to_string()))
+                    .with_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("null".to_string()))
+                    .with_identifier("null")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
-                    .with_building_block_id(Some("block_1".to_string())),
+                    .with_building_block_id("block_1"),
             ],
         )
     }

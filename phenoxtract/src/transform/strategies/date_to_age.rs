@@ -303,6 +303,7 @@ mod tests {
     use crate::config::context::TimeElementType;
     use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::phenopacket_component_generation::default_datetime;
     use chrono::NaiveDateTime;
@@ -562,15 +563,12 @@ mod tests {
         TableContext::new(
             "table2".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Regex("subject_id".to_string()))
+                SeriesContext::from_identifier(Regex("subject_id".to_string()))
                     .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Regex("pneumonia".to_string()))
+                SeriesContext::from_identifier(Regex("pneumonia".to_string()))
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
-                SeriesContext::default()
-                    .with_identifier(Regex("onset".to_string()))
+                SeriesContext::from_identifier(Regex("onset".to_string()))
                     .with_data_context(Context::Onset(TimeElementType::Date)),
             ],
         )

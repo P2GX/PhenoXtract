@@ -132,6 +132,7 @@ mod tests {
     use super::*;
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use polars::df;
     use polars::prelude::{AnyValue, DataType, TimeUnit};
     use rstest::rstest;
@@ -150,9 +151,8 @@ mod tests {
             TableContext::new(
                 "".to_string(),
                 vec![
-                    SeriesContext::default()
-                        .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::Regex("string_col".to_string())),
+                    SeriesContext::from_identifier("string_col")
+                        .with_data_context(Context::SubjectId),
                 ],
             ),
             df.clone(),

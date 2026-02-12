@@ -10,7 +10,8 @@ use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntolo
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Boundary, Context, ContextKind, TimeElementType};
-use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
+use phenoxtract::config::table_context::{AliasMap, SeriesContext, TableContext};
+use phenoxtract::config::traits::SeriesContextBuilding;
 use phenoxtract::extract::ExcelDataSource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
 use phenoxtract::extract::{CsvDataSource, DataSource};
@@ -36,13 +37,10 @@ fn csv_context(no_info_alias: AliasMap) -> TableContext {
     TableContext::new(
         "CSV_Table".to_string(),
         vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("0".to_string()))
-                .with_data_context(Context::SubjectId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Multi(vec!["1".to_string(), "2".to_string()]))
+            SeriesContext::from_identifier("0").with_data_context(Context::SubjectId),
+            SeriesContext::from_identifier(vec!["1", "2"])
                 .with_data_context(Context::HpoLabelOrId)
-                .with_alias_map(Some(no_info_alias)),
+                .with_alias_map(no_info_alias),
         ],
     )
 }
@@ -52,23 +50,18 @@ fn csv_context_2() -> TableContext {
     TableContext::new(
         "CSV_Table_2".to_string(),
         vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                .with_data_context(Context::SubjectId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("HP:0012373".to_string()))
+            SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+            SeriesContext::from_identifier("HP:0012373")
                 .with_header_context(Context::HpoLabelOrId)
                 .with_data_context(Context::ObservationStatus)
-                .with_building_block_id(Some("A".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Rhinorrhea".to_string()))
+                .with_building_block_id("A"),
+            SeriesContext::from_identifier("Rhinorrhea")
                 .with_header_context(Context::HpoLabelOrId)
                 .with_data_context(Context::ObservationStatus)
-                .with_building_block_id(Some("A".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Date of onset".to_string()))
+                .with_building_block_id("A"),
+            SeriesContext::from_identifier("Date of onset")
                 .with_data_context(Context::Onset(TimeElementType::Date))
-                .with_building_block_id(Some("A".to_string())),
+                .with_building_block_id("A"),
         ],
     )
 }
@@ -78,17 +71,13 @@ fn csv_context_3() -> TableContext {
     TableContext::new(
         "CSV_Table_3".to_string(),
         vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                .with_data_context(Context::SubjectId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("HPOs".to_string()))
+            SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+            SeriesContext::from_identifier("HPOs")
                 .with_data_context(Context::MultiHpoId)
-                .with_building_block_id(Some("B".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Date of onset".to_string()))
+                .with_building_block_id("B"),
+            SeriesContext::from_identifier("Date of onset")
                 .with_data_context(Context::Onset(TimeElementType::Date))
-                .with_building_block_id(Some("B".to_string())),
+                .with_building_block_id("B"),
         ],
     )
 }
@@ -98,29 +87,22 @@ fn csv_context_4() -> TableContext {
     TableContext::new(
         "CSV_Table_4".to_string(),
         vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                .with_data_context(Context::SubjectId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("diseases".to_string()))
+            SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+            SeriesContext::from_identifier("diseases")
                 .with_data_context(Context::DiseaseLabelOrId)
-                .with_building_block_id(Some("C".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("disease_onset".to_string()))
+                .with_building_block_id("C"),
+            SeriesContext::from_identifier("disease_onset")
                 .with_data_context(Context::Onset(TimeElementType::Age))
-                .with_building_block_id(Some("C".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("gene".to_string()))
+                .with_building_block_id("C"),
+            SeriesContext::from_identifier("gene")
                 .with_data_context(Context::HgncSymbolOrId)
-                .with_building_block_id(Some("C".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("hgvs1".to_string()))
+                .with_building_block_id("C"),
+            SeriesContext::from_identifier("hgvs1")
                 .with_data_context(Context::Hgvs)
-                .with_building_block_id(Some("C".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("hgvs2".to_string()))
+                .with_building_block_id("C"),
+            SeriesContext::from_identifier("hgvs2")
                 .with_data_context(Context::Hgvs)
-                .with_building_block_id(Some("C".to_string())),
+                .with_building_block_id("C"),
         ],
     )
 }
@@ -130,34 +112,27 @@ fn csv_context_5() -> TableContext {
     TableContext::new(
         "CSV_Table_5".to_string(),
         vec![
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                .with_data_context(Context::SubjectId),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("height (cm)".to_string()))
+            SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+            SeriesContext::from_identifier("height (cm)")
                 .with_data_context(Context::QuantitativeMeasurement {
                     assay_id: "LOINC:8302-2".to_string(),
                     unit_ontology_id: "UO:0000015".to_string(),
                 })
-                .with_building_block_id(Some("M".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("ref_low".to_string()))
+                .with_building_block_id("M"),
+            SeriesContext::from_identifier("ref_low")
                 .with_data_context(Context::ReferenceRange(Boundary::Start))
-                .with_building_block_id(Some("M".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("ref_high".to_string()))
+                .with_building_block_id("M"),
+            SeriesContext::from_identifier("ref_high")
                 .with_data_context(Context::ReferenceRange(Boundary::End))
-                .with_building_block_id(Some("M".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("nitrates in urine".to_string()))
+                .with_building_block_id("M"),
+            SeriesContext::from_identifier("nitrates in urine")
                 .with_data_context(Context::QualitativeMeasurement {
                     assay_id: "LOINC:5802-4".to_string(),
                 })
-                .with_building_block_id(Some("M".to_string())),
-            SeriesContext::default()
-                .with_identifier(Identifier::Regex("date_of_observation".to_string()))
+                .with_building_block_id("M"),
+            SeriesContext::from_identifier("date_of_observation")
                 .with_data_context(Context::Onset(TimeElementType::Date))
-                .with_building_block_id(Some("M".to_string())),
+                .with_building_block_id("M"),
         ],
     )
 }
@@ -168,53 +143,35 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
         TableContext::new(
             "basic info".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                    .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Sex".to_string()))
-                    .with_data_context(Context::SubjectSex),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Living".to_string()))
+                SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+                SeriesContext::from_identifier("Sex").with_data_context(Context::SubjectSex),
+                SeriesContext::from_identifier("Living")
                     .with_data_context(Context::VitalStatus)
-                    .with_alias_map(Some(vital_status_aliases)),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("DOB".to_string()))
-                    .with_data_context(Context::DateOfBirth),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Age of death".to_string()))
+                    .with_alias_map(vital_status_aliases),
+                SeriesContext::from_identifier("DOB").with_data_context(Context::DateOfBirth),
+                SeriesContext::from_identifier("Age of death")
                     .with_data_context(Context::TimeOfDeath(TimeElementType::Age)),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex(
-                        "Survival time since diagnosis (days)".to_string(),
-                    ))
+                SeriesContext::from_identifier("Survival time since diagnosis (days)")
                     .with_data_context(Context::SurvivalTimeDays),
             ],
         ),
         TableContext::new(
             "conditions".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                    .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Phenotypic Features".to_string()))
+                SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+                SeriesContext::from_identifier("Phenotypic Features")
                     .with_data_context(Context::HpoLabelOrId)
-                    .with_building_block_id(Some("C".to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Age of onset".to_string()))
+                    .with_building_block_id("C"),
+                SeriesContext::from_identifier("Age of onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
-                    .with_building_block_id(Some("C".to_string())),
+                    .with_building_block_id("C"),
             ],
         ),
         TableContext::new(
             "more conditions".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Patient ID".to_string()))
-                    .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex(r"Phenotypic Features \d+".to_string()))
+                SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
+                SeriesContext::from_identifier(r"Phenotypic Features \d+")
                     .with_data_context(Context::HpoLabelOrId),
             ],
         ),

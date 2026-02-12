@@ -380,6 +380,7 @@ mod tests {
     use super::*;
     use crate::config::context::{ContextKind, TimeElementType};
     use crate::config::table_context::{CellValue, Identifier, SeriesContext};
+    use crate::config::traits::SeriesContextBuilding;
     use rstest::rstest;
 
     #[rstest]
@@ -404,11 +405,11 @@ mod tests {
     #[rstest]
     fn test_filter_by_building_block_some() {
         let series = vec![
-            SeriesContext::default().with_building_block_id(Some("bb1".to_string())),
-            SeriesContext::default().with_identifier(Identifier::Regex("id2".to_string())),
+            SeriesContext::default().with_building_block_id("bb1"),
+            SeriesContext::default().with_identifier("id2"),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_building_block_id(Some("bb3".to_string())),
+                .with_identifier("id3")
+                .with_building_block_id("bb3"),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -423,14 +424,14 @@ mod tests {
     fn test_filter_by_building_block_value() {
         let series = vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_building_block_id(Some("bb1".to_string())),
+                .with_identifier("id1")
+                .with_building_block_id("bb1"),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_building_block_id(Some("bb2".to_string())),
+                .with_identifier("id2")
+                .with_building_block_id("bb2"),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_building_block_id(Some("bb1".to_string())),
+                .with_identifier("id3")
+                .with_building_block_id("bb1"),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -449,10 +450,10 @@ mod tests {
     fn test_filter_by_building_block_none() {
         let series = vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_building_block_id(Some("bb1".to_string())),
-            SeriesContext::default().with_identifier(Identifier::Regex("id2".to_string())),
-            SeriesContext::default().with_identifier(Identifier::Regex("id3".to_string())),
+                .with_identifier("id1")
+                .with_building_block_id("bb1"),
+            SeriesContext::default().with_identifier("id2"),
+            SeriesContext::default().with_identifier("id3"),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -470,13 +471,13 @@ mod tests {
 
         let series = vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
+                .with_identifier("id1")
                 .with_header_context(ctx1.clone()),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
+                .with_identifier("id2")
                 .with_header_context(ctx2.clone()),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
+                .with_identifier("id3")
                 .with_header_context(ctx1.clone()),
         ];
 
@@ -646,12 +647,12 @@ mod tests {
 
         let series = vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_fill_missing(Some(fill_val.clone())),
-            SeriesContext::default().with_identifier(Identifier::Regex("id2".to_string())),
+                .with_identifier("id1")
+                .with_fill_missing(fill_val.clone()),
+            SeriesContext::default().with_identifier("id2"),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_fill_missing(Some(fill_val.clone())),
+                .with_identifier("id3")
+                .with_fill_missing(fill_val),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -669,14 +670,14 @@ mod tests {
 
         let series = vec![
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id1".to_string()))
-                .with_fill_missing(Some(fill_val.clone())),
+                .with_identifier("id1")
+                .with_fill_missing(fill_val.clone()),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_fill_missing(Some(other_val.clone())),
+                .with_identifier("id2")
+                .with_fill_missing(other_val),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id3".to_string()))
-                .with_fill_missing(Some(fill_val.clone())),
+                .with_identifier("id3")
+                .with_fill_missing(fill_val.clone()),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -699,18 +700,18 @@ mod tests {
         let series = vec![
             SeriesContext::default()
                 .with_identifier(id1.clone())
-                .with_building_block_id(Some("bb1".to_string()))
+                .with_building_block_id("bb1")
                 .with_data_context(ctx1.clone()),
             SeriesContext::default()
                 .with_identifier(id1.clone())
                 .with_data_context(ctx1.clone()),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_building_block_id(Some("bb1".to_string()))
+                .with_identifier("id2")
+                .with_building_block_id("bb1")
                 .with_data_context(ctx1.clone()),
             SeriesContext::default()
                 .with_identifier(id1.clone())
-                .with_building_block_id(Some("bb1".to_string())),
+                .with_building_block_id("bb1"),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -732,7 +733,7 @@ mod tests {
 
         let series = vec![
             SeriesContext::default().with_identifier(id1.clone()),
-            SeriesContext::default().with_identifier(Identifier::Regex("id2".to_string())),
+            SeriesContext::default().with_identifier("id2"),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -759,11 +760,11 @@ mod tests {
         let series = vec![
             SeriesContext::default()
                 .with_identifier(id1.clone())
-                .with_building_block_id(Some("bb1".to_string()))
+                .with_building_block_id("bb1")
                 .with_data_context(ctx1.clone()),
             SeriesContext::default()
-                .with_identifier(Identifier::Regex("id2".to_string()))
-                .with_building_block_id(Some("bb1".to_string()))
+                .with_identifier("id2")
+                .with_building_block_id("bb1")
                 .with_data_context(ctx1.clone()),
         ];
 
