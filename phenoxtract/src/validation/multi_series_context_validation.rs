@@ -22,12 +22,13 @@ pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::traits::SeriesContextBuilding;
     use rstest::rstest;
 
     #[rstest]
     fn test_multi_identifier_regex_delegates() {
         let id = Identifier::Regex("^[a-z]+$".to_string());
-        let sc = SeriesContext::default().with_identifier(id);
+        let sc = SeriesContext::from_identifier(id);
         let result = validate_identifier(&sc);
         assert!(result.is_ok());
     }
