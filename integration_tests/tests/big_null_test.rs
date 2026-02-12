@@ -198,6 +198,9 @@ fn big_null_test(
         BiDictLibrary::new("UNIT", vec![]),
         BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
         BiDictLibrary::new("QUAL", vec![pato_dict]),
+        BiDictLibrary::new("PROCEDURE", vec![]),
+        BiDictLibrary::new("ANATOMY", vec![]),
+        BiDictLibrary::new("TREATMENT", vec![]),
     );
 
     let transformer_module = TransformerModule::new(

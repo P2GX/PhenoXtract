@@ -7,6 +7,12 @@ pub(crate) static HPO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::hp().with_version("2025-09-01"));
 pub(crate) static MONDO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::mondo().with_version("2025-11-04"));
+pub(crate) static UBERON_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::uberon().with_version("2025-12-05"));
+pub(crate) static MAXO_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::maxo().with_version("2026-01-15"));
+pub(crate) static NCIT_REF: Lazy<ResourceRef> =
+    Lazy::new(|| ResourceRef::ncit().with_version("2026-01-15"));
 pub(crate) static UO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::uo().with_version("2026-01-09"));
 pub(crate) static PATO_REF: Lazy<ResourceRef> =
