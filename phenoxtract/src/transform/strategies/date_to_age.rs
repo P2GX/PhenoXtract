@@ -44,7 +44,9 @@ impl Strategy for DateToAgeStrategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts_are(&Context::all_time_based(TimeElementType::Date))
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date,
+                ))
                 .collect()
                 .is_empty()
         });
@@ -77,7 +79,9 @@ impl Strategy for DateToAgeStrategy {
 
             let date_column_names = table
                 .filter_columns()
-                .where_data_contexts_are(&Context::all_time_based(TimeElementType::Date))
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date,
+                ))
                 .collect_owned_names();
 
             for date_col_name in date_column_names.iter() {
@@ -256,9 +260,9 @@ impl DateToAgeStrategy {
     }
 
     fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
-        Context::all_time_based(TimeElementType::Date)
+        Context::time_element_context_variants(TimeElementType::Date)
             .into_iter()
-            .zip(Context::all_time_based(TimeElementType::Age))
+            .zip(Context::time_element_context_variants(TimeElementType::Age))
             .collect()
     }
 
@@ -608,14 +612,18 @@ mod tests {
         //check the change of contexts has succeeded
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts_are(&Context::all_time_based(TimeElementType::Date))
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date
+                ))
                 .collect()
                 .len(),
             0
         );
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts_are(&Context::all_time_based(TimeElementType::Age))
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Age
+                ))
                 .collect()
                 .len(),
             1
