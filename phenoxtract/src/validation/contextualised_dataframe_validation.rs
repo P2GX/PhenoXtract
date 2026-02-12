@@ -91,7 +91,7 @@ pub(crate) fn validate_dangling_sc(cdf: &ContextualizedDataFrame) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::validation::contextualised_dataframe_validation::{
@@ -315,7 +315,7 @@ mod tests {
             .with_data_context(Context::SubjectId);
         let age_sc = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
-            .with_data_context(Context::OnsetAge);
+            .with_data_context(Context::Onset(TimeElementType::Age));
         let table_context = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
@@ -340,7 +340,7 @@ mod tests {
             .with_data_context(Context::SubjectId);
         let age_sc = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
-            .with_data_context(Context::OnsetAge);
+            .with_data_context(Context::Onset(TimeElementType::Age));
         let cdf_creation_attempt = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),

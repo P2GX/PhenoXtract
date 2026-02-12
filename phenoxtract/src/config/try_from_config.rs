@@ -373,7 +373,7 @@ mod tests {
 
         match csv_datasource_from_config {
             DataSource::Csv(csv_source) => {
-                assert_eq!(csv_source.context.context().len(), 1);
+                assert_eq!(csv_source.context.context().len(), 3);
             }
             DataSource::Excel(_) => {
                 panic!("Loaded Excel Datasource instead of Csv!")

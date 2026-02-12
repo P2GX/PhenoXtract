@@ -29,7 +29,7 @@ impl Collect for HpoInCellsCollector {
 
                 let onset_column = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
-                    &[Context::OnsetAge, Context::OnsetDate],
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 for hpo_col in hpo_cols {
@@ -75,6 +75,7 @@ mod tests {
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::schema::v2::Phenopacket;
 
+    use crate::config::context::TimeElementType;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
@@ -124,7 +125,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
-                    .with_data_context(Context::OnsetAge)
+                    .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id(Some("phenotype_1".to_string())),
                 vec![onset.into_column()].as_ref(),
             )

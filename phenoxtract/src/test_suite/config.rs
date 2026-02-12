@@ -18,6 +18,14 @@ contexts:
         "102": "High quantity"
         "169.5": "Very high quantity"
         "true": "smoker"
+  - identifier: "quantitative_measurement"
+    data_context:
+      quantitative_measurement:
+        assay_id: "LOINC:9843-4"
+        unit_ontology_id: "UO:0000015"
+  - identifier: "procedure_time"
+    data_context:
+      time_at_procedure: age
 "#;
 pub(crate) static EXCEL_DATASOURCE_CONFIG_FILE: &[u8] = br#"
 type: "excel"

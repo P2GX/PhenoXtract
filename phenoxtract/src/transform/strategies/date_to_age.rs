@@ -5,7 +5,7 @@ use log::{info, warn};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::{AGE_CONTEXTS, Context};
+use crate::config::context::{Context, TimeElementType};
 
 use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
@@ -18,12 +18,6 @@ use polars::prelude::{AnyValue, Column, DataType};
 use std::any::type_name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-
-const DATE_CONTEXTS_WITHOUT_DOB: [Context; 3] = [
-    Context::DateAtLastEncounter,
-    Context::OnsetDate,
-    Context::DateOfDeath,
-];
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -45,14 +39,18 @@ impl Strategy for DateToAgeStrategy {
                 .collect()
                 .is_empty()
         });
+
         let has_date_column = tables.iter().any(|table| {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts_are(&DATE_CONTEXTS_WITHOUT_DOB)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date,
+                ))
                 .collect()
                 .is_empty()
         });
+
         match (has_dob_column, has_date_column) {
             (true, true) => true,
             (false, true) => {
@@ -81,7 +79,9 @@ impl Strategy for DateToAgeStrategy {
 
             let date_column_names = table
                 .filter_columns()
-                .where_data_contexts_are(&DATE_CONTEXTS_WITHOUT_DOB)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date,
+                ))
                 .collect_owned_names();
 
             for date_col_name in date_column_names.iter() {
@@ -260,9 +260,9 @@ impl DateToAgeStrategy {
     }
 
     fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
-        DATE_CONTEXTS_WITHOUT_DOB
+        Context::time_element_context_variants(TimeElementType::Date)
             .into_iter()
-            .zip(AGE_CONTEXTS)
+            .zip(Context::time_element_context_variants(TimeElementType::Age))
             .collect()
     }
 
@@ -300,7 +300,7 @@ impl DateToAgeStrategy {
 mod tests {
     use super::*;
     use crate::config::TableContext;
-    use crate::config::context::AGE_CONTEXTS;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::Identifier::Regex;
     use crate::config::table_context::SeriesContext;
     use crate::test_suite::cdf_generation::default_patient_id;
@@ -571,7 +571,7 @@ mod tests {
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier(Regex("onset".to_string()))
-                    .with_data_context(Context::OnsetDate),
+                    .with_data_context(Context::Onset(TimeElementType::Date)),
             ],
         )
     }
@@ -591,6 +591,7 @@ mod tests {
         let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), dob_df).unwrap();
         let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), onset_df).unwrap();
         let tables = &mut [&mut cdf1, &mut cdf2];
+
         let date_to_age_strat = DateToAgeStrategy;
         date_to_age_strat.transform(tables).unwrap();
 
@@ -611,14 +612,18 @@ mod tests {
         //check the change of contexts has succeeded
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts_are(&DATE_CONTEXTS_WITHOUT_DOB)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Date
+                ))
                 .collect()
                 .len(),
             0
         );
         assert_eq!(
             cdf2.filter_series_context()
-                .where_data_contexts_are(&AGE_CONTEXTS)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Age
+                ))
                 .collect()
                 .len(),
             1
@@ -759,13 +764,19 @@ mod tests {
     #[rstest]
     fn test_date_to_age_contexts_hash_map() {
         let hm = DateToAgeStrategy::date_to_age_contexts_hash_map();
-        assert_eq!(hm.len(), 3);
+        assert_eq!(hm.len(), 5);
         assert_eq!(
-            hm[&Context::DateAtLastEncounter],
-            Context::AgeAtLastEncounter
+            hm[&Context::TimeAtLastEncounter(TimeElementType::Date)],
+            Context::TimeAtLastEncounter(TimeElementType::Age)
         );
-        assert_eq!(hm[&Context::OnsetDate], Context::OnsetAge);
-        assert_eq!(hm[&Context::DateOfDeath], Context::AgeOfDeath);
+        assert_eq!(
+            hm[&Context::Onset(TimeElementType::Date)],
+            Context::Onset(TimeElementType::Age)
+        );
+        assert_eq!(
+            hm[&Context::TimeOfDeath(TimeElementType::Date)],
+            Context::TimeOfDeath(TimeElementType::Age)
+        );
     }
 
     #[rstest]

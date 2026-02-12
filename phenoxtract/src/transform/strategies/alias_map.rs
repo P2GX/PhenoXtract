@@ -104,7 +104,7 @@ impl Strategy for AliasMapStrategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{
         AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
     };
@@ -137,7 +137,7 @@ mod tests {
     fn sc_int_alias() -> SeriesContext {
         SeriesContext::default()
             .with_identifier(Identifier::Regex("age".to_string()))
-            .with_data_context(Context::AgeAtLastEncounter)
+            .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
             .with_alias_map(Some(AliasMap::new(
                 HashMap::from([("11".to_string(), Some("22".to_string()))]),
                 OutputDataType::Int64,
