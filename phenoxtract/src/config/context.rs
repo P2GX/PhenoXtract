@@ -94,7 +94,8 @@ pub enum Context {
     //...
 }
 
-macro_rules! time_element_contexts {
+// Automatically, creates all variants for time element contexts
+macro_rules! time_element_variants {
     ($context_variant:ident) => {{
         #[allow(dead_code, unused_variables)]
         fn assert_exhaustive(t: TimeElementType) {
@@ -113,11 +114,11 @@ macro_rules! time_element_contexts {
 
 impl Context {
     pub const LAST_ENCOUNTER_VARIANTS: &'static [Context] =
-        time_element_contexts!(TimeAtLastEncounter);
-    pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_contexts!(TimeOfDeath);
+        time_element_variants!(TimeAtLastEncounter);
+    pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_variants!(TimeOfDeath);
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
-        time_element_contexts!(TimeOfProcedure);
-    pub const ONSET_VARIANTS: &'static [Context] = time_element_contexts!(Onset);
+        time_element_variants!(TimeOfProcedure);
+    pub const ONSET_VARIANTS: &'static [Context] = time_element_variants!(Onset);
     pub fn all_time_based(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
             .filter_map(|kind| match kind {
