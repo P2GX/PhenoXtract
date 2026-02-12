@@ -131,6 +131,7 @@ mod tests {
     };
 
     use crate::config::context::TimeElementType;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::mocks::MockPhenopacketBuilding;
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series, TimeUnit};
@@ -203,57 +204,57 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("procedure".into())
+                    .with_identifier("procedure")
                     .with_data_context(Context::ProcedureLabelOrId)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![procedure.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("body_site".into())
+                    .with_identifier("body_site")
                     .with_data_context(Context::ProcedureBodySite)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![body_site.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("at".into())
+                    .with_identifier("at")
                     .with_data_context(Context::TimeAtProcedure(TimeElementType::Date))
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![time_element.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("treatment_target".into())
+                    .with_identifier("treatment_target")
                     .with_data_context(Context::TreatmentTarget)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![treatment_target.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("treatment_intent".into())
+                    .with_identifier("treatment_intent")
                     .with_data_context(Context::TreatmentIntent)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![treatment_intent.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("treatment_response".into())
+                    .with_identifier("treatment_response")
                     .with_data_context(Context::ResponseToTreatment)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![treatment_response.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("treatment_termination_reason".into())
+                    .with_identifier("treatment_termination_reason")
                     .with_data_context(Context::TreatmentTerminationReason)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id("procedure_1"),
                 vec![treatment_termination_reason.into_column()].as_ref(),
             )
             .unwrap()

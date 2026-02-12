@@ -70,8 +70,10 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 
+    use crate::config::traits::SeriesContextBuilding;
     use rstest::rstest;
 
+    // TODO: Clean this up. These constructor functions are not needed
     fn regex(regex: &str) -> SeriesContext {
         let context = SeriesContext::default();
         context.with_identifier(Identifier::Regex(regex.to_string()))

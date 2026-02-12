@@ -86,6 +86,7 @@ mod tests {
     use super::*;
     use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -134,20 +135,18 @@ mod tests {
         patient_cdf
             .builder()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("nitrate in urine".into())
+                SeriesContext::from_identifier("nitrate in urine")
                     .with_data_context(Context::QualitativeMeasurement {
                         assay_id: default_qual_loinc().id,
                     })
-                    .with_building_block_id(Some("nitrate_measurement".to_string())),
+                    .with_building_block_id("nitrate_measurement"),
                 vec![measurements.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("time_observed".into())
+                SeriesContext::from_identifier("time_observed")
                     .with_data_context(Context::Onset(TimeElementType::Age))
-                    .with_building_block_id(Some("nitrate_measurement".to_string())),
+                    .with_building_block_id("nitrate_measurement"),
                 vec![time_observed.into_column()].as_ref(),
             )
             .unwrap()

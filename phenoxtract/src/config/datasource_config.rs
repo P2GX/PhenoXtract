@@ -1,5 +1,6 @@
 use crate::config::context::Context;
 use crate::config::table_context::{CellValue, Identifier, OutputDataType};
+use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -51,6 +52,54 @@ pub struct SeriesContextConfig {
     pub alias_map_config: Option<AliasMapConfig>,
     #[serde(default)]
     pub building_block_id: Option<String>,
+}
+
+impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
+    fn from_identifier(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map_config: None,
+            building_block_id: None,
+        }
+    }
+
+    fn with_identifier(mut self, identifier: impl Into<Identifier>) -> Self {
+        self.identifier = identifier.into();
+        self
+    }
+
+    fn with_header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
+        self
+    }
+
+    fn with_data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
+        self
+    }
+
+    fn with_fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
+        self
+    }
+
+    fn with_alias_map(mut self, alias_map_config: AliasMapConfig) -> Self {
+        self.alias_map_config = Some(alias_map_config);
+        self
+    }
+
+    fn with_building_block_id(mut self, building_block_id: impl IntoOptionalString) -> Self {
+        if let Some(id) = building_block_id.into_opt_string() {
+            self.building_block_id = Some(id);
+            self
+        } else {
+            self.building_block_id = None;
+            self
+        }
+    }
 }
 
 impl SeriesContextConfig {

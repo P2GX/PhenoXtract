@@ -75,6 +75,7 @@ mod tests {
     use super::*;
     use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -122,17 +123,17 @@ mod tests {
         cdf.builder()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("disease".into())
+                    .with_identifier("disease")
                     .with_data_context(Context::DiseaseLabelOrId)
-                    .with_building_block_id(Some("disease_1".to_string())),
+                    .with_building_block_id("disease_1"),
                 vec![disease_col].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("onset".into())
+                    .with_identifier("onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
-                    .with_building_block_id(Some("disease_1".to_string())),
+                    .with_building_block_id("disease_1"),
                 vec![onset_col].as_ref(),
             )
             .unwrap()

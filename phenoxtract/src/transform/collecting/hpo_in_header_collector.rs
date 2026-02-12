@@ -93,6 +93,7 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{
         default_patient_id, generate_minimal_cdf, generate_minimal_cdf_components,
@@ -144,18 +145,16 @@ mod tests {
         patient_cdf
             .builder()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("phenotypes".into())
+                SeriesContext::from_identifier("phenotypes")
                     .with_data_context(Context::HpoLabelOrId)
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                    .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("onset".into())
+                SeriesContext::from_identifier("onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                    .with_building_block_id("phenotype_1"),
                 vec![onset.into_column()].as_ref(),
             )
             .unwrap()
@@ -191,15 +190,13 @@ mod tests {
 
         let context = vec![
             sc,
-            SeriesContext::default()
+            SeriesContext::from_identifier(phenotype_col_name)
                 .with_data_context(Context::ObservationStatus)
-                .with_building_block_id(Some("bb1".to_string()))
-                .with_header_context(Context::HpoLabelOrId)
-                .with_identifier(phenotype_col_name.into()),
-            SeriesContext::default()
+                .with_building_block_id("bb1")
+                .with_header_context(Context::HpoLabelOrId),
+            SeriesContext::from_identifier(pneumonia_onset_col.name().to_string())
                 .with_data_context(Context::Onset(TimeElementType::Age))
-                .with_building_block_id(Some("bb1".to_string()))
-                .with_identifier(pneumonia_onset_col.name().to_string().into()),
+                .with_building_block_id("bb1"),
         ];
 
         let cdf = ContextualizedDataFrame::new(
