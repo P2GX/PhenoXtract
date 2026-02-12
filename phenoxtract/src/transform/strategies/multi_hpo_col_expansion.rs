@@ -261,7 +261,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::LastEncounter(TimeElementType::Age)),
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Multi_HPOs_Block_A".to_string()))
                     .with_data_context(Context::MultiHpoId)
@@ -324,7 +324,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::LastEncounter(TimeElementType::Age)),
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
                 SeriesContext::default()
                     .with_identifier(Identifier::Multi(vec![
                         "HP:1111111#A".to_string(),

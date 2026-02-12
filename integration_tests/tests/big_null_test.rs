@@ -44,10 +44,10 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_data_context(Context::DateOfBirth),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("age_at_last_encounter".to_string()))
-                .with_data_context(Context::LastEncounter(TimeElementType::Age)),
+                .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("date_at_last_encounter".to_string()))
-                .with_data_context(Context::LastEncounter(TimeElementType::Date)),
+                .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Date)),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("sex".to_string()))
                 .with_data_context(Context::SubjectSex),

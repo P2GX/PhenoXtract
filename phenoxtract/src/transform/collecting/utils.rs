@@ -142,7 +142,7 @@ mod tests {
     #[rstest]
     fn test_collect_single_multiplicity_element_err() {
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let context = Context::LastEncounter(TimeElementType::Age);
+        let context = Context::TimeAtLastEncounter(TimeElementType::Age);
 
         let df = DataFrame::new(vec![
             subject_col.clone(),

@@ -519,7 +519,7 @@ mod tests {
             SeriesContext::default().with_data_context(Context::SubjectId),
             SeriesContext::default().with_data_context(Context::HpoLabelOrId),
             SeriesContext::default()
-                .with_data_context(Context::LastEncounter(TimeElementType::Age)),
+                .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
         ];
 
         let result = SeriesContextFilter::new(&series)

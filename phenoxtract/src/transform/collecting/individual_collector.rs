@@ -156,7 +156,7 @@ mod tests {
 
         let tale_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_at_last_encounter".to_string()))
-            .with_data_context(Context::LastEncounter(TimeElementType::Age));
+            .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age));
 
         let time_of_death_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_of_death".to_string()))

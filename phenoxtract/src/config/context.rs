@@ -51,7 +51,7 @@ pub enum Context {
     SubjectSex,
     DateOfBirth,
     VitalStatus,
-    LastEncounter(TimeElementType),
+    TimeAtLastEncounter(TimeElementType),
     TimeOfDeath(TimeElementType),
     CauseOfDeath,
     SurvivalTimeDays,
@@ -112,7 +112,8 @@ macro_rules! time_element_contexts {
 }
 
 impl Context {
-    pub const LAST_ENCOUNTER_VARIANTS: &'static [Context] = time_element_contexts!(LastEncounter);
+    pub const LAST_ENCOUNTER_VARIANTS: &'static [Context] =
+        time_element_contexts!(TimeAtLastEncounter);
     pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_contexts!(TimeOfDeath);
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
         time_element_contexts!(TimeOfProcedure);
@@ -120,7 +121,7 @@ impl Context {
     pub fn all_time_based(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
             .filter_map(|kind| match kind {
-                ContextKind::LastEncounter => Some(Context::LastEncounter(tt.clone())),
+                ContextKind::LastEncounter => Some(Context::TimeAtLastEncounter(tt.clone())),
                 ContextKind::TimeOfDeath => Some(Context::TimeOfDeath(tt.clone())),
                 ContextKind::TimeOfProcedure => Some(Context::TimeOfProcedure(tt.clone())),
                 ContextKind::Onset => Some(Context::Onset(tt.clone())),
