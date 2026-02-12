@@ -90,10 +90,10 @@ impl IndividualCollector {
         time_element_contexts: &[Context],
     ) -> Result<Option<String>, CollectorError> {
         let mut time_element = None;
-        for last_encounter_context in time_element_contexts.iter() {
+        for time_element_context in time_element_contexts.iter() {
             time_element = get_single_multiplicity_element(
                 patient_cdfs,
-                last_encounter_context,
+                time_element_context,
                 &Context::None,
             )?;
             if time_element.is_some() {

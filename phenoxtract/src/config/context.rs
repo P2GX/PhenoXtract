@@ -82,7 +82,7 @@ pub enum Context {
 
     ProcedureLabelOrId,
     ProcedureBodySite,
-    TimeOfProcedure(TimeElementType),
+    TimeAtProcedure(TimeElementType),
 
     // other
     ObservationStatus,
@@ -117,17 +117,17 @@ impl Context {
         time_element_variants!(TimeAtLastEncounter);
     pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_variants!(TimeOfDeath);
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
-        time_element_variants!(TimeOfProcedure);
+        time_element_variants!(TimeAtProcedure);
     pub const ONSET_VARIANTS: &'static [Context] = time_element_variants!(Onset);
     pub fn all_time_based(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
             .filter_map(|kind| match kind {
-                ContextKind::LastEncounter => Some(Context::TimeAtLastEncounter(tt.clone())),
+                ContextKind::TimeAtLastEncounter => Some(Context::TimeAtLastEncounter(tt.clone())),
                 ContextKind::TimeOfDeath => Some(Context::TimeOfDeath(tt.clone())),
-                ContextKind::TimeOfProcedure => Some(Context::TimeOfProcedure(tt.clone())),
+                ContextKind::TimeAtProcedure => Some(Context::TimeAtProcedure(tt.clone())),
                 ContextKind::Onset => Some(Context::Onset(tt.clone())),
 
-                // Ensures that we see a compile error, when we add another context using a TimeElementType
+                // Ensures that we see a compile error, when we add another context type
                 ContextKind::SubjectId
                 | ContextKind::SubjectSex
                 | ContextKind::DateOfBirth

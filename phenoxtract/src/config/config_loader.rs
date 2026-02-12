@@ -45,7 +45,7 @@ impl ConfigLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::loader_config::LoaderConfig;
 
     use crate::config::datasource_config::{
@@ -154,25 +154,33 @@ pipeline_config:
                     separator: Some(','),
                     has_headers: true,
                     patients_are_rows: true,
-                    contexts: vec![SeriesContextConfig {
-                        identifier: Identifier::Regex("patient_id".to_string()),
-                        header_context: Context::SubjectId,
-                        data_context: Context::HpoLabelOrId,
-                        fill_missing: Some(CellValue::String(
-                            "Zollinger-Ellison syndrome".to_string(),
-                        )),
-                        alias_map_config: Some(AliasMapConfig {
-                            mappings: MappingsConfig::HashMap(HashMap::from([
-                                ("null".to_string(), None),
-                                ("M".to_string(), Some("Male".to_string())),
-                                ("102".to_string(), Some("High quantity".to_string())),
-                                ("169.5".to_string(), Some("Very high quantity".to_string())),
-                                ("true".to_string(), Some("smoker".to_string())),
-                            ])),
-                            output_data_type: OutputDataType::String,
-                        }),
-                        building_block_id: Some("block_1".to_string()),
-                    }],
+                    contexts: vec![
+                        SeriesContextConfig::new(Identifier::Regex("patient_id".to_string()))
+                            .header_context(Context::SubjectId)
+                            .data_context(Context::HpoLabelOrId)
+                            .fill_missing(CellValue::String(
+                                "Zollinger-Ellison syndrome".to_string(),
+                            ))
+                            .alias_map_config(AliasMapConfig {
+                                mappings: MappingsConfig::HashMap(HashMap::from([
+                                    ("null".to_string(), None),
+                                    ("M".to_string(), Some("Male".to_string())),
+                                    ("102".to_string(), Some("High quantity".to_string())),
+                                    ("169.5".to_string(), Some("Very high quantity".to_string())),
+                                    ("true".to_string(), Some("smoker".to_string())),
+                                ])),
+                                output_data_type: OutputDataType::String,
+                            })
+                            .building_block_id("block_1".to_string()),
+                        SeriesContextConfig::new("quantitative_measurement").data_context(
+                            Context::QuantitativeMeasurement {
+                                assay_id: "LOINC:9843-4".to_string(),
+                                unit_ontology_id: "UO:0000015".to_string(),
+                            },
+                        ),
+                        SeriesContextConfig::new("procedure_time")
+                            .data_context(Context::TimeAtProcedure(TimeElementType::Age)),
+                    ],
                 }),
                 // Second data source: Excel
                 DataSourceConfig::Excel(ExcelWorkbookConfig {
