@@ -165,7 +165,7 @@ blah: "blahblah"
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
                 },
-                Some("./src/test_suite/test_cache".parse().unwrap()),
+                None,
             ),
             data_sources: vec![
                 // First data source: CSV
