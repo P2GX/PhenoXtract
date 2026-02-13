@@ -3,7 +3,7 @@ use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::types::OntologyRegistry;
-use crate::utils::get_cache_dir;
+use crate::utils::default_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
@@ -42,7 +42,7 @@ pub struct CachedOntologyFactory<OR: OntologyRegistration> {
 ///
 /// # Caching Behavior
 ///
-/// The factory caches ontologies based on their `ResourceRef` and an optional file name.
+/// The factory caches ontology_registry based on their `ResourceRef` and an optional file name.
 /// Once an ontology is built, subsequent requests for the same ontology will return the
 /// cached instance, avoiding expensive I/O and parsing operations.
 ///
@@ -79,7 +79,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
     /// Builds or retrieves a cached ontology instance.
     ///
-    /// This is the core method for loading ontologies. It first checks the cache for an
+    /// This is the core method for loading ontology_registry. It first checks the cache for an
     /// existing instance matching the given `ontology` reference and `file_name`. If found,
     /// it returns the cached instance. Otherwise, it loads the ontology from disk, caches
     /// it, and returns the newly created instance.
@@ -288,7 +288,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 impl Default for CachedOntologyFactory<OntologyRegistry> {
     fn default() -> Self {
         CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
-            get_cache_dir().expect("Cannot get cache dir"),
+            default_cache_dir().expect("Cannot get cache dir"),
             BioRegistryMetadataProvider::default(),
             OboLibraryProvider::default(),
         ))

@@ -20,6 +20,10 @@ pub(crate) struct ResourceConfigFactory {
 impl ResourceConfigFactory {
     const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
 
+    pub fn new(ontology_factory: CachedOntologyFactory<OntologyRegistry>) -> Self {
+        Self { ontology_factory }
+    }
+
     pub fn build(&mut self, config: &ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
         if config
             .id
@@ -64,7 +68,7 @@ impl ResourceConfigFactory {
                         )
                     } else {
                         format!(
-                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontologies, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that cannot be built.",
+                            "Failed to build custom resource '{}': {}. While the system can load compatible external ontology_registry, this resource could not be built. Known supported resources are: {}. If the configured resource is not supported the system will try to load it as an ontology. The provided id '{}' is either an unsupported service or an ontology that cannot be built.",
                             config.id,
                             err,
                             supported_resources.join(", "),

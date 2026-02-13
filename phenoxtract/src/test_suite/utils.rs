@@ -66,5 +66,5 @@ fn remove_version_from_loinc(pp: &mut Phenopacket) {
 }
 
 pub(crate) fn test_ontology_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ontologies")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ontology_registry")
 }
