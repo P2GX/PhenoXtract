@@ -29,6 +29,10 @@ impl PipelineConfig {
         loader: LoaderConfig,
         cache_dir: Option<PathBuf>,
     ) -> Self {
+        let cache_dir = match cache_dir {
+            None => config_cache_dir(),
+            Some(cd) => Some(cd),
+        };
         Self {
             meta_data,
             transform_strategies,
