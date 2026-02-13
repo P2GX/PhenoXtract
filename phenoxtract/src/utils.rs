@@ -5,7 +5,7 @@ use std::env::home_dir;
 use std::fs;
 use std::path::PathBuf;
 
-pub(crate) fn get_cache_dir() -> Result<PathBuf, RegistryError> {
+pub(crate) fn default_cache_dir() -> Result<PathBuf, RegistryError> {
     let pkg_name = env!("CARGO_PKG_NAME");
 
     let phenox_cache_dir = if let Some(project_dir) = ProjectDirs::from("", "", pkg_name) {
