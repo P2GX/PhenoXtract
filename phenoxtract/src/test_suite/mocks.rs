@@ -171,14 +171,7 @@ impl OntologyRegistration for MockOntologyRegistry {
                     .to_str()
                     .expect("Conversion error");
 
-                let found_ontology_id = file_name
-                    .split("_")
-                    .last()
-                    .unwrap()
-                    .split(".")
-                    .next()
-                    .unwrap()
-                    .to_string();
+                let found_ontology_id = file_name.split("_").next().unwrap().to_string();
                 if found_ontology_id == ontology_id {
                     return Ok(fs::File::open(&path).unwrap_or_else(|_| {
                         panic!("Failed to open file {}", path.to_str().unwrap())
@@ -187,7 +180,7 @@ impl OntologyRegistration for MockOntologyRegistry {
             }
         }
 
-        let file_name = format!("{version}_{ontology_id}{}", file_type.as_file_ending());
+        let file_name = format!("{ontology_id}_{version}{}", file_type.as_file_ending());
         let file_path = self.registry_path.join(file_name);
 
         if !file_path.exists() {

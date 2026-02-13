@@ -3,7 +3,7 @@ use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::types::OntologyRegistry;
-use crate::utils::get_cache_dir;
+use crate::utils::default_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
@@ -288,7 +288,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 impl Default for CachedOntologyFactory<OntologyRegistry> {
     fn default() -> Self {
         CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
-            get_cache_dir().expect("Cannot get cache dir"),
+            default_cache_dir().expect("Cannot get cache dir"),
             BioRegistryMetadataProvider::default(),
             OboLibraryProvider::default(),
         ))

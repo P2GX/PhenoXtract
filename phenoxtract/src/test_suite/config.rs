@@ -62,6 +62,7 @@ sheets:
             "smoker": "true"
 "#;
 pub(crate) static PIPELINE_CONFIG_FILE: &[u8] = br#"
+cache_dir: "./src/test_suite/test_cache"
 transform_strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"

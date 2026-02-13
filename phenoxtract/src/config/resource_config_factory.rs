@@ -20,6 +20,10 @@ pub(crate) struct ResourceConfigFactory {
 impl ResourceConfigFactory {
     const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
 
+    pub fn new(ontology_factory: CachedOntologyFactory<OntologyRegistry>) -> Self {
+        Self { ontology_factory }
+    }
+
     pub fn build(&mut self, config: &ResourceConfig) -> Result<Box<dyn BiDict>, FactoryError> {
         if config
             .id
