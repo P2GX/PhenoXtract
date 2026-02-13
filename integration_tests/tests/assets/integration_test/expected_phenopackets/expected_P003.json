@@ -1,0 +1,43 @@
+{
+  "id": "my_cohort-P003",
+  "subject": {
+    "id": "P003",
+    "dateOfBirth": "2005-04-26T00:00:00Z",
+    "vitalStatus": {
+      "status": "ALIVE",
+      "survivalTimeInDays": 0
+    },
+    "sex": "FEMALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0025044",
+        "label": "Lung abscess"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0001631",
+        "label": "Atrial septal defect"
+      }
+    }
+  ],
+  "metaData": {
+    "phenopacketSchemaVersion": "2.0",
+    "created": "2025-10-25T08:49:30.496822Z",
+    "createdBy": "Integration Test",
+    "submittedBy": "Someone",
+    "resources": [
+      {
+        "id": "hp",
+        "name": "Human Phenotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/hp.json",
+        "version": "2025-09-01",
+        "namespacePrefix": "HP",
+        "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      }
+    ]
+  }
+}

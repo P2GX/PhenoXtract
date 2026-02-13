@@ -1,0 +1,48 @@
+use crate::config::table_context::TableContext;
+use crate::extract::extraction_config::ExtractionConfig;
+use crate::extract::traits::HasSource;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use validator::Validate;
+
+/// Defines a CSV file as a data source.
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Validate)]
+pub struct CsvDataSource {
+    /// The file path to the CSV source.
+    pub(crate) source: PathBuf,
+    /// The character used to separate fields in the CSV file (e.g., ',').
+    pub(crate) separator: Option<char>,
+    /// The context describing how to interpret the resulting DataFrame.
+    pub(crate) context: TableContext,
+    /// This configures how the DataFrame is extracted.
+    pub(crate) extraction_config: ExtractionConfig,
+}
+
+impl CsvDataSource {
+    pub fn new(
+        source: PathBuf,
+        separator: Option<char>,
+        table: TableContext,
+        extraction_config: ExtractionConfig,
+    ) -> Self {
+        Self {
+            source,
+            separator,
+            context: table,
+            extraction_config,
+        }
+    }
+}
+
+impl HasSource for CsvDataSource {
+    type Source = PathBuf;
+
+    fn source(&self) -> &Self::Source {
+        &self.source
+    }
+
+    fn with_source(mut self, source: &Self::Source) -> Self {
+        self.source = source.clone();
+        self
+    }
+}
