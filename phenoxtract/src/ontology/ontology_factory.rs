@@ -46,7 +46,7 @@ pub struct CachedOntologyFactory<OR: OntologyRegistration> {
 ///
 /// # Caching Behavior
 ///
-/// The factory caches ontology_registry based on their `ResourceRef` and an optional file name.
+/// The factory caches ontology based on their `ResourceRef` and an optional file name.
 /// Once an ontology is built, subsequent requests for the same ontology will return the
 /// cached instance, avoiding expensive I/O and parsing operations.
 ///
@@ -85,7 +85,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
     /// Builds or retrieves a cached ontology instance.
     ///
-    /// This is the core method for loading ontology_registry. It first checks the cache for an
+    /// This is the core method for loading ontology. It first checks the cache for an
     /// existing instance matching the given `ontology` reference and `file_name`. If found,
     /// it returns the cached instance. Otherwise, it loads the ontology from disk, caches
     /// it, and returns the newly created instance.
