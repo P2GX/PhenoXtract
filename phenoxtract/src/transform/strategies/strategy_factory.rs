@@ -8,13 +8,14 @@ use crate::transform::strategies::{
     AliasMapStrategy, DateToAgeStrategy, MappingStrategy, MultiHPOColExpansionStrategy,
     OntologyNormaliserStrategy,
 };
+use ontology_registry::traits::OntologyRegistration;
 
-pub struct StrategyFactory {
-    ontology_factory: CachedOntologyFactory,
+pub struct StrategyFactory<OR: OntologyRegistration> {
+    ontology_factory: CachedOntologyFactory<OR>,
 }
 
-impl StrategyFactory {
-    pub fn new(ontology_factory: CachedOntologyFactory) -> Self {
+impl<OR: OntologyRegistration> StrategyFactory<OR> {
+    pub fn new(ontology_factory: CachedOntologyFactory<OR>) -> Self {
         StrategyFactory { ontology_factory }
     }
     pub fn try_from_configs(
@@ -72,9 +73,9 @@ mod tests {
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
 
-    fn create_test_factory() -> StrategyFactory {
+    fn create_test_factory() -> StrategyFactory<MockOntologyRegistry> {
         StrategyFactory {
-            ontology_factory: CachedOntologyFactory::new(Box::new(MockOntologyRegistry::default())),
+            ontology_factory: CachedOntologyFactory::new(MockOntologyRegistry::default()),
         }
     }
 
