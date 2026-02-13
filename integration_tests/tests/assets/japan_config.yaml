@@ -54,7 +54,9 @@ pipeline_config:
     hp_resource:
       id: "HP"
       version: "2025-09-01"
-    disease_resource:
-      id: "OMIM"
-      version: "OMIM2024_08_09"
-      
+    disease_resources:
+      - id: "OMIM"
+        version: "OMIM2024_08_09"
+        secrets:
+          token: $BIOPORTAL_API_KEY
+
