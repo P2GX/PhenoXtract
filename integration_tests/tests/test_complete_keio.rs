@@ -19,7 +19,7 @@ use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use pivot::hgnc::{CachedHGNCClient, HGNCClient};
 use pivot::hgvs::{CachedHGVSClient, HGVSClient};
 use rstest::{fixture, rstest};
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -198,16 +198,14 @@ fn test_complete_keio(temp_dir: TempDir) {
 
     let transformer_module = TransformerModule::new(
         strategies,
-        CdfCollectorBroker::with_default_collectors(
-            phenopacket_builder, cohort_name.to_owned()),
+        CdfCollectorBroker::with_default_collectors(phenopacket_builder, cohort_name.to_owned()),
     );
 
     // Loader + Pipeline
 
     let output_dir = assets_path.join("irud").join("phenopackets");
     fs::create_dir_all(&output_dir).unwrap();
-    let loader = Box::new(
-        FileSystemLoader::new(output_dir.clone(), true));
+    let loader = Box::new(FileSystemLoader::new(output_dir.clone(), true));
 
     let mut pipeline = Pipeline::new(transformer_module, loader);
     pipeline.run(&mut data_sources).unwrap();
