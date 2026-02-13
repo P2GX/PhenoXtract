@@ -137,7 +137,7 @@ impl BioPortalClient {
             None => CurieParser::general(),
         };
 
-        // BioPortal class IRI pattern (common across ontology_registry hosted there)
+        // BioPortal class IRI pattern (common across ontology hosted there)
         let iri_prefix = format!("http://purl.bioontology.org/ontology/{}/", ontology);
 
         // Rate limiter: 4 requests / second (token bucket)
@@ -171,7 +171,7 @@ impl BioPortalClient {
         // Build BioPortal "class" endpoint URL.
         let iri = format!("{}{}", self.iri_prefix, local_id);
         let base = format!(
-            "{}/ontology_registry/{}/classes",
+            "{}/ontologies/{}/classes",
             self.base_url, self.bioportal_acronym
         );
 
@@ -198,7 +198,7 @@ impl BioPortalClient {
 
         url.query_pairs_mut()
             .append_pair("q", query)
-            .append_pair("ontology_registry", &self.bioportal_acronym)
+            .append_pair("ontologies", &self.bioportal_acronym)
             .append_pair("require_exact_match", "true");
 
         Ok(url)
@@ -587,7 +587,7 @@ mod tests {
             )
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("q".into(), "Kabuki syndrome 1".into()),
-                Matcher::UrlEncoded("ontology_registry".into(), "OMIM".into()),
+                Matcher::UrlEncoded("ontologies".into(), "OMIM".into()),
                 Matcher::UrlEncoded("require_exact_match".into(), "true".into()),
             ]))
             .with_status(200)
@@ -615,7 +615,7 @@ mod tests {
             )
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("q".into(), "DoesNotExist".into()),
-                Matcher::UrlEncoded("ontology_registry".into(), "OMIM".into()),
+                Matcher::UrlEncoded("ontologies".into(), "OMIM".into()),
                 Matcher::UrlEncoded("require_exact_match".into(), "true".into()),
             ]))
             .with_status(200)
@@ -697,7 +697,7 @@ mod tests {
             )
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("q".into(), "KABUKI SYNDROME 1".into()),
-                Matcher::UrlEncoded("ontology_registry".into(), "OMIM".into()),
+                Matcher::UrlEncoded("ontologies".into(), "OMIM".into()),
                 Matcher::UrlEncoded("require_exact_match".into(), "true".into()),
             ]))
             .with_status(200)
@@ -740,7 +740,7 @@ mod tests {
             )
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("q".into(), "Kabuki syndrome 1".into()),
-                Matcher::UrlEncoded("ontology_registry".into(), "OMIM".into()),
+                Matcher::UrlEncoded("ontologies".into(), "OMIM".into()),
                 Matcher::UrlEncoded("require_exact_match".into(), "true".into()),
             ]))
             .with_status(200)
