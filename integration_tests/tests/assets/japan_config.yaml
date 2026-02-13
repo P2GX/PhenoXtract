@@ -1,68 +1,60 @@
 data_sources:
   - type: csv
-    source: "tests/assets/irud/TestData_20250716.csv"
+    source: "/Users/adamgraefe/Documents/git/PhenoXtract/integration_tests/tests/assets/irud/TestData_20250716.csv"
     separator: ","
+    has_headers: true
+    patients_are_rows: true
     contexts:
-      - name: "TestData"
-        context:
-        # Person
-          - identifier: "patient_id"
-            data_context: subject_id
-          - identifier: "sex"
-            data_context: subject_sex
-        # disease-gene
-          - identifier: "gene_symbol"
-            data_context: hgnc_symbol_or_id
-            building_block_id: "A"
-          - identifier: "gene_id"
-            data_context: hgnc_symbol_or_id
-            building_block_id: "A"
-          # disease 
-          - identifier: "disease"
-            data_context: mondo_label_or_id
-            building_block_id: "A"
-#          - identifier: "disease_OMIM_id"
-#            data_context: omim_id
-#            building_block_id: "A"
-        # variant
-          - identifier: "zygocity"
-            data_context: zygosity
-            building_block_id: "A"
-          - identifier: "HGVS_1"
-            data_context: hgvs
-            building_block_id: "A"
-          - identifier: "HGVS_2"
-            data_context: hgvs
-            building_block_id: "A"
-          - identifier: "HPO"
-            data_context: multi_hpo_id
+    # Person
+      - identifier: "patient_id"
+        data_context: subject_id
+      - identifier: "sex"
+        data_context: subject_sex
+    # disease-gene
+      # - identifier: "gene_symbol"
+      #   data_context: hgnc_symbol_or_id
+      #   building_block_id: "A"
+      - identifier: "gene_id"
+        data_context: hgnc_symbol_or_id
+        building_block_id: "A"
+      # disease 
+      - identifier: "disease"
+        data_context: disease_label_or_id
+        building_block_id: "A"
+      - identifier: "disease_OMIM_id"
+        data_context: disease_label_or_id
+        building_block_id: "A"
+    # variant
+      - identifier: "HGVS_1"
+        data_context: hgvs
+        building_block_id: "A"
+      - identifier: "HGVS_2"
+        data_context: hgvs
+        building_block_id: "A"
+      - identifier: "HPO"
+        data_context: multi_hpo_id
     extraction_configs:
       - name: "TestData"
         has_headers: true
         patients_are_rows: true
 
-pipeline:
+pipeline_config:
   transform_strategies:
-    - default_mappings: sex_mapping
-    - string_correction_strategy:
-          header_context: none
-          data_context: hgvs
-          chars_to_replace: "*"
-          new_chars: ":"
-    - string_correction_strategy:
-          header_context: none
-          data_context: multi_hpo_id
-          chars_to_replace: "HPO"
-          new_chars: "HP"
-    - string_correction_strategy:
-        header_context: none
-        data_context: omim_label
-        chars_to_replace: "\t"
-        new_chars: ""
-    - multi_hpo_column_expansion
+    - default_mapping: sex_mapping
+    - multi_hpo_col_expansion
 
-  loader: "tests/assets/irud/TestData_20250716.csv"
+  loader:
+    file_system: 
+      output_dir: "/Users/adamgraefe/Documents/git/PhenoXtract/integration_tests/tests/assets/irud/phenopackets"
+      create_dir: false
   meta_data:
     created_by: "AG"
     submitted_by: "AG"
     cohort_name: "irud_test_cohort"
+    hp_resource:
+      id: "HP"
+      version: "2025-09-01"
+    disease_resource:
+      id: "OMIM"
+      version: "OMIM2024_08_09"
+      

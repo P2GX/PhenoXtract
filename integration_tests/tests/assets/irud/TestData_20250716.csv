@@ -4,13 +4,13 @@ patient_0002,female,KIF21A,HGNC:19349,"	Fibrosis of extraocular muscles, congeni
 HP:0002352	Leukoencephalopathy
 HP:0001272	Cerebellar atrophy
 HP:0001268	Mental deterioration"
-patient_0003,male,FBN1,HGNC:3603,"Marfan syndrome	",OMIM:154700,Heterozygous,NM_000138.4:c.7642_7644dup,,"HP:0000212	Gingival overgrowth
+patient_0003,male,FBN1,HGNC:3603,"Marfan syndrome",OMIM:154700,Heterozygous,NM_000138.4:c.7642_7644dup,,"HP:0000212	Gingival overgrowth
 HP:0000054	Micropenis
 HP:0004322	Short stature
 HP:0003196	Short nose
 HP:0011800 Hypoplasia of midface"
-patient_0004,male,ALMS1,HGNC:428,"Alstrom syndrome	",OMIM:203800,Heterozygous,NM_015120.4:c.6960_6963delACAG,NM_015120.4:c.11031_11032delGA,"HP:0002091	Restrictive ventilatory defect
+patient_0004,male,ALMS1,HGNC:428,"Alstrom syndrome",OMIM:203800,Heterozygous,NM_015120.4:c.6960_6963delACAG,NM_015120.4:c.11031_11032delGA,"HP:0002091	Restrictive ventilatory defect
 HP:0000543	Optic disc pallor
 HP:0000548	Cone/cone-rod dystrophy
 HP:0000572	Visual loss"
-patient_0005,male,MECP2,HGNC:6990,"Rett syndrome	",OMIM:312750,Hemizygous,NM_001110792.2:c.844delC,,"HP:0002104,HP:0002033"
+patient_0005,male,MECP2,HGNC:6990,"Rett syndrome",OMIM:312750,Hemizygous,NM_001110792.2:c.844delC,,"HP:0002104,HP:0002033"
