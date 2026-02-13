@@ -58,7 +58,6 @@ mod tests {
     use crate::config::{DataSourceConfig, PhenoXtractConfig, PipelineConfig};
     use crate::test_suite::config::get_full_config_bytes;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
-    use crate::utils::default_cache_dir;
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
@@ -166,7 +165,7 @@ blah: "blahblah"
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
                 },
-                Some(default_cache_dir().unwrap()),
+                Some("./src/test_suite/test_cache".parse().unwrap()),
             ),
             data_sources: vec![
                 // First data source: CSV

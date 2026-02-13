@@ -192,7 +192,7 @@ impl OntologyRegistration for MockOntologyRegistry {
             }
         }
 
-        let file_name = format!("{ontology_id}_{version}_{}", file_type.as_file_ending());
+        let file_name = format!("{ontology_id}_{version}{}", file_type.as_file_ending());
         let file_path = self.registry_path.join(file_name);
 
         if !file_path.exists() {
