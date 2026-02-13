@@ -137,7 +137,7 @@ impl BioPortalClient {
             None => CurieParser::general(),
         };
 
-        // BioPortal class IRI pattern (common across ontology hosted there)
+        // BioPortal class IRI pattern (common across ontologies hosted on bioportal)
         let iri_prefix = format!("http://purl.bioontology.org/ontology/{}/", ontology);
 
         // Rate limiter: 4 requests / second (token bucket)
@@ -492,7 +492,7 @@ mod tests {
 
         // order is not guaranteed, so we just check the presence
         assert!(q.contains("q=Kabuki"));
-        assert!(q.contains("ontology_registry=OMIM"));
+        assert!(q.contains("ontologies=OMIM"));
         assert!(q.contains("require_exact_match=true"));
     }
 

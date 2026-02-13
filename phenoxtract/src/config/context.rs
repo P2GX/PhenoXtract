@@ -56,7 +56,7 @@ pub enum Context {
     CauseOfDeath,
     SurvivalTimeDays,
 
-    // ontology and databases
+    // ontologies and databases
     HpoLabelOrId,
     DiseaseLabelOrId,
     HgncSymbolOrId,
