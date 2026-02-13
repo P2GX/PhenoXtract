@@ -60,17 +60,19 @@ pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
 });
 
 pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
-    ONTOLOGY_FACTORY
+    let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&UO_REF.clone(), None)
-        .unwrap()
+        .build_bidict(&UO_REF.clone(), None);
+
+    result.unwrap_or_else(|err| panic!("{}", err))
 });
 
 pub(crate) static PATO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
-    ONTOLOGY_FACTORY
+    let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&PATO_REF.clone(), None)
-        .unwrap()
+        .build_bidict(&PATO_REF.clone(), None);
+
+    result.unwrap_or_else(|err| panic!("{}", err))
 });
