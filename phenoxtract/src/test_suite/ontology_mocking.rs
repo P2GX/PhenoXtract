@@ -132,18 +132,20 @@ pub(crate) static NCIT_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
 });
 
 pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
-    ONTOLOGY_FACTORY
+    let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_ontology(&HPO_REF, None)
-        .unwrap()
+        .build_ontology(&HPO_REF, None);
+
+    result.unwrap_or_else(|err| panic!("{}", err))
 });
 pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
-    ONTOLOGY_FACTORY
+    let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&HPO_REF.clone(), None)
-        .unwrap()
+        .build_bidict(&HPO_REF.clone(), None);
+
+    result.unwrap_or_else(|err| panic!("{}", err))
 });
 
 pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
