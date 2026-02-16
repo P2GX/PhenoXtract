@@ -146,6 +146,7 @@ pipeline_config:
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
                 },
+                Some("./src/test_suite/test_cache".parse().unwrap()),
             ),
             data_sources: vec![
                 // First data source: CSV
