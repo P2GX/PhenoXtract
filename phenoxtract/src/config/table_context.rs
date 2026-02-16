@@ -1,4 +1,5 @@
 use crate::config::context::Context;
+use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
 use crate::extract::contextualized_dataframe_filters::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
@@ -245,43 +246,54 @@ impl SeriesContext {
     pub fn get_fill_missing(&self) -> Option<&CellValue> {
         self.fill_missing.as_ref()
     }
+}
+impl SeriesContextBuilding<AliasMap> for SeriesContext {
+    fn from_identifier(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map: None,
+            building_block_id: None,
+        }
+    }
 
-    pub fn with_identifier(mut self, identifier: Identifier) -> Self {
-        let identifier_ref = &mut self.identifier;
-        *identifier_ref = identifier;
+    fn with_identifier(mut self, identifier: impl Into<Identifier>) -> Self {
+        self.identifier = identifier.into();
         self
     }
 
-    pub fn with_header_context(mut self, context: Context) -> Self {
-        let header_context_ref = &mut self.header_context;
-        *header_context_ref = context;
+    fn with_header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
         self
     }
 
-    pub fn with_data_context(mut self, context: Context) -> Self {
-        let data_context_ref = &mut self.data_context;
-        *data_context_ref = context;
+    fn with_data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
         self
     }
 
-    pub fn with_alias_map(mut self, alias_map: Option<AliasMap>) -> Self {
-        let alias_ref = &mut self.alias_map;
-        *alias_ref = alias_map;
+    fn with_fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
         self
     }
 
-    pub fn with_building_block_id(mut self, building_block_id: Option<String>) -> Self {
-        let building_block_id_ref = &mut self.building_block_id;
-        *building_block_id_ref = building_block_id;
+    fn with_alias_map(mut self, alias_map_config: AliasMap) -> Self {
+        self.alias_map = Some(alias_map_config);
         self
     }
 
-    pub fn with_fill_missing(mut self, fill_missing: Option<CellValue>) -> Self {
-        self.fill_missing = fill_missing;
-        self
+    fn with_building_block_id(mut self, building_block_id: impl IntoOptionalString) -> Self {
+        if let Some(id) = building_block_id.into_opt_string() {
+            self.building_block_id = Some(id);
+            self
+        } else {
+            self.building_block_id = None;
+            self
+        }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

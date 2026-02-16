@@ -120,6 +120,7 @@ impl Strategy for OntologyNormaliserStrategy {
 mod tests {
     use crate::config::context::{Context, ContextKind};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_suite::ontology_mocking::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
@@ -130,16 +131,15 @@ mod tests {
     use polars::prelude::Column;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
+
     #[fixture]
     fn tc() -> TableContext {
-        let sc = SeriesContext::default()
-            .with_identifier(Identifier::Multi(vec![
-                "phenotypic_features".to_string(),
-                "more_phenotypic_features".to_string(),
-            ]))
-            .with_data_context(Context::HpoLabelOrId);
-        let sc_pid = SeriesContext::default()
-            .with_identifier(Identifier::from("subject_ids"))
+        let sc = SeriesContext::from_identifier(Identifier::Multi(vec![
+            "phenotypic_features".to_string(),
+            "more_phenotypic_features".to_string(),
+        ]))
+        .with_data_context(Context::HpoLabelOrId);
+        let sc_pid = SeriesContext::from_identifier(Identifier::from("subject_ids"))
             .with_data_context(Context::SubjectId);
         TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }

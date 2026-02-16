@@ -82,6 +82,7 @@ mod tests {
     use crate::config::TableContext;
     use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::datatypes::AnyValue;
     use polars::prelude::{Column, DataFrame};
@@ -99,11 +100,10 @@ mod tests {
         let tc = TableContext::new(
             "sex_cdf".to_string(),
             vec![
-                subject_sc.with_building_block_id(Some(bb_id.to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::from("sex"))
+                subject_sc.with_building_block_id(bb_id),
+                SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
-                    .with_building_block_id(Some(bb_id.to_string())),
+                    .with_building_block_id(bb_id),
             ],
         );
         ContextualizedDataFrame::new(tc, df).unwrap()

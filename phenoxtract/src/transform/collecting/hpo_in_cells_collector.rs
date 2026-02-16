@@ -76,6 +76,7 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
 
     use crate::config::context::TimeElementType;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::core::{MetaData, PhenotypicFeature};
@@ -115,18 +116,16 @@ mod tests {
         patient_cdf
             .builder()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("phenotypes".into())
+                SeriesContext::from_identifier("phenotypes")
                     .with_data_context(Context::HpoLabelOrId)
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                    .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("onset".into())
+                SeriesContext::from_identifier("onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                    .with_building_block_id("phenotype_1"),
                 vec![onset.into_column()].as_ref(),
             )
             .unwrap()
