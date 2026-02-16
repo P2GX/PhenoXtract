@@ -195,6 +195,8 @@ pub struct SeriesContext {
 
     /// An ID that associates this series with a building block of a phenopacket. If the same ID is shared with other series, the pipeline will try to construct a building block from them.
     building_block_id: Option<String>,
+
+    sub_blocks: Vec<String>,
 }
 
 impl SeriesContext {
@@ -205,6 +207,7 @@ impl SeriesContext {
         fill_missing: Option<CellValue>,
         alias_map: Option<AliasMap>,
         building_block_id: Option<String>,
+        sub_blocks: Vec<String>,
     ) -> Self {
         SeriesContext {
             identifier,
@@ -213,6 +216,7 @@ impl SeriesContext {
             fill_missing,
             alias_map,
             building_block_id,
+            sub_blocks,
         }
     }
 
@@ -243,6 +247,9 @@ impl SeriesContext {
     pub fn get_building_block_id(&self) -> Option<&str> {
         self.building_block_id.as_deref()
     }
+    pub fn get_sub_blocks(&self) -> &[String] {
+        self.sub_blocks.as_slice()
+    }
     pub fn get_fill_missing(&self) -> Option<&CellValue> {
         self.fill_missing.as_ref()
     }
@@ -256,6 +263,7 @@ impl SeriesContextBuilding<AliasMap> for SeriesContext {
             fill_missing: None,
             alias_map: None,
             building_block_id: None,
+            sub_blocks: vec![],
         }
     }
 
@@ -292,6 +300,16 @@ impl SeriesContextBuilding<AliasMap> for SeriesContext {
             self.building_block_id = None;
             self
         }
+    }
+
+    fn push_sub_building_block(mut self, building_block_id: impl Into<String>) -> Self {
+        self.sub_blocks.push(building_block_id.into());
+        self
+    }
+
+    fn with_sub_building_blocks(mut self, sub_building_blocks: Vec<impl Into<String>>) -> Self {
+        self.sub_blocks = sub_building_blocks.into_iter().map(Into::into).collect();
+        self
     }
 }
 #[cfg(test)]
