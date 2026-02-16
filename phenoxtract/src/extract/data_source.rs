@@ -185,7 +185,8 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;
     use polars::prelude::DataFrame;
@@ -319,9 +320,9 @@ mod tests {
             "first_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("patient_id".to_string()))
+                    .with_identifier("patient_id")
                     .with_data_context(Context::SubjectId)
-                    .with_building_block_id(Some("Block_1".to_string())),
+                    .with_building_block_id("Block_1"),
             ],
         )
     }
@@ -332,10 +333,10 @@ mod tests {
             "second_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_building_block_id(Some("Block_2".to_string())),
+                    .with_identifier("age")
+                    .with_building_block_id("Block_2"),
                 SeriesContext::default()
-                    .with_identifier(Identifier::from("subject_id"))
+                    .with_identifier("subject_id")
                     .with_data_context(Context::SubjectId),
             ],
         )
@@ -347,9 +348,9 @@ mod tests {
             "third_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::Regex("1".to_string()))
+                    .with_identifier("1")
                     .with_data_context(Context::SubjectId)
-                    .with_building_block_id(Some("Block_1".to_string())),
+                    .with_building_block_id("Block_1"),
             ],
         )
     }
@@ -360,7 +361,7 @@ mod tests {
             "fourth_sheet".to_string(),
             vec![
                 SeriesContext::default()
-                    .with_identifier(Identifier::from("1"))
+                    .with_identifier("1")
                     .with_data_context(Context::SubjectId),
             ],
         )
@@ -460,8 +461,7 @@ M,F,M
         let table_context = TableContext::new(
             "test_extract_csv_no_headers_patients_in_rows".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("1".to_string()))
+                SeriesContext::from_identifier("1".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
@@ -503,8 +503,7 @@ PID_3,56,M,89"#;
         let table_context = TableContext::new(
             "test_extract_csv_no_headers_patients_in_rows".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("1".to_string()))
+                SeriesContext::from_identifier("1".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
@@ -548,8 +547,7 @@ PID_3,56,M,89"#;
         let table_context = TableContext::new(
             "test_extract_csv_headers_patients_in_rows".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Patient_IDs".to_string()))
+                SeriesContext::from_identifier("Patient_IDs".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
@@ -593,8 +591,7 @@ AGE,18,27,89"#;
         let table_context = TableContext::new(
             "test_extract_csv_extract_config_headers_patient_in_columns".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Patient_IDs".to_string()))
+                SeriesContext::from_identifier("Patient_IDs".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
@@ -786,8 +783,7 @@ AGE,18,27,89"#;
         let context = TableContext::new(
             "create_test_cdf".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("id".to_string()))
+                SeriesContext::from_identifier("id".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );

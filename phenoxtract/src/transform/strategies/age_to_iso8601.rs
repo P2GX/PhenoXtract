@@ -142,6 +142,7 @@ impl Strategy for AgeToIso8601Strategy {
 mod tests {
     use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
@@ -154,11 +155,9 @@ mod tests {
 
     #[fixture]
     fn tc() -> TableContext {
-        let sc_pid = SeriesContext::default()
-            .with_identifier(Identifier::from("subject_ids"))
+        let sc_pid = SeriesContext::from_identifier(Identifier::from("subject_ids"))
             .with_data_context(Context::SubjectId);
-        let sc_age = SeriesContext::default()
-            .with_identifier(Identifier::from("age"))
+        let sc_age = SeriesContext::from_identifier(Identifier::from("age"))
             .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age));
         TableContext::new("patient_data".to_string(), vec![sc_pid, sc_age])
     }

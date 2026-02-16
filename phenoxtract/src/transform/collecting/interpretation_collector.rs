@@ -90,7 +90,8 @@ impl Collect for InterpretationCollector {
 mod tests {
     use super::*;
     use crate::config::TableContext;
-    use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -217,24 +218,20 @@ mod tests {
             [AnyValue::String("NM_001173464.1:c.2860C>T")],
         );
 
-        let diseases_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("diseases".to_string()))
+        let diseases_sc = SeriesContext::from_identifier("diseases".to_string())
             .with_data_context(Context::DiseaseLabelOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
+            .with_building_block_id("Block_3");
 
-        let gene_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("gene".to_string()))
+        let gene_sc = SeriesContext::from_identifier("gene".to_string())
             .with_data_context(Context::HgncSymbolOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
+            .with_building_block_id("Block_3");
 
-        let hgvs_sc1 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs1".to_string()))
+        let hgvs_sc1 = SeriesContext::from_identifier("hgvs1".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
-        let hgvs_sc2 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs2".to_string()))
+            .with_building_block_id("Block_3");
+        let hgvs_sc2 = SeriesContext::from_identifier("hgvs2".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
+            .with_building_block_id("Block_3");
 
         let patient_cdf = ContextualizedDataFrame::new(
             TableContext::new(
