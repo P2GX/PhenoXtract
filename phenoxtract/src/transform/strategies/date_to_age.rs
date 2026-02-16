@@ -762,7 +762,7 @@ mod tests {
     #[rstest]
     fn test_date_to_age_contexts_hash_map() {
         let hm = DateToAgeStrategy::date_to_age_contexts_hash_map();
-        assert_eq!(hm.len(), 4);
+        assert_eq!(hm.len(), 5);
         assert_eq!(
             hm[&Context::TimeAtLastEncounter(TimeElementType::Date)],
             Context::TimeAtLastEncounter(TimeElementType::Age)

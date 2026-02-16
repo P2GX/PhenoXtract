@@ -72,6 +72,7 @@ pub enum Context {
     QualitativeMeasurement {
         assay_id: String,
     },
+    TimeOfMeasurement(TimeElementType),
     ReferenceRange(Boundary),
 
     // Medical Actions
@@ -119,6 +120,7 @@ impl Context {
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
         time_element_variants!(TimeAtProcedure);
     pub const ONSET_VARIANTS: &'static [Context] = time_element_variants!(Onset);
+    pub const TIME_OF_MEASUREMENT_VARIANTS: &'static [Context] = time_element_variants!(Onset);
 
     pub fn time_element_context_variants(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
@@ -127,6 +129,7 @@ impl Context {
                 ContextKind::TimeOfDeath => Some(Context::TimeOfDeath(tt.clone())),
                 ContextKind::TimeAtProcedure => Some(Context::TimeAtProcedure(tt.clone())),
                 ContextKind::Onset => Some(Context::Onset(tt.clone())),
+                ContextKind::TimeOfMeasurement => Some(Context::TimeOfMeasurement(tt.clone())),
 
                 // Ensures that we see a compile error, when we add another context type
                 ContextKind::SubjectId
