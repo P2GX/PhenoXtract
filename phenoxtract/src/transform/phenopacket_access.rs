@@ -1,7 +1,7 @@
 use crate::transform::traits::PhenopacketAccessors;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{
-    Disease, Individual, Interpretation, Measurement, PhenotypicFeature, Resource,
+    Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
 };
 
 impl PhenopacketAccessors for Phenopacket {
@@ -66,6 +66,9 @@ impl PhenopacketAccessors for Phenopacket {
 
     fn push_disease(&mut self, disease: Disease) {
         self.diseases.push(disease)
+    }
+    fn push_medical_action(&mut self, medical_action: MedicalAction) {
+        self.medical_actions.push(medical_action)
     }
 }
 
