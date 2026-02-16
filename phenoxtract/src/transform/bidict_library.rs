@@ -141,7 +141,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_invalid_query() {
+    fn test_lookup_bidicts_invalid_query() {
         let result = build_test_mondo_bidict_library().lookup("NonexistentTerm");
 
         assert!(result.is_none());
