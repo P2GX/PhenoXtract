@@ -5,11 +5,16 @@ use crate::ontology::error::FactoryError;
 use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::BiDict;
+use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
+use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
+use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use strum::VariantNames;
+
+type OntologyRegistry = FileSystemOntologyRegistry<BioRegistryMetadataProvider, OboLibraryProvider>;
 
 #[derive(Default)]
 pub(crate) struct ResourceConfigFactory {
-    ontology_factory: CachedOntologyFactory,
+    ontology_factory: CachedOntologyFactory<OntologyRegistry>,
 }
 
 impl ResourceConfigFactory {
@@ -135,7 +140,7 @@ impl ResourceConfigFactory {
         Ok(Box::new(client))
     }
 
-    pub fn into_ontology_factory(self) -> CachedOntologyFactory {
+    pub fn into_ontology_factory(self) -> CachedOntologyFactory<OntologyRegistry> {
         self.ontology_factory
     }
 }
