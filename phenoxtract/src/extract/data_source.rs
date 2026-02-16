@@ -185,7 +185,7 @@ impl Extractable for DataSource {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::extraction_config::ExtractionConfig;
     use polars::df;

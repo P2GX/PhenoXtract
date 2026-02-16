@@ -245,7 +245,7 @@ impl Strategy for MappingStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::table_context::{SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;

@@ -110,7 +110,7 @@ mod tests {
     use super::*;
     use crate::config::TableContext;
     use crate::config::context::TimeElementType;
-    use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
