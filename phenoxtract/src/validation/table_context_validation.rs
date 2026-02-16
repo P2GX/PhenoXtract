@@ -75,8 +75,7 @@ mod tests {
 
     // TODO: Clean this up. These constructor functions are not needed
     fn regex(regex: &str) -> SeriesContext {
-        let context = SeriesContext::default();
-        context.with_identifier(Identifier::Regex(regex.to_string()))
+        SeriesContext::from_identifier(regex)
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {

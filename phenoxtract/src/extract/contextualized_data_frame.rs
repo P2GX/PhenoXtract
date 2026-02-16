@@ -372,21 +372,17 @@ mod tests {
                     .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
+                SeriesContext::from_identifier("age")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier("bronchitis")
+                SeriesContext::from_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier("overweight")
+                SeriesContext::from_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
-                SeriesContext::default()
-                    .with_identifier("sex")
+                SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
                     .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
             ],
@@ -482,8 +478,7 @@ mod tests {
         let table_context = TableContext::new(
             "test_get_column_no_partial_matches".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("blah".to_string()))
+                SeriesContext::from_identifier("blah".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
@@ -1139,8 +1134,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() + 1;
         let expected_width = cdf.data().width() + 1;
         let new_col = Column::new("test_col".into(), &[10, 11, 12]);
-        let sc =
-            SeriesContext::default().with_identifier(Identifier::Regex("test_col".to_string()));
+        let sc = SeriesContext::from_identifier("test_col".to_string());
 
         cdf.builder()
             .insert_sc_alongside_cols(sc, &[new_col])
@@ -1162,10 +1156,8 @@ mod builder_tests {
 
         let col_d = Column::new("test_col_1".into(), &[10, 11, 12]);
         let col_e = Column::new("test_col_2".into(), &[13, 14, 15]);
-        let sc1 =
-            SeriesContext::default().with_identifier(Identifier::Regex("test_col_1".to_string()));
-        let sc2 =
-            SeriesContext::default().with_identifier(Identifier::Regex("test_col_2".to_string()));
+        let sc1 = SeriesContext::from_identifier("test_col_1".to_string());
+        let sc2 = SeriesContext::from_identifier("test_col_2".to_string());
 
         let inserts = vec![(sc1, vec![col_d]), (sc2, vec![col_e])];
 

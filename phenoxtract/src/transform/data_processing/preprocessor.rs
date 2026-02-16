@@ -312,13 +312,10 @@ mod tests {
             TableContext::new(
                 "table".to_string(),
                 vec![
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("subject_id".to_string()))
+                    SeriesContext::from_identifier("subject_id".to_string())
                         .with_data_context(Context::SubjectId),
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("string_col".to_string())),
-                    SeriesContext::default()
-                        .with_identifier(Identifier::Regex("int_col".to_string())),
+                    SeriesContext::from_identifier("string_col".to_string()),
+                    SeriesContext::from_identifier("int_col".to_string()),
                 ],
             ),
             df,

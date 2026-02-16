@@ -261,9 +261,9 @@ mod tests {
         let tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::from_identifier(Identifier::Regex("sex".to_string()))
+                SeriesContext::from_identifier("sex".to_string())
                     .with_data_context(Context::SubjectSex),
-                SeriesContext::from_identifier(Identifier::Regex("sub_id".to_string()))
+                SeriesContext::from_identifier("sub_id".to_string())
                     .with_data_context(Context::SubjectId),
             ],
         );
