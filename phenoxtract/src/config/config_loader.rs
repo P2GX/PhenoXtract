@@ -225,6 +225,7 @@ blah: "blahblah"
                                     output_data_type: OutputDataType::Float64,
                                 }),
                                 building_block_id: None,
+                                sub_blocks: vec![],
                             }],
                         },
                         ExcelSheetConfig {
@@ -250,6 +251,7 @@ blah: "blahblah"
                                     output_data_type: OutputDataType::Boolean,
                                 }),
                                 building_block_id: None,
+                                sub_blocks: vec![],
                             }],
                         },
                     ],
