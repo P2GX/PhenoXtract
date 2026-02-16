@@ -1,12 +1,13 @@
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::{BiDict, HasPrefixId};
-use crate::utils::check_curie_format;
+use crate::ontology::traits::BiDict;
 use phenopackets::schema::v2::core::OntologyClass;
+use securiety::{CurieRegexValidator, CurieValidation};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct BiDictLibrary {
     name: String,
     bidicts: Vec<Box<dyn BiDict>>,
+    curie_validator: CurieRegexValidator,
 }
 
 impl BiDictLibrary {
@@ -14,6 +15,7 @@ impl BiDictLibrary {
         BiDictLibrary {
             name: name.to_string(),
             bidicts,
+            curie_validator: CurieRegexValidator::general(),
         }
     }
 
@@ -21,6 +23,7 @@ impl BiDictLibrary {
         BiDictLibrary {
             name: name.to_string(),
             bidicts: vec![],
+            curie_validator: CurieRegexValidator::general(),
         }
     }
 
@@ -42,7 +45,7 @@ impl BiDictLibrary {
 
     pub(crate) fn lookup(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
-            if check_curie_format(query, Some(bidict.reference().prefix_id()), None) {
+            if self.curie_validator.validate(query) {
                 if let Ok(label) = bidict.get_label(query) {
                     return Some((
                         OntologyClass {
