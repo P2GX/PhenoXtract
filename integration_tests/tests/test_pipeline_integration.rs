@@ -195,11 +195,11 @@ fn test_pipeline_integration(
     cohort_name: String,
 ) {
     // Set up
-    let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
+    let mut onto_factory = CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
         ontology_registry_dir().expect("ontology_registry_dir could not be created"),
         BioRegistryMetadataProvider::default(),
         OboLibraryProvider::default(),
-    )));
+    ));
 
     let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
     let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());

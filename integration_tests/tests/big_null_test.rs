@@ -122,11 +122,11 @@ fn big_null_test(
     cohort_name: String,
 ) {
     // Set up
-    let mut onto_factory = CachedOntologyFactory::new(Box::new(FileSystemOntologyRegistry::new(
+    let mut onto_factory = CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
         ontology_registry_dir().expect("ontology_registry_dir could not be created"),
         BioRegistryMetadataProvider::default(),
         OboLibraryProvider::default(),
-    )));
+    ));
     let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
     let assets_dir = tests_assets.join("big_null_test");
 
