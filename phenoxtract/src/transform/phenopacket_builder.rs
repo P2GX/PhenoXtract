@@ -71,8 +71,8 @@ pub struct PhenopacketBuilder {
     unit_bidict_lib: BiDictLibrary,
     assay_bidict_lib: BiDictLibrary,
     qualitative_measurement_bidict_lib: BiDictLibrary,
-    procedure_bi_dict: BiDictLibrary,
-    anatomy_bi_dict: BiDictLibrary,
+    procedure_bi_dict_lib: BiDictLibrary,
+    anatomy_bi_dict_lib: BiDictLibrary,
     treatment_attributes_bi_dict: BiDictLibrary,
     resource_resolver: CachedResourceResolver,
 }
@@ -578,9 +578,9 @@ impl PhenopacketBuilder {
         unit_bidict_lib: BiDictLibrary,
         assay_bidict_lib: BiDictLibrary,
         qualitative_measurement_bidict_lib: BiDictLibrary,
-        procedure_bi_dict: BiDictLibrary,
-        anatomy_bi_dict: BiDictLibrary,
-        treatment_intent_dict: BiDictLibrary,
+        procedure_bi_dict_lib: BiDictLibrary,
+        anatomy_bi_dict_lib: BiDictLibrary,
+        treatment_attributes_bi_dict: BiDictLibrary,
     ) -> Self {
         Self {
             meta_data,
@@ -592,9 +592,9 @@ impl PhenopacketBuilder {
             unit_bidict_lib,
             assay_bidict_lib,
             qualitative_measurement_bidict_lib,
-            procedure_bi_dict,
-            anatomy_bi_dict,
-            treatment_attributes_bi_dict: treatment_intent_dict,
+            procedure_bi_dict_lib,
+            anatomy_bi_dict_lib,
+            treatment_attributes_bi_dict,
             resource_resolver: CachedResourceResolver::default(),
         }
     }
@@ -690,11 +690,12 @@ impl PhenopacketBuilder {
         let mut medical_action = MedicalAction::default();
 
         if let Some(tt) = treatment_target {
-            if let Ok((code, disease_ref)) = Self::resolve_term(&self.disease_bidict_lib, tt) {
-                medical_action.treatment_target = Some(code);
+            if let Ok((disease_oc, disease_ref)) = Self::resolve_term(&self.disease_bidict_lib, tt)
+            {
+                medical_action.treatment_target = Some(disease_oc);
                 self.ensure_resource(patient_id, &disease_ref);
-            } else if let Ok((code, hpo_ref)) = Self::resolve_term(&self.hpo_bidict_lib, tt) {
-                medical_action.treatment_target = Some(code);
+            } else if let Ok((hpo_oc, hpo_ref)) = Self::resolve_term(&self.hpo_bidict_lib, tt) {
+                medical_action.treatment_target = Some(hpo_oc);
                 self.ensure_resource(patient_id, &hpo_ref);
             } else {
                 return Err(Self::cant_resolve_term_error(
@@ -743,12 +744,12 @@ impl PhenopacketBuilder {
         let mut procedure = Procedure::default();
 
         let (procedure_oc, procedure_ref) =
-            Self::resolve_term(&self.procedure_bi_dict, procedure_code)?;
+            Self::resolve_term(&self.procedure_bi_dict_lib, procedure_code)?;
         procedure.code = Some(procedure_oc);
         self.ensure_resource(patient_id, &procedure_ref);
 
         if let Some(bp) = body_part {
-            let (body_part_oc, body_part_ref) = Self::resolve_term(&self.anatomy_bi_dict, bp)?;
+            let (body_part_oc, body_part_ref) = Self::resolve_term(&self.anatomy_bi_dict_lib, bp)?;
             procedure.body_site = Some(body_part_oc);
             self.ensure_resource(patient_id, &body_part_ref);
         }
@@ -796,9 +797,9 @@ impl PartialEq for PhenopacketBuilder {
             && self.unit_bidict_lib == other.unit_bidict_lib
             && self.assay_bidict_lib == other.assay_bidict_lib
             && self.qualitative_measurement_bidict_lib == other.qualitative_measurement_bidict_lib
-            && self.procedure_bi_dict == other.procedure_bi_dict
+            && self.procedure_bi_dict_lib == other.procedure_bi_dict_lib
             && self.treatment_attributes_bi_dict == other.treatment_attributes_bi_dict
-            && self.anatomy_bi_dict == other.anatomy_bi_dict
+            && self.anatomy_bi_dict_lib == other.anatomy_bi_dict_lib
             && self.resource_resolver == other.resource_resolver
     }
 }
