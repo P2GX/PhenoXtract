@@ -6,7 +6,7 @@ use log::info;
 
 use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::config::context::{AGE_CONTEXTS, Context};
+use crate::config::context::{Context, TimeElementType};
 use crate::transform::utils::is_iso8601_duration;
 use polars::prelude::{DataType, IntoSeries};
 use std::any::type_name;
@@ -51,7 +51,9 @@ impl Strategy for AgeToIso8601Strategy {
             !table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts_are(&AGE_CONTEXTS)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Age,
+                ))
                 .collect()
                 .is_empty()
         })
@@ -73,7 +75,9 @@ impl Strategy for AgeToIso8601Strategy {
             let column_names = table
                 .filter_columns()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_contexts_are(&AGE_CONTEXTS)
+                .where_data_contexts_are(&Context::time_element_context_variants(
+                    TimeElementType::Age,
+                ))
                 .collect_owned_names();
 
             for col_name in column_names {
@@ -136,7 +140,7 @@ impl Strategy for AgeToIso8601Strategy {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
@@ -155,7 +159,7 @@ mod tests {
             .with_data_context(Context::SubjectId);
         let sc_age = SeriesContext::default()
             .with_identifier(Identifier::from("age"))
-            .with_data_context(Context::AgeAtLastEncounter);
+            .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age));
         TableContext::new("patient_data".to_string(), vec![sc_pid, sc_age])
     }
 

@@ -9,7 +9,7 @@ use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMeta
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenoxtract::Pipeline;
-use phenoxtract::config::context::{Context, ContextKind};
+use phenoxtract::config::context::{Boundary, Context, ContextKind, TimeElementType};
 use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
 use phenoxtract::extract::ExcelDataSource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
@@ -67,7 +67,7 @@ fn csv_context_2() -> TableContext {
                 .with_building_block_id(Some("A".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("Date of onset".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Date))
                 .with_building_block_id(Some("A".to_string())),
         ],
     )
@@ -87,7 +87,7 @@ fn csv_context_3() -> TableContext {
                 .with_building_block_id(Some("B".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("Date of onset".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Date))
                 .with_building_block_id(Some("B".to_string())),
         ],
     )
@@ -107,7 +107,7 @@ fn csv_context_4() -> TableContext {
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("disease_onset".to_string()))
-                .with_data_context(Context::OnsetAge)
+                .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id(Some("C".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("gene".to_string()))
@@ -142,11 +142,11 @@ fn csv_context_5() -> TableContext {
                 .with_building_block_id(Some("M".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("ref_low".to_string()))
-                .with_data_context(Context::ReferenceRangeLow)
+                .with_data_context(Context::ReferenceRange(Boundary::Start))
                 .with_building_block_id(Some("M".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("ref_high".to_string()))
-                .with_data_context(Context::ReferenceRangeHigh)
+                .with_data_context(Context::ReferenceRange(Boundary::End))
                 .with_building_block_id(Some("M".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("nitrates in urine".to_string()))
@@ -156,7 +156,7 @@ fn csv_context_5() -> TableContext {
                 .with_building_block_id(Some("M".to_string())),
             SeriesContext::default()
                 .with_identifier(Identifier::Regex("date_of_observation".to_string()))
-                .with_data_context(Context::OnsetDate)
+                .with_data_context(Context::Onset(TimeElementType::Date))
                 .with_building_block_id(Some("M".to_string())),
         ],
     )
@@ -183,7 +183,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_data_context(Context::DateOfBirth),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Age of death".to_string()))
-                    .with_data_context(Context::AgeOfDeath),
+                    .with_data_context(Context::TimeOfDeath(TimeElementType::Age)),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex(
                         "Survival time since diagnosis (days)".to_string(),
@@ -203,7 +203,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
                     .with_building_block_id(Some("C".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("Age of onset".to_string()))
-                    .with_data_context(Context::OnsetAge)
+                    .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id(Some("C".to_string())),
             ],
         ),

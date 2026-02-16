@@ -27,8 +27,8 @@ use polars::datatypes::DataType;
 /// for the given context pair.
 pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],
-    data_context: Context,
-    header_context: Context,
+    data_context: &Context,
+    header_context: &Context,
 ) -> Result<Option<String>, CollectorError> {
     let mut cols_of_element_type = vec![];
 
@@ -36,8 +36,8 @@ pub(crate) fn get_single_multiplicity_element(
         cols_of_element_type.extend(
             patient_cdf
                 .filter_columns()
-                .where_data_context(Filter::Is(&data_context))
-                .where_header_context(Filter::Is(&header_context))
+                .where_data_context(Filter::Is(data_context))
+                .where_header_context(Filter::Is(header_context))
                 .collect(),
         );
     }
@@ -80,6 +80,7 @@ pub(crate) fn get_single_multiplicity_element(
 mod tests {
     use super::*;
     use crate::config::TableContext;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::datatypes::AnyValue;
@@ -132,7 +133,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(context, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&[cdf], Context::SubjectSex, Context::None)
+        let sme = get_single_multiplicity_element(&[cdf], &Context::SubjectSex, &Context::None)
             .unwrap()
             .unwrap();
         assert_eq!(sme, "MALE");
@@ -141,7 +142,7 @@ mod tests {
     #[rstest]
     fn test_collect_single_multiplicity_element_err() {
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let context = Context::AgeAtLastEncounter;
+        let context = Context::TimeAtLastEncounter(TimeElementType::Age);
 
         let df = DataFrame::new(vec![
             subject_col.clone(),
@@ -159,7 +160,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&[cdf], context, Context::None);
+        let sme = get_single_multiplicity_element(&[cdf], &context, &Context::None);
         assert!(sme.is_err());
     }
 }

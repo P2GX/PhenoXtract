@@ -346,7 +346,7 @@ impl ContextualizedDataFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::prelude::*;
     use regex::Regex;
@@ -373,7 +373,7 @@ mod tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter)
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -597,14 +597,19 @@ mod tests {
 
         let bb = cdf
             .filter_series_context()
-            .where_data_context(Filter::Is(&Context::AgeAtLastEncounter))
+            .where_data_context(Filter::Is(&Context::TimeAtLastEncounter(
+                TimeElementType::Age,
+            )))
             .collect()
             .first()
             .unwrap()
             .get_building_block_id();
 
         let extracted_col = cdf
-            .get_single_linked_column_as_float(bb, &[Context::AgeAtLastEncounter])
+            .get_single_linked_column_as_float(
+                bb,
+                &[Context::TimeAtLastEncounter(TimeElementType::Age)],
+            )
             .unwrap()
             .unwrap();
 
@@ -901,7 +906,7 @@ impl From<PolarsError> for CdfBuilderError {
 
 #[cfg(test)]
 mod builder_tests {
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::extract::ContextualizedDataFrame;
     use crate::extract::contextualized_dataframe_filters::Filter;
@@ -937,7 +942,7 @@ mod builder_tests {
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter)
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id(Some("block_1".to_string())),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("bronchitis".to_string()))
@@ -950,7 +955,7 @@ mod builder_tests {
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier(Identifier::Regex("null".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter)
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id(Some("block_1".to_string())),
             ],
         )
@@ -1238,7 +1243,10 @@ mod builder_tests {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let keys = vec![Context::ObservationStatus, Context::AgeAtLastEncounter];
+        let keys = vec![
+            Context::ObservationStatus,
+            Context::TimeAtLastEncounter(TimeElementType::Age),
+        ];
         let values = vec![Context::DateOfBirth, Context::DiseaseLabelOrId];
 
         let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
@@ -1250,7 +1258,9 @@ mod builder_tests {
         assert_eq!(
             cdf.filter_series_context()
                 .where_data_context(Filter::Is(&Context::ObservationStatus))
-                .where_data_context(Filter::Is(&Context::AgeAtLastEncounter))
+                .where_data_context(Filter::Is(&Context::TimeAtLastEncounter(
+                    TimeElementType::Age
+                )))
                 .collect()
                 .len(),
             0
@@ -1292,7 +1302,7 @@ mod builder_tests {
         cdf.builder()
             .cast(
                 &Context::None,
-                &Context::AgeAtLastEncounter,
+                &Context::TimeAtLastEncounter(TimeElementType::Age),
                 DataType::String,
             )
             .unwrap()
@@ -1311,7 +1321,7 @@ mod builder_tests {
         assert_eq!(
             cdf.get_linked_cols_with_context(
                 Some("block_1"),
-                &Context::AgeAtLastEncounter,
+                &Context::TimeAtLastEncounter(TimeElementType::Age),
                 &Context::None
             ),
             vec!["age".to_string(), "null".to_string()]

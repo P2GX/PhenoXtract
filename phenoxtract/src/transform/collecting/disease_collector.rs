@@ -29,10 +29,8 @@ impl Collect for DiseaseCollector {
 
                 let disease_cols = patient_cdf.get_columns(sc_id);
 
-                let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
-                    bb_id,
-                    &[Context::OnsetAge, Context::OnsetDate],
-                )?;
+                let stringified_linked_onset_col =
+                    patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
@@ -75,6 +73,7 @@ impl Collect for DiseaseCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
@@ -132,7 +131,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("onset".into())
-                    .with_data_context(Context::OnsetAge)
+                    .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id(Some("disease_1".to_string())),
                 vec![onset_col].as_ref(),
             )

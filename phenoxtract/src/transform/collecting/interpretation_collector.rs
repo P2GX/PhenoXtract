@@ -19,7 +19,7 @@ impl Collect for InterpretationCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let subject_sex =
-            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::SubjectSex, &Context::None)?;
 
         for patient_cdf in patient_cdfs {
             let disease_in_cells_scs = patient_cdf

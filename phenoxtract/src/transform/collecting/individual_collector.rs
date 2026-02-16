@@ -17,23 +17,13 @@ impl Collect for IndividualCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let date_of_birth =
-            get_single_multiplicity_element(patient_cdfs, Context::DateOfBirth, Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::DateOfBirth, &Context::None)?;
 
         let subject_sex =
-            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::SubjectSex, &Context::None)?;
 
-        let time_at_last_encounter = match get_single_multiplicity_element(
-            patient_cdfs,
-            Context::AgeAtLastEncounter,
-            Context::None,
-        )? {
-            Some(value) => Some(value),
-            None => get_single_multiplicity_element(
-                patient_cdfs,
-                Context::DateAtLastEncounter,
-                Context::None,
-            )?,
-        };
+        let time_at_last_encounter =
+            Self::find_single_time_element(patient_cdfs, Context::LAST_ENCOUNTER_VARIANTS)?;
 
         builder.upsert_individual(
             patient_id,
@@ -62,32 +52,22 @@ impl IndividualCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let status =
-            get_single_multiplicity_element(patient_cdfs, Context::VitalStatus, Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::VitalStatus, &Context::None)?;
 
         if let Some(status) = status {
-            let time_of_death = match get_single_multiplicity_element(
-                patient_cdfs,
-                Context::AgeOfDeath,
-                Context::None,
-            )? {
-                Some(value) => Some(value),
-                None => get_single_multiplicity_element(
-                    patient_cdfs,
-                    Context::DateOfDeath,
-                    Context::None,
-                )?,
-            };
+            let time_of_death =
+                Self::find_single_time_element(patient_cdfs, Context::TIME_OF_DEATH_VARIANTS)?;
 
             let cause_of_death = get_single_multiplicity_element(
                 patient_cdfs,
-                Context::CauseOfDeath,
-                Context::None,
+                &Context::CauseOfDeath,
+                &Context::None,
             )?;
 
             let survival_time_days = get_single_multiplicity_element(
                 patient_cdfs,
-                Context::SurvivalTimeDays,
-                Context::None,
+                &Context::SurvivalTimeDays,
+                &Context::None,
             )?;
 
             let survival_time_days = survival_time_days
@@ -104,12 +84,32 @@ impl IndividualCollector {
         }
         Ok(())
     }
+
+    fn find_single_time_element(
+        patient_cdfs: &[ContextualizedDataFrame],
+        time_element_contexts: &[Context],
+    ) -> Result<Option<String>, CollectorError> {
+        let mut time_element = None;
+        for time_element_context in time_element_contexts.iter() {
+            time_element = get_single_multiplicity_element(
+                patient_cdfs,
+                time_element_context,
+                &Context::None,
+            )?;
+            if time_element.is_some() {
+                break;
+            }
+        }
+
+        Ok(time_element)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::TableContext;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext};
     use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
@@ -156,11 +156,11 @@ mod tests {
 
         let tale_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_at_last_encounter".to_string()))
-            .with_data_context(Context::AgeAtLastEncounter);
+            .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age));
 
         let time_of_death_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("time_of_death".to_string()))
-            .with_data_context(Context::AgeOfDeath);
+            .with_data_context(Context::TimeOfDeath(TimeElementType::Age));
 
         let sex_sc = SeriesContext::default()
             .with_identifier(Identifier::Regex("sex".to_string()))

@@ -53,6 +53,44 @@ pub struct SeriesContextConfig {
     pub building_block_id: Option<String>,
 }
 
+impl SeriesContextConfig {
+    pub fn new(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map_config: None,
+            building_block_id: None,
+        }
+    }
+
+    pub fn header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
+        self
+    }
+
+    pub fn data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
+        self
+    }
+
+    pub fn fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
+        self
+    }
+
+    pub fn alias_map_config(mut self, alias_map_config: AliasMapConfig) -> Self {
+        self.alias_map_config = Some(alias_map_config);
+        self
+    }
+
+    pub fn building_block_id(mut self, building_block_id: String) -> Self {
+        self.building_block_id = Some(building_block_id);
+        self
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct AliasMapConfig {
     pub mappings: MappingsConfig,
@@ -109,26 +147,6 @@ impl ExcelSheetConfig {
             contexts,
             has_headers,
             patients_are_rows,
-        }
-    }
-}
-
-impl SeriesContextConfig {
-    pub fn new(
-        identifier: Identifier,
-        header_context: Context,
-        data_context: Context,
-        fill_missing: Option<CellValue>,
-        alias_map_config: Option<AliasMapConfig>,
-        building_block_id: Option<String>,
-    ) -> Self {
-        Self {
-            identifier,
-            header_context,
-            data_context,
-            fill_missing,
-            alias_map_config,
-            building_block_id,
         }
     }
 }
