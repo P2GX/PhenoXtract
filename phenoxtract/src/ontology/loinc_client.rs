@@ -2,10 +2,10 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use crate::utils::check_curie_format;
 use elsa::FrozenMap;
 use regex::Regex;
 use reqwest::blocking::Client;
+use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -110,6 +110,7 @@ pub struct LoincClient {
     cache: FrozenMap<String, Box<str>>,
     loinc_id_regex: Regex,
     reference: OnceLock<ResourceRef>,
+    curie_validator: CurieRegexValidator,
 }
 
 impl fmt::Debug for LoincClient {
@@ -144,6 +145,7 @@ impl LoincClient {
             cache: FrozenMap::default(),
             loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
             reference: reference_lock,
+            curie_validator: CurieRegexValidator::loinc(),
         }
     }
 
@@ -165,13 +167,6 @@ impl LoincClient {
     fn format_loinc_curie(loinc_number: &str) -> String {
         format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
-    fn is_loinc_curie(&self, query: &str) -> bool {
-        check_curie_format(
-            query,
-            Some(KnownResourcePrefixes::LOINC.to_string().as_str()),
-            Some(&self.loinc_id_regex),
-        )
-    }
 }
 
 impl Default for LoincClient {
@@ -187,7 +182,9 @@ impl Default for LoincClient {
 
 impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
+        if self.curie_validator.validate(id_or_label)
+            || self.loinc_id_regex.is_match(id_or_label.as_ref())
+        {
             self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
