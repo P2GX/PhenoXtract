@@ -99,7 +99,7 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    fn test_query_bidicts_with_valid_label() {
+    fn test_lookup_bidicts_with_valid_label() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
             .lookup(&phenotype.label)
@@ -110,7 +110,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_with_valid_id() {
+    fn test_lookup_bidicts_with_valid_id() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
             .lookup(&phenotype.id)
@@ -121,7 +121,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_not_a_curie_fail() {
+    fn test_lookup_bidicts_not_a_curie_fail() {
         dotenv().ok();
         let bidict_lib = BiDictLibrary::new("LOINC", vec![Box::new(LoincClient::default())]);
 
@@ -138,14 +138,14 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_invalid_query() {
+    fn test_lookup_bidicts_invalid_query() {
         let result = build_test_mondo_bidict_library().lookup("NonexistentTerm");
 
         assert!(result.is_none());
     }
 
     #[rstest]
-    fn test_query_bidicts_on_empty_library() {
+    fn test_lookup_bidicts_on_empty_library() {
         let library = BiDictLibrary::empty_with_name("EmptyLib");
         let result = library.lookup("AnyQuery");
 
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_returns_correct_resource_ref() {
+    fn test_lookup_bidicts_returns_correct_resource_ref() {
         let phenotype = default_phenotype_oc();
         let library = build_test_hpo_bidict_library();
 
