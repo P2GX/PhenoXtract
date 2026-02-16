@@ -374,21 +374,17 @@ mod tests {
                     .with_identifier(vec!["subject_id"])
                     .with_data_context(Context::SubjectId)
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
+                SeriesContext::from_identifier("age")
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier("bronchitis")
+                SeriesContext::from_identifier("bronchitis")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
-                SeriesContext::default()
-                    .with_identifier("overweight")
+                SeriesContext::from_identifier("overweight")
                     .with_header_context(Context::HpoLabelOrId)
                     .with_data_context(Context::ObservationStatus),
-                SeriesContext::default()
-                    .with_identifier("sex")
+                SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
                     .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
                     .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column

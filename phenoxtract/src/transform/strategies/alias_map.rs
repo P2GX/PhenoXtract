@@ -120,8 +120,7 @@ mod tests {
 
     #[fixture]
     fn sc_string_aliases() -> SeriesContext {
-        SeriesContext::default()
-            .with_identifier(Identifier::Regex("patient_id".to_string()))
+        SeriesContext::from_identifier("patient_id".to_string())
             .with_data_context(Context::SubjectId)
             .with_alias_map(AliasMap::new(
                 HashMap::from([
@@ -136,7 +135,7 @@ mod tests {
 
     #[fixture]
     fn sc_int_alias() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::Regex("age".to_string()))
+        SeriesContext::from_identifier("age".to_string())
             .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
             .with_alias_map(AliasMap::new(
                 HashMap::from([("11".to_string(), Some("22".to_string()))]),
@@ -146,7 +145,7 @@ mod tests {
 
     #[fixture]
     fn sc_float_aliases() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::Regex("survival_time_days".to_string()))
+        SeriesContext::from_identifier("survival_time_days".to_string())
             .with_data_context(Context::SurvivalTimeDays)
             .with_alias_map(AliasMap::new(
                 HashMap::from([
@@ -161,17 +160,15 @@ mod tests {
 
     #[fixture]
     fn sc_bool_alias_to_none() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::Regex("smokes".to_string())).with_alias_map(
-            AliasMap::new(
-                HashMap::from([("false".to_string(), None)]),
-                OutputDataType::Boolean,
-            ),
-        )
+        SeriesContext::from_identifier("smokes").with_alias_map(AliasMap::new(
+            HashMap::from([("false".to_string(), None)]),
+            OutputDataType::Boolean,
+        ))
     }
 
     #[fixture]
     fn sc_convert_to_int_fail() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::Regex("patient_id".to_string()))
+        SeriesContext::from_identifier("patient_id".to_string())
             .with_data_context(Context::SubjectId)
             .with_alias_map(AliasMap::new(
                 HashMap::from([("P001".to_string(), Some("1001".to_string()))]),
@@ -181,7 +178,7 @@ mod tests {
 
     #[fixture]
     fn sc_convert_to_int_success() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::Regex("patient_id".to_string()))
+        SeriesContext::from_identifier("patient_id")
             .with_data_context(Context::SubjectId)
             .with_alias_map(AliasMap::new(
                 HashMap::from([

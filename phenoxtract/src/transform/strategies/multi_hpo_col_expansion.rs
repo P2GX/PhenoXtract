@@ -267,8 +267,7 @@ mod tests {
                 SeriesContext::from_identifier("Multi_HPOs_Block_A".to_string())
                     .with_data_context(Context::MultiHpoId)
                     .with_building_block_id("A"),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block_1".to_string()))
+                SeriesContext::from_identifier("Multi_HPOs_No_Block_1".to_string())
                     .with_data_context(Context::MultiHpoId),
                 SeriesContext::from_identifier("Multi_HPOs_No_Block_2".to_string())
                     .with_data_context(Context::MultiHpoId),
@@ -319,23 +318,23 @@ mod tests {
         let expected_tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::from_identifier(Identifier::Regex("subject_id".to_string()))
+                SeriesContext::from_identifier("subject_id".to_string())
                     .with_data_context(Context::SubjectId),
-                SeriesContext::from_identifier(Identifier::Regex("age".to_string()))
+                SeriesContext::from_identifier("age".to_string())
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
-                SeriesContext::from_identifier(Identifier::Multi(vec![
+                SeriesContext::from_identifier(vec![
                     "HP:1111111#A".to_string(),
                     "HP:2222222#A".to_string(),
                     "HP:3333333#A".to_string(),
-                ]))
+                ])
                 .with_header_context(Context::HpoLabelOrId)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("A"),
-                SeriesContext::from_identifier(Identifier::Multi(vec![
+                SeriesContext::from_identifier(vec![
                     "HP:1111111".to_string(),
                     "HP:4444444".to_string(),
                     "HP:5555555".to_string(),
-                ]))
+                ])
                 .with_header_context(Context::HpoLabelOrId)
                 .with_data_context(Context::ObservationStatus),
             ],
