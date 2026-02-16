@@ -118,13 +118,11 @@ mod tests {
     }
 
     fn regex(regex: &str) -> SeriesContext {
-        SeriesContext::default().with_identifier(Identifier::Regex(regex.to_string()))
+        SeriesContext::from_identifier(regex.to_string())
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
-        SeriesContext::default().with_identifier(Identifier::Multi(
-            ids.iter().map(|id| id.to_string()).collect(),
-        ))
+        SeriesContext::from_identifier(ids.iter().map(|id| id.to_string()).collect::<Vec<String>>())
     }
 
     #[rstest]

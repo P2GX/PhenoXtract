@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 #[deprecated]
-fn empty_strings_to_nulls(
-    cdf: &mut ContextualizedDataFrame,
-) -> Result<(), DataProcessingError> {
+fn empty_strings_to_nulls(cdf: &mut ContextualizedDataFrame) -> Result<(), DataProcessingError> {
     let string_col_names: Vec<String> = cdf
         .filter_columns()
         .where_dtype(Filter::Is(&DataType::String))
@@ -36,22 +34,19 @@ fn empty_strings_to_nulls(
 fn test_empty_strings_to_nulls() {
     skip_in_ci!();
     let df = df![
-            "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
-            "string_col" => &["", "hello", "", "blah", "  "],
-            "int_col" => &[1, 2, 3, 4, 5],
-        ]
-        .unwrap();
+        "subject_id" => ["P001", "P002", "P003", "P004", "P005"],
+        "string_col" => &["", "hello", "", "blah", "  "],
+        "int_col" => &[1, 2, 3, 4, 5],
+    ]
+    .unwrap();
     let mut cdf = ContextualizedDataFrame::new(
         TableContext::new(
             "table".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("subject_id".to_string()))
+                SeriesContext::from_identifier("subject_id".to_string())
                     .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("string_col".to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("int_col".to_string())),
+                SeriesContext::from_identifier("string_col".to_string()),
+                SeriesContext::from_identifier("int_col".to_string()),
             ],
         ),
         df,
