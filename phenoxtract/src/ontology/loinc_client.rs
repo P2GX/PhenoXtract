@@ -6,6 +6,7 @@ use elsa::FrozenMap;
 use regex::Regex;
 use reqwest::blocking::Client;
 use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
+use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -110,6 +111,7 @@ pub struct LoincClient {
     cache: FrozenMap<String, Box<str>>,
     reference: OnceLock<ResourceRef>,
     curie_validator: CurieRegexValidator,
+    curie_validator: CurieRegexValidator,
 }
 
 impl fmt::Debug for LoincClient {
@@ -139,6 +141,7 @@ impl LoincClient {
             password,
             cache: FrozenMap::default(),
             reference: reference_lock,
+            curie_validator: CurieRegexValidator::loinc(),
             curie_validator: CurieRegexValidator::loinc(),
         }
     }
@@ -176,7 +179,9 @@ impl Default for LoincClient {
 
 impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        if self.curie_validator.validate(id_or_label) {
+        if self.curie_validator.validate(id_or_label)
+            || self.loinc_id_regex.is_match(id_or_label.as_ref())
+        {
             self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
