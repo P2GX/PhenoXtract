@@ -74,6 +74,9 @@ pub(crate) enum KnownResourcePrefixes {
     UO,
     OMIM,
     PATO,
+    UBERON,
+    MAXO,
+    NCIT,
 }
 
 /// Auto implementation of convenience functions to construct `ResourceRef`s from `KnownResourcePrefixes`
@@ -97,6 +100,9 @@ impl_resource_constructors_no_dep!(
     UO => uo,
     OMIM => omim,
     PATO => pato,
+    UBERON => uberon,
+    MAXO => maxo,
+    NCIT => ncit,
 );
 
 impl Display for KnownResourcePrefixes {
@@ -109,6 +115,9 @@ impl Display for KnownResourcePrefixes {
             KnownResourcePrefixes::UO => "UO",
             KnownResourcePrefixes::OMIM => "OMIM",
             KnownResourcePrefixes::PATO => "PATO",
+            KnownResourcePrefixes::UBERON => "UBERON",
+            KnownResourcePrefixes::MAXO => "MAXO",
+            KnownResourcePrefixes::NCIT => "NCIT",
         };
         write!(f, "{}", as_str)
     }
