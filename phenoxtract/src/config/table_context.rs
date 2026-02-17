@@ -208,7 +208,6 @@ impl SeriesContext {
         alias_map: Option<AliasMap>,
         building_block_id: Option<String>,
         sub_blocks: Vec<String>,
-        //
     ) -> Self {
         SeriesContext {
             identifier,
