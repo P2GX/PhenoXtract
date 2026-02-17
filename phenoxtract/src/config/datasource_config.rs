@@ -104,12 +104,12 @@ impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
         }
     }
 
-    fn push_sub_block(mut self, building_block_id: impl Into<String>) -> Self {
+    fn push_sub_building_block(mut self, building_block_id: impl Into<String>) -> Self {
         self.sub_blocks.push(building_block_id.into());
         self
     }
 
-    fn with_sub_blocks(mut self, sub_building_blocks: Vec<impl Into<String>>) -> Self {
+    fn with_sub_building_blocks(mut self, sub_building_blocks: Vec<impl Into<String>>) -> Self {
         self.sub_blocks = sub_building_blocks.into_iter().map(Into::into).collect();
         self
     }

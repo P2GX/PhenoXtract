@@ -14,9 +14,9 @@ pub trait SeriesContextBuilding<AliasMapType>: Sized {
 
     fn with_building_block_id(self, building_block_id: impl IntoOptionalString) -> Self;
 
-    fn push_sub_block(self, building_block_id: impl Into<String>) -> Self;
+    fn push_sub_building_block(self, building_block_id: impl Into<String>) -> Self;
 
-    fn with_sub_blocks(self, sub_building_blocks: Vec<impl Into<String>>) -> Self;
+    fn with_sub_building_blocks(self, sub_building_blocks: Vec<impl Into<String>>) -> Self;
 }
 
 pub trait IntoOptionalString {
