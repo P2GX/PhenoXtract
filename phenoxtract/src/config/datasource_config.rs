@@ -52,8 +52,6 @@ pub struct SeriesContextConfig {
     pub alias_map_config: Option<AliasMapConfig>,
     #[serde(default)]
     pub building_block_id: Option<String>,
-    #[serde(default)]
-    pub sub_blocks: Vec<String>,
 }
 
 impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
@@ -65,7 +63,6 @@ impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
             fill_missing: None,
             alias_map_config: None,
             building_block_id: None,
-            sub_blocks: vec![],
         }
     }
 
@@ -103,16 +100,6 @@ impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
             self
         }
     }
-
-    fn push_sub_block(mut self, building_block_id: impl Into<String>) -> Self {
-        self.sub_blocks.push(building_block_id.into());
-        self
-    }
-
-    fn with_sub_blocks(mut self, sub_building_blocks: Vec<impl Into<String>>) -> Self {
-        self.sub_blocks = sub_building_blocks.into_iter().map(Into::into).collect();
-        self
-    }
 }
 
 impl SeriesContextConfig {
@@ -124,7 +111,6 @@ impl SeriesContextConfig {
             fill_missing: None,
             alias_map_config: None,
             building_block_id: None,
-            sub_blocks: vec![],
         }
     }
 
