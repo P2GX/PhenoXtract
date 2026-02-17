@@ -114,8 +114,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut strategy_factory = StrategyFactory::new(resource_factory.into_ontology_factory());
         let phenopacket_builder = PhenopacketBuilder::new(
             config.meta_data.into(),
-            Box::new(CachedHGNCClient::default()),
-            Box::new(CachedHGVSClient::default()),
+            Box::new(CachedHGNCClient::new_with_defaults()?),
+            Box::new(CachedHGVSClient::new_with_defaults()?),
             hpo_bidict_library,
             disease_bidict_library,
             unit_bidict_library,

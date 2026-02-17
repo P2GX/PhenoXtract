@@ -2,6 +2,8 @@ use crate::extract::error::ExtractionError;
 use crate::ontology::error::{FactoryError, RegistryError};
 use crate::transform::error::TransformError;
 use config::ConfigError;
+use pivot::hgnc::HGNCError;
+use pivot::hgvs::HGVSError;
 use polars::prelude::PolarsError;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -27,6 +29,10 @@ pub enum ConstructionError {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     ConfigError(#[from] ConfigError),
+    #[error(transparent)]
+    HgncError(#[from] HGNCError),
+    #[error(transparent)]
+    HgvsError(#[from] HGVSError),
 }
 
 #[derive(Debug, Error)]
