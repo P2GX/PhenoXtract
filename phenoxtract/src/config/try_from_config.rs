@@ -248,6 +248,7 @@ impl TryFrom<SeriesContextConfig> for SeriesContext {
             config.fill_missing,
             alias_map,
             config.building_block_id,
+            config.sub_blocks,
         ))
     }
 }

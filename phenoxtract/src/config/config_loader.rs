@@ -206,6 +206,7 @@ pipeline_config:
                                     output_data_type: OutputDataType::Float64,
                                 }),
                                 building_block_id: None,
+                                sub_blocks: vec![],
                             }],
                         },
                         ExcelSheetConfig {
@@ -231,6 +232,7 @@ pipeline_config:
                                     output_data_type: OutputDataType::Boolean,
                                 }),
                                 building_block_id: None,
+                                sub_blocks: vec![],
                             }],
                         },
                     ],
