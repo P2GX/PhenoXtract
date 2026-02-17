@@ -276,7 +276,7 @@ mod tests {
     fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "LOINC:97062-4";
 
-        let label_res = loinc_client.get(&id_input);
+        let label_res = loinc_client.get(id_input);
 
         assert!(
             label_res.is_ok(),
