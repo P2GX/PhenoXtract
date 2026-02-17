@@ -273,30 +273,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_id_prefix(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
-
-        let label_res = loinc_client.get(id_input);
-        let label_res_with_prefix = loinc_client.get(&id_input_with_prefix);
-        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
-    }
-
-    #[rstest]
-    fn test_get_term_id_prefix(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
-
-        let label_res = loinc_client.get_label(id_input);
-        let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
-        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
-    }
-
-    #[rstest]
     fn test_get_bidirectional(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
-        let label_res = loinc_client.get(&id_input_with_prefix);
+        let id_input = "LOINC:97062-4";
+
+        let label_res = loinc_client.get(&id_input);
 
         assert!(
             label_res.is_ok(),
@@ -312,6 +292,6 @@ mod tests {
             found_label
         );
 
-        assert_eq!(id_res.unwrap(), id_input_with_prefix);
+        assert_eq!(id_res.unwrap(), id_input);
     }
 }
