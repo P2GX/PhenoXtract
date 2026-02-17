@@ -2,10 +2,10 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use crate::utils::check_curie_format;
 use elsa::FrozenMap;
 use regex::Regex;
 use reqwest::blocking::Client;
+use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -108,8 +108,8 @@ pub struct LoincClient {
     user_name: String,
     password: String,
     cache: FrozenMap<String, Box<str>>,
-    loinc_id_regex: Regex,
     reference: OnceLock<ResourceRef>,
+    curie_validator: CurieRegexValidator,
 }
 
 impl fmt::Debug for LoincClient {
@@ -117,12 +117,8 @@ impl fmt::Debug for LoincClient {
         f.debug_struct("LoincClient")
             .field("base_url", &self.base_url)
             .field("user_name", &self.user_name)
-            // Mask the password for security
             .field("password", &"********")
-            // Client and Regex usually aren't helpful in logs;
-            // we can just indicate they are present.
             .field("client", &"reqwest::Client")
-            .field("loinc_id_regex", &self.loinc_id_regex.as_str())
             .field("cache_size", &self.cache.len())
             .field("reference_initialized", &self.reference.get().is_some())
             .finish()
@@ -142,8 +138,8 @@ impl LoincClient {
             user_name,
             password,
             cache: FrozenMap::default(),
-            loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
             reference: reference_lock,
+            curie_validator: CurieRegexValidator::loinc(),
         }
     }
 
@@ -165,13 +161,6 @@ impl LoincClient {
     fn format_loinc_curie(loinc_number: &str) -> String {
         format!("{}:{}", KnownResourcePrefixes::LOINC, loinc_number)
     }
-    fn is_loinc_curie(&self, query: &str) -> bool {
-        check_curie_format(
-            query,
-            Some(KnownResourcePrefixes::LOINC.to_string().as_str()),
-            Some(&self.loinc_id_regex),
-        )
-    }
 }
 
 impl Default for LoincClient {
@@ -187,7 +176,7 @@ impl Default for LoincClient {
 
 impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        if self.is_loinc_curie(id_or_label) || self.loinc_id_regex.is_match(id_or_label.as_ref()) {
+        if self.curie_validator.validate(id_or_label) {
             self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
@@ -284,30 +273,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_id_prefix(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
+    fn test_get_bidirectional(loinc_client: LoincClient) {
+        let id_input = "LOINC:97062-4";
 
         let label_res = loinc_client.get(id_input);
-        let label_res_with_prefix = loinc_client.get(&id_input_with_prefix);
-        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
-    }
-
-    #[rstest]
-    fn test_get_term_id_prefix(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
-
-        let label_res = loinc_client.get_label(id_input);
-        let label_res_with_prefix = loinc_client.get_label(&id_input_with_prefix);
-        assert_eq!(label_res.unwrap(), label_res_with_prefix.unwrap());
-    }
-
-    #[rstest]
-    fn test_get_bidirectional(loinc_client: LoincClient) {
-        let id_input = "97062-4";
-        let id_input_with_prefix = format!("{}:{}", KnownResourcePrefixes::LOINC, id_input);
-        let label_res = loinc_client.get(&id_input_with_prefix);
 
         assert!(
             label_res.is_ok(),
@@ -323,6 +292,6 @@ mod tests {
             found_label
         );
 
-        assert_eq!(id_res.unwrap(), id_input_with_prefix);
+        assert_eq!(id_res.unwrap(), id_input);
     }
 }
