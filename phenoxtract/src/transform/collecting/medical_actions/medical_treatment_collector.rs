@@ -46,16 +46,16 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
         let mut value = None;
         let mut reference_range = None;
 
-        match &self.treatment_data.cumulative_dose {
-            Some(cumulative_dose) => {
-                if let Some(cumulative_dose_entry) = cumulative_dose.get(self.current_index) {
-                    unit = Some(cumulative_dose_entry.unit);
-                    value = Some(cumulative_dose_entry.value);
-                    reference_range = cumulative_dose_entry.reference_range
-                };
-            }
-            _ => {}
-        };
+        if let Some(entry) = self
+            .treatment_data
+            .cumulative_dose
+            .as_ref()
+            .and_then(|doses| doses.get(self.current_index))
+        {
+            unit = Some(entry.unit);
+            value = Some(entry.value);
+            reference_range = entry.reference_range;
+        }
 
         self.current_index += 1;
 
