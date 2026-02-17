@@ -93,6 +93,22 @@ pub trait PhenopacketBuilding {
         response_to_treatment: Option<&str>,
         treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
+
+    fn insert_medical_treatment(
+        &mut self,
+        patient_id: &str,
+        agent: &str,
+        route_of_administration: Option<&str>,
+        dose_intervals: Vec<usize>, // TODO
+        drug_type: Option<&str>,
+        unit: Option<&str>,
+        value: Option<f64>,
+        reference_range: Option<(f64, f64)>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError>;
 }
 
 pub(crate) trait PhenopacketAccessors {

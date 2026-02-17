@@ -81,6 +81,14 @@ pub enum Context {
     ResponseToTreatment,
     TreatmentTerminationReason,
 
+    TreatmentAgent,
+    RouteOfAdministration,
+    DoseInterval,
+    DrugType,
+    CumulativeDose {
+        unit_ontology_id: String,
+    },
+
     ProcedureLabelOrId,
     ProcedureBodySite,
     TimeAtProcedure(TimeElementType),
@@ -145,6 +153,11 @@ impl Context {
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement
                 | ContextKind::ReferenceRange
+                | ContextKind::TreatmentAgent
+                | ContextKind::RouteOfAdministration
+                | ContextKind::DoseInterval
+                | ContextKind::DrugType
+                | ContextKind::CumulativeDose
                 | ContextKind::TreatmentTarget
                 | ContextKind::TreatmentIntent
                 | ContextKind::ResponseToTreatment

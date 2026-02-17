@@ -566,6 +566,26 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         phenopacket.push_medical_action(medical_action);
         Ok(())
     }
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(unused)]
+    fn insert_medical_treatment(
+        &mut self,
+        patient_id: &str,
+        agent: &str,
+        route_of_administration: Option<&str>,
+        dose_intervals: Vec<usize>,
+        drug_type: Option<&str>,
+        unit: Option<&str>,
+        value: Option<f64>,
+        reference_range: Option<(f64, f64)>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        todo!()
+    }
 }
 
 impl PhenopacketBuilder {
