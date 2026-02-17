@@ -1,5 +1,6 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
+use crate::transform::collecting::medical_actions::dose_interval_data::DoseIntervalData;
 use crate::transform::collecting::medical_actions::quantity_data::QuantityData;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
@@ -7,14 +8,14 @@ use polars::datatypes::StringChunked;
 pub(super) struct Treatment<'a> {
     pub(super) agent: Option<&'a str>,
     pub(super) route_of_administration: Option<&'a str>,
-    pub(super) dose_intervals: Option<&'a str>, // TODO
+    pub(super) dose_intervals: Option<&'a str>, // TODO: Change to dose interval
     pub(super) drug_type: Option<&'a str>,
     pub(super) quantity_data: Option<&'a QuantityData>,
 }
 pub(super) struct TreatmentData {
     pub(super) agent: StringChunked,
     pub(super) route_of_administration: Option<StringChunked>,
-    pub(super) dose_intervals: Option<StringChunked>,
+    pub(super) dose_intervals: Option<DoseIntervalData>,
     pub(super) drug_type: Option<StringChunked>,
     pub(super) cumulative_dose: Option<QuantityData>,
 }
@@ -41,7 +42,7 @@ impl TreatmentData {
                     building_block,
                     &[Context::RouteOfAdministration],
                 )?;
-
+                // TODO: Construct dose intervals here
                 let drug_type = patient_cdf
                     .get_single_linked_column_as_str(building_block, &[Context::DrugType])?;
 
@@ -50,7 +51,11 @@ impl TreatmentData {
                     route_of_administration,
                     dose_intervals: None,
                     drug_type,
-                    cumulative_dose: QuantityData::new(patient_cdf, building_block)?,
+                    cumulative_dose: QuantityData::new(
+                        patient_cdf,
+                        building_block,
+                        &ContextKind::CumulativeDose,
+                    )?,
                 })
             }
         }

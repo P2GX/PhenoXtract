@@ -29,8 +29,7 @@ impl Collect for QuantitativeMeasurementCollector {
             for quant_measurement_sc in quantitative_measurement_scs {
                 let (assay_id, unit_ontology_id) = quant_measurement_sc
                     .get_data_context()
-                    .try_as_quantitative_measurement()
-                    .map_err(|err| CollectorError::ContextError(err.to_string()))?;
+                    .try_as_quantitative_measurement()?;
 
                 let quant_measurement_cols =
                     patient_cdf.get_columns(quant_measurement_sc.get_identifier());

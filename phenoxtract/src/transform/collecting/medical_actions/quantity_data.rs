@@ -21,6 +21,7 @@ impl QuantityData {
     pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
+        data_context: &ContextKind,
     ) -> Result<Option<Self>, CollectorError> {
         let bb = building_block.ok_or_else(|| {
             let patient_id = patient_cdf
@@ -31,13 +32,13 @@ impl QuantityData {
             CollectorError::ExpectedBuildingBlock {
                 table_name: patient_cdf.context().name().to_string(),
                 patient_id,
-                context: ContextKind::CumulativeDose,
+                context: *data_context,
             }
         })?;
 
         let scs = patient_cdf
             .filter_series_context()
-            .where_data_context_kind(Filter::Is(&ContextKind::CumulativeDose))
+            .where_data_context_kind(Filter::Is(data_context))
             .where_building_block(Filter::Is(bb))
             .collect();
 
@@ -48,12 +49,26 @@ impl QuantityData {
                 .try_as_cumulative_dose()
                 .expect("Cumulative dose should be a Cumulative dose");
 
-            let values = match patient_cdf.get_single_linked_column_as_float(
-                building_block,
-                &[Context::CumulativeDose {
+            let contextualized_context = match data_context {
+                ContextKind::DoseIntervalQuantity => {
+                    Ok::<Context, CollectorError>(Context::DoseIntervalQuantity {
+                        unit_ontology_id: unit.to_string(),
+                    })
+                }
+                ContextKind::CumulativeDose => Ok(Context::CumulativeDose {
                     unit_ontology_id: unit.to_string(),
-                }],
-            )? {
+                }),
+                _ => {
+                    return Err(CollectorError::UnexpectedContextError(
+                        *data_context,
+                        quantity_sc.get_identifier().clone(),
+                    ));
+                }
+            }?;
+
+            let values = match patient_cdf
+                .get_single_linked_column_as_float(building_block, &[contextualized_context])?
+            {
                 None => Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
                     table_name: patient_cdf.context().name().to_string(),
                     bb_id: bb.to_string(),
@@ -87,7 +102,7 @@ impl QuantityData {
         }
     }
 
-    pub(super) fn get(&self, idx: usize) -> Option<Quantity> {
+    pub(super) fn get(&'_ self, idx: usize) -> Option<Quantity<'_>> {
         let mut range: Option<(f64, f64)> = None;
         if let (Some(start), Some(end)) = (&self.reference_range_start, &self.reference_range_end) {
             let a = start.get(idx);
@@ -98,14 +113,10 @@ impl QuantityData {
             }
         }
 
-        if let Some(value) = self.value.get(idx) {
-            Some(Quantity {
-                unit: &self.unit,
-                value,
-                reference_range: range,
-            })
-        } else {
-            None
-        }
+        self.value.get(idx).map(|value| Quantity {
+            unit: &self.unit,
+            value,
+            reference_range: range,
+        })
     }
 }

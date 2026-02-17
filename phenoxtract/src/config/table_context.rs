@@ -122,7 +122,7 @@ impl Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Identifier::Regex(regex) => write!(f, "{}", regex),
-            Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+            Identifier::Multi(multi) => write!(f, "{}", multi.join(", ")),
         }
     }
 }
