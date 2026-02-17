@@ -179,9 +179,7 @@ impl Default for LoincClient {
 
 impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        if self.curie_validator.validate(id_or_label)
-            || self.loinc_id_regex.is_match(id_or_label.as_ref())
-        {
+        if self.curie_validator.validate(id_or_label) {
             self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
