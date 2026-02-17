@@ -108,7 +108,6 @@ pub struct LoincClient {
     user_name: String,
     password: String,
     cache: FrozenMap<String, Box<str>>,
-    loinc_id_regex: Regex,
     reference: OnceLock<ResourceRef>,
     curie_validator: CurieRegexValidator,
 }
@@ -118,12 +117,8 @@ impl fmt::Debug for LoincClient {
         f.debug_struct("LoincClient")
             .field("base_url", &self.base_url)
             .field("user_name", &self.user_name)
-            // Mask the password for security
             .field("password", &"********")
-            // Client and Regex usually aren't helpful in logs;
-            // we can just indicate they are present.
             .field("client", &"reqwest::Client")
-            .field("loinc_id_regex", &self.loinc_id_regex.as_str())
             .field("cache_size", &self.cache.len())
             .field("reference_initialized", &self.reference.get().is_some())
             .finish()
@@ -143,7 +138,6 @@ impl LoincClient {
             user_name,
             password,
             cache: FrozenMap::default(),
-            loinc_id_regex: Regex::from_str(r"^\d{1,8}-\d$").unwrap(),
             reference: reference_lock,
             curie_validator: CurieRegexValidator::loinc(),
         }
@@ -182,9 +176,7 @@ impl Default for LoincClient {
 
 impl BiDict for LoincClient {
     fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
-        if self.curie_validator.validate(id_or_label)
-            || self.loinc_id_regex.is_match(id_or_label.as_ref())
-        {
+        if self.curie_validator.validate(id_or_label) {
             self.get_label(id_or_label)
         } else {
             self.get_id(id_or_label)
