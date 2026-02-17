@@ -1,8 +1,13 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::collecting::medical_actions::medical_action_data::Procedure;
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
+
+pub(super) struct Procedure<'a> {
+    pub(super) procedure: Option<&'a str>,
+    pub(super) body_part: Option<&'a str>,
+    pub(super) time_element: Option<&'a str>,
+}
 
 pub(super) struct ProcedureData {
     pub(super) procedure_col: StringChunked,
