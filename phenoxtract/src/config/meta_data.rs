@@ -112,8 +112,8 @@ mod tests {
     }
 
     const YAML_DATA: &[u8] = br#"
-    submitted_by: Magnus Knut Hansen
-    cohort_name: arkham 2025
+    submitted_by: submitter
+    cohort_name: a_cohort
     "#;
 
     #[rstest]
@@ -130,7 +130,10 @@ mod tests {
 
         let creator = default_meta_data.created_by;
         assert!(creator.contains("phenoxtract"));
-        assert_eq!(default_meta_data.submitted_by, "submitter".to_string());
+        assert_eq!(
+            default_meta_data.submitted_by,
+            "submitter".to_string()
+        );
         assert_eq!(default_meta_data.cohort_name, "a_cohort");
         assert_eq!(default_meta_data.hp_resource, None);
         assert_eq!(default_meta_data.disease_resources, vec![]);
