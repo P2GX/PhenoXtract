@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MetaData {
     pub cohort_name: String,
     #[serde(default = "default_creator")]
