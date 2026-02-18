@@ -130,10 +130,7 @@ mod tests {
 
         let creator = default_meta_data.created_by;
         assert!(creator.contains("phenoxtract"));
-        assert_eq!(
-            default_meta_data.submitted_by,
-            "submitter".to_string()
-        );
+        assert_eq!(default_meta_data.submitted_by, "submitter".to_string());
         assert_eq!(default_meta_data.cohort_name, "a_cohort");
         assert_eq!(default_meta_data.hp_resource, None);
         assert_eq!(default_meta_data.disease_resources, vec![]);
