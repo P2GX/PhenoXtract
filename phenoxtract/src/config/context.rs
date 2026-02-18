@@ -46,7 +46,7 @@ pub enum Boundary {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Context {
-    // individual
+    // Individual
     SubjectId,
     SubjectSex,
     DateOfBirth,
@@ -56,15 +56,17 @@ pub enum Context {
     CauseOfDeath,
     SurvivalTimeDays,
 
-    // ontologies and databases
-    HpoLabelOrId,
-    DiseaseLabelOrId,
-    HgncSymbolOrId,
+    // Phenotypes and Diseases
+    Hpo,
+    Disease,
+    MultiHpoId,
+    Onset(TimeElementType),
 
-    // variants
+    // Genetic Data
     Hgvs,
+    Hgnc,
 
-    // measurements
+    // Measurements
     QuantitativeMeasurement {
         assay_id: String,
         unit_ontology_id: String,
@@ -80,16 +82,12 @@ pub enum Context {
     TreatmentIntent,
     ResponseToTreatment,
     TreatmentTerminationReason,
-
     ProcedureLabelOrId,
     ProcedureBodySite,
-    TimeAtProcedure(TimeElementType),
+    TimeOfProcedure(TimeElementType),
 
     // other
     ObservationStatus,
-    MultiHpoId,
-    Onset(TimeElementType),
-
     #[default]
     None,
     //...
@@ -118,16 +116,17 @@ impl Context {
         time_element_variants!(TimeAtLastEncounter);
     pub const TIME_OF_DEATH_VARIANTS: &'static [Context] = time_element_variants!(TimeOfDeath);
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
-        time_element_variants!(TimeAtProcedure);
+        time_element_variants!(TimeOfProcedure);
     pub const ONSET_VARIANTS: &'static [Context] = time_element_variants!(Onset);
-    pub const TIME_OF_MEASUREMENT_VARIANTS: &'static [Context] = time_element_variants!(Onset);
+    pub const TIME_OF_MEASUREMENT_VARIANTS: &'static [Context] =
+        time_element_variants!(TimeOfMeasurement);
 
     pub fn time_element_context_variants(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
             .filter_map(|kind| match kind {
                 ContextKind::TimeAtLastEncounter => Some(Context::TimeAtLastEncounter(tt.clone())),
                 ContextKind::TimeOfDeath => Some(Context::TimeOfDeath(tt.clone())),
-                ContextKind::TimeAtProcedure => Some(Context::TimeAtProcedure(tt.clone())),
+                ContextKind::TimeOfProcedure => Some(Context::TimeOfProcedure(tt.clone())),
                 ContextKind::Onset => Some(Context::Onset(tt.clone())),
                 ContextKind::TimeOfMeasurement => Some(Context::TimeOfMeasurement(tt.clone())),
 
@@ -138,9 +137,9 @@ impl Context {
                 | ContextKind::VitalStatus
                 | ContextKind::CauseOfDeath
                 | ContextKind::SurvivalTimeDays
-                | ContextKind::HpoLabelOrId
-                | ContextKind::DiseaseLabelOrId
-                | ContextKind::HgncSymbolOrId
+                | ContextKind::Hpo
+                | ContextKind::Disease
+                | ContextKind::Hgnc
                 | ContextKind::Hgvs
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement

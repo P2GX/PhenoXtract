@@ -9,6 +9,7 @@ use validator::Validate;
 pub struct PhenoXtractConfig {
     #[validate(custom(function = "validate_unique_data_sources"))]
     pub data_sources: Vec<DataSourceConfig>,
+    #[serde(rename = "pipeline")]
     pub pipeline_config: PipelineConfig,
 }
 

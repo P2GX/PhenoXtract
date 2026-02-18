@@ -209,7 +209,7 @@ impl MultiHPOColExpansionStrategy {
             new_hpo_cols.push(new_hpo_col);
         }
         let new_sc = SeriesContext::from_identifier(Identifier::Multi(new_hpo_col_names.clone()))
-            .with_header_context(Context::HpoLabelOrId)
+            .with_header_context(Context::Hpo)
             .with_data_context(Context::ObservationStatus)
             .with_building_block_id(building_block_id);
 
@@ -324,7 +324,7 @@ mod tests {
                     "HP:2222222#A".to_string(),
                     "HP:3333333#A".to_string(),
                 ])
-                .with_header_context(Context::HpoLabelOrId)
+                .with_header_context(Context::Hpo)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("A"),
                 SeriesContext::from_identifier(vec![
@@ -332,7 +332,7 @@ mod tests {
                     "HP:4444444".to_string(),
                     "HP:5555555".to_string(),
                 ])
-                .with_header_context(Context::HpoLabelOrId)
+                .with_header_context(Context::Hpo)
                 .with_data_context(Context::ObservationStatus),
             ],
         );
@@ -448,7 +448,7 @@ mod tests {
         assert_eq!(new_cols, vec![expected_col1, expected_col2]);
 
         let expected_sc = SeriesContext::default()
-            .with_header_context(Context::HpoLabelOrId)
+            .with_header_context(Context::Hpo)
             .with_data_context(Context::ObservationStatus)
             .with_building_block_id("A")
             .with_identifier(Identifier::Multi(vec![

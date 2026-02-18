@@ -7,10 +7,10 @@ patients_are_rows: true
 contexts:
   - identifier: "patient_id"
     header_context: subject_id
-    data_context: hpo_label_or_id
+    data_context: hpo
     fill_missing: "Zollinger-Ellison syndrome"
     building_block_id: "block_1"
-    alias_map_config:
+    alias_map:
       output_data_type: String
       mappings:
         "null": null
@@ -37,9 +37,9 @@ sheets:
     contexts:
       - identifier: "lab_result_.*"
         header_context: subject_id
-        data_context: hpo_label_or_id
+        data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
-        alias_map_config:
+        alias_map:
           output_data_type: Float64
           mappings:
             "neoplasma": "4"
@@ -54,16 +54,16 @@ sheets:
           - "Col_2"
           - "Col_3"
         header_context: subject_id
-        data_context: hpo_label_or_id
+        data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
-        alias_map_config:
+        alias_map:
           output_data_type: Boolean
           mappings:
             "smoker": "true"
 "#;
 pub(crate) static PIPELINE_CONFIG_FILE: &[u8] = br#"
 cache_dir: "./src/test_suite/test_cache"
-transform_strategies:
+strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
 loader:
@@ -74,7 +74,7 @@ meta_data:
     created_by: "PhenoXtract Test Suite"
     submitted_by: "Someone"
     cohort_name: "Cohort-1"
-    hp_resource:
+    hpo_resource:
       id: "HP"
       version: "2025-09-01"
     unit_resources:

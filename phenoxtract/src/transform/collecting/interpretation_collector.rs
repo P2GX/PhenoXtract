@@ -25,7 +25,7 @@ impl Collect for InterpretationCollector {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
@@ -34,12 +34,9 @@ impl Collect for InterpretationCollector {
 
                 let disease_cols = patient_cdf.get_columns(sc_id);
 
-                let stringified_linked_hgnc_cols =
-                    patient_cdf.get_stringified_cols(patient_cdf.get_linked_cols_with_context(
-                        bb_id,
-                        &Context::HgncSymbolOrId,
-                        &Context::None,
-                    ))?;
+                let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_linked_cols_with_context(bb_id, &Context::Hgnc, &Context::None),
+                )?;
                 let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
                     patient_cdf.get_linked_cols_with_context(bb_id, &Context::Hgvs, &Context::None),
                 )?;
@@ -219,11 +216,11 @@ mod tests {
         );
 
         let diseases_sc = SeriesContext::from_identifier("diseases".to_string())
-            .with_data_context(Context::DiseaseLabelOrId)
+            .with_data_context(Context::Disease)
             .with_building_block_id("Block_3");
 
         let gene_sc = SeriesContext::from_identifier("gene".to_string())
-            .with_data_context(Context::HgncSymbolOrId)
+            .with_data_context(Context::Hgnc)
             .with_building_block_id("Block_3");
 
         let hgvs_sc1 = SeriesContext::from_identifier("hgvs1".to_string())

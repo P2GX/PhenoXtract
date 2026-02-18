@@ -187,7 +187,7 @@ data_sources:
 ```
 
 pipeline:
- transform_strategies:
+ strategies:
   - "alias_map"
   - "fill_null"
  loader: "file_system"

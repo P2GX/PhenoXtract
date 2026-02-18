@@ -56,7 +56,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
             SeriesContext::from_identifier("survival_time_in_days")
                 .with_data_context(Context::SurvivalTimeDays),
             SeriesContext::from_identifier("phenotype")
-                .with_data_context(Context::HpoLabelOrId)
+                .with_data_context(Context::Hpo)
                 .with_building_block_id("P1"),
             SeriesContext::from_identifier("multi_hpo")
                 .with_data_context(Context::MultiHpoId)
@@ -65,20 +65,20 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("P1"),
             SeriesContext::from_identifier("HP:1234567")
-                .with_header_context(Context::HpoLabelOrId)
+                .with_header_context(Context::Hpo)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("P2"),
             SeriesContext::from_identifier("HP:1234567_onset_date")
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("P2"),
             SeriesContext::from_identifier("disease")
-                .with_data_context(Context::DiseaseLabelOrId)
+                .with_data_context(Context::Disease)
                 .with_building_block_id("D1"),
             SeriesContext::from_identifier("disease_onset_age")
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("D1"),
             SeriesContext::from_identifier("gene")
-                .with_data_context(Context::HgncSymbolOrId)
+                .with_data_context(Context::Hgnc)
                 .with_building_block_id("D1"),
             SeriesContext::from_identifier("hgvs1")
                 .with_data_context(Context::Hgvs)
@@ -87,7 +87,7 @@ fn csv_context(vital_status_aliases: AliasMap) -> TableContext {
                 .with_data_context(Context::Hgvs)
                 .with_building_block_id("D1"),
             SeriesContext::from_identifier("disease2")
-                .with_data_context(Context::DiseaseLabelOrId)
+                .with_data_context(Context::Disease)
                 .with_building_block_id("D2"),
             SeriesContext::from_identifier("disease2_onset_date")
                 .with_data_context(Context::Onset(TimeElementType::Date))

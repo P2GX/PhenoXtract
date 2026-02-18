@@ -76,7 +76,7 @@ data_sources:
     patients_are_rows: true
 
 pipeline_config:
-  transform_strategies:
+  strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
   loader:
@@ -87,7 +87,7 @@ pipeline_config:
     created_by: "PhenoXtract creators"
     submitted_by: "PhenoXtract submitters"
     cohort_name: "my_cohort"
-    hp_resource:
+    hpo_resource:
       id: "hp"
       version: "2025-09-01"
 "#;
@@ -155,10 +155,10 @@ pipeline_config:
                     separator: Some(','),
                     has_headers: true,
                     patients_are_rows: true,
-                    contexts: vec![
+                    series_contexts: vec![
                         SeriesContextConfig::new(Identifier::Regex("patient_id".to_string()))
                             .header_context(Context::SubjectId)
-                            .data_context(Context::HpoLabelOrId)
+                            .data_context(Context::Hpo)
                             .fill_missing(CellValue::String(
                                 "Zollinger-Ellison syndrome".to_string(),
                             ))
@@ -180,7 +180,7 @@ pipeline_config:
                             },
                         ),
                         SeriesContextConfig::new("procedure_time")
-                            .data_context(Context::TimeAtProcedure(TimeElementType::Age)),
+                            .data_context(Context::TimeOfProcedure(TimeElementType::Age)),
                     ],
                 }),
                 // Second data source: Excel
@@ -191,10 +191,10 @@ pipeline_config:
                             sheet_name: "Sheet1".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Regex("lab_result_.*".to_string()),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),
@@ -212,14 +212,14 @@ pipeline_config:
                             sheet_name: "Sheet2".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),

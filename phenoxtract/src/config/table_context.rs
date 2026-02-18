@@ -23,14 +23,14 @@ use validator::Validate;
 pub struct TableContext {
     name: String,
     #[validate(custom(function = "validate_unique_identifiers"))]
-    context: Vec<SeriesContext>,
+    series_contexts: Vec<SeriesContext>,
 }
 
 impl TableContext {
     pub fn new(name: impl Into<String>, context: Vec<SeriesContext>) -> Self {
         TableContext {
             name: name.into(),
-            context,
+            series_contexts: context,
         }
     }
 
@@ -42,10 +42,10 @@ impl TableContext {
     }
 
     pub fn context(&self) -> &Vec<SeriesContext> {
-        &self.context
+        &self.series_contexts
     }
     pub fn context_mut(&mut self) -> &mut Vec<SeriesContext> {
-        &mut self.context
+        &mut self.series_contexts
     }
 
     pub fn with_name(mut self, name: &str) -> Self {
@@ -54,7 +54,7 @@ impl TableContext {
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
-        SeriesContextFilter::new(self.context.as_ref())
+        SeriesContextFilter::new(self.series_contexts.as_ref())
     }
 }
 
