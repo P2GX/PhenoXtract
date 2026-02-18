@@ -32,7 +32,7 @@ strum = "0.27.2"
 strum_macros = "0.27.2"
 enum-try-as-inner = "0.1.1"
 pivot = { git = "https://github.com/psnairne/PIVOT", tag = "v0.1.5" }
-ontology-registry = "0.3.4"
+ontology-registry = "0.3.7"
 directories = "6.0.0"
 shellexpand = "3.1.1"
 num-traits = "0.2.19"

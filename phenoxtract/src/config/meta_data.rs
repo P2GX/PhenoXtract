@@ -106,18 +106,15 @@ mod tests {
         assert_eq!(metadata.unit_resources, vec![]);
     }
 
-    const YAML_DATA: &[u8] = br#"
-    submitted_by: Magnus Knut Hansen
-    cohort_name: arkham 2025
-    hp_ref:
-      version: "2025-09-01"
-      prefix_id: "HP"
-    "#;
-
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
+
+    const YAML_DATA: &[u8] = br#"
+    submitted_by: Magnus Knut Hansen
+    cohort_name: arkham 2025
+    "#;
 
     #[rstest]
     fn test_meta_data_default_from_config(temp_dir: TempDir) {
