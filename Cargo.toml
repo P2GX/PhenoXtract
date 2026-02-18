@@ -5,5 +5,5 @@ members = [
 ]
 resolver = "3"
 
-[patch.crates-io]
+[workspace.dependencies]
 native-tls = "=0.2.14"
