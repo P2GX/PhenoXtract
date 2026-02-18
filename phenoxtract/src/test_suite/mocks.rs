@@ -163,10 +163,11 @@ impl OntologyRegistration for MockOntologyRegistry {
 impl OntologyRegistration for MockOntologyRegistry {
     fn register(
         &self,
-        ontology_id: &str,
+        ontology_id: impl Into<String>,
         version: Version,
         file_type: FileType,
     ) -> Result<impl Read, OntologyRegistryError> {
+        let ontology_id = ontology_id.into();
         if version.to_string() == Version::Latest.to_string() {
             let entries =
                 fs::read_dir(self.registry_path.clone()).expect("Failed to read registry path");
@@ -213,7 +214,7 @@ impl OntologyRegistration for MockOntologyRegistry {
     #[allow(unused)]
     fn unregister(
         &self,
-        ontology_id: &str,
+        ontology_id: impl Into<String>,
         version: Version,
         file_type: FileType,
     ) -> Result<(), OntologyRegistryError> {
@@ -221,7 +222,12 @@ impl OntologyRegistration for MockOntologyRegistry {
     }
 
     #[allow(unused)]
-    fn get(&self, ontology_id: &str, version: Version, file_type: FileType) -> Option<impl Read> {
+    fn get(
+        &self,
+        ontology_id: impl Into<String>,
+        version: Version,
+        file_type: FileType,
+    ) -> Option<impl Read> {
         panic!("Mock ontology factory get is not implemented yet");
         None::<Cursor<Vec<u8>>>
     }
