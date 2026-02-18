@@ -72,7 +72,7 @@ pipeline:
           password: "my_bioportal_password"
 ```
 
-The `config.yaml` has two main sections: `data_sources` and `pipeline_config`. Below, it will be made clear how both
+The `config.yaml` has two main sections: `data_sources` and `pipeline`. Below, it will be made clear how both
 of these are written, what fields they can have, and what format they should take.
 
 ## data_sources
