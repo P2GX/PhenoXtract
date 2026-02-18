@@ -4,6 +4,3 @@ members = [
     "integration_tests",
 ]
 resolver = "3"
-
-[workspace.dependencies]
-native-tls = "=0.2.14"
