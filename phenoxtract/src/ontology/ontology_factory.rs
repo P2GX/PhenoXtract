@@ -11,10 +11,8 @@ use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntolo
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use ontology_registry::enums::FileType;
 use ontology_registry::traits::OntologyRegistration;
-use ontology_registry::traits::OntologyRegistration;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::io::Read;
 use std::io::Read;
 use std::sync::{Arc, OnceLock};
 
@@ -32,9 +30,7 @@ struct CachedOntology {
 
 #[derive(Debug)]
 pub struct CachedOntologyFactory<OR: OntologyRegistration> {
-pub struct CachedOntologyFactory<OR: OntologyRegistration> {
     cache: HashMap<CacheKey, CachedOntology>,
-    registry: OR,
     registry: OR,
 }
 
@@ -73,8 +69,6 @@ pub struct CachedOntologyFactory<OR: OntologyRegistration> {
 /// let hpo_bidict = factory.hp_bi_dict(None)?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
-    pub fn new(registry: OR) -> Self {
 impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     pub fn new(registry: OR) -> Self {
         Self {
@@ -122,13 +116,9 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         }
 
         let lower = ontology.prefix_id().to_lowercase();
-        let lower = ontology.prefix_id().to_lowercase();
         let ontology_path = self
             .registry
             .register(
-                &lower,
-                ontology.clone().as_version(),
-                FileType::Json, // Hardcoded json, because ontolius depends on it
                 &lower,
                 ontology.clone().as_version(),
                 FileType::Json, // Hardcoded json, because ontolius depends on it
@@ -282,10 +272,8 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     }
 
     fn init_ontolius(ontology_path: impl Read) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
-    fn init_ontolius(ontology_path: impl Read) -> Result<Arc<FullCsrOntology>, anyhow::Error> {
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
 
-        let ontolius = loader.load_from_read(ontology_path)?;
         let ontolius = loader.load_from_read(ontology_path)?;
         Ok(Arc::new(ontolius))
     }
@@ -298,13 +286,11 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 }
 
 impl Default for CachedOntologyFactory<OntologyRegistry> {
-impl Default for CachedOntologyFactory<OntologyRegistry> {
     fn default() -> Self {
         CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
             default_cache_dir().expect("Cannot get cache dir"),
             BioRegistryMetadataProvider::default(),
             OboLibraryProvider::default(),
-        ))
         ))
     }
 }
@@ -319,7 +305,6 @@ mod tests {
     fn test_build_ontology_success() -> Result<(), FactoryError> {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_ontology(&ontology, None)?;
 
@@ -338,7 +323,6 @@ mod tests {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_bidict(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);
@@ -355,7 +339,6 @@ mod tests {
     fn test_build_bidict_other() -> Result<(), FactoryError> {
         let ontology = ResourceRef::from("ro").with_latest();
 
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_bidict(&ontology, None)?;
 

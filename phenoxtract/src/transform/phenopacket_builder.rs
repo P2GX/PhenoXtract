@@ -18,13 +18,9 @@ use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::medical_action::Action;
-use phenopackets::schema::v2::core::medical_action::Action;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
-    OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
-    Value as ValueStruct, VitalStatus,
     Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
     OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
     Value as ValueStruct, VitalStatus,
@@ -549,14 +545,6 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         treatment_intent: Option<&str>,
         response_to_treatment: Option<&str>,
         treatment_termination_reason: Option<&str>,
-        patient_id: &str,
-        procedure_code: &str,
-        body_part: Option<&str>,
-        procedure_time_element: Option<&str>,
-        treatment_target: Option<&str>,
-        treatment_intent: Option<&str>,
-        response_to_treatment: Option<&str>,
-        treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let procedure = self.parse_procedure(
             patient_id,
@@ -645,7 +633,6 @@ impl PhenopacketBuilder {
         pp.first_phenotype_with_id_mut(&target_id)
             .expect("PhenotypicFeature was just created or already existed")
     }
-
 
     fn get_or_create_interpretation(
         &mut self,

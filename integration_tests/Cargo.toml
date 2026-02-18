@@ -9,7 +9,6 @@ version = "0.1.0"
 
 [dependencies]
 phenoxtract = { path = "../phenoxtract" }
-phenoxtract = { path = "../phenoxtract" }
 phenopackets = "0.2.2-post2"
 directories = "6.0.0"
 dotenvy = "0.15.7"

@@ -1,7 +1,6 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
 use crate::config::traits::SeriesContextBuilding;
-use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
@@ -210,7 +209,6 @@ impl MultiHPOColExpansionStrategy {
             new_hpo_cols.push(new_hpo_col);
         }
         let new_sc = SeriesContext::from_identifier(Identifier::Multi(new_hpo_col_names.clone()))
-        let new_sc = SeriesContext::from_identifier(Identifier::Multi(new_hpo_col_names.clone()))
             .with_header_context(Context::HpoLabelOrId)
             .with_data_context(Context::ObservationStatus)
             .with_building_block_id(building_block_id);
@@ -223,7 +221,6 @@ mod tests {
     use super::*;
     use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
-    use crate::config::traits::SeriesContextBuilding;
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
@@ -453,7 +450,6 @@ mod tests {
         let expected_sc = SeriesContext::default()
             .with_header_context(Context::HpoLabelOrId)
             .with_data_context(Context::ObservationStatus)
-            .with_building_block_id("A")
             .with_building_block_id("A")
             .with_identifier(Identifier::Multi(vec![
                 "HP:1111111#A".to_string(),

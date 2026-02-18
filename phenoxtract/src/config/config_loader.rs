@@ -101,16 +101,6 @@ patients_are_rows: true
 blah: "blahblah"
 "#;
 
-
-    const YAML_DATA_EXTRA_FIELD: &[u8] = br#"
-type: "csv"
-source: "test/path"
-separator: ","
-has_headers: true
-patients_are_rows: true
-blah: "blahblah"
-"#;
-
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
