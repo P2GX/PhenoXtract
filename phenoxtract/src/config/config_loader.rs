@@ -101,6 +101,16 @@ patients_are_rows: true
 blah: "blahblah"
 "#;
 
+
+    const YAML_DATA_EXTRA_FIELD: &[u8] = br#"
+type: "csv"
+source: "test/path"
+separator: ","
+has_headers: true
+patients_are_rows: true
+blah: "blahblah"
+"#;
+
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
@@ -130,7 +140,7 @@ blah: "blahblah"
 
     #[rstest]
     fn test_unexpected_field_fail(temp_dir: TempDir) {
-        let file_path = temp_dir.path().join("config.yaml");
+        let file_path = temp_dir.path().join("config.yaml".to_string());
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(YAML_DATA_EXTRA_FIELD).unwrap();
         let result: Result<DataSourceConfig, ConfigError> = ConfigLoader::load(file_path);
