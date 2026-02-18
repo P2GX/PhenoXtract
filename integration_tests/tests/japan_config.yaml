@@ -1,0 +1,59 @@
+data_sources:
+  - type: csv
+    source: "/Users/adamgraefe/Documents/git/PhenoXtract/integration_tests/tests/assets/irud/TestData_20250716.csv"
+    separator: ","
+    has_headers: true
+    patients_are_rows: true
+    contexts:
+    # Person
+      - identifier: "patient_id"
+        data_context: subject_id
+      - identifier: "sex"
+        data_context: subject_sex
+    # disease-gene
+      # - identifier: "gene_symbol"
+      #   data_context: hgnc_symbol_or_id
+      #   building_block_id: "A"
+      - identifier: "gene_id"
+        data_context: hgnc_symbol_or_id
+        building_block_id: "A"
+      # disease 
+      # - identifier: "disease"
+      #   data_context: disease_label_or_id
+      #   building_block_id: "A"
+      - identifier: "disease_OMIM_id"
+        data_context: disease_label_or_id
+        building_block_id: "A"
+    # variant
+      - identifier: "HGVS_1"
+        data_context: hgvs
+        building_block_id: "A"
+      - identifier: "HGVS_2"
+        data_context: hgvs
+        building_block_id: "A"
+      - identifier: "HPO"
+        data_context: multi_hpo_id
+
+pipeline_config:
+  transform_strategies:
+    - default_mapping: sex_mapping
+    - multi_hpo_col_expansion
+
+  loader:
+    file_system: 
+      output_dir: "/Users/adamgraefe/Documents/git/PhenoXtract/integration_tests/tests/assets/irud/phenopackets"
+      create_dir: false
+  meta_data:
+    created_by: "AG"
+    submitted_by: "AG"
+    cohort_name: "irud_test_cohort"
+    hp_resource:
+      id: "HP"
+      version: "2025-09-01"
+    disease_resources:
+      - id: "OMIM"
+        version: "OMIM2024_08_09"
+        secrets:
+          token: $BIOPORTAL_API_KEY
+
+
