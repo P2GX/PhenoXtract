@@ -112,8 +112,8 @@ mod tests {
     }
 
     const YAML_DATA: &[u8] = br#"
-    submitted_by: submitter
-    cohort_name: a_cohort
+    submitted_by: Magnus Knut Hansen
+    cohort_name: arkham 2025
     "#;
 
     #[rstest]

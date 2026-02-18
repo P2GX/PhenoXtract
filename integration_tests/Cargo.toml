@@ -13,7 +13,7 @@ phenoxtract = { path = "../phenoxtract" }
 phenopackets = "0.2.2-post2"
 directories = "6.0.0"
 dotenvy = "0.15.7"
-ontology-registry = "0.3.4"
+ontology-registry = "0.3.7"
 pivot = { git = "https://github.com/psnairne/PIVOT", tag = "v0.1.5" }
 rstest = "0.26.1"
 tempfile = "3.24.0"
