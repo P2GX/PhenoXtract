@@ -18,9 +18,9 @@ data_sources:
         data_context: hgnc_symbol_or_id
         building_block_id: "A"
       # disease 
-      - identifier: "disease"
-        data_context: disease_label_or_id
-        building_block_id: "A"
+      # - identifier: "disease"
+      #   data_context: disease_label_or_id
+      #   building_block_id: "A"
       - identifier: "disease_OMIM_id"
         data_context: disease_label_or_id
         building_block_id: "A"
@@ -33,10 +33,6 @@ data_sources:
         building_block_id: "A"
       - identifier: "HPO"
         data_context: multi_hpo_id
-    extraction_configs:
-      - name: "TestData"
-        has_headers: true
-        patients_are_rows: true
 
 pipeline_config:
   transform_strategies:
