@@ -3,6 +3,7 @@ use crate::ontology::traits::{HasPrefixId, HasVersion};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceConfig {
     pub id: String,
     pub version: Option<String>,
