@@ -140,7 +140,7 @@ blah: "blahblah"
 
     #[rstest]
     fn test_unexpected_field_fail(temp_dir: TempDir) {
-        let file_path = temp_dir.path().join("config.yaml".to_string());
+        let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).unwrap();
         file.write_all(YAML_DATA_EXTRA_FIELD).unwrap();
         let result: Result<DataSourceConfig, ConfigError> = ConfigLoader::load(file_path);
