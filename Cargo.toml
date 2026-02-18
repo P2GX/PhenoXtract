@@ -4,3 +4,6 @@ members = [
     "integration_tests",
 ]
 resolver = "3"
+
+[patch.crates-io]
+native-tls = "=0.2.14"
