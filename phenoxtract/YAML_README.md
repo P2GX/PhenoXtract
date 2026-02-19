@@ -72,9 +72,36 @@ pipeline:
           password: "my_bioportal_password"
 ```
 
-The `config.yaml` has two main sections: `data_sources` and `pipeline`. Below, it will be made clear how both
+## Overview
+
+The `config.yaml` has two main sections: `data_sources` and `pipeline`. 
+
+`data_sources` contains information on the tabular data (which may be CSV or Excel) being extracted. The user must input
+the location of the file, and specify whether the table has headers, and whether rows or columns correspond to patients.
+For each table, the user must specify a list of `series_contexts`. A Series Context is an association between a column
+in the data, and a concept that PhenoXtract can understand. The two most important fields of a Series Context are
+`identifier` and `data_context`. For example, this:
+
+```yaml
+          - identifier: "Year of birth"
+            data_context: date_of_birth
+```
+
+tells PhenoXtract that the data in the column named "Year of birth" corresponds to the concept `DateOfBirth` that is
+understood by PhenoXtract. See [CONTEXTS TODO] below for a list of all contexts understood by PhenoXtract.
+
+`pipeline`
+
+
+Below, it will be made clear how both
 of these are written, what fields they can have, and what format they should take.
 
 ## data_sources
+
+The field `data_sources` is a list of data sources, which can either have `type` "excel" or "csv". `data_sources` can feature both CSV and Excel data sources. For example:
+
+### Excel data source
+
+### CSV data source
 
 ## pipeline
