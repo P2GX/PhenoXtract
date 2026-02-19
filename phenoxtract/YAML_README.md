@@ -72,8 +72,7 @@ pipeline:
     disease_resources:
       - id: "OMIM"
         secrets:
-          user: "my_bioportal_username"
-          password: "my_bioportal_password"
+          token: $BIOPORTAL_API_KEY
 ```
 
 Not all data needs to be extracted; note that the "Name" column in the data is ignored by this config.yaml.
@@ -299,8 +298,7 @@ pipeline:
     disease_resources:
       - id: "OMIM"
         secrets:
-          user: "my_bioportal_username"
-          password: "my_bioportal_password"
+          token: $BIOPORTAL_API_KEY
 ```
 
 ### strategies
@@ -342,10 +340,40 @@ Currently, PhenoXtract supports two kinds of resource.
 
 - Ontologies: any ontology that can be found on OBOLibrary [link] will be downloaded and cached locally when PhenoXtract needs it for the first time. 
 - Non-ontology resources: these must be accessed via an API. Currently, the only two non-ontology resources that are supported are LOINC and OMIM.
+- 
+#### OMIM
+
+If PhenoXtract needs OMIM in order to understand diseases in the data, then in `meta_data`, one should find:
+
+```yaml
+disease_resources:
+  - id: "OMIM"
+    secrets:
+      token: "my_bioportal_api_key"
+```
+
+where "my_bioportal_api_key" should of course be replaced by an actual API key for BioPortal [link to BioPortal]. 
+
+Alternatively, one can write `token: $BIOPORTAL_API_KEY`, and put the API key into a .env file, found in the same
+location as PhenoXtract, with the following info:
+
+```txt
+BIOPORTAL_API_KEY=my_bioportal_api_key
+```
+
+
 
 #### LOINC
 
-If PhenoXtract needs LOINC to run in order to understand an assay, then in `meta_data`, one should find: 
+If PhenoXtract needs LOINC in order to understand an assay, then in `meta_data`, one should find: 
+
+```yaml
+disease_resources:
+  - id: "OMIM"
+    secrets:
+      token: $BIOPORTAL_API_KEY
+```
+
 
 
 
