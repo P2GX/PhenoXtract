@@ -4,7 +4,7 @@ source: "./data/example.csv"
 separator: ","
 has_headers: true
 patients_are_rows: true
-contexts:
+series_contexts:
   - identifier: "patient_id"
     header_context: subject_id
     data_context: hpo
@@ -25,7 +25,7 @@ contexts:
         unit_ontology_id: "UO:0000015"
   - identifier: "procedure_time"
     data_context:
-      time_at_procedure: age
+      time_of_procedure: age
 "#;
 pub(crate) static EXCEL_DATASOURCE_CONFIG_FILE: &[u8] = br#"
 type: "excel"
@@ -34,7 +34,7 @@ sheets:
   - sheet_name: "Sheet1"
     has_headers: true
     patients_are_rows: true
-    contexts:
+    series_contexts:
       - identifier: "lab_result_.*"
         header_context: subject_id
         data_context: hpo
@@ -48,7 +48,7 @@ sheets:
   - sheet_name: "Sheet2"
     has_headers: true
     patients_are_rows: true
-    contexts:
+    series_contexts:
       - identifier:
           - "Col_1"
           - "Col_2"
@@ -135,7 +135,7 @@ pub(crate) fn get_full_config_bytes() -> Vec<u8> {
     full_config.push_str(&list_item_with_indent(excel_data_source.trim(), 2));
     full_config.push('\n');
 
-    full_config.push_str("pipeline_config:\n");
+    full_config.push_str("pipeline:\n");
     full_config.push_str(&indent(pipeline.trim(), 2));
 
     full_config.into_bytes()

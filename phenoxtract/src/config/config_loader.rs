@@ -75,7 +75,7 @@ data_sources:
     has_headers: true
     patients_are_rows: true
 
-pipeline_config:
+pipeline:
   strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
