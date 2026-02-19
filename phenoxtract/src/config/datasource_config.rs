@@ -7,12 +7,14 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum DataSourceConfig {
     Csv(CsvConfig),
     Excel(ExcelWorkbookConfig),
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct CsvConfig {
     pub source: PathBuf,
     #[serde(default)]
@@ -24,6 +26,7 @@ pub struct CsvConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelWorkbookConfig {
     pub source: PathBuf,
     #[serde(default)]
@@ -31,6 +34,7 @@ pub struct ExcelWorkbookConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelSheetConfig {
     pub sheet_name: String,
     #[serde(default)]
@@ -40,6 +44,7 @@ pub struct ExcelSheetConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SeriesContextConfig {
     pub identifier: Identifier,
     #[serde(default)]
@@ -142,12 +147,14 @@ impl SeriesContextConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct AliasMapConfig {
     pub mappings: MappingsConfig,
     pub output_data_type: OutputDataType,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum MappingsConfig {
     Csv(MappingsCsvConfig),
@@ -155,6 +162,7 @@ pub enum MappingsConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MappingsCsvConfig {
     pub path: PathBuf,
     pub key_column_name: String,

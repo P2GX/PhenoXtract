@@ -10,6 +10,7 @@ use std::path::PathBuf;
 /// This struct holds the necessary information to define how data
 /// should be loaded and transformed.
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct PipelineConfig {
     /// Metadata the pipeline needs to configure itself. Like Ontology versions or resources.
     pub meta_data: MetaData,

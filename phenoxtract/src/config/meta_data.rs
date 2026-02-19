@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MetaData {
     pub cohort_name: String,
     #[serde(default = "default_creator")]
@@ -105,18 +106,15 @@ mod tests {
         assert_eq!(metadata.unit_resources, vec![]);
     }
 
-    const YAML_DATA: &[u8] = br#"
-    submitted_by: Magnus Knut Hansen
-    cohort_name: arkham 2025
-    hp_ref:
-      version: "2025-09-01"
-      prefix_id: "HP"
-    "#;
-
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
+
+    const YAML_DATA: &[u8] = br#"
+    submitted_by: submitter
+    cohort_name: a_cohort
+    "#;
 
     #[rstest]
     fn test_meta_data_default_from_config(temp_dir: TempDir) {
@@ -132,11 +130,8 @@ mod tests {
 
         let creator = default_meta_data.created_by;
         assert!(creator.contains("phenoxtract"));
-        assert_eq!(
-            default_meta_data.submitted_by,
-            "Magnus Knut Hansen".to_string()
-        );
-        assert_eq!(default_meta_data.cohort_name, "arkham 2025");
+        assert_eq!(default_meta_data.submitted_by, "submitter".to_string());
+        assert_eq!(default_meta_data.cohort_name, "a_cohort");
         assert_eq!(default_meta_data.hpo_resource, None);
         assert_eq!(default_meta_data.disease_resources, vec![]);
         assert_eq!(default_meta_data.unit_resources, vec![]);
