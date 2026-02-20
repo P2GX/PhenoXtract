@@ -3,26 +3,28 @@
 In this README it will be explained how to write a `config.yaml` file for PhenoXtract.
 
 <!-- TOC -->
+
 * [Writing a PhenoXtract config.yaml file](#writing-a-phenoxtract-configyaml-file)
-  * [Example config.yaml](#example-configyaml)
-  * [Overview](#overview)
-  * [data_sources](#data_sources)
-    * [Excel data source](#excel-data-source)
-    * [CSV data source](#csv-data-source)
-    * [has_headers](#has_headers)
-    * [patients_are_rows](#patients_are_rows)
-    * [series_contexts](#series_contexts)
-      * [identifier](#identifier)
-      * [data_context](#data_context)
-      * [header_context](#header_context)
-      * [alias_map](#alias_map)
-      * [building_block_id](#building_block_id)
-  * [pipeline](#pipeline)
-    * [strategies](#strategies)
-    * [loader](#loader)
-    * [meta_data](#meta_data)
-      * [OMIM](#omim)
-      * [LOINC](#loinc)
+    * [Example config.yaml](#example-configyaml)
+    * [Overview](#overview)
+    * [data_sources](#data_sources)
+        * [Excel data source](#excel-data-source)
+        * [CSV data source](#csv-data-source)
+        * [has_headers](#has_headers)
+        * [patients_are_rows](#patients_are_rows)
+        * [series_contexts](#series_contexts)
+            * [identifier](#identifier)
+            * [data_context](#data_context)
+            * [header_context](#header_context)
+            * [alias_map](#alias_map)
+            * [building_block_id](#building_block_id)
+    * [pipeline](#pipeline)
+        * [strategies](#strategies)
+        * [loader](#loader)
+        * [meta_data](#meta_data)
+            * [OMIM](#omim)
+            * [LOINC](#loinc)
+
 <!-- TOC -->
 
 ## Example config.yaml
@@ -229,7 +231,12 @@ associated with all columns whose headers are HPO IDs of the form "HP:1234567".
 
 #### data_context
 
-This is the context for what is in the cells of the column. Default is None.
+This is the context for what is in the cells of the column. Default is None. The value must be one of the contexts
+described here: [Contexts](README_NEW.md#contexts). Some of the contexts have parameters. For example, if the cells of a
+column contain numerical measurement values, then the context of the column will be QuantitativeMeasurement with
+parameters specifying the assay and the unit of the measurements.
+See [Specifying a data_context or header_context in the config](#specifying-a-data_context-or-header_context-in-the-config)
+for information on how to write one of these contexts with parameters.
 
 #### header_context
 
@@ -304,6 +311,10 @@ The `building_block_id` is a String which can associate certain columns together
 
 In order for the "Phenotypes" Series Context to be associated with the "Phenotype onset age" Series Context, these
 Series Contexts must have the same `building_block_id`, in this case, "P".
+
+### Specifying a data_context or header_context in the config
+
+(TODO)
 
 ## pipeline
 
