@@ -3,7 +3,7 @@
 **PhenoXtract** is a configurable **ETL (Extract-Transform-Load) pipeline and crate** written in Rust for converting
 tabular data sources (e.g. CSV or Excel)
 into [Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/). The config can be written in  **YAML,
-TOML, or JSON** formats. For an explanation of how to write a config.yaml, see here: [YAML_README](YAML_README.md).
+TOML, or JSON** formats. For an explanation of how to write a config.yaml, see here: [YAML_README](CONFIG_YAML_README.md).
 
 <!-- TOC -->
 * [PhenoXtract](#phenoxtract)
@@ -26,7 +26,7 @@ TOML, or JSON** formats. For an explanation of how to write a config.yaml, see h
 PhenoXtract begins by extracting the data sources into a [Polars](https://docs.rs/polars/latest/polars/) Dataframes. In
 the config file, the user will have specified which Phenopacket elements each column of the data corresponds to. This is
 done by providing a "Series Context" for each column. See [Contexts](#contexts)
-and [series_contexts](YAML_README.md#series_contexts) for more information on Series Contexts.
+and [series_contexts](CONFIG_YAML_README.md#series_contexts) for more information on Series Contexts.
 
 Once the data has been extracted, "Strategies" are applied, which transform the data into a format that the user can
 understand. See here for a list of all current strategies: [Strategies](README.md#strategies). The user can decide
@@ -51,7 +51,7 @@ PhenoXtract. How each column should look will be explained in the sections:
 
 ## Running PhenoXtract in Rust
 
-Once a config file has been written (see [YAML_README](YAML_README.md) for information on how to write a config.yaml),
+Once a config file has been written (see [YAML_README](CONFIG_YAML_README.md) for information on how to write a config.yaml),
 PhenoXtract can be run as follows:
 
 ```rust
@@ -96,7 +96,7 @@ fn test_i_data() {
 In order for PhenoXtract to understand what is inside a column, the user must specify a "Series Context" for that
 column. For each Series Context, the user can specify a `header_context`, which describes what is in the header of the
 column, and a `data_context` which describes what is in the cells of the column. How one configures a Series Context for
-a column (or multiple) is described in [YAML_README](YAML_README.md).
+a column (or multiple) is described in [YAML_README](CONFIG_YAML_README.md).
 
 Here is the list of possible values that `header_context` or `data_context` can take:
 
