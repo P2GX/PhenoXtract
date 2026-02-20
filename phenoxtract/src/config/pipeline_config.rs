@@ -16,7 +16,7 @@ pub struct PipelineConfig {
     pub meta_data: MetaData,
     /// A list of strategies to transform the data. Each string identifies
     /// a specific transformation to be applied in order.
-    pub transform_strategies: Vec<StrategyConfig>,
+    pub strategies: Vec<StrategyConfig>,
     /// The loader responsible for fetching the initial data.
     pub loader: LoaderConfig,
     #[serde(default = "config_cache_dir")]
@@ -26,7 +26,7 @@ pub struct PipelineConfig {
 impl PipelineConfig {
     pub fn new(
         meta_data: MetaData,
-        transform_strategies: Vec<StrategyConfig>,
+        strategies: Vec<StrategyConfig>,
         loader: LoaderConfig,
         cache_dir: Option<PathBuf>,
     ) -> Self {
@@ -36,7 +36,7 @@ impl PipelineConfig {
         };
         Self {
             meta_data,
-            transform_strategies,
+            strategies,
             loader,
             cache_dir,
         }

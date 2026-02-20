@@ -1,230 +1,177 @@
 # PhenoXtract
 
 **PhenoXtract** is a configurable **ETL (Extract-Transform-Load) pipeline and crate** written in Rust for converting
-structured tabular data sources (CSV, Excel, and potentially others) into *
-*[Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/)**.
+tabular data sources (e.g. CSV or Excel)
+into [Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/). The config can be written in  **YAML,
+TOML, or JSON** formats. For an explanation of how to write a config.yaml, see here: [YAML_README](CONFIG_YAML_README.md).
 
-It provides a flexible, configuration-driven approach to map clinical cohort data into standardized, ontology-aware *
-*Phenopacket JSON objects**, ready for downstream analysis, sharing, or storage. Configuration can be supplied in *
-*YAML, TOML, or JSON** formats.
+<!-- TOC -->
+* [PhenoXtract](#phenoxtract)
+  * [How PhenoXtract works](#how-phenoxtract-works)
+  * [What format does PhenoXtract expect data to be in?](#what-format-does-phenoxtract-expect-data-to-be-in)
+  * [Running PhenoXtract in Rust](#running-phenoxtract-in-rust)
+  * [Extracting Individual Data](#extracting-individual-data)
+  * [Extracting Phenotypes](#extracting-phenotypes)
+  * [Extracting Diseases](#extracting-diseases)
+  * [Extracting Interpretations](#extracting-interpretations)
+  * [Extracting Measurements](#extracting-measurements)
+  * [Extracting Medical Actions](#extracting-medical-actions)
+  * [Contexts](#contexts)
+  * [Strategies](#strategies)
+  * [Authors](#authors)
+<!-- TOC -->
 
----
+## How PhenoXtract works
 
-## Features
+PhenoXtract begins by extracting the data sources into a [Polars](https://docs.rs/polars/latest/polars/) Dataframes. In
+the config file, the user will have specified which Phenopacket elements each column of the data corresponds to. This is
+done by providing a "Series Context" for each column. See [Contexts](#contexts)
+and [series_contexts](CONFIG_YAML_README.md#series_contexts) for more information on Series Contexts.
 
-- **Extract**
-    - Supports CSV and Excel (`.xlsx`) files as input.
-    - Handles flexible orientations: **patients as rows or patients as columns** (automatic transposition).
-    - Automatic casting of column types:
-        - `bool` (`true`/`false`)
-        - `int`
-        - `float`
-        - `date` (`YYYY-MM-DD`, `DD-MM-YYYY`, `MM/DD/YYYY`, etc.)
-        - `datetime` (ISO8601, RFC 822, RFC3339)
-    - Regex and multi-column matching for identifiers.
-    - Default or generated headers when missing.
+Once the data has been extracted, "Strategies" are applied, which transform the data into a format that the user can
+understand. See here for a list of all current strategies: [Strategies](README.md#strategies). The user can decide
+which strategies should be applied in the config file.
 
-- **Transform**
-    - Context-driven table interpretation (`TableContext`, `SeriesContext`).
-    - Maps raw values into Phenopacket semantic fields:
-        - Subject info (ID, sex, age, living status, weight, smoker, etc.)
-        - Phenotypes (`hpo_id`, `hpo_label`, `observation_status`, onset)
-    - Transformation strategies such as alias mapping, where cell values are mapped to other aliases (e.g.
-      `"M" -> "Male"`, `"smoker" -> true`, `"neoplasma" -> 4`), and strategies to find HPO synonyms of cell values.
-    - Integrated with the Human Phenotype Ontology (HPO) via the **OBO Library** and **BioRegistry APIs** (legacy GitHub
-      registry deprecated).
-    - Additional transformation strategies:
-        - Multi-column HPO term expansion
-        - Ontology normalization
-        - Variant syntax parsing and phenopacket linting for schema validation
+After strategies have been applied, the "Collection" stage of the program begins. PhenoXtract creates Phenopackets for
+each patient in the data, and then goes through the data cell-by-cell and inserts the data into the correct Phenopacket.
 
-- **Load**
-    - Output Phenopackets (v2.0 JSON) to the filesystem (more loaders can be added later).
-    - Output directory is configurable via the loader settings (defaults to the working directory unless otherwise
-      specified).
+Finally, the Phenopackets are loaded to .json files in a directory of the user's choice.
 
-- **Configurable**
-    - Single `PhenoXtractConfig` file (YAML/TOML/JSON/RON) defines:
-        - Data sources (CSV/Excel).
-        - Table contexts (how to interpret columns/rows).
-        - Pipeline behavior (transformation strategies, loader).
-        - Meta-data for the resulting phenopackets (`created_by`, `submitted_by`, `cohort_name`).
-        - `created_by` is optional and defaults to `"phenoxtract-{crate_version}"`.
+## What format does PhenoXtract expect data to be in?
 
-- **Validation**
-    - Ensures configs are well-formed.
-    - Validates data against expected schema contexts.
-    - Automatic validation of configuration and data schemas before execution.
-    - Includes consistency checks for table context, multi-series validation, and phenopacket conformance verification.
+Before the Collection stage of the program, the data must be in a certain format so that it can be understood by
+PhenoXtract. How each column should look will be explained in the sections:
 
----
+* [Extracting Individual Data](#extracting-individual-data)
+* [Extracting Phenotypes](#extracting-phenotypes)
+* [Extracting Diseases](#extracting-diseases)
+* [Extracting Interpretations](#extracting-interpretations)
+* [Extracting Measurements](#extracting-measurements)
+* [Extracting Medical Actions](#extracting-medical-actions)
 
-## Configuration
+## Running PhenoXtract in Rust
 
-The configuration file can be in **YAML, TOML, or JSON** format.
-
-### Example `config.yaml`
-
-```yaml
-data_sources:
-  - type: "csv"
-    source: "./data/cohort.csv"
-    separator: ","
-    extraction_config:
-      name: "patients"
-      has_headers: true
-      patients_are_rows: true
-      context:
-        name: "patient_table"
-        context:
-          - identifier: "patient_id"
-            header_context: subject_id
-            data_context: hpo_label
-            alias_map:
-              "M": "Male"
-              "F": "Female"
-              "smoker": true
-              "neoplasma": 4
-              "height": 1.85
-
-pipeline_config:
-  transform:
-    strategies:
-      - alias_mapping
-      - fill_null
-  loader:
-    type: "file_system"
-
-meta_data:
-  # created_by is optional; defaults to "phenoxtract-{version}" if not provided
-  submitted_by: "Dr. Example"
-  cohort_name: "Example Cohort 2025"
-```
-
-This config defines:
-
-- One CSV data source.
-- Patients as rows, headers included.
-- Maps patient_id column into subject_id and hpo_label.
-- Applies transformation strategies (alias mapping, fill null).
-- Saves output phenopackets to disk using the file_system loader.
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Rust (stable toolchain recommended)
-- Cargo
-
-### Installation
-
-Clone the repo and build:
-
-```bash
-git clone https://github.com/P2GX/phenoxtract.git
-cd phenoxtract
-cargo build --release
-```
-
-### Running
-
-The CLI is now functional -- you can execute the full ETL pipeline directly:
-
-```bash
-cargo run -- --config ./config.yaml
-```
-
-You can also use the crate as a library in Rust for integration or testing purposes:
+Once a config file has been written (see [YAML_README](CONFIG_YAML_README.md) for information on how to write a config.yaml),
+PhenoXtract can be run as follows:
 
 ```rust
-use phenoxtract::config::phenoxtract_config::PhenoXtractConfig;
+use std::path::PathBuf;
+use phenoxtract::phenoxtract::Phenoxtract;
 
-fn main() {
-    let config = PhenoXtractConfig::load("config.yaml".into())
-        .expect("Invalid configuration");
-    if let Some(pipeline_config) = config.pipeline_config() {
-        let pipeline = phenoxtract::pipeline::Pipeline::from_config(&pipeline_config)
-            .expect("Failed to build pipeline");
-        // Run extraction + transform + load
-        // pipeline.run(&mut config.data_sources()).unwrap();
-    }
+fn test_i_data() {
+    let config_path = PathBuf::from(
+        "path/to/config.yaml",
+    );
+    let mut phenoxtract = Phenoxtract::try_from(config_path).unwrap();
+    phenoxtract.run().unwrap();
 }
 ```
 
----
+## Extracting Individual Data
 
-## Testing
+(TODO)
 
-The project includes extensive unit tests using `rstest` and `tempfile`. Tests cover:
+## Extracting Phenotypes
 
-- Loading configs from all supported formats (YAML, TOML, JSON, RON).
-- Default and custom metadata.
-- Extraction from CSV/Excel in both row- and column-oriented layouts.
-- Auto-casting of datatypes.
-- Context and alias mapping validation.
-  Integration tests under `/tests/` verify end-to-end ETL correctness and Phenopacket schema compliance.
- 
-```yaml
-data_sources:
- - type: "csv"
- source: "./data/cohort.csv"
- separator: ","
- extraction_config:
- name: "patients"
- has_headers: true
- patients_are_rows: true
- context:
-  name: "patient_table"
-  context:
-   - identifier: "patient_id"
-  header_context: subject_id
-  data_context: hpo_label
-  alias_map:
-   "M": "Male"
-   "F": "Female"
-```
+(TODO)
 
-pipeline:
- transform_strategies:
-  - "alias_map"
-  - "fill_null"
- loader: "file_system"
+## Extracting Diseases
 
-Run all tests with:
+(TODO)
 
-```bash
-cargo nextest run --workspace --lib --all-targets --all-features
-```
+## Extracting Interpretations
 
----
+(TODO)
 
-## Output
+## Extracting Measurements
 
-- Each patient/row in the input is transformed into a **Phenopacket JSON** object (v2.0 schema).
-- Metadata (`created_by`, `submitted_by`, `cohort_name`) is automatically included.
-- Files are written to the configured output directory (default: working directory unless otherwise specified).
+(TODO)
 
----
+## Extracting Medical Actions
 
-## Roadmap
+(TODO)
 
-- Additional loaders (e.g., database, API).
-- Richer transformation strategies (beyond alias mapping and fill-null).
-- Expanded ontology support (HPO synonyms, MONDO, etc.).
+## Contexts
 
----
+In order for PhenoXtract to understand what is inside a column, the user must specify a "Series Context" for that
+column. For each Series Context, the user can specify a `header_context`, which describes what is in the header of the
+column, and a `data_context` which describes what is in the cells of the column. How one configures a Series Context for
+a column (or multiple) is described in [YAML_README](CONFIG_YAML_README.md).
+
+Here is the list of possible values that `header_context` or `data_context` can take:
+
+**Individual data**
+
+- SubjectId
+- SubjectSex
+- DateOfBirth
+- VitalStatus
+- TimeAtLastEncounter(TimeElementType)
+- TimeOfDeath(TimeElementType)
+- CauseOfDeath
+- SurvivalTimeDays
+
+**Phenotypes and Disease**
+
+- Hpo
+- Disease
+- MultiHpoId
+- Onset(TimeElementType)
+
+**Genetics**
+
+- Hgvs
+- Hgnc
+
+**Measurements**
+
+- QuantitativeMeasurement (assay_id: String, unit_ontology_id: String)
+- QualitativeMeasurement (assay_id: String)
+- TimeOfMeasurement(TimeElementType)
+- ReferenceRange(Boundary)
+
+**Medical Actions**
+
+- TreatmentTarget
+- TreatmentIntent
+- ResponseToTreatment
+- TreatmentTerminationReason
+- ProcedureLabelOrId
+- ProcedureBodySite
+- TimeOfProcedure(TimeElementType)
+
+- ObservationStatus
+- None
+
+In the above, TimeElementType can currently be one of
+
+- Date
+- Age
+
+and Boundary can be one of
+
+- Lower
+- Upper
+
+(TODO: Make clearer what the list above means)
+
+## Strategies
+
+Here is a list of the strategies currently supported by PhenoXtract:
+
+- AgeToIso8601
+- AliasMap
+- DateToAge
+- Mapping
+- MultiHpoColExpansion
+- OntologyNormaliser
+
+(TODO: Documentation for each Strategy)
 
 ## Authors
 
 - Rouven Reuter
 - Patrick Simon Nairne
-- Peter Robinson
+- Adam Graefe
 - Varenya Jain
-
----
-
-## License
-
-MIT - see [LICENSE](https://github.com/P2GX/PhenoXtract/blob/main/LICENSE) for details.
+- Peter Robinson

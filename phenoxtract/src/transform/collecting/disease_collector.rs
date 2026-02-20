@@ -20,7 +20,7 @@ impl Collect for DiseaseCollector {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
@@ -124,7 +124,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("disease")
-                    .with_data_context(Context::DiseaseLabelOrId)
+                    .with_data_context(Context::Disease)
                     .with_building_block_id("disease_1"),
                 vec![disease_col].as_ref(),
             )

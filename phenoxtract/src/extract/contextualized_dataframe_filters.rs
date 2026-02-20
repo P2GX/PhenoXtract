@@ -467,7 +467,7 @@ mod tests {
     #[rstest]
     fn test_filter_by_header_context() {
         let ctx1 = Context::SubjectId;
-        let ctx2 = Context::HpoLabelOrId;
+        let ctx2 = Context::Hpo;
 
         let series = vec![
             SeriesContext::default()
@@ -492,7 +492,7 @@ mod tests {
     #[rstest]
     fn test_filter_by_data_context() {
         let ctx1 = Context::SubjectId;
-        let ctx2 = Context::HpoLabelOrId;
+        let ctx2 = Context::Hpo;
 
         let series = vec![
             SeriesContext::from_identifier("id1").with_data_context(ctx1.clone()),
@@ -512,7 +512,7 @@ mod tests {
     fn test_filter_by_data_context_is_not() {
         let series = vec![
             SeriesContext::default().with_data_context(Context::SubjectId),
-            SeriesContext::default().with_data_context(Context::HpoLabelOrId),
+            SeriesContext::default().with_data_context(Context::Hpo),
             SeriesContext::default()
                 .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
         ];
@@ -533,15 +533,14 @@ mod tests {
     fn test_where_data_contexts_are() {
         let series = vec![
             SeriesContext::from_identifier("id1".to_string()).with_data_context(Context::SubjectId),
-            SeriesContext::from_identifier("id2".to_string())
-                .with_data_context(Context::HpoLabelOrId),
+            SeriesContext::from_identifier("id2".to_string()).with_data_context(Context::Hpo),
             SeriesContext::from_identifier("id3".to_string()).with_data_context(Context::SubjectId),
             SeriesContext::from_identifier("id4".to_string())
                 .with_data_context(Context::VitalStatus.clone()),
         ];
 
         let result = SeriesContextFilter::new(&series)
-            .where_data_contexts_are(&[Context::SubjectId, Context::HpoLabelOrId])
+            .where_data_contexts_are(&[Context::SubjectId, Context::Hpo])
             .collect();
 
         assert_eq!(result.len(), 3);
@@ -549,7 +548,7 @@ mod tests {
             result
                 .iter()
                 .all(|s| s.get_data_context() == &Context::SubjectId
-                    || s.get_data_context() == &Context::HpoLabelOrId)
+                    || s.get_data_context() == &Context::Hpo)
         );
     }
 
@@ -568,10 +567,8 @@ mod tests {
                     unit_ontology_id: "NCIT:9876".to_string(),
                 },
             ),
-            SeriesContext::from_identifier("id3".to_string())
-                .with_header_context(Context::HpoLabelOrId),
-            SeriesContext::from_identifier("id4".to_string())
-                .with_header_context(Context::DiseaseLabelOrId),
+            SeriesContext::from_identifier("id3".to_string()).with_header_context(Context::Hpo),
+            SeriesContext::from_identifier("id4".to_string()).with_header_context(Context::Disease),
         ];
 
         let result = SeriesContextFilter::new(&series)
@@ -602,15 +599,13 @@ mod tests {
                     unit_ontology_id: "NCIT:9876".to_string(),
                 },
             ),
-            SeriesContext::from_identifier("id3".to_string())
-                .with_header_context(Context::HpoLabelOrId),
-            SeriesContext::from_identifier("id4".to_string())
-                .with_header_context(Context::DiseaseLabelOrId),
+            SeriesContext::from_identifier("id3".to_string()).with_header_context(Context::Hpo),
+            SeriesContext::from_identifier("id4".to_string()).with_header_context(Context::Disease),
         ];
 
         let result = SeriesContextFilter::new(&series)
             .where_header_context_kinds_are(&[
-                ContextKind::HpoLabelOrId,
+                ContextKind::Hpo,
                 ContextKind::QuantitativeMeasurement,
             ])
             .collect();
@@ -621,7 +616,7 @@ mod tests {
                 .iter()
                 .all(|s| ContextKind::from(s.get_header_context())
                     == ContextKind::QuantitativeMeasurement
-                    || ContextKind::from(s.get_header_context()) == ContextKind::HpoLabelOrId)
+                    || ContextKind::from(s.get_header_context()) == ContextKind::Hpo)
         );
     }
 
@@ -679,7 +674,7 @@ mod tests {
     #[rstest]
     fn test_filter_multiple_conditions() {
         let id1 = Identifier::Regex("id1".to_string());
-        let ctx1 = Context::HpoLabelOrId;
+        let ctx1 = Context::Hpo;
 
         let series = vec![
             SeriesContext::default()
@@ -739,7 +734,7 @@ mod tests {
     #[rstest]
     fn test_filter_chain_order_independence() {
         let id1 = Identifier::Regex("id1".to_string());
-        let ctx1 = Context::HpoLabelOrId;
+        let ctx1 = Context::Hpo;
 
         let series = vec![
             SeriesContext::default()

@@ -136,7 +136,7 @@ mod tests {
         let mut factory = create_test_factory();
         let config = StrategyConfig::OntologyNormaliser {
             ontology: MONDO_REF.clone(),
-            data_context_kind: ContextKind::DiseaseLabelOrId,
+            data_context_kind: ContextKind::Disease,
         };
 
         let result = factory.try_from_config(&config);

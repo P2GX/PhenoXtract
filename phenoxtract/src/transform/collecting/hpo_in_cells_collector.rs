@@ -20,7 +20,7 @@ impl Collect for HpoInCellsCollector {
             let hpo_terms_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_data_context(Filter::Is(&Context::Hpo))
                 .collect();
 
             for hpo_sc in hpo_terms_in_cells_scs {
@@ -117,7 +117,7 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("phenotypes")
-                    .with_data_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::Hpo)
                     .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
