@@ -120,12 +120,12 @@ in the data, and a concept that PhenoXtract can understand. The two most importa
 ```
 
 tells PhenoXtract that the data in the column named "Year of birth" corresponds to the concept `DateOfBirth` that is
-understood by PhenoXtract. See [Contexts](README_NEW.md#contexts) below for a list of all contexts understood by
+understood by PhenoXtract. See [Contexts](README.md#contexts) below for a list of all contexts understood by
 PhenoXtract.
 
 `pipeline` consists of three fields `strategies`, `loader` and `meta_data`. `strategies` is a list of Strategies,
 which are applied to the data before any Collection occurs (
-see [How PhenoXtract works](README_NEW.md#how-phenoxtract-works)).
+see [How PhenoXtract works](README.md#how-phenoxtract-works)).
 `loader` specifies how the extracted Phenopackets should be outputted; currently the only option is `file_system`. In
 the `meta_data` field, the user can input details about themselves and the cohort (this data will be put into
 the [MetaData](https://phenopacket-schema.readthedocs.io/en/latest/metadata.html)
@@ -232,7 +232,7 @@ associated with all columns whose headers are HPO IDs of the form "HP:1234567".
 #### data_context
 
 This is the context for what is in the cells of the column. Default is None. The value must be one of the contexts
-described here: [Contexts](README_NEW.md#contexts). Some of the contexts have parameters. For example, if the cells of a
+described here: [Contexts](README.md#contexts). Some of the contexts have parameters. For example, if the cells of a
 column contain numerical measurement values, then the context of the column will be QuantitativeMeasurement with
 parameters specifying the assay and the unit of the measurements.
 See [Specifying a data_context or header_context in the config](#specifying-a-data_context-or-header_context-in-the-config)
@@ -349,7 +349,7 @@ PhenoXtract expects the data in a table to have a certain format before it can b
 For example,
 if a column has a Series Context with `data_context: hpo` then the cells of that column must either be HPO IDs, or
 the primary label of that HPO term. The job of Strategies is to convert the data into this desired format. The list of
-strategies can be found here: [Strategies](README_NEW.md#strategies)
+strategies can be found here: [Strategies](README.md#strategies)
 
 ### loader
 
