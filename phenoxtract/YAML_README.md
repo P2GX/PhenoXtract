@@ -3,28 +3,27 @@
 In this README it will be explained how to write a `config.yaml` file for PhenoXtract.
 
 <!-- TOC -->
-
 * [Writing a PhenoXtract config.yaml file](#writing-a-phenoxtract-configyaml-file)
-    * [Example config.yaml](#example-configyaml)
-    * [Overview](#overview)
-    * [data_sources](#data_sources)
-        * [Excel data source](#excel-data-source)
-        * [CSV data source](#csv-data-source)
-        * [has_headers](#has_headers)
-        * [patients_are_rows](#patients_are_rows)
-        * [series_contexts](#series_contexts)
-            * [identifier](#identifier)
-            * [data_context](#data_context)
-            * [header_context](#header_context)
-            * [alias_map](#alias_map)
-            * [building_block_id](#building_block_id)
-    * [pipeline](#pipeline)
-        * [strategies](#strategies)
-        * [loader](#loader)
-        * [meta_data](#meta_data)
-            * [OMIM](#omim)
-            * [LOINC](#loinc)
-
+  * [Example config.yaml](#example-configyaml)
+  * [Overview](#overview)
+  * [data_sources](#data_sources)
+    * [Excel data source](#excel-data-source)
+    * [CSV data source](#csv-data-source)
+    * [has_headers](#has_headers)
+    * [patients_are_rows](#patients_are_rows)
+    * [series_contexts](#series_contexts)
+      * [identifier](#identifier)
+      * [data_context](#data_context)
+      * [header_context](#header_context)
+      * [alias_map](#alias_map)
+      * [building_block_id](#building_block_id)
+    * [Specifying a data_context or header_context in the config](#specifying-a-data_context-or-header_context-in-the-config)
+  * [pipeline](#pipeline)
+    * [strategies](#strategies)
+    * [loader](#loader)
+    * [meta_data](#meta_data)
+      * [OMIM](#omim)
+      * [LOINC](#loinc)
 <!-- TOC -->
 
 ## Example config.yaml

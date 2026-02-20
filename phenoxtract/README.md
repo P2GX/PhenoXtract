@@ -1,14 +1,32 @@
 # PhenoXtract
 
 **PhenoXtract** is a configurable **ETL (Extract-Transform-Load) pipeline and crate** written in Rust for converting
-tabular data sources (CSV, Excel, and potentially others)
+tabular data sources (e.g. CSV or Excel)
 into [Phenopackets v2.0](https://phenopacket-schema.readthedocs.io/en/latest/). The config can be written in  **YAML,
 TOML, or JSON** formats. For an explanation of how to write a config.yaml, see here: [YAML_README](YAML_README.md).
+
+<!-- TOC -->
+* [PhenoXtract](#phenoxtract)
+  * [How PhenoXtract works](#how-phenoxtract-works)
+  * [What format does PhenoXtract expect data to be in?](#what-format-does-phenoxtract-expect-data-to-be-in)
+  * [Running PhenoXtract in Rust](#running-phenoxtract-in-rust)
+  * [Extracting Individual Data](#extracting-individual-data)
+  * [Extracting Phenotypes](#extracting-phenotypes)
+  * [Extracting Diseases](#extracting-diseases)
+  * [Extracting Interpretations](#extracting-interpretations)
+  * [Extracting Measurements](#extracting-measurements)
+  * [Extracting Medical Actions](#extracting-medical-actions)
+  * [Contexts](#contexts)
+  * [Strategies](#strategies)
+  * [Authors](#authors)
+<!-- TOC -->
 
 ## How PhenoXtract works
 
 PhenoXtract begins by extracting the data sources into a [Polars](https://docs.rs/polars/latest/polars/) Dataframes. In
-the config file, the user will have specified which Phenopacket elements each column of the data corresponds to.
+the config file, the user will have specified which Phenopacket elements each column of the data corresponds to. This is
+done by providing a "Series Context" for each column. See [Contexts](#contexts)
+and [series_contexts](YAML_README.md#series_contexts) for more information on Series Contexts.
 
 Once the data has been extracted, "Strategies" are applied, which transform the data into a format that the user can
 understand. See here for a list of all current strategies: [Strategies](README.md#strategies). The user can decide
@@ -31,7 +49,7 @@ PhenoXtract. How each column should look will be explained in the sections:
 * [Extracting Measurements](#extracting-measurements)
 * [Extracting Medical Actions](#extracting-medical-actions)
 
-## Running PhenoXtract:
+## Running PhenoXtract in Rust
 
 Once a config file has been written (see [YAML_README](YAML_README.md) for information on how to write a config.yaml),
 PhenoXtract can be run as follows:
