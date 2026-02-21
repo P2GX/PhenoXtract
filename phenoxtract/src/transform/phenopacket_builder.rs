@@ -713,14 +713,13 @@ impl PhenopacketBuilder {
             warn!("evidence phenotypic feature not implemented yet");
         }
 
+        let mut feature = PhenotypicFeature::default();
         let (hpo_term, hpo_ref) = Self::resolve_term(hpo_bidict_lib, phenotype)?;
+        feature.r#type = Some(hpo_term.clone());
 
         let sev = severity
             .map(|s| Self::resolve_term(hpo_bidict_lib, s).map(|(term, _)| term))
             .transpose()?;
-
-        let mut feature = PhenotypicFeature::default();
-        feature.r#type = Some(hpo_term.clone());
         feature.severity = sev;
 
         if let Some(desc) = description {

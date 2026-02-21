@@ -96,6 +96,9 @@ impl Collect for HpoInCellsCollector {
 }
 
 impl HpoInCellsCollector {
+    pub fn new(upsert: bool) -> Self {
+        Self { upsert }
+    }
     fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -> Option<&str> {
         column_opt?.get(idx)
     }

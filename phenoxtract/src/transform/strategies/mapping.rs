@@ -94,6 +94,10 @@ impl MappingStrategy {
                     Sex::OtherSex.as_str_name().to_string(),
                 ),
                 (
+                    "transgender".to_lowercase(),
+                    Sex::OtherSex.as_str_name().to_string(),
+                ),
+                (
                     "intersex".to_string(),
                     Sex::OtherSex.as_str_name().to_string(),
                 ),
