@@ -89,6 +89,8 @@ pub enum Context {
     ObservationStatus,
     MultiHpoId,
     Onset(TimeElementType),
+    TimeOfResolution(TimeElementType),
+    Severity,
 
     #[default]
     None,
@@ -120,7 +122,10 @@ impl Context {
     pub const TIME_OF_PROCEDURE_VARIANTS: &'static [Context] =
         time_element_variants!(TimeAtProcedure);
     pub const ONSET_VARIANTS: &'static [Context] = time_element_variants!(Onset);
-    pub const TIME_OF_MEASUREMENT_VARIANTS: &'static [Context] = time_element_variants!(Onset);
+    pub const TIME_OF_MEASUREMENT_VARIANTS: &'static [Context] =
+        time_element_variants!(TimeOfMeasurement);
+    pub const TIME_OF_RESOLUTION_VARIANTS: &'static [Context] =
+        time_element_variants!(TimeOfResolution);
 
     pub fn time_element_context_variants(tt: TimeElementType) -> Vec<Context> {
         ContextKind::iter()
@@ -130,6 +135,7 @@ impl Context {
                 ContextKind::TimeAtProcedure => Some(Context::TimeAtProcedure(tt.clone())),
                 ContextKind::Onset => Some(Context::Onset(tt.clone())),
                 ContextKind::TimeOfMeasurement => Some(Context::TimeOfMeasurement(tt.clone())),
+                ContextKind::TimeOfResolution => Some(Context::TimeOfResolution(tt.clone())),
 
                 // Ensures that we see a compile error, when we add another context type
                 ContextKind::SubjectId
@@ -153,6 +159,7 @@ impl Context {
                 | ContextKind::ProcedureBodySite
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
+                | ContextKind::Severity
                 | ContextKind::None => None,
             })
             .collect()

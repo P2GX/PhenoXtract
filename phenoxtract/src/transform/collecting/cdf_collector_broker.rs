@@ -77,7 +77,7 @@ impl CdfCollectorBroker {
             phenopacket_builder,
             vec![
                 Box::new(IndividualCollector),
-                Box::new(HpoInCellsCollector),
+                Box::new(HpoInCellsCollector::default()),
                 Box::new(HpoInHeaderCollector),
                 Box::new(InterpretationCollector),
                 Box::new(DiseaseCollector),

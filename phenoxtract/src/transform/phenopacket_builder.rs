@@ -264,9 +264,6 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         resolution: Option<&str>,
         evidence: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
-        if severity.is_some() {
-            warn!("severity phenotypic feature not implemented yet");
-        }
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
         }
@@ -279,7 +276,14 @@ impl PhenopacketBuilding for PhenopacketBuilder {
 
         let (hpo_term, hpo_ref) = Self::resolve_term(&self.hpo_bidict_lib, phenotype)?;
 
+        let mut sev = None;
+        if let Some(severity) = severity {
+            let (severity, hpo_ref) = Self::resolve_term(&self.hpo_bidict_lib, severity)?;
+            sev = Some(severity);
+        }
+
         let feature = self.get_or_create_phenotypic_feature(patient_id, hpo_term);
+        feature.severity = sev;
 
         if let Some(desc) = description {
             feature.description = desc.to_string();
@@ -297,6 +301,83 @@ impl PhenopacketBuilding for PhenopacketBuilder {
                 }
             })?;
             feature.onset = Some(onset_te);
+        }
+
+        if let Some(resolution) = resolution {
+            let resolution = try_parse_time_element(resolution).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: resolution.to_string(),
+                }
+            })?;
+            feature.resolution = Some(resolution);
+        }
+
+        self.ensure_resource(patient_id, &hpo_ref);
+        Ok(())
+    }
+
+    fn insert_phenotypic_feature(
+        &mut self,
+        patient_id: &str,
+        phenotype: &str,
+        description: Option<&str>,
+        excluded: Option<bool>,
+        severity: Option<&str>,
+        modifiers: Option<Vec<&str>>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        evidence: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        if modifiers.is_some() {
+            warn!("modifiers phenotypic feature not implemented yet");
+        }
+        if resolution.is_some() {
+            warn!("resolution phenotypic feature not implemented yet");
+        }
+        if evidence.is_some() {
+            warn!("evidence phenotypic feature not implemented yet");
+        }
+
+        let mut feature = PhenotypicFeature::default();
+
+        let (hpo_term, hpo_ref) = Self::resolve_term(&self.hpo_bidict_lib, phenotype)?;
+
+        let mut sev = None;
+        if let Some(severity) = severity {
+            let (severity, _) = Self::resolve_term(&self.hpo_bidict_lib, severity)?;
+            sev = Some(severity);
+        }
+
+        feature.r#type = Some(hpo_term);
+        feature.severity = sev;
+
+        if let Some(desc) = description {
+            feature.description = desc.to_string();
+        }
+
+        if let Some(excluded) = excluded {
+            feature.excluded = excluded;
+        }
+
+        if let Some(onset) = onset {
+            let onset_te = try_parse_time_element(onset).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: onset.to_string(),
+                }
+            })?;
+            feature.onset = Some(onset_te);
+        }
+
+        if let Some(resolution) = resolution {
+            let resolution = try_parse_time_element(resolution).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: resolution.to_string(),
+                }
+            })?;
+            feature.resolution = Some(resolution);
         }
 
         self.ensure_resource(patient_id, &hpo_ref);
@@ -676,6 +757,22 @@ impl PhenopacketBuilder {
             let phenopacket = self.get_or_create_phenopacket(patient_id);
             phenopacket.push_resource(resource);
         }
+    }
+
+    fn parse_phenotypic_feature(
+        &mut self,
+        feature: &mut PhenotypicFeature,
+        patient_id: &str,
+        phenotype: &str,
+        description: Option<&str>,
+        excluded: Option<bool>,
+        severity: Option<&str>,
+        modifiers: Option<Vec<&str>>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        evidence: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        Ok(())
     }
 
     fn parse_medical_action(
