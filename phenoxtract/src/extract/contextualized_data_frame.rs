@@ -1,5 +1,6 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::validation::cdf_checks::check_orphaned_columns;
@@ -724,6 +725,41 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         for (sc, cols) in inserts.iter() {
             self = self.insert_sc_alongside_cols(sc.clone(), cols)?;
         }
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn insert_col_with_context(
+        mut self,
+        col: Column,
+        data_context: Context,
+        header_context: Context,
+    ) -> Result<Self, CdfBuilderError> {
+        let col_name = col.name().to_string();
+        let sc = SeriesContext::from_identifier(col_name)
+            .with_data_context(data_context)
+            .with_header_context(header_context);
+
+        self = self.insert_sc_alongside_cols(sc, &[col])?;
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn insert_cols_with_context(
+        mut self,
+        cols: &[Column],
+        data_context: Context,
+        header_context: Context,
+    ) -> Result<Self, CdfBuilderError> {
+        let col_names = cols
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect::<Vec<String>>();
+        let sc = SeriesContext::from_identifier(col_names)
+            .with_data_context(data_context)
+            .with_header_context(header_context);
+
+        self = self.insert_sc_alongside_cols(sc, cols)?;
 
         Ok(self.mark_dirty())
     }
