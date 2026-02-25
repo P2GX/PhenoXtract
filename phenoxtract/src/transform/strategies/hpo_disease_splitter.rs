@@ -137,7 +137,5 @@ mod tests {
         };
 
         strategy.transform(&mut [&mut cdf]).unwrap();
-
-        dbg!(&cdf);
     }
 }

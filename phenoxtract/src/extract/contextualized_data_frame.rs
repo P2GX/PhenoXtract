@@ -309,7 +309,6 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::prelude::*;
-    use regex::Regex;
     use rstest::rstest;
 
     fn sample_df() -> DataFrame {
@@ -630,8 +629,6 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         cols: &[Column],
     ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<&str> = cols.iter().map(|col| col.name().as_str()).collect();
-        dbg!(&col_names);
-        dbg!(sc.get_identifier());
         check_orphaned_columns(col_names, sc.get_identifier())?;
 
         self = self.insert_cols(cols)?;
