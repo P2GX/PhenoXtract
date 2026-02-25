@@ -74,8 +74,8 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                     }
                 }
 
-                let new_hpo_col_name = format!("{hpo_or_disease_col_name}(hpo)");
-                let new_disease_col_name = format!("{hpo_or_disease_col_name}(disease)");
+                let new_hpo_col_name = format!("{hpo_or_disease_col_name}_hpo");
+                let new_disease_col_name = format!("{hpo_or_disease_col_name}_disease");
 
                 let new_hpo_col = Column::new(new_hpo_col_name.into(), new_hpo_col_data);
                 let new_disease_col =
@@ -99,5 +99,45 @@ impl Strategy for HpoDiseaseSplitterStrategy {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::context::Context;
+    use crate::test_suite::cdf_generation::generate_minimal_cdf;
+    use crate::test_suite::ontology_mocking::HPO_DICT;
+    use crate::transform::strategies::hpo_disease_splitter::HpoDiseaseSplitterStrategy;
+    use crate::transform::strategies::traits::Strategy;
+    use polars::prelude::{AnyValue, Column};
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_hpo_disease_splitter() {
+        let mut cdf = generate_minimal_cdf(5, 1);
+        let disease_hpo_col = Column::new(
+            "HpoAndDisease".into(),
+            vec![
+                AnyValue::String("Asthma"),
+                AnyValue::String("Marfan Syndrome"),
+                AnyValue::Null,
+                AnyValue::String("HP:0001166"),
+                AnyValue::String("Random disease"),
+            ],
+        );
+
+        cdf.builder()
+            .insert_col_with_context(disease_hpo_col, Context::HpoOrDisease, Context::None)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        let strategy = HpoDiseaseSplitterStrategy {
+            hpo_dict: HPO_DICT.clone(),
+        };
+
+        strategy.transform(&mut [&mut cdf]).unwrap();
+
+        dbg!(&cdf);
     }
 }

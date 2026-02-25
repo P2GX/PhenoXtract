@@ -8,11 +8,9 @@ use crate::validation::contextualised_dataframe_validation::validate_dangling_sc
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use crate::validation::error::ValidationError;
-use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
-use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
@@ -59,14 +57,6 @@ impl ContextualizedDataFrame {
         self.data
     }
 
-    fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
-        self.data
-            .get_columns()
-            .iter()
-            .filter(|col| regex.is_match(col.name()))
-            .collect::<Vec<&Column>>()
-    }
-
     /// Retrieves columns from the dataset based on the given identifier(s).
     ///
     /// # Parameters
@@ -82,58 +72,26 @@ impl ContextualizedDataFrame {
     ///
     /// # Examples
     /// ```ignore
-    /// let cols = dataset.get_column(&Identifier::Regex("user.*".into()));
-    /// let specific_cols = dataset.get_column(&Identifier::Multi(vec!["id", "name"]));
+    /// let cols = dataset.identify_columns(&Identifier::Regex("user.*".into()));
+    /// let specific_cols = dataset.identify_columns(&Identifier::Multi(vec!["id", "name"]));
     /// ```
-    pub fn get_columns(&self, id: &Identifier) -> Vec<&Column> {
-        match id {
-            Identifier::Regex(pattern) => {
-                let mut found_columns = self
-                    .data
-                    .get_columns()
-                    .iter()
-                    .filter(|col| col.name() == pattern)
-                    .collect::<Vec<&Column>>();
-                if found_columns.is_empty()
-                    && let Ok(regex) = Regex::new(pattern.as_str())
-                {
-                    found_columns = self.regex_match_column(&regex);
-                }
-                debug!(
-                    "Found columns {:?} using regex {}",
-                    found_columns
-                        .iter()
-                        .map(|col| col.name().as_str())
-                        .collect::<Vec<&str>>(),
-                    pattern
-                );
-                if found_columns.is_empty() {
-                    warn!("No columns found for regex {}", pattern);
-                }
-                found_columns
-            }
-            Identifier::Multi(multi) => {
-                let found_columns = self
-                    .data
-                    .get_columns()
-                    .iter()
-                    .filter(|col| multi.contains(&col.name().to_string()))
-                    .collect::<Vec<&Column>>();
+    pub fn identify_columns(&self, id: &Identifier) -> Vec<&Column> {
+        let col_names = self
+            .data
+            .get_columns()
+            .iter()
+            .map(|col| col.name().as_str())
+            .collect();
+        let identified_col_names = id.identify(col_names);
 
-                debug!(
-                    "Found columns {:?} using multi identifiers {:?}",
-                    found_columns
-                        .iter()
-                        .map(|col| col.name().as_str())
-                        .collect::<Vec<&str>>(),
-                    multi
-                );
-                if found_columns.is_empty() {
-                    warn!("No columns found for multi identifiers {:?}", multi);
-                }
-                found_columns
-            }
-        }
+        identified_col_names
+            .iter()
+            .map(|col_name| {
+                self.data
+                    .column(col_name)
+                    .expect("Column was unexpectedly not found in data.")
+            })
+            .collect()
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
@@ -336,7 +294,7 @@ impl ContextualizedDataFrame {
         let mut dangling_scs = vec![];
         for sc in self.series_contexts() {
             let sc_id = sc.get_identifier().clone();
-            if self.get_columns(&sc_id).is_empty() {
+            if self.identify_columns(&sc_id).is_empty() {
                 dangling_scs.push(sc_id);
             }
         }
@@ -391,64 +349,26 @@ mod tests {
     }
 
     #[rstest]
-    fn test_regex_match_column_found() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("^a.*").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "age");
-    }
-
-    #[rstest]
-    fn test_regex_match_column_found_partial_matches() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("a.*").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "age");
-    }
-
-    #[rstest]
-    fn test_regex_match_column_none() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("does_not_exist").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert!(cols.is_empty());
-    }
-
-    #[rstest]
-    fn test_get_column_string_match() {
+    fn test_identify_columns_string_match() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("sex".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name(), "sex");
     }
 
     #[rstest]
-    fn test_get_column_regex_raw() {
+    fn test_identify_columns_regex_raw() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("^[a,s]{1}[a-z.]*".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 3);
         assert_eq!(cols[0].name(), "subject_id");
@@ -457,27 +377,27 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_column_multi() {
+    fn test_identify_columns_multi() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Multi(vec!["subject_id".to_string(), "age".to_string()]);
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["subject_id", "age"]);
     }
 
     #[rstest]
-    fn test_get_column_no_partial_matches() {
+    fn test_identify_columns_no_partial_matches() {
         let df = df!(
         "blah" => &["Alice", "Bob", "Charlie"],
         "blah_blah" => &["Al", "Bobby", "Chaz"],
         )
         .unwrap();
         let table_context = TableContext::new(
-            "test_get_column_no_partial_matches".to_string(),
+            "test_identify_columns_no_partial_matches".to_string(),
             vec![
                 SeriesContext::from_identifier("blah".to_string())
                     .with_data_context(Context::SubjectId),
@@ -486,7 +406,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(table_context, df).unwrap();
 
         let id = Identifier::Regex("blah".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["blah"]);
@@ -710,7 +630,9 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         cols: &[Column],
     ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<&str> = cols.iter().map(|col| col.name().as_str()).collect();
-        check_orphaned_columns(&col_names, sc.get_identifier())?;
+        dbg!(&col_names);
+        dbg!(sc.get_identifier());
+        check_orphaned_columns(col_names, sc.get_identifier())?;
 
         self = self.insert_cols(cols)?;
         self = self.insert_sc(sc)?;

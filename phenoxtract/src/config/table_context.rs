@@ -5,6 +5,7 @@ use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use polars::prelude::{DataType, TimeUnit};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -123,6 +124,37 @@ impl Display for Identifier {
         match self {
             Identifier::Regex(regex) => write!(f, "{}", regex),
             Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+        }
+    }
+}
+
+impl Identifier {
+    pub(crate) fn identify<'a>(&self, col_names: Vec<&'a str>) -> Vec<&'a str> {
+        match self {
+            Identifier::Regex(s) => {
+                let exact_matches = col_names
+                    .iter()
+                    .filter(|col_name| col_name == &s)
+                    .copied()
+                    .collect::<Vec<&str>>();
+
+                if !exact_matches.is_empty() {
+                    exact_matches
+                } else if let Ok(regex) = Regex::new(s.as_str()) {
+                    col_names
+                        .iter()
+                        .filter(|col_name| regex.is_match(col_name))
+                        .copied()
+                        .collect::<Vec<&str>>()
+                } else {
+                    vec![]
+                }
+            }
+            Identifier::Multi(multi_s) => col_names
+                .iter()
+                .filter(|col_name| multi_s.iter().any(|s| s == *col_name))
+                .copied()
+                .collect::<Vec<&str>>(),
         }
     }
 }

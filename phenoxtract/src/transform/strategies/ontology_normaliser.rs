@@ -172,7 +172,7 @@ mod tests {
             ontology_dict: HPO_DICT.clone(),
             data_context_kind: ContextKind::HpoLabelOrId,
         };
-        let _ = get_hpo_labels_strat.transform(&mut [&mut cdf]);
+        get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),

@@ -33,7 +33,7 @@ impl Collect for QualitativeMeasurementCollector {
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
 
                 let qual_measurement_cols =
-                    patient_cdf.get_columns(qual_measurement_sc.get_identifier());
+                    patient_cdf.identify_columns(qual_measurement_sc.get_identifier());
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     qual_measurement_sc.get_building_block_id(),

@@ -2,6 +2,7 @@ use crate::config::strategy_config::StrategyConfig;
 use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
+use crate::transform::strategies::hpo_disease_splitter::HpoDiseaseSplitterStrategy;
 use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
@@ -47,10 +48,10 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             },
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
-                ontology: ontology_prefix,
+                ontology: ontology_ref,
                 data_context_kind,
             } => {
-                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
+                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_ref, None)?;
 
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
@@ -59,6 +60,13 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
             StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
+            StrategyConfig::HpoDiseaseSplitter {
+                hpo_ref: ontology_prefix,
+            } => {
+                let hpo_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
+
+                Ok(Box::new(HpoDiseaseSplitterStrategy::new(hpo_dict)))
+            }
         }
     }
 }
