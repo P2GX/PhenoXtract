@@ -76,13 +76,14 @@ impl ContextualizedDataFrame {
     /// let specific_cols = dataset.identify_columns(&Identifier::Multi(vec!["id", "name"]));
     /// ```
     pub fn identify_columns(&self, id: &Identifier) -> Vec<&Column> {
-        let col_names = self
+        let cols: Vec<&str> = self
             .data
             .get_columns()
             .iter()
             .map(|col| col.name().as_str())
             .collect();
-        let identified_col_names = id.identify(col_names);
+
+        let identified_col_names = id.identify(&cols);
 
         identified_col_names
             .iter()
@@ -629,7 +630,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         cols: &[Column],
     ) -> Result<Self, CdfBuilderError> {
         let col_names: Vec<&str> = cols.iter().map(|col| col.name().as_str()).collect();
-        check_orphaned_columns(col_names, sc.get_identifier())?;
+        check_orphaned_columns(&col_names, sc.get_identifier())?;
 
         self = self.insert_cols(cols)?;
         self = self.insert_sc(sc)?;

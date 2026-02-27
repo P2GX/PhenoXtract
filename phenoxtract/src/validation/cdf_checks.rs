@@ -5,11 +5,11 @@ use crate::validation::error::ValidationError as PxValidationError;
 ///
 /// Returns an error if any columns remain unmatched (orphaned).
 pub(crate) fn check_orphaned_columns(
-    col_names: Vec<&str>,
+    col_names: &[&str],
     sc_identifier: &Identifier,
 ) -> Result<(), PxValidationError> {
-    let matched_cols = sc_identifier.identify(col_names.clone());
-    let orphaned_cols: Vec<&str> = col_names
+    let matched_cols = sc_identifier.identify(col_names);
+    let orphaned_cols: Vec<&&str> = col_names
         .into_iter()
         .filter(|item| !matched_cols.contains(item))
         .collect();
@@ -33,7 +33,7 @@ mod tests {
         let cols = vec!["col_1", "col_2", "col_3"];
         let identifier = Identifier::Regex("col_.*".to_string());
 
-        assert!(check_orphaned_columns(cols, &identifier).is_ok());
+        assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }
 
     #[rstest]
@@ -41,7 +41,7 @@ mod tests {
         let cols = vec!["col_1", "col_2", "other"];
         let identifier = Identifier::Regex("col_.*".to_string());
 
-        let result = check_orphaned_columns(cols, &identifier);
+        let result = check_orphaned_columns(cols.as_slice(), &identifier);
         assert!(result.is_err());
 
         if let Err(PxValidationError::OrphanedColumns { col_names, .. }) = result {
@@ -54,7 +54,7 @@ mod tests {
         let cols = vec!["a", "b", "c"];
         let identifier = Identifier::Multi(vec!["a".into(), "b".into(), "c".into()]);
 
-        assert!(check_orphaned_columns(cols, &identifier).is_ok());
+        assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }
 
     #[rstest]
@@ -62,7 +62,7 @@ mod tests {
         let cols = vec!["a", "b", "d"];
         let identifier = Identifier::Multi(vec!["a".into(), "b".into()]);
 
-        let result = check_orphaned_columns(cols, &identifier);
+        let result = check_orphaned_columns(cols.as_slice(), &identifier);
         assert!(result.is_err());
 
         if let Err(PxValidationError::OrphanedColumns { col_names, .. }) = result {
@@ -75,6 +75,6 @@ mod tests {
         let cols: Vec<&str> = vec![];
         let identifier = Identifier::Regex(".*".to_string());
 
-        assert!(check_orphaned_columns(cols, &identifier).is_ok());
+        assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }
 }
