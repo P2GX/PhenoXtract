@@ -67,16 +67,12 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                     match hpo_or_disease_opt {
                         Some(hpo_or_disease) => {
                             if self.hpo_dict_lib.lookup(hpo_or_disease).is_some() {
-                                println!("Found phenotype: {}", hpo_or_disease);
                                 new_hpo_col_data.push(AnyValue::String(hpo_or_disease));
                                 new_disease_col_data.push(AnyValue::Null);
                             } else if self.disease_dict_lib.lookup(hpo_or_disease).is_some() {
-                                println!("Found disease: {}", hpo_or_disease);
                                 new_hpo_col_data.push(AnyValue::Null);
                                 new_disease_col_data.push(AnyValue::String(hpo_or_disease))
                             } else {
-                                println!("Error habibi");
-
                                 error_info.insert_error(
                                     hpo_or_disease_col.name().to_string(),
                                     table.context().name().to_string(),
