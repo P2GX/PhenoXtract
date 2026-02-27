@@ -129,32 +129,31 @@ impl Display for Identifier {
 }
 
 impl Identifier {
-    pub(crate) fn identify<'a>(&self, col_names: Vec<&'a str>) -> Vec<&'a str> {
+    pub fn identify<'a>(&self, col_names: &[&'a str]) -> Vec<&'a str> {
         match self {
-            Identifier::Regex(s) => {
-                let exact_matches = col_names
-                    .iter()
-                    .filter(|col_name| col_name == &s)
-                    .copied()
-                    .collect::<Vec<&str>>();
+            Identifier::Regex(id) => {
+                let exact_matches: Vec<&str> =
+                    col_names.iter().copied().filter(|col| col == id).collect();
 
                 if !exact_matches.is_empty() {
-                    exact_matches
-                } else if let Ok(regex) = Regex::new(s.as_str()) {
-                    col_names
-                        .iter()
-                        .filter(|col_name| regex.is_match(col_name))
-                        .copied()
-                        .collect::<Vec<&str>>()
-                } else {
-                    vec![]
+                    return exact_matches;
                 }
+
+                Regex::new(id)
+                    .map(|re| {
+                        col_names
+                            .iter()
+                            .copied()
+                            .filter(|col| re.is_match(col))
+                            .collect()
+                    })
+                    .unwrap_or_default()
             }
-            Identifier::Multi(multi_s) => col_names
+            Identifier::Multi(ids) => col_names
                 .iter()
-                .filter(|col_name| multi_s.iter().any(|s| s == *col_name))
                 .copied()
-                .collect::<Vec<&str>>(),
+                .filter(|col| ids.iter().any(|id| id == *col))
+                .collect(),
         }
     }
 }
