@@ -10,7 +10,7 @@ pub(crate) fn check_orphaned_columns(
 ) -> Result<(), PxValidationError> {
     let matched_cols = sc_identifier.identify(col_names);
     let orphaned_cols: Vec<&&str> = col_names
-        .into_iter()
+        .iter()
         .filter(|item| !matched_cols.contains(item))
         .collect();
 
