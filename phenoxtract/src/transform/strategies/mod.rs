@@ -12,6 +12,6 @@ pub use date_to_age::DateToAgeStrategy;
 pub mod multi_hpo_col_expansion;
 pub use multi_hpo_col_expansion::MultiHPOColExpansionStrategy;
 
-mod hpo_disease_splitter;
+pub mod hpo_disease_splitter;
 pub mod strategy_factory;
 pub mod traits;
