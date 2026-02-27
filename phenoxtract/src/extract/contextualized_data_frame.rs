@@ -655,7 +655,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         data_context: Context,
         header_context: Context,
     ) -> Result<Self, CdfBuilderError> {
-        let col_name = col.name().to_string();
+        let col_name = col.name().as_str();
         let sc = SeriesContext::from_identifier(col_name)
             .with_data_context(data_context)
             .with_header_context(header_context);
@@ -673,8 +673,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     ) -> Result<Self, CdfBuilderError> {
         let col_names = cols
             .iter()
-            .map(|col| col.name().to_string())
-            .collect::<Vec<String>>();
+            .map(|col| col.name().as_str())
+            .collect::<Vec<&str>>();
         let sc = SeriesContext::from_identifier(col_names)
             .with_data_context(data_context)
             .with_header_context(header_context);
@@ -1334,5 +1334,79 @@ mod builder_tests {
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_sc_no);
         assert!(cdf.data().column("null").is_err());
+    }
+
+    #[rstest]
+    fn test_insert_col_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let expected_len = cdf.context().context().len() + 1;
+        let expected_width = cdf.data().width() + 1;
+        let new_col = Column::new("test_col".into(), &[10, 11, 12]);
+
+        cdf.builder()
+            .insert_col_with_context(new_col, Context::SubjectId, Context::HpoLabelOrId)
+            .unwrap()
+            .build_dirty();
+
+        assert!(cdf.data().column("test_col").is_ok());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+        assert_eq!(cdf.data().width(), expected_width);
+
+        let sc = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .collect();
+        assert_eq!(sc.len(), 1);
+    }
+
+    #[rstest]
+    fn test_insert_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let n_expected_sc = cdf.context().context().len() + 1;
+        let n_expected_cols = cdf.data().width() + 2;
+        let col_a = Column::new("test_col_a".into(), &[1, 2, 3]);
+        let col_b = Column::new("test_col_b".into(), &[4, 5, 6]);
+
+        cdf.builder()
+            .insert_cols_with_context(
+                &[col_a, col_b],
+                Context::ObservationStatus,
+                Context::HpoLabelOrId,
+            )
+            .unwrap()
+            .build_dirty();
+
+        assert!(cdf.data().column("test_col_a").is_ok());
+        assert!(cdf.data().column("test_col_b").is_ok());
+        assert_eq!(cdf.series_contexts().len(), n_expected_sc);
+        assert_eq!(cdf.data().width(), n_expected_cols);
+
+        let sc = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::ObservationStatus))
+            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .collect();
+        assert_eq!(sc.len(), 3);
+    }
+
+    #[rstest]
+    fn test_insert_col_with_context_data_is_correct() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let new_col = Column::new("score".into(), &[100, 200, 300]);
+
+        cdf.builder()
+            .insert_col_with_context(new_col, Context::SubjectId, Context::None)
+            .unwrap()
+            .build_dirty();
+
+        let col = cdf.data().column("score").unwrap();
+        assert_eq!(col, &Column::new("score".into(), &[100, 200, 300]));
     }
 }
