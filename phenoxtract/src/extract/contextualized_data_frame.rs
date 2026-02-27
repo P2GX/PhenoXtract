@@ -652,8 +652,8 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     pub fn insert_col_with_context(
         mut self,
         col: Column,
-        data_context: Context,
         header_context: Context,
+        data_context: Context,
     ) -> Result<Self, CdfBuilderError> {
         let col_name = col.name().as_str();
         let sc = SeriesContext::from_identifier(col_name)
@@ -668,8 +668,9 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
     pub fn insert_cols_with_context(
         mut self,
         cols: &[Column],
-        data_context: Context,
         header_context: Context,
+
+        data_context: Context,
     ) -> Result<Self, CdfBuilderError> {
         let col_names = cols
             .iter()

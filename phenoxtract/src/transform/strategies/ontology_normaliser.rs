@@ -103,7 +103,6 @@ impl Strategy for OntologyNormaliserStrategy {
             }
         }
 
-        // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
