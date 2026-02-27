@@ -148,23 +148,21 @@ mod tests {
             "",
         ];
 
-        let values: Vec<AnyValue> = phenotypes
-            .iter()
-            .map(|&s| {
-                if s.is_empty() {
-                    AnyValue::Null
-                } else {
-                    AnyValue::String(s)
-                }
-            })
-            .chain(diseases.iter().map(|&s| {
-                if s.is_empty() {
-                    AnyValue::Null
-                } else {
-                    AnyValue::String(s)
-                }
-            }))
-            .collect();
+        fn to_anyvalues<'a>(items: &[&'a str]) -> Vec<AnyValue<'a>> {
+            items
+                .iter()
+                .map(|&s| {
+                    if s.is_empty() {
+                        AnyValue::Null
+                    } else {
+                        AnyValue::String(s)
+                    }
+                })
+                .collect()
+        }
+
+        let mut values = to_anyvalues(&phenotypes);
+        values.extend(to_anyvalues(&diseases));
 
         let disease_hpo_col = Column::new("HpoAndDisease".into(), values);
 
@@ -198,42 +196,28 @@ mod tests {
             ])
         );
 
-        let hpo_col = cdf
-            .filter_columns()
-            .where_data_context(Filter::Is(&Context::HpoLabelOrId))
-            .collect()
-            .first()
-            .cloned()
-            .unwrap()
-            .clone();
+        let assert_column_contains = |context: Context, expected_items: &[&str]| {
+            let col = cdf
+                .filter_columns()
+                .where_data_context(Filter::Is(&context))
+                .collect()
+                .first()
+                .cloned()
+                .unwrap()
+                .clone();
 
-        let values = hpo_col
-            .str()
-            .unwrap()
-            .into_no_null_iter()
-            .collect::<Vec<&str>>();
+            let col_values = col
+                .str()
+                .unwrap()
+                .into_no_null_iter()
+                .collect::<Vec<&str>>();
 
-        for v in values {
-            assert!(phenotypes.contains(&v));
-        }
+            for v in col_values {
+                assert!(expected_items.contains(&v));
+            }
+        };
 
-        let disease_col = cdf
-            .filter_columns()
-            .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
-            .collect()
-            .first()
-            .cloned()
-            .unwrap()
-            .clone();
-
-        let values = disease_col
-            .str()
-            .unwrap()
-            .into_no_null_iter()
-            .collect::<Vec<&str>>();
-
-        for v in values {
-            assert!(diseases.contains(&v));
-        }
+        assert_column_contains(Context::HpoLabelOrId, &phenotypes);
+        assert_column_contains(Context::DiseaseLabelOrId, &diseases);
     }
 }
