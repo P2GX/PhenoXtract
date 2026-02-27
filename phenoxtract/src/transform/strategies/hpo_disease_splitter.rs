@@ -127,6 +127,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
 #[cfg(test)]
 mod tests {
     use crate::config::context::Context;
+    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT};
     use crate::transform::bidict_library::BiDictLibrary;
@@ -134,21 +135,38 @@ mod tests {
     use crate::transform::strategies::traits::Strategy;
     use polars::prelude::{AnyValue, Column};
     use rstest::rstest;
+    use std::collections::HashSet;
 
     #[rstest]
     fn test_hpo_disease_splitter() {
         let mut cdf = generate_minimal_cdf(2, 3);
-        let disease_hpo_col = Column::new(
-            "HpoAndDisease".into(),
-            vec![
-                AnyValue::String("Abnormality of the nose"),
-                AnyValue::String("Abnormality of head or neck"),
-                AnyValue::Null,
-                AnyValue::String("HP:0000496"),
-                AnyValue::String("heart defects-limb shortening syndrome"),
-                AnyValue::String("MONDO:0000252"),
-            ],
-        );
+
+        let phenotypes = ["Abnormality of head or neck", "HP:0000496", ""];
+        let diseases = [
+            "heart defects-limb shortening syndrome",
+            "MONDO:0000252",
+            "",
+        ];
+
+        let values: Vec<AnyValue> = phenotypes
+            .iter()
+            .map(|&s| {
+                if s.is_empty() {
+                    AnyValue::Null
+                } else {
+                    AnyValue::String(s)
+                }
+            })
+            .chain(diseases.iter().map(|&s| {
+                if s.is_empty() {
+                    AnyValue::Null
+                } else {
+                    AnyValue::String(s)
+                }
+            }))
+            .collect();
+
+        let disease_hpo_col = Column::new("HpoAndDisease".into(), values);
 
         cdf.builder()
             .insert_col_with_context(disease_hpo_col, Context::None, Context::HpoOrDisease)
@@ -163,6 +181,59 @@ mod tests {
 
         strategy.transform(&mut [&mut cdf]).unwrap();
 
-        // TODO: Add asserts
+        assert_eq!(cdf.data().iter().len(), 3);
+        let scs: HashSet<Context> = cdf
+            .context()
+            .context()
+            .iter()
+            .map(|sc| sc.get_data_context().clone())
+            .collect();
+
+        assert_eq!(
+            scs,
+            HashSet::from_iter([
+                Context::HpoLabelOrId,
+                Context::DiseaseLabelOrId,
+                Context::SubjectId
+            ])
+        );
+
+        let hpo_col = cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::HpoLabelOrId))
+            .collect()
+            .first()
+            .cloned()
+            .unwrap()
+            .clone();
+
+        let values = hpo_col
+            .str()
+            .unwrap()
+            .into_no_null_iter()
+            .collect::<Vec<&str>>();
+
+        for v in values {
+            assert!(phenotypes.contains(&v));
+        }
+
+        let disease_col = cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+            .collect()
+            .first()
+            .cloned()
+            .unwrap()
+            .clone();
+
+        let values = disease_col
+            .str()
+            .unwrap()
+            .into_no_null_iter()
+            .collect::<Vec<&str>>();
+
+        for v in values {
+            assert!(diseases.contains(&v));
+        }
     }
 }

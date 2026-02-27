@@ -38,11 +38,11 @@ impl TableContext {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn name_mut(&mut self) -> &mut String {
+    pub fn name_mut(&mut self) -> &mut str {
         &mut self.name
     }
 
-    pub fn context(&self) -> &Vec<SeriesContext> {
+    pub fn context(&self) -> &[SeriesContext] {
         &self.context
     }
     pub fn context_mut(&mut self) -> &mut Vec<SeriesContext> {

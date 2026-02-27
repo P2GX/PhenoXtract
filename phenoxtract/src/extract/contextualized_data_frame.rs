@@ -41,11 +41,11 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
-    pub fn series_contexts(&self) -> &Vec<SeriesContext> {
+    pub fn series_contexts(&self) -> &[SeriesContext] {
         self.context.context()
     }
 
-    pub fn series_contexts_mut(&self) -> &Vec<SeriesContext> {
+    pub fn series_contexts_mut(&self) -> &[SeriesContext] {
         self.context.context()
     }
 
