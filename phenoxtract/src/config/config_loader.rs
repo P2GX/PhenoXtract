@@ -44,8 +44,8 @@ impl ConfigLoader {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::config::context::{Context, TimeElementType};
+    use crate::config::datasource_config::IdentifierConfig;
     use crate::config::loader_config::LoaderConfig;
 
     use crate::config::datasource_config::{
@@ -53,17 +53,18 @@ mod tests {
         SeriesContextConfig,
     };
     use crate::config::strategy_config::StrategyConfig;
-    use crate::config::table_context::Identifier;
     use crate::config::table_context::{CellValue, OutputDataType};
-    use crate::config::{DataSourceConfig, PhenoXtractConfig, PipelineConfig};
+    use crate::config::{ConfigLoader, DataSourceConfig, PhenoXtractConfig, PipelineConfig};
     use crate::test_suite::config::get_full_config_bytes;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
+    use config::ConfigError;
     use dotenvy::dotenv;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
     use std::fs::File as StdFile;
     use std::io::Write;
+    use std::path::PathBuf;
     use std::str::FromStr;
     use tempfile::TempDir;
 
@@ -175,7 +176,7 @@ blah: "blahblah"
                     has_headers: true,
                     patients_are_rows: true,
                     contexts: vec![
-                        SeriesContextConfig::new(Identifier::Regex("patient_id".to_string()))
+                        SeriesContextConfig::new(IdentifierConfig::Regex("patient_id".to_string()))
                             .header_context(Context::SubjectId)
                             .data_context(Context::HpoLabelOrId)
                             .fill_missing(CellValue::String(
@@ -211,7 +212,7 @@ blah: "blahblah"
                             has_headers: true,
                             patients_are_rows: true,
                             contexts: vec![SeriesContextConfig {
-                                identifier: Identifier::Regex("lab_result_.*".to_string()),
+                                identifier: IdentifierConfig::Regex("lab_result_.*".to_string()),
                                 header_context: Context::SubjectId,
                                 data_context: Context::HpoLabelOrId,
                                 fill_missing: Some(CellValue::String(
@@ -232,7 +233,7 @@ blah: "blahblah"
                             has_headers: true,
                             patients_are_rows: true,
                             contexts: vec![SeriesContextConfig {
-                                identifier: Identifier::Multi(vec![
+                                identifier: IdentifierConfig::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),

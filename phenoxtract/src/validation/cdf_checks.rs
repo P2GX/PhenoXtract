@@ -31,7 +31,7 @@ mod tests {
     #[rstest]
     fn test_check_orphaned_columns_regex_all_matched() {
         let cols = vec!["col_1", "col_2", "col_3"];
-        let identifier = Identifier::Regex("col_.*".to_string());
+        let identifier = Identifier::from("col_.*");
 
         assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }
@@ -39,7 +39,7 @@ mod tests {
     #[rstest]
     fn test_check_orphaned_columns_regex_some_orphaned() {
         let cols = vec!["col_1", "col_2", "other"];
-        let identifier = Identifier::Regex("col_.*".to_string());
+        let identifier = Identifier::from("col_.*");
 
         let result = check_orphaned_columns(cols.as_slice(), &identifier);
         assert!(result.is_err());
@@ -73,7 +73,7 @@ mod tests {
     #[rstest]
     fn test_check_orphaned_columns_empty() {
         let cols: Vec<&str> = vec![];
-        let identifier = Identifier::Regex(".*".to_string());
+        let identifier = Identifier::from(".*");
 
         assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }

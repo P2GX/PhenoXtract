@@ -1,10 +1,10 @@
 use crate::Pipeline;
 use crate::config::datasource_config::{
-    AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, MappingsConfig,
-    MappingsCsvConfig, SeriesContextConfig,
+    AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, IdentifierConfig,
+    MappingsConfig, MappingsCsvConfig, SeriesContextConfig,
 };
 use crate::config::resource_config_factory::ResourceConfigFactory;
-use crate::config::table_context::{AliasMap, SeriesContext};
+use crate::config::table_context::{AliasMap, Identifier, SeriesContext};
 use crate::config::{
     ConfigLoader, DataSourceConfig, PhenoXtractConfig, PipelineConfig, TableContext,
 };
@@ -25,6 +25,7 @@ use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
 use polars::prelude::{CsvReadOptions, SerReader};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -231,6 +232,23 @@ impl TryFrom<CsvConfig> for CsvDataSource {
     }
 }
 
+impl TryFrom<IdentifierConfig> for Identifier {
+    type Error = ConstructionError;
+
+    fn try_from(value: IdentifierConfig) -> Result<Self, Self::Error> {
+        match value {
+            IdentifierConfig::Regex(regex_str) => {
+                let regex =
+                    Regex::new(&regex_str).map_err(|err| ConstructionError::Identifier {
+                        reason: format!("{}", err),
+                    })?;
+                Ok(Identifier::Regex(regex))
+            }
+            IdentifierConfig::Multi(multi) => Ok(Identifier::Multi(multi)),
+        }
+    }
+}
+
 impl TryFrom<SeriesContextConfig> for SeriesContext {
     type Error = ConstructionError;
 
@@ -242,7 +260,7 @@ impl TryFrom<SeriesContextConfig> for SeriesContext {
         };
 
         Ok(SeriesContext::new(
-            config.identifier,
+            config.identifier.try_into()?,
             config.header_context,
             config.data_context,
             config.fill_missing,
