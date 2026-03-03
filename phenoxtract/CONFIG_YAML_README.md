@@ -3,27 +3,29 @@
 In this README it will be explained how to write a `config.yaml` file for PhenoXtract.
 
 <!-- TOC -->
+
 * [Writing a PhenoXtract config.yaml file](#writing-a-phenoxtract-configyaml-file)
-  * [Example config.yaml](#example-configyaml)
-  * [Overview](#overview)
-  * [data_sources](#data_sources)
-    * [Excel data source](#excel-data-source)
-    * [CSV data source](#csv-data-source)
-    * [has_headers](#has_headers)
-    * [patients_are_rows](#patients_are_rows)
-    * [series_contexts](#series_contexts)
-      * [identifier](#identifier)
-      * [data_context](#data_context)
-      * [header_context](#header_context)
-      * [alias_map](#alias_map)
-      * [building_block_id](#building_block_id)
-    * [Specifying a data_context or header_context in the config](#specifying-a-data_context-or-header_context-in-the-config)
-  * [pipeline](#pipeline)
-    * [strategies](#strategies)
-    * [loader](#loader)
-    * [meta_data](#meta_data)
-      * [OMIM](#omim)
-      * [LOINC](#loinc)
+    * [Example config.yaml](#example-configyaml)
+    * [Overview](#overview)
+    * [data_sources](#data_sources)
+        * [Excel data source](#excel-data-source)
+        * [CSV data source](#csv-data-source)
+        * [has_headers](#has_headers)
+        * [patients_are_rows](#patients_are_rows)
+        * [series_contexts](#series_contexts)
+            * [identifier](#identifier)
+            * [data_context](#data_context)
+            * [header_context](#header_context)
+            * [alias_map](#alias_map)
+            * [building_block_id](#building_block_id)
+        * [Specifying a data_context or header_context in the config](#specifying-a-data_context-or-header_context-in-the-config)
+    * [pipeline](#pipeline)
+        * [strategies](#strategies)
+        * [loader](#loader)
+        * [meta_data](#meta_data)
+            * [OMIM](#omim)
+            * [LOINC](#loinc)
+
 <!-- TOC -->
 
 ## Example config.yaml
@@ -128,8 +130,7 @@ see [How PhenoXtract works](README.md#how-phenoxtract-works)).
 `loader` specifies how the extracted Phenopackets should be outputted; currently the only option is `file_system`. In
 the `meta_data` field, the user can input details about themselves and the cohort (this data will be put into
 the [MetaData](https://phenopacket-schema.readthedocs.io/en/latest/metadata.html)
-section of the Phenopackets), and also which resources they would like to use for processing ontology and database
-classes.
+section of the Phenopackets), and also which resources they would like to use for processing ontologies and databases.
 There are currently five types of resource that can be specified:
 
 - a `hpo_resource`
@@ -222,10 +223,14 @@ Context with multiple columns:
     - "Col_1"
     - "Col_2"
     - "Col_3"
+
+# OR
+
+- identifier: "Col_1"
 ```
 
 If `identifier` is a single String, and there are no matches among the columns of the data, then Phenoxtract will treat
-the string as a Regular Expression. For example: if `identifier` is "^HP:\d{7}$" then the Series Context will be
+the string as a Regex. For example: if `identifier` is "^HP:\d{7}$" then the Series Context will be
 associated with all columns whose headers are HPO IDs of the form "HP:1234567".
 
 #### data_context
@@ -308,8 +313,10 @@ The `building_block_id` is a String which can associate certain columns together
   building_block_id: "D"
 ```
 
-In order for the "Phenotypes" Series Context to be associated with the "Phenotype onset age" Series Context, these
-Series Contexts must have the same `building_block_id`, in this case, "P".
+In order for the "Phenotypes" `SeriesContext` to be associated with the "Phenotype onset age" `SeriesContext`, these
+`SeriesContext` must have the same `building_block_id`, in this case, "P".
+If the BuildingBlock is not configured the onset age will not be collected at all, because PhenoXtract is unable to tell
+where it belongs in the Phenopacket.
 
 ### Specifying a data_context or header_context in the config
 
@@ -385,8 +392,7 @@ Currently, PhenoXtract supports two kinds of resource.
   on [OBOLibrary](http://obofoundry.org)  will be downloaded and cached
   locally when PhenoXtract needs it for the first time.
 - Non-ontology resources: these must be accessed via an API. Currently, the only two non-ontology resources that are
-  supported are LOINC and OMIM.
--
+  supported are LOINC and OMIM (BioPortal).
 
 #### OMIM
 
