@@ -47,10 +47,10 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             },
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
-                ontology: ontology_prefix,
+                ontology: ontology_ref,
                 data_context_kind,
             } => {
-                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
+                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_ref, None)?;
 
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
@@ -59,6 +59,11 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
             StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
+            StrategyConfig::HpoDiseaseSplitter { hpo_ref: _ } => {
+                todo!("will be done on the next PR")
+                //let hpo_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
+                //Ok(Box::new(HpoDiseaseSplitterStrategy::new(hpo_dict)))
+            }
         }
     }
 }

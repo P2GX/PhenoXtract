@@ -28,7 +28,7 @@ impl Collect for HpoInHeaderCollector {
 
             for hpo_sc in hpo_term_in_header_scs {
                 let sc_id = hpo_sc.get_identifier();
-                let hpo_cols = patient_cdf.get_columns(sc_id);
+                let hpo_cols = patient_cdf.identify_columns(sc_id);
 
                 let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),

@@ -106,19 +106,10 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 }
             }
 
-            let contexts_to_drop: Vec<Identifier> = table
-                .filter_series_context()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::MultiHpoId))
-                .collect()
-                .iter()
-                .map(|sc| sc.get_identifier().clone())
-                .collect();
-
             let cdf_builder = table.builder();
             cdf_builder
                 .insert_scs_alongside_cols(inserts.as_slice())?
-                .drop_scs_alongside_cols(contexts_to_drop.as_slice())?
+                .drop_scs_alongside_cols_with_context(&Context::None, &Context::MultiHpoId)?
                 .build()?;
         }
 

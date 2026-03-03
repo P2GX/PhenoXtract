@@ -60,6 +60,7 @@ pub enum Context {
     HpoLabelOrId,
     DiseaseLabelOrId,
     HgncSymbolOrId,
+    HpoOrDisease,
 
     // variants
     Hgvs,
@@ -141,6 +142,7 @@ impl Context {
                 | ContextKind::HpoLabelOrId
                 | ContextKind::DiseaseLabelOrId
                 | ContextKind::HgncSymbolOrId
+                | ContextKind::HpoOrDisease
                 | ContextKind::Hgvs
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement
