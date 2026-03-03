@@ -16,7 +16,5 @@ pub enum StrategyConfig {
     },
     AgeToIso8601,
     DateToAge,
-    HpoDiseaseSplitter {
-        hpo_ref: ResourceRef,
-    },
+    HpoDiseaseSplitter,
 }

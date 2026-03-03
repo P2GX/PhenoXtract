@@ -31,7 +31,7 @@ impl BiDictLibrary {
         self.bidicts.push(bidict);
     }
 
-    pub fn get_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
