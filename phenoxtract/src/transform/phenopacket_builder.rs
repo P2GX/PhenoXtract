@@ -734,14 +734,6 @@ impl PhenopacketBuilder {
         }
     }
 }
-/*
-impl PartialEq for PhenopacketBuilder {
-    fn eq(&self, other: &Self) -> bool {
-        self.subject_to_phenopacket == other.subject_to_phenopacket
-            && self.ctx == other.ctx
-            && self.resource_resolver == other.resource_resolver
-    }
-}*/
 
 #[cfg(test)]
 mod tests {
