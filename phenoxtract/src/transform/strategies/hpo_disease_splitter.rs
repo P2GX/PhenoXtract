@@ -10,6 +10,7 @@ use log::info;
 use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 /// This strategy will find every column whose context is HpoOrDisease
 /// And split it into two separate columns: a Hpo column and a disease column.
@@ -19,13 +20,13 @@ use std::collections::HashSet;
 ///
 #[derive(Debug)]
 pub struct HpoDiseaseSplitterStrategy {
-    hpo_dict_lib: BiDictLibrary,
-    disease_dict_lib: BiDictLibrary,
+    hpo_dict_lib: Arc<BiDictLibrary>,
+    disease_dict_lib: Arc<BiDictLibrary>,
 }
 
 impl HpoDiseaseSplitterStrategy {
     #[allow(unused)]
-    pub fn new(hpo_dict_lib: BiDictLibrary, disease_dict_lib: BiDictLibrary) -> Self {
+    pub fn new(hpo_dict_lib: Arc<BiDictLibrary>, disease_dict_lib: Arc<BiDictLibrary>) -> Self {
         Self {
             hpo_dict_lib,
             disease_dict_lib,
@@ -132,6 +133,7 @@ mod tests {
     use polars::prelude::{AnyValue, Column};
     use rstest::rstest;
     use std::collections::HashSet;
+    use std::sync::Arc;
 
     #[rstest]
     fn test_hpo_disease_splitter() {
@@ -169,8 +171,11 @@ mod tests {
             .unwrap();
 
         let strategy = HpoDiseaseSplitterStrategy {
-            hpo_dict_lib: BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())]),
-            disease_dict_lib: BiDictLibrary::new("disease", vec![Box::new(MONDO_BIDICT.clone())]),
+            hpo_dict_lib: Arc::new(BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())])),
+            disease_dict_lib: Arc::new(BiDictLibrary::new(
+                "disease",
+                vec![Box::new(MONDO_BIDICT.clone())],
+            )),
         };
 
         strategy.transform(&mut [&mut cdf]).unwrap();

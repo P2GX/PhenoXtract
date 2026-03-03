@@ -19,17 +19,18 @@ use phenoxtract::load::FileSystemLoader;
 use phenoxtract::ontology::CachedOntologyFactory;
 use phenoxtract::ontology::loinc_client::LoincClient;
 use phenoxtract::ontology::resource_references::ResourceRef;
-use phenoxtract::transform::bidict_library::BiDictLibrary;
 use phenoxtract::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use phenoxtract::transform::phenopacket_builder::BuilderMetaData;
 use phenoxtract::transform::strategies::traits::Strategy;
 use phenoxtract::transform::strategies::{AgeToIso8601Strategy, MappingStrategy};
 use phenoxtract::transform::strategies::{AliasMapStrategy, MultiHPOColExpansionStrategy};
 use phenoxtract::transform::strategies::{DateToAgeStrategy, OntologyNormaliserStrategy};
+use phenoxtract::transform::transform_context::TransformContext;
 use phenoxtract::transform::{PhenopacketBuilder, TransformerModule};
 use rstest::{fixture, rstest};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tempfile::TempDir;
 
 #[fixture]
@@ -279,19 +280,19 @@ fn test_pipeline_integration(
 
     dotenv().ok();
 
-    let phenopacket_builder = PhenopacketBuilder::new(
+    let mut ctx_builder = TransformContext::builder(
         BuilderMetaData::new(cohort_name, "Integration Test", "Someone"),
-        Box::new(build_hgnc_test_client(temp_dir.path())),
-        Box::new(build_hgvs_test_client(temp_dir.path())),
-        BiDictLibrary::new("HPO", vec![hpo_dict]),
-        BiDictLibrary::new("DISEASE", vec![mondo_dict]),
-        BiDictLibrary::new("UNIT", vec![uo_dict]),
-        BiDictLibrary::new("ASSAY", vec![Box::new(LoincClient::default())]),
-        BiDictLibrary::new("QUAL", vec![pato_dict]),
-        BiDictLibrary::new("PROCEDURE", vec![]),
-        BiDictLibrary::new("ANATOMY", vec![]),
-        BiDictLibrary::new("TREATMENT", vec![]),
+        Arc::new(build_hgnc_test_client(temp_dir.path())),
+        Arc::new(build_hgvs_test_client(temp_dir.path())),
     );
+
+    ctx_builder.add_hpo_bidict(hpo_dict);
+    ctx_builder.add_disease_bidict(mondo_dict);
+    ctx_builder.add_unit_bidict(uo_dict);
+    ctx_builder.add_assay_bidict(Box::new(LoincClient::default()));
+    ctx_builder.add_qualitative_measurement_bidict(pato_dict);
+
+    let phenopacket_builder = PhenopacketBuilder::new(ctx_builder.build());
 
     let transformer_module = TransformerModule::new(
         strategies,
