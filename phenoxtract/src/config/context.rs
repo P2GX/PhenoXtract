@@ -82,7 +82,7 @@ pub enum Context {
     TreatmentIntent,
     ResponseToTreatment,
     TreatmentTerminationReason,
-    ProcedureLabelOrId,
+    Procedure,
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
 
@@ -148,7 +148,7 @@ impl Context {
                 | ContextKind::TreatmentIntent
                 | ContextKind::ResponseToTreatment
                 | ContextKind::TreatmentTerminationReason
-                | ContextKind::ProcedureLabelOrId
+                | ContextKind::Procedure
                 | ContextKind::ProcedureBodySite
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
