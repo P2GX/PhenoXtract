@@ -1347,7 +1347,7 @@ mod builder_tests {
         let new_col = Column::new("test_col".into(), &[10, 11, 12]);
 
         cdf.builder()
-            .insert_col_with_context(new_col, Context::HpoLabelOrId, Context::SubjectId)
+            .insert_col_with_context(new_col, Context::Hpo, Context::SubjectId)
             .unwrap()
             .build_dirty();
 
@@ -1357,7 +1357,7 @@ mod builder_tests {
 
         let sc = cdf
             .filter_series_context()
-            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_header_context(Filter::Is(&Context::Hpo))
             .where_data_context(Filter::Is(&Context::SubjectId))
             .collect();
         assert_eq!(sc.len(), 1);
@@ -1374,11 +1374,7 @@ mod builder_tests {
         let col_b = Column::new("test_col_b".into(), &[4, 5, 6]);
 
         cdf.builder()
-            .insert_cols_with_context(
-                &[col_a, col_b],
-                Context::HpoLabelOrId,
-                Context::ObservationStatus,
-            )
+            .insert_cols_with_context(&[col_a, col_b], Context::Hpo, Context::ObservationStatus)
             .unwrap()
             .build_dirty();
 
@@ -1390,7 +1386,7 @@ mod builder_tests {
         let sc = cdf
             .filter_series_context()
             .where_data_context(Filter::Is(&Context::ObservationStatus))
-            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_header_context(Filter::Is(&Context::Hpo))
             .collect();
         assert_eq!(sc.len(), 3);
     }
