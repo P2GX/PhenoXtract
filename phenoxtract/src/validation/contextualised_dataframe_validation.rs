@@ -14,7 +14,7 @@ pub(crate) fn validate_one_context_per_column(
 
     let scs = cdf.series_contexts();
     scs.iter().for_each(|sc| {
-        let cols = cdf.get_columns(sc.get_identifier());
+        let cols = cdf.identify_columns(sc.get_identifier());
         for col in cols {
             if !seen_cols.insert(col.name()) {
                 duplicates.push(col.name());

@@ -1,5 +1,6 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::validation::cdf_checks::check_orphaned_columns;
@@ -7,11 +8,9 @@ use crate::validation::contextualised_dataframe_validation::validate_dangling_sc
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use crate::validation::error::ValidationError;
-use log::{debug, warn};
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
-use regex::Regex;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
@@ -42,11 +41,11 @@ impl ContextualizedDataFrame {
         &self.context
     }
 
-    pub fn series_contexts(&self) -> &Vec<SeriesContext> {
+    pub fn series_contexts(&self) -> &[SeriesContext] {
         self.context.context()
     }
 
-    pub fn series_contexts_mut(&self) -> &Vec<SeriesContext> {
+    pub fn series_contexts_mut(&self) -> &[SeriesContext] {
         self.context.context()
     }
 
@@ -56,14 +55,6 @@ impl ContextualizedDataFrame {
 
     pub fn into_data(self) -> DataFrame {
         self.data
-    }
-
-    fn regex_match_column(&self, regex: &Regex) -> Vec<&Column> {
-        self.data
-            .get_columns()
-            .iter()
-            .filter(|col| regex.is_match(col.name()))
-            .collect::<Vec<&Column>>()
     }
 
     /// Retrieves columns from the dataset based on the given identifier(s).
@@ -81,58 +72,27 @@ impl ContextualizedDataFrame {
     ///
     /// # Examples
     /// ```ignore
-    /// let cols = dataset.get_column(&Identifier::Regex("user.*".into()));
-    /// let specific_cols = dataset.get_column(&Identifier::Multi(vec!["id", "name"]));
+    /// let cols = dataset.identify_columns(&Identifier::Regex("user.*".into()));
+    /// let specific_cols = dataset.identify_columns(&Identifier::Multi(vec!["id", "name"]));
     /// ```
-    pub fn get_columns(&self, id: &Identifier) -> Vec<&Column> {
-        match id {
-            Identifier::Regex(pattern) => {
-                let mut found_columns = self
-                    .data
-                    .get_columns()
-                    .iter()
-                    .filter(|col| col.name() == pattern)
-                    .collect::<Vec<&Column>>();
-                if found_columns.is_empty()
-                    && let Ok(regex) = Regex::new(pattern.as_str())
-                {
-                    found_columns = self.regex_match_column(&regex);
-                }
-                debug!(
-                    "Found columns {:?} using regex {}",
-                    found_columns
-                        .iter()
-                        .map(|col| col.name().as_str())
-                        .collect::<Vec<&str>>(),
-                    pattern
-                );
-                if found_columns.is_empty() {
-                    warn!("No columns found for regex {}", pattern);
-                }
-                found_columns
-            }
-            Identifier::Multi(multi) => {
-                let found_columns = self
-                    .data
-                    .get_columns()
-                    .iter()
-                    .filter(|col| multi.contains(&col.name().to_string()))
-                    .collect::<Vec<&Column>>();
+    pub fn identify_columns(&self, id: &Identifier) -> Vec<&Column> {
+        let cols: Vec<&str> = self
+            .data
+            .get_columns()
+            .iter()
+            .map(|col| col.name().as_str())
+            .collect();
 
-                debug!(
-                    "Found columns {:?} using multi identifiers {:?}",
-                    found_columns
-                        .iter()
-                        .map(|col| col.name().as_str())
-                        .collect::<Vec<&str>>(),
-                    multi
-                );
-                if found_columns.is_empty() {
-                    warn!("No columns found for multi identifiers {:?}", multi);
-                }
-                found_columns
-            }
-        }
+        let identified_col_names = id.identify(&cols);
+
+        identified_col_names
+            .iter()
+            .map(|col_name| {
+                self.data
+                    .column(col_name)
+                    .expect("Column was unexpectedly not found in data.")
+            })
+            .collect()
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
@@ -335,7 +295,7 @@ impl ContextualizedDataFrame {
         let mut dangling_scs = vec![];
         for sc in self.series_contexts() {
             let sc_id = sc.get_identifier().clone();
-            if self.get_columns(&sc_id).is_empty() {
+            if self.identify_columns(&sc_id).is_empty() {
                 dangling_scs.push(sc_id);
             }
         }
@@ -350,7 +310,6 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::prelude::*;
-    use regex::Regex;
     use rstest::rstest;
 
     fn sample_df() -> DataFrame {
@@ -376,11 +335,11 @@ mod tests {
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
                 SeriesContext::from_identifier("bronchitis")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
                 SeriesContext::from_identifier("overweight")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
@@ -390,64 +349,26 @@ mod tests {
     }
 
     #[rstest]
-    fn test_regex_match_column_found() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("^a.*").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "age");
-    }
-
-    #[rstest]
-    fn test_regex_match_column_found_partial_matches() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("a.*").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert_eq!(cols.len(), 1);
-        assert_eq!(cols[0].name(), "age");
-    }
-
-    #[rstest]
-    fn test_regex_match_column_none() {
-        let df = sample_df();
-        let ctx = sample_ctx();
-        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
-
-        let regex = Regex::new("does_not_exist").unwrap();
-        let cols = cdf.regex_match_column(&regex);
-
-        assert!(cols.is_empty());
-    }
-
-    #[rstest]
-    fn test_get_column_string_match() {
+    fn test_identify_columns_string_match() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("sex".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name(), "sex");
     }
 
     #[rstest]
-    fn test_get_column_regex_raw() {
+    fn test_identify_columns_regex_raw() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Regex("^[a,s]{1}[a-z.]*".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 3);
         assert_eq!(cols[0].name(), "subject_id");
@@ -456,27 +377,27 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_column_multi() {
+    fn test_identify_columns_multi() {
         let df = sample_df();
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let id = Identifier::Multi(vec!["subject_id".to_string(), "age".to_string()]);
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["subject_id", "age"]);
     }
 
     #[rstest]
-    fn test_get_column_no_partial_matches() {
+    fn test_identify_columns_no_partial_matches() {
         let df = df!(
         "blah" => &["Alice", "Bob", "Charlie"],
         "blah_blah" => &["Al", "Bobby", "Chaz"],
         )
         .unwrap();
         let table_context = TableContext::new(
-            "test_get_column_no_partial_matches".to_string(),
+            "test_identify_columns_no_partial_matches".to_string(),
             vec![
                 SeriesContext::from_identifier("blah".to_string())
                     .with_data_context(Context::SubjectId),
@@ -485,7 +406,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(table_context, df).unwrap();
 
         let id = Identifier::Regex("blah".to_string());
-        let cols = cdf.get_columns(&id);
+        let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
         assert_eq!(col_names, vec!["blah"]);
@@ -557,7 +478,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let extracted_col = cdf
-            .get_single_linked_column(Some("Absent_BB"), &[Context::DiseaseLabelOrId])
+            .get_single_linked_column(Some("Absent_BB"), &[Context::Disease])
             .unwrap();
 
         assert!(extracted_col.is_none());
@@ -724,6 +645,42 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         for (sc, cols) in inserts.iter() {
             self = self.insert_sc_alongside_cols(sc.clone(), cols)?;
         }
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn insert_col_with_context(
+        mut self,
+        col: Column,
+        header_context: Context,
+        data_context: Context,
+    ) -> Result<Self, CdfBuilderError> {
+        let col_name = col.name().as_str();
+        let sc = SeriesContext::from_identifier(col_name)
+            .with_data_context(data_context)
+            .with_header_context(header_context);
+
+        self = self.insert_sc_alongside_cols(sc, &[col])?;
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn insert_cols_with_context(
+        mut self,
+        cols: &[Column],
+        header_context: Context,
+
+        data_context: Context,
+    ) -> Result<Self, CdfBuilderError> {
+        let col_names = cols
+            .iter()
+            .map(|col| col.name().as_str())
+            .collect::<Vec<&str>>();
+        let sc = SeriesContext::from_identifier(col_names)
+            .with_data_context(data_context)
+            .with_header_context(header_context);
+
+        self = self.insert_sc_alongside_cols(sc, cols)?;
 
         Ok(self.mark_dirty())
     }
@@ -943,12 +900,12 @@ mod builder_tests {
                     .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier("bronchitis")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier("overweight")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier("null")
@@ -967,7 +924,7 @@ mod builder_tests {
         let original_context_no = cdf.context().context().len();
 
         cdf.builder()
-            .drop_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
+            .drop_scs_with_context(&Context::Hpo, &Context::ObservationStatus)
             .build_dirty();
 
         assert_eq!(cdf.context().context().len(), original_context_no - 2);
@@ -1205,8 +1162,8 @@ mod builder_tests {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let keys = vec![Context::HpoLabelOrId];
-        let values = vec![Context::DiseaseLabelOrId];
+        let keys = vec![Context::Hpo];
+        let values = vec![Context::Disease];
 
         let header_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1216,7 +1173,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_header_context(Filter::Is(&Context::Hpo))
                 .collect()
                 .len(),
             0
@@ -1224,7 +1181,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_header_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_header_context(Filter::Is(&Context::Disease))
                 .collect()
                 .len(),
             2
@@ -1241,7 +1198,7 @@ mod builder_tests {
             Context::ObservationStatus,
             Context::TimeAtLastEncounter(TimeElementType::Age),
         ];
-        let values = vec![Context::DateOfBirth, Context::DiseaseLabelOrId];
+        let values = vec![Context::DateOfBirth, Context::Disease];
 
         let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1270,7 +1227,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect()
                 .len(),
             2
@@ -1378,5 +1335,75 @@ mod builder_tests {
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_sc_no);
         assert!(cdf.data().column("null").is_err());
+    }
+
+    #[rstest]
+    fn test_insert_col_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let expected_len = cdf.context().context().len() + 1;
+        let expected_width = cdf.data().width() + 1;
+        let new_col = Column::new("test_col".into(), &[10, 11, 12]);
+
+        cdf.builder()
+            .insert_col_with_context(new_col, Context::Hpo, Context::SubjectId)
+            .unwrap()
+            .build_dirty();
+
+        assert!(cdf.data().column("test_col").is_ok());
+        assert_eq!(cdf.series_contexts().len(), expected_len);
+        assert_eq!(cdf.data().width(), expected_width);
+
+        let sc = cdf
+            .filter_series_context()
+            .where_header_context(Filter::Is(&Context::Hpo))
+            .where_data_context(Filter::Is(&Context::SubjectId))
+            .collect();
+        assert_eq!(sc.len(), 1);
+    }
+
+    #[rstest]
+    fn test_insert_cols_with_context() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let n_expected_sc = cdf.context().context().len() + 1;
+        let n_expected_cols = cdf.data().width() + 2;
+        let col_a = Column::new("test_col_a".into(), &[1, 2, 3]);
+        let col_b = Column::new("test_col_b".into(), &[4, 5, 6]);
+
+        cdf.builder()
+            .insert_cols_with_context(&[col_a, col_b], Context::Hpo, Context::ObservationStatus)
+            .unwrap()
+            .build_dirty();
+
+        assert!(cdf.data().column("test_col_a").is_ok());
+        assert!(cdf.data().column("test_col_b").is_ok());
+        assert_eq!(cdf.series_contexts().len(), n_expected_sc);
+        assert_eq!(cdf.data().width(), n_expected_cols);
+
+        let sc = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::ObservationStatus))
+            .where_header_context(Filter::Is(&Context::Hpo))
+            .collect();
+        assert_eq!(sc.len(), 3);
+    }
+
+    #[rstest]
+    fn test_insert_col_with_context_data_is_correct() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+        let new_col = Column::new("score".into(), &[100, 200, 300]);
+
+        cdf.builder()
+            .insert_col_with_context(new_col, Context::SubjectId, Context::None)
+            .unwrap()
+            .build_dirty();
+
+        let col = cdf.data().column("score").unwrap();
+        assert_eq!(col, &Column::new("score".into(), &[100, 200, 300]));
     }
 }
