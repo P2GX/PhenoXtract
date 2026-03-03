@@ -137,7 +137,7 @@ mod tests {
             "phenotypic_features".to_string(),
             "more_phenotypic_features".to_string(),
         ]))
-        .with_data_context(Context::HpoLabelOrId);
+        .with_data_context(Context::Hpo);
         let sc_pid = SeriesContext::from_identifier(Identifier::from("subject_ids"))
             .with_data_context(Context::SubjectId);
         TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
@@ -169,7 +169,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
         get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
 
@@ -208,7 +208,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -280,7 +280,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
         let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 

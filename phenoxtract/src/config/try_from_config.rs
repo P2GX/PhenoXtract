@@ -84,8 +84,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
         let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
 
-        if let Some(hp_resource) = &config.meta_data.hp_resource {
-            let hpo_bidict = resource_factory.build(hp_resource)?;
+        if let Some(hpo_resource) = &config.meta_data.hpo_resource {
+            let hpo_bidict = resource_factory.build(hpo_resource)?;
             hpo_bidict_library.add_bidict(hpo_bidict);
         };
 
@@ -128,7 +128,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
         );
 
         let strategies: Vec<Box<dyn Strategy>> = config
-            .transform_strategies
+            .strategies
             .iter()
             .map(|strat| strategy_factory.try_from_config(strat))
             .collect::<Result<Vec<_>, _>>()?;
@@ -195,7 +195,7 @@ impl TryFrom<ExcelSheetConfig> for TableContext {
 
     fn try_from(config: ExcelSheetConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
@@ -209,7 +209,7 @@ impl TryFrom<CsvConfig> for CsvDataSource {
 
     fn try_from(config: CsvConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
