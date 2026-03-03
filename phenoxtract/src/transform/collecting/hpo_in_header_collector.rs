@@ -22,7 +22,7 @@ impl Collect for HpoInHeaderCollector {
         for patient_cdf in patient_cdfs {
             let hpo_term_in_header_scs = patient_cdf
                 .filter_series_context()
-                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_header_context(Filter::Is(&Context::Hpo))
                 .where_data_context(Filter::Is(&Context::ObservationStatus))
                 .collect();
 
@@ -146,7 +146,7 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("phenotypes")
-                    .with_data_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::Hpo)
                     .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
@@ -193,7 +193,7 @@ mod tests {
             SeriesContext::from_identifier(phenotype_col_name)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("bb1")
-                .with_header_context(Context::HpoLabelOrId),
+                .with_header_context(Context::Hpo),
             SeriesContext::from_identifier(pneumonia_onset_col.name().to_string())
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("bb1"),

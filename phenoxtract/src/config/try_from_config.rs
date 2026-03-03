@@ -84,8 +84,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
             Arc::new(CachedHGVSClient::new_with_defaults()?),
         );
 
-        if let Some(hp_resource) = &config.meta_data.hp_resource {
-            let hpo_bidict = resource_factory.build(hp_resource)?;
+        if let Some(hpo_resource) = &config.meta_data.hpo_resource {
+            let hpo_bidict = resource_factory.build(hpo_resource)?;
             ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
@@ -116,7 +116,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
         let mut strategy_factory =
             StrategyFactory::new(resource_factory.into_ontology_factory(), ctx);
         let strategies: Vec<Box<dyn Strategy>> = config
-            .transform_strategies
+            .strategies
             .iter()
             .map(|strat| strategy_factory.try_from_config(strat))
             .collect::<Result<Vec<_>, _>>()?;
@@ -187,7 +187,7 @@ impl TryFrom<ExcelSheetConfig> for TableContext {
 
     fn try_from(config: ExcelSheetConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
@@ -201,7 +201,7 @@ impl TryFrom<CsvConfig> for CsvDataSource {
 
     fn try_from(config: CsvConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;

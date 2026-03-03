@@ -40,7 +40,7 @@ fn csv_context(no_info_alias: AliasMap) -> TableContext {
         vec![
             SeriesContext::from_identifier("0").with_data_context(Context::SubjectId),
             SeriesContext::from_identifier(vec!["1", "2"])
-                .with_data_context(Context::HpoLabelOrId)
+                .with_data_context(Context::Hpo)
                 .with_alias_map(no_info_alias),
         ],
     )
@@ -53,11 +53,11 @@ fn csv_context_2() -> TableContext {
         vec![
             SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
             SeriesContext::from_identifier("HP:0012373")
-                .with_header_context(Context::HpoLabelOrId)
+                .with_header_context(Context::Hpo)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("A"),
             SeriesContext::from_identifier("Rhinorrhea")
-                .with_header_context(Context::HpoLabelOrId)
+                .with_header_context(Context::Hpo)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("A"),
             SeriesContext::from_identifier("Date of onset")
@@ -90,13 +90,13 @@ fn csv_context_4() -> TableContext {
         vec![
             SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
             SeriesContext::from_identifier("diseases")
-                .with_data_context(Context::DiseaseLabelOrId)
+                .with_data_context(Context::Disease)
                 .with_building_block_id("C"),
             SeriesContext::from_identifier("disease_onset")
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("C"),
             SeriesContext::from_identifier("gene")
-                .with_data_context(Context::HgncSymbolOrId)
+                .with_data_context(Context::Hgnc)
                 .with_building_block_id("C"),
             SeriesContext::from_identifier("hgvs1")
                 .with_data_context(Context::Hgvs)
@@ -161,7 +161,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
             vec![
                 SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
                 SeriesContext::from_identifier("Phenotypic Features")
-                    .with_data_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::Hpo)
                     .with_building_block_id("C"),
                 SeriesContext::from_identifier("Age of onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
@@ -173,7 +173,7 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
             vec![
                 SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
                 SeriesContext::from_identifier(r"Phenotypic Features \d+")
-                    .with_data_context(Context::HpoLabelOrId),
+                    .with_data_context(Context::Hpo),
             ],
         ),
     ]
@@ -264,7 +264,7 @@ fn test_pipeline_integration(
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
             onto_factory.build_bidict(&hp_ref, None).unwrap(),
-            ContextKind::HpoLabelOrId,
+            ContextKind::Hpo,
         )),
         Box::new(OntologyNormaliserStrategy::new(
             onto_factory.build_bidict(&pato_ref, None).unwrap(),

@@ -98,12 +98,8 @@ impl Strategy for HpoDiseaseSplitterStrategy {
 
                 table
                     .builder()
-                    .insert_col_with_context(new_hpo_col, Context::None, Context::HpoLabelOrId)?
-                    .insert_col_with_context(
-                        new_disease_col,
-                        Context::None,
-                        Context::DiseaseLabelOrId,
-                    )?
+                    .insert_col_with_context(new_hpo_col, Context::None, Context::Hpo)?
+                    .insert_col_with_context(new_disease_col, Context::None, Context::Disease)?
                     .build()?;
             }
 
@@ -194,11 +190,7 @@ mod tests {
 
         assert_eq!(
             scs,
-            HashSet::from_iter([
-                Context::HpoLabelOrId,
-                Context::DiseaseLabelOrId,
-                Context::SubjectId
-            ])
+            HashSet::from_iter([Context::Hpo, Context::Disease, Context::SubjectId])
         );
 
         let assert_column_contains = |context: Context, expected_items: &[&str]| {
@@ -222,7 +214,7 @@ mod tests {
             }
         };
 
-        assert_column_contains(Context::HpoLabelOrId, &phenotypes);
-        assert_column_contains(Context::DiseaseLabelOrId, &diseases);
+        assert_column_contains(Context::Hpo, &phenotypes);
+        assert_column_contains(Context::Disease, &diseases);
     }
 }
