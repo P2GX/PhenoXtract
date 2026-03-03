@@ -103,7 +103,6 @@ impl Strategy for OntologyNormaliserStrategy {
             }
         }
 
-        // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
@@ -172,7 +171,7 @@ mod tests {
             ontology_dict: HPO_DICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
-        let _ = get_hpo_labels_strat.transform(&mut [&mut cdf]);
+        get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),

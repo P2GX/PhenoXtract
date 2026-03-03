@@ -25,7 +25,7 @@ impl AliasMapStrategy {
         let mut col_name_alias_map_pairs = vec![];
         for series_context in cdf.series_contexts() {
             if let Some(am) = series_context.get_alias_map() {
-                let cols = cdf.get_columns(series_context.get_identifier());
+                let cols = cdf.identify_columns(series_context.get_identifier());
                 for col in cols {
                     col_name_alias_map_pairs.push((col.name().clone(), am.clone()))
                 }

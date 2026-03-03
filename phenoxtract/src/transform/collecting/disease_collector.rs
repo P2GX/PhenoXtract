@@ -27,7 +27,7 @@ impl Collect for DiseaseCollector {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let disease_cols = patient_cdf.get_columns(sc_id);
+                let disease_cols = patient_cdf.identify_columns(sc_id);
 
                 let stringified_linked_onset_col =
                     patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;

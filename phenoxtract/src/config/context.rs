@@ -61,6 +61,7 @@ pub enum Context {
     Disease,
     MultiHpoId,
     Onset(TimeElementType),
+    HpoOrDisease,
 
     // Genetic Data
     Hgvs,
@@ -140,6 +141,7 @@ impl Context {
                 | ContextKind::Hpo
                 | ContextKind::Disease
                 | ContextKind::Hgnc
+                | ContextKind::HpoOrDisease
                 | ContextKind::Hgvs
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement

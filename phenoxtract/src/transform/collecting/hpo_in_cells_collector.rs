@@ -25,7 +25,7 @@ impl Collect for HpoInCellsCollector {
 
             for hpo_sc in hpo_terms_in_cells_scs {
                 let sc_id = hpo_sc.get_identifier();
-                let hpo_cols = patient_cdf.get_columns(sc_id);
+                let hpo_cols = patient_cdf.identify_columns(sc_id);
 
                 let onset_column = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),

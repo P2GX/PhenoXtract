@@ -352,7 +352,7 @@ impl<'a> ColumnFilter<'a> {
         scs.iter()
             .flat_map(|sc| {
                 self.items
-                    .get_columns(sc.get_identifier())
+                    .identify_columns(sc.get_identifier())
                     .into_iter()
                     .filter(|col| {
                         self.data_type.is_empty()
