@@ -1,9 +1,9 @@
 use crate::config::context::Context;
-use crate::config::table_context::{CellValue, Identifier};
+use crate::config::table_context::CellValue;
 
-pub trait SeriesContextBuilding<AliasMapType>: Sized {
-    fn from_identifier(identifier: impl Into<Identifier>) -> Self;
-    fn with_identifier(self, identifier: impl Into<Identifier>) -> Self;
+pub trait SeriesContextBuilding<ID, AliasMapType>: Sized {
+    fn from_identifier(identifier: impl Into<ID>) -> Self;
+    fn with_identifier(self, identifier: impl Into<ID>) -> Self;
     fn with_header_context(self, header_context: Context) -> Self;
 
     fn with_data_context(self, data_context: Context) -> Self;

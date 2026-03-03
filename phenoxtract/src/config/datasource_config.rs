@@ -1,5 +1,5 @@
 use crate::config::context::Context;
-use crate::config::table_context::{CellValue, Identifier, OutputDataType};
+use crate::config::table_context::{CellValue, OutputDataType};
 use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ pub struct ExcelSheetConfig {
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct SeriesContextConfig {
-    pub identifier: Identifier,
+    pub identifier: IdentifierConfig,
     #[serde(default)]
     pub header_context: Context,
     #[serde(default)]
@@ -59,8 +59,50 @@ pub struct SeriesContextConfig {
     pub building_block_id: Option<String>,
 }
 
-impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
-    fn from_identifier(identifier: impl Into<Identifier>) -> Self {
+impl SeriesContextConfig {
+    pub fn identifier(&self) -> &IdentifierConfig {
+        &self.identifier
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(untagged)]
+pub enum IdentifierConfig {
+    Regex(String),
+    Multi(Vec<String>),
+}
+
+impl From<&str> for IdentifierConfig {
+    fn from(value: &str) -> Self {
+        IdentifierConfig::Regex(value.to_string())
+    }
+}
+impl From<String> for IdentifierConfig {
+    fn from(value: String) -> Self {
+        IdentifierConfig::Regex(value)
+    }
+}
+
+impl From<Vec<String>> for IdentifierConfig {
+    fn from(value: Vec<String>) -> Self {
+        IdentifierConfig::Multi(value)
+    }
+}
+
+impl From<Vec<&str>> for IdentifierConfig {
+    fn from(value: Vec<&str>) -> Self {
+        IdentifierConfig::Multi(value.iter().map(|s| s.to_string()).collect())
+    }
+}
+
+impl From<&[String]> for IdentifierConfig {
+    fn from(value: &[String]) -> Self {
+        IdentifierConfig::Multi(value.to_vec())
+    }
+}
+
+impl SeriesContextBuilding<IdentifierConfig, AliasMapConfig> for SeriesContextConfig {
+    fn from_identifier(identifier: impl Into<IdentifierConfig>) -> Self {
         Self {
             identifier: identifier.into(),
             header_context: Context::default(),
@@ -71,7 +113,7 @@ impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
         }
     }
 
-    fn with_identifier(mut self, identifier: impl Into<Identifier>) -> Self {
+    fn with_identifier(mut self, identifier: impl Into<IdentifierConfig>) -> Self {
         self.identifier = identifier.into();
         self
     }
@@ -108,7 +150,7 @@ impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
 }
 
 impl SeriesContextConfig {
-    pub fn new(identifier: impl Into<Identifier>) -> Self {
+    pub fn new(identifier: impl Into<IdentifierConfig>) -> Self {
         Self {
             identifier: identifier.into(),
             header_context: Context::default(),

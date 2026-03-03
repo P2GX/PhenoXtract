@@ -23,6 +23,8 @@ pub enum ConstructionError {
     NoPipelineConfigFound,
     #[error("Could not load the aliases at {path} as a DataFrame. {err}")]
     LoadingAliases { path: PathBuf, err: PolarsError },
+    #[error("Could not load Identifier because: {reason}")]
+    Identifier { reason: String },
     #[error("Could not find config file at '{0}'")]
     NoConfigFileFound(PathBuf),
     #[error(transparent)]
