@@ -542,7 +542,7 @@ impl PhenopacketBuilder {
         }
     }
     fn generate_phenopacket_id(&self, patient_id: &str) -> String {
-        if patient_id.starts_with(&self.ctx.meta_data().cohort_name()) {
+        if patient_id.starts_with(self.ctx.meta_data().cohort_name()) {
             return patient_id.to_string();
         }
         format!("{}-{}", self.ctx.meta_data().cohort_name(), patient_id)
