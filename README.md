@@ -26,7 +26,7 @@ here: [YAML_README](CONFIG_YAML_README.md).
 
 ## How PhenoXtract works
 
-PhenoXtract begins by extracting the data sources into a [Polars](https://docs.rs/polars/latest/polars/) Dataframes. In
+PhenoXtract begins by extracting the data sources into a [Polars](https://docs.rs/polars/latest/polars/) Dataframe. In
 the config file, the user will have specified which Phenopacket elements each column of the data corresponds to. This is
 done by providing a `SeriesContext` for each column. See [Contexts](#contexts)
 and [series_contexts](CONFIG_YAML_README.md#series_contexts) for more information on Series Contexts.
