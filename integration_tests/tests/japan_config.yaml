@@ -4,25 +4,17 @@ data_sources:
     separator: ","
     has_headers: true
     patients_are_rows: true
-    contexts:
+    series_contexts:
     # Person
       - identifier: "patient_id"
         data_context: subject_id
       - identifier: "sex"
         data_context: subject_sex
-    # disease-gene
-      # - identifier: "gene_symbol"
-      #   data_context: hgnc_symbol_or_id
-      #   building_block_id: "A"
       - identifier: "gene_id"
-        data_context: hgnc_symbol_or_id
+        data_context: hgnc
         building_block_id: "A"
-      # disease 
-      # - identifier: "disease"
-      #   data_context: disease_label_or_id
-      #   building_block_id: "A"
       - identifier: "disease_OMIM_id"
-        data_context: disease_label_or_id
+        data_context: disease
         building_block_id: "A"
     # variant
       - identifier: "HGVS_1"
@@ -31,11 +23,12 @@ data_sources:
       - identifier: "HGVS_2"
         data_context: hgvs
         building_block_id: "A"
+    # phenotype
       - identifier: "HPO"
         data_context: multi_hpo_id
 
-pipeline_config:
-  transform_strategies:
+pipeline:
+  strategies:
     - default_mapping: sex_mapping
     - multi_hpo_col_expansion
 
@@ -47,7 +40,7 @@ pipeline_config:
     created_by: "AG"
     submitted_by: "AG"
     cohort_name: "irud_test_cohort"
-    hp_resource:
+    hpo_resource:
       id: "HP"
       version: "2025-09-01"
     disease_resources:
