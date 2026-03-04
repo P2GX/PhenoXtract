@@ -1,0 +1,125 @@
+{
+  "id": "irud_test_cohort-patient_0005",
+  "subject": {
+    "id": "patient_0005",
+    "sex": "MALE",
+    "karyotypicSex": "UNKNOWN_KARYOTYPE"
+  },
+  "phenotypicFeatures": [
+    {
+      "type": {
+        "id": "HP:0002104",
+        "label": "Apnea"
+      }
+    },
+    {
+      "type": {
+        "id": "HP:0002033",
+        "label": "Poor suck"
+      }
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "irud_test_cohort-patient_0005-OMIM:312750",
+      "progressStatus": "UNKNOWN_PROGRESS",
+      "diagnosis": {
+        "disease": {
+          "id": "OMIM:312750",
+          "label": "RETT SYNDROME"
+        },
+        "genomicInterpretations": [
+          {
+            "subjectOrBiosampleId": "patient_0005",
+            "interpretationStatus": "UNKNOWN_STATUS",
+            "variantInterpretation": {
+              "acmgPathogenicityClassification": "PATHOGENIC",
+              "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
+              "variationDescriptor": {
+                "id": "5bf9d1df-277c-42f3-b593-d4ec596496c4",
+                "geneContext": {
+                  "valueId": "HGNC:6990",
+                  "symbol": "MECP2"
+                },
+                "expressions": [
+                  {
+                    "syntax": "hgvs.c",
+                    "value": "NM_001110792.2:c.844delC"
+                  },
+                  {
+                    "syntax": "hgvs.g",
+                    "value": "NC_000023.11:g.154031021del"
+                  },
+                  {
+                    "syntax": "hgvs.p",
+                    "value": "NP_001104262.1:p.(Arg282GlufsTer19)"
+                  }
+                ],
+                "vcfRecord": {
+                  "genomeAssembly": "hg38",
+                  "chrom": "chrX",
+                  "pos": 154031019,
+                  "ref": "CG",
+                  "alt": "C"
+                },
+                "moleculeContext": "genomic",
+                "allelicState": {
+                  "id": "GENO:0000134",
+                  "label": "hemizygous"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "diseases": [
+    {
+      "term": {
+        "id": "OMIM:312750",
+        "label": "RETT SYNDROME"
+      }
+    }
+  ],
+  "metaData": {
+    "created": "2026-02-18T17:51:57.015984Z",
+    "createdBy": "AG",
+    "submittedBy": "AG",
+    "resources": [
+      {
+        "id": "hp",
+        "name": "Human Phenotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/hp.json",
+        "version": "2025-09-01",
+        "namespacePrefix": "HP",
+        "iriPrefix": "http://purl.obolibrary.org/obo/HP_$1"
+      },
+      {
+        "id": "omim",
+        "name": "Online Mendelian Inheritance in Man",
+        "url": "https://omim.org/",
+        "version": "OMIM2024_08_09",
+        "namespacePrefix": "omim",
+        "iriPrefix": "https://omim.org/MIM:$1"
+      },
+      {
+        "id": "hgnc",
+        "name": "HUGO Gene Nomenclature Committee",
+        "url": "https://w3id.org/biopragmatics/resources/hgnc/2026-01-06/hgnc.ofn",
+        "version": "-",
+        "namespacePrefix": "hgnc",
+        "iriPrefix": "https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/$1"
+      },
+      {
+        "id": "geno",
+        "name": "Genotype Ontology",
+        "url": "http://purl.obolibrary.org/obo/geno.json",
+        "version": "2025-07-25",
+        "namespacePrefix": "GENO",
+        "iriPrefix": "http://purl.obolibrary.org/obo/GENO_$1"
+      }
+    ],
+    "phenopacketSchemaVersion": "2.0"
+  }
+}
