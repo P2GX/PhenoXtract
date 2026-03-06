@@ -25,7 +25,7 @@ impl ConfigLoader {
             // this interprets anything after a $ (within certain rules) as an environment variable
             // and it will look in the environment to find it.
             // Therefore all $ symbols must be escaped with a backslash: \$
-            let config_str_with_env_vars = shellexpand::env(&config_str)
+            let config_str_with_env_vars = shellexpand::full(&config_str)
                 .expect("Shell expansion of config file failed. Environment variables not found?");
 
             let config = Config::builder()
