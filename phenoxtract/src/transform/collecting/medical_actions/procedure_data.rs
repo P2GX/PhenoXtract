@@ -20,15 +20,13 @@ impl ProcedureData {
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
     ) -> Result<Self, CollectorError> {
-        match patient_cdf
-            .get_single_linked_column_as_str(building_block, &[Context::ProcedureLabelOrId])?
-        {
+        match patient_cdf.get_single_linked_column_as_str(building_block, &[Context::Procedure])? {
             None => Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
                 table_name: patient_cdf.context().name().to_string(),
                 bb_id: building_block
                     .unwrap_or("Missing Building Block")
                     .to_string(),
-                contexts: vec![Context::ProcedureLabelOrId],
+                contexts: vec![Context::Procedure],
                 n_found: 0,
                 n_expected: 1,
             }),

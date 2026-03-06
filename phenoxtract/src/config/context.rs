@@ -100,7 +100,6 @@ pub enum Context {
         unit_ontology_id: String,
     },
 
-    ProcedureLabelOrId,
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
 
