@@ -1,6 +1,6 @@
 data_sources:
   - type: "excel"
-    source: "/Users/rouvenreuter/data/usidnet/i_data_edited.xlsx"
+    source: "$HOME/data/usidnet/i_data_edited.xlsx"
     sheets:
       - sheet_name: "Cohort"
         has_headers: true
@@ -34,7 +34,7 @@ data_sources:
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/disease_aliases.csv"
+                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "ALIAS"
               output_data_type: String
@@ -112,7 +112,7 @@ data_sources:
             data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/infections_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/infections_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -128,7 +128,7 @@ data_sources:
             building_block_id: "Gene"
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/hgnc_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/hgnc_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "LABEL"
               output_data_type: String
@@ -137,7 +137,7 @@ data_sources:
             building_block_id: "Gene"
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/disease_aliases.csv"
+                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "ALIAS"
               output_data_type: String
@@ -152,7 +152,7 @@ data_sources:
             data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/conditions_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/conditions_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -166,7 +166,7 @@ pipeline:
 
   loader:
     file_system:
-      output_dir: "/Users/rouvenreuter/data/usidnet/phenopackets"
+      output_dir: "$HOME/data/usidnet/phenopackets"
       create_dir: true
   meta_data:
     created_by: Robinson Lab
