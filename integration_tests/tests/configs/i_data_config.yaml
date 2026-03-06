@@ -46,6 +46,16 @@ data_sources:
               mappings:
                 "less than 1 year": "0"
               output_data_type: Int64
+          #- identifier: "Gene Mutation"
+          #  data_context: hgnc
+          #  building_block_id: "D"
+          #  alias_map:
+          #    mappings:
+          #      path: "/Users/rouvenreuter/data/usidnet/mappings/hgnc_matchings.csv"
+          #      key_column_name: "FREE_TEXT"
+          #      alias_column_name: "LABEL"
+          #    output_data_type: String
+
       - sheet_name: "Vitals"
         has_headers: true
         patients_are_rows: true
@@ -90,6 +100,7 @@ data_sources:
                 assay_id: "LOINC:9843-4"
                 unit_ontology_id: "UO:0000015"
             building_block_id: "M"
+
       - sheet_name: "Infections"
         has_headers: true
         patients_are_rows: true
@@ -104,6 +115,32 @@ data_sources:
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
+
+      - sheet_name: "Molecular Info"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Gene Mutation"
+            data_context: hgnc
+            building_block_id: "Gene"
+            alias_map:
+              mappings:
+                path: "/Users/rouvenreuter/data/usidnet/mappings/hgnc_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "LABEL"
+              output_data_type: String
+          - identifier: "Diagnosis"
+            data_context: disease
+            building_block_id: "Gene"
+            alias_map:
+              mappings:
+                path: "/Users/rouvenreuter/data/usidnet/mappings/disease_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "ALIAS"
+              output_data_type: String
+
       - sheet_name: "Condition"
         has_headers: true
         patients_are_rows: true
@@ -131,8 +168,8 @@ pipeline:
       output_dir: "/Users/rouvenreuter/data/usidnet/phenopackets"
       create_dir: true
   meta_data:
-    created_by: Patrick Nairne
-    submitted_by: Patrick Nairne
+    created_by: Robinson Lab
+    submitted_by: Robinson Lab
     cohort_name: "I_COHORT"
     hpo_resource:
       id: "HP"
