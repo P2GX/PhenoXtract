@@ -261,7 +261,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         evidence: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let (feature, _, hpo_ref) = Self::parse_phenotypic_feature(
-            &self.hpo_bidict_lib,
+            self.ctx.hpo_bidict_lib(),
             phenotype,
             description,
             excluded,
@@ -636,7 +636,7 @@ impl PhenopacketBuilder {
     }
 
     fn parse_phenotypic_feature(
-        hpo_bidict_lib: &BiDictLibrary,
+        hpo_bidict_lib: &Arc<BiDictLibrary>,
         phenotype: &str,
         description: Option<&str>,
         excluded: Option<bool>,
