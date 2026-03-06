@@ -178,7 +178,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed")
-                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_data_context(Context::TimeOfMeasurement(TimeElementType::Age))
                     .with_building_block_id("height_measurement"),
                 vec![time_observed.into_column()].as_ref(),
             )
