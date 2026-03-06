@@ -95,7 +95,6 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 let new_hpo_col = Column::new(new_hpo_col_name.into(), new_hpo_col_data);
                 let new_disease_col =
                     Column::new(new_disease_col_name.into(), new_disease_col_data);
-                print!("Inserting hpo column in hpo data.");
 
                 if !error_info.is_empty() {
                     return Err(MappingError {
