@@ -20,14 +20,14 @@ impl Collect for DiseaseCollector {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let disease_cols = patient_cdf.get_columns(sc_id);
+                let disease_cols = patient_cdf.identify_columns(sc_id);
 
                 let stringified_linked_onset_col =
                     patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
@@ -124,7 +124,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("disease")
-                    .with_data_context(Context::DiseaseLabelOrId)
+                    .with_data_context(Context::Disease)
                     .with_building_block_id("disease_1"),
                 vec![disease_col].as_ref(),
             )

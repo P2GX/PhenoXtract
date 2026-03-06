@@ -22,13 +22,13 @@ impl Collect for HpoInHeaderCollector {
         for patient_cdf in patient_cdfs {
             let hpo_term_in_header_scs = patient_cdf
                 .filter_series_context()
-                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_header_context(Filter::Is(&Context::Hpo))
                 .where_data_context(Filter::Is(&Context::ObservationStatus))
                 .collect();
 
             for hpo_sc in hpo_term_in_header_scs {
                 let sc_id = hpo_sc.get_identifier();
-                let hpo_cols = patient_cdf.get_columns(sc_id);
+                let hpo_cols = patient_cdf.identify_columns(sc_id);
 
                 let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
@@ -146,7 +146,7 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("phenotypes")
-                    .with_data_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::Hpo)
                     .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
@@ -193,7 +193,7 @@ mod tests {
             SeriesContext::from_identifier(phenotype_col_name)
                 .with_data_context(Context::ObservationStatus)
                 .with_building_block_id("bb1")
-                .with_header_context(Context::HpoLabelOrId),
+                .with_header_context(Context::Hpo),
             SeriesContext::from_identifier(pneumonia_onset_col.name().to_string())
                 .with_data_context(Context::Onset(TimeElementType::Age))
                 .with_building_block_id("bb1"),

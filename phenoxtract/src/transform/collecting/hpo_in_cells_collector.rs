@@ -23,12 +23,12 @@ impl Collect for HpoInCellsCollector {
             let hpo_terms_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_data_context(Filter::Is(&Context::Hpo))
                 .collect();
 
             for hpo_sc in hpo_terms_in_cells_scs {
                 let sc_id = hpo_sc.get_identifier();
-                let hpo_cols = patient_cdf.get_columns(sc_id);
+                let hpo_cols = patient_cdf.identify_columns(sc_id);
 
                 let onset_column = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
@@ -167,7 +167,7 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("phenotypes")
-                    .with_data_context(Context::HpoLabelOrId)
+                    .with_data_context(Context::Hpo)
                     .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )

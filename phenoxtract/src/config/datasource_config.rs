@@ -20,7 +20,7 @@ pub struct CsvConfig {
     #[serde(default)]
     pub separator: Option<char>,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
@@ -38,7 +38,7 @@ pub struct ExcelWorkbookConfig {
 pub struct ExcelSheetConfig {
     pub sheet_name: String,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
@@ -54,6 +54,7 @@ pub struct SeriesContextConfig {
     #[serde(default)]
     pub fill_missing: Option<CellValue>,
     #[serde(default)]
+    #[serde(rename = "alias_map")]
     pub alias_map_config: Option<AliasMapConfig>,
     #[serde(default)]
     pub building_block_id: Option<String>,
@@ -179,7 +180,7 @@ impl CsvConfig {
         Self {
             source,
             separator,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
         }
@@ -201,7 +202,7 @@ impl ExcelSheetConfig {
     ) -> Self {
         Self {
             sheet_name,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
         }

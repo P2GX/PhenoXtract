@@ -16,4 +16,5 @@ pub enum StrategyConfig {
     },
     AgeToIso8601,
     DateToAge,
+    HpoDiseaseSplitter,
 }

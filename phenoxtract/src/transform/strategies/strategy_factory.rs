@@ -2,21 +2,27 @@ use crate::config::strategy_config::StrategyConfig;
 use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
+use crate::transform::strategies::hpo_disease_splitter::HpoDiseaseSplitterStrategy;
 use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::strategies::{
     AliasMapStrategy, DateToAgeStrategy, MappingStrategy, MultiHPOColExpansionStrategy,
     OntologyNormaliserStrategy,
 };
+use crate::transform::transform_context::TransformContext;
 use ontology_registry::traits::OntologyRegistration;
 
 pub struct StrategyFactory<OR: OntologyRegistration> {
     ontology_factory: CachedOntologyFactory<OR>,
+    ctx: TransformContext,
 }
 
 impl<OR: OntologyRegistration> StrategyFactory<OR> {
-    pub fn new(ontology_factory: CachedOntologyFactory<OR>) -> Self {
-        StrategyFactory { ontology_factory }
+    pub fn new(ontology_factory: CachedOntologyFactory<OR>, ctx: TransformContext) -> Self {
+        StrategyFactory {
+            ontology_factory,
+            ctx,
+        }
     }
     pub fn try_from_configs(
         &mut self,
@@ -47,10 +53,10 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             },
             StrategyConfig::MultiHpoColExpansion => Ok(Box::new(MultiHPOColExpansionStrategy)),
             StrategyConfig::OntologyNormaliser {
-                ontology: ontology_prefix,
+                ontology: ontology_ref,
                 data_context_kind,
             } => {
-                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_prefix, None)?;
+                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_ref, None)?;
 
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
@@ -59,7 +65,15 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
             StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
+            StrategyConfig::HpoDiseaseSplitter => Ok(Box::new(HpoDiseaseSplitterStrategy::new(
+                self.ctx.hpo_bidict_lib().clone(),
+                self.ctx.disease_bidict_lib().clone(),
+            ))),
         }
+    }
+
+    pub(crate) fn into_components(self) -> (CachedOntologyFactory<OR>, TransformContext) {
+        (self.ontology_factory, self.ctx)
     }
 }
 
@@ -68,20 +82,29 @@ mod tests {
     use super::*;
     use crate::config::context::ContextKind;
     use crate::config::strategy_config::StrategyConfig;
+    use crate::test_suite::component_building::default_builder_context;
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::resource_references::MONDO_REF;
     use crate::transform::strategies::mapping::DefaultMapping;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
+    use std::path::Path;
+    use tempfile::TempDir;
 
-    fn create_test_factory() -> StrategyFactory<MockOntologyRegistry> {
+    #[fixture]
+    fn temp_dir() -> TempDir {
+        tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    fn create_test_factory(temp_dir: &Path) -> StrategyFactory<MockOntologyRegistry> {
         StrategyFactory {
             ontology_factory: CachedOntologyFactory::new(MockOntologyRegistry::default()),
+            ctx: default_builder_context(temp_dir),
         }
     }
 
     #[rstest]
-    fn test_try_from_config_alias_mapping() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_alias_mapping(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::AliasMap;
 
         let result = factory.try_from_config(&config);
@@ -93,8 +116,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_config_date_to_age() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_date_to_age(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::DateToAge;
 
         let result = factory.try_from_config(&config);
@@ -106,8 +129,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_config_default_sex_mapping() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_default_sex_mapping(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::DefaultMapping(DefaultMapping::SexMapping);
 
         let result = factory.try_from_config(&config);
@@ -119,8 +142,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_config_multi_hpo_expansion() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_multi_hpo_expansion(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::MultiHpoColExpansion;
 
         let result = factory.try_from_config(&config);
@@ -132,11 +155,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_config_ontology_normalizer() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_ontology_normalizer(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::OntologyNormaliser {
             ontology: MONDO_REF.clone(),
-            data_context_kind: ContextKind::DiseaseLabelOrId,
+            data_context_kind: ContextKind::Disease,
         };
 
         let result = factory.try_from_config(&config);
@@ -145,8 +168,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_config_age_to_iso8601() {
-        let mut factory = create_test_factory();
+    fn test_try_from_config_age_to_iso8601(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::AgeToIso8601;
         let result = factory.try_from_config(&config);
 
@@ -154,8 +177,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_configs_empty() {
-        let mut factory = create_test_factory();
+    fn test_try_from_configs_empty(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let configs: Vec<StrategyConfig> = vec![];
 
         let result = factory.try_from_configs(&configs);
@@ -169,8 +192,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_configs_single() {
-        let mut factory = create_test_factory();
+    fn test_try_from_configs_single(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let configs = vec![StrategyConfig::AliasMap];
 
         let result = factory.try_from_configs(&configs);
@@ -180,8 +203,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_configs_multiple() {
-        let mut factory = create_test_factory();
+    fn test_try_from_configs_multiple(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let configs = vec![
             StrategyConfig::AliasMap,
             StrategyConfig::MultiHpoColExpansion,
@@ -195,8 +218,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_strategy_trait_object_creation() {
-        let mut factory = create_test_factory();
+    fn test_strategy_trait_object_creation(temp_dir: TempDir) {
+        let mut factory = create_test_factory(temp_dir.path());
         let config = StrategyConfig::AliasMap;
 
         let strategy_result = factory.try_from_config(&config);

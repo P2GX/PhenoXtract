@@ -4,13 +4,13 @@ source: "./data/example.csv"
 separator: ","
 has_headers: true
 patients_are_rows: true
-contexts:
+series_contexts:
   - identifier: "patient_id"
     header_context: subject_id
-    data_context: hpo_label_or_id
+    data_context: hpo
     fill_missing: "Zollinger-Ellison syndrome"
     building_block_id: "block_1"
-    alias_map_config:
+    alias_map:
       output_data_type: String
       mappings:
         "null": null
@@ -25,7 +25,7 @@ contexts:
         unit_ontology_id: "UO:0000015"
   - identifier: "procedure_time"
     data_context:
-      time_at_procedure: age
+      time_of_procedure: age
 "#;
 pub(crate) static EXCEL_DATASOURCE_CONFIG_FILE: &[u8] = br#"
 type: "excel"
@@ -34,12 +34,12 @@ sheets:
   - sheet_name: "Sheet1"
     has_headers: true
     patients_are_rows: true
-    contexts:
+    series_contexts:
       - identifier: "lab_result_.*"
         header_context: subject_id
-        data_context: hpo_label_or_id
+        data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
-        alias_map_config:
+        alias_map:
           output_data_type: Float64
           mappings:
             "neoplasma": "4"
@@ -48,22 +48,22 @@ sheets:
   - sheet_name: "Sheet2"
     has_headers: true
     patients_are_rows: true
-    contexts:
+    series_contexts:
       - identifier:
           - "Col_1"
           - "Col_2"
           - "Col_3"
         header_context: subject_id
-        data_context: hpo_label_or_id
+        data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
-        alias_map_config:
+        alias_map:
           output_data_type: Boolean
           mappings:
             "smoker": "true"
 "#;
 pub(crate) static PIPELINE_CONFIG_FILE: &[u8] = br#"
 cache_dir: "./src/test_suite/test_cache"
-transform_strategies:
+strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
 loader:
@@ -74,7 +74,7 @@ meta_data:
     created_by: "PhenoXtract Test Suite"
     submitted_by: "Someone"
     cohort_name: "Cohort-1"
-    hp_resource:
+    hpo_resource:
       id: "HP"
       version: "2025-09-01"
     unit_resources:
@@ -135,7 +135,7 @@ pub(crate) fn get_full_config_bytes() -> Vec<u8> {
     full_config.push_str(&list_item_with_indent(excel_data_source.trim(), 2));
     full_config.push('\n');
 
-    full_config.push_str("pipeline_config:\n");
+    full_config.push_str("pipeline:\n");
     full_config.push_str(&indent(pipeline.trim(), 2));
 
     full_config.into_bytes()
