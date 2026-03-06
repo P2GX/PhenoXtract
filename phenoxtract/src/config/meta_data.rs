@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Holds all shared metadata for the phenopackets
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MetaData {
     pub cohort_name: String,
     #[serde(default = "default_creator")]
@@ -10,7 +11,7 @@ pub struct MetaData {
     #[serde(default = "default_creator")]
     pub submitted_by: String,
     #[serde(default)]
-    pub hp_resource: Option<ResourceConfig>,
+    pub hpo_resource: Option<ResourceConfig>,
     #[serde(default)]
     pub disease_resources: Vec<ResourceConfig>,
     #[serde(default)]
@@ -26,7 +27,7 @@ impl MetaData {
         created_by: Option<&str>,
         submitted_by: Option<&str>,
         cohort_name: &str,
-        hp_resource: Option<ResourceConfig>,
+        hpo_resource: Option<ResourceConfig>,
         disease_resources: Vec<ResourceConfig>,
         assay_resources: Vec<ResourceConfig>,
         unit_resources: Vec<ResourceConfig>,
@@ -42,7 +43,7 @@ impl MetaData {
                 Some(s) => s.to_owned(),
             },
             cohort_name: cohort_name.to_owned(),
-            hp_resource,
+            hpo_resource,
             disease_resources,
             assay_resources,
             unit_resources,
@@ -57,7 +58,7 @@ impl Default for MetaData {
             created_by: default_creator(),
             submitted_by: default_creator(),
             cohort_name: "unnamed_cohort".to_string(),
-            hp_resource: None,
+            hpo_resource: None,
             disease_resources: vec![],
             assay_resources: vec![],
             unit_resources: vec![],
@@ -100,23 +101,20 @@ mod tests {
         assert_eq!(metadata.created_by, expected_creator);
         assert_eq!(metadata.submitted_by, expected_creator);
         assert_eq!(metadata.cohort_name, expected_cohort);
-        assert_eq!(metadata.hp_resource, None);
+        assert_eq!(metadata.hpo_resource, None);
         assert_eq!(metadata.disease_resources, vec![]);
         assert_eq!(metadata.unit_resources, vec![]);
     }
-
-    const YAML_DATA: &[u8] = br#"
-    submitted_by: Magnus Knut Hansen
-    cohort_name: arkham 2025
-    hp_ref:
-      version: "2025-09-01"
-      prefix_id: "HP"
-    "#;
 
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
+
+    const YAML_DATA: &[u8] = br#"
+    submitted_by: submitter
+    cohort_name: a_cohort
+    "#;
 
     #[rstest]
     fn test_meta_data_default_from_config(temp_dir: TempDir) {
@@ -132,12 +130,9 @@ mod tests {
 
         let creator = default_meta_data.created_by;
         assert!(creator.contains("phenoxtract"));
-        assert_eq!(
-            default_meta_data.submitted_by,
-            "Magnus Knut Hansen".to_string()
-        );
-        assert_eq!(default_meta_data.cohort_name, "arkham 2025");
-        assert_eq!(default_meta_data.hp_resource, None);
+        assert_eq!(default_meta_data.submitted_by, "submitter".to_string());
+        assert_eq!(default_meta_data.cohort_name, "a_cohort");
+        assert_eq!(default_meta_data.hpo_resource, None);
         assert_eq!(default_meta_data.disease_resources, vec![]);
         assert_eq!(default_meta_data.unit_resources, vec![]);
     }

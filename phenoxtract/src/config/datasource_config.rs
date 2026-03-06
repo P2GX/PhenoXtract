@@ -7,23 +7,26 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum DataSourceConfig {
     Csv(CsvConfig),
     Excel(ExcelWorkbookConfig),
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct CsvConfig {
     pub source: PathBuf,
     #[serde(default)]
     pub separator: Option<char>,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelWorkbookConfig {
     pub source: PathBuf,
     #[serde(default)]
@@ -31,15 +34,17 @@ pub struct ExcelWorkbookConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelSheetConfig {
     pub sheet_name: String,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SeriesContextConfig {
     pub identifier: Identifier,
     #[serde(default)]
@@ -49,6 +54,7 @@ pub struct SeriesContextConfig {
     #[serde(default)]
     pub fill_missing: Option<CellValue>,
     #[serde(default)]
+    #[serde(rename = "alias_map")]
     pub alias_map_config: Option<AliasMapConfig>,
     #[serde(default)]
     pub building_block_id: Option<String>,
@@ -141,12 +147,14 @@ impl SeriesContextConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct AliasMapConfig {
     pub mappings: MappingsConfig,
     pub output_data_type: OutputDataType,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum MappingsConfig {
     Csv(MappingsCsvConfig),
@@ -154,6 +162,7 @@ pub enum MappingsConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MappingsCsvConfig {
     pub path: PathBuf,
     pub key_column_name: String,
@@ -171,7 +180,7 @@ impl CsvConfig {
         Self {
             source,
             separator,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
         }
@@ -193,7 +202,7 @@ impl ExcelSheetConfig {
     ) -> Self {
         Self {
             sheet_name,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
         }

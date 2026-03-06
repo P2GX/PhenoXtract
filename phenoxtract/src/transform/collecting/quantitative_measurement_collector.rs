@@ -32,11 +32,11 @@ impl Collect for QuantitativeMeasurementCollector {
                     .try_as_quantitative_measurement()?;
 
                 let quant_measurement_cols =
-                    patient_cdf.get_columns(quant_measurement_sc.get_identifier());
+                    patient_cdf.identify_columns(quant_measurement_sc.get_identifier());
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     quant_measurement_sc.get_building_block_id(),
-                    Context::ONSET_VARIANTS,
+                    Context::TIME_OF_MEASUREMENT_VARIANTS,
                 )?;
 
                 let ref_low_col = patient_cdf.get_single_linked_column_as_float(
@@ -177,7 +177,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("time_observed")
-                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_data_context(Context::TimeOfMeasurement(TimeElementType::Age))
                     .with_building_block_id("height_measurement"),
                 vec![time_observed.into_column()].as_ref(),
             )

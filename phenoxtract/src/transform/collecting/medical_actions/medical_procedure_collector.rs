@@ -78,7 +78,7 @@ impl Collect for MedicalProcedureCollector {
         for patient_cdf in patient_cdfs {
             let procedures = patient_cdf
                 .filter_series_context()
-                .where_data_context(Filter::Is(&Context::ProcedureLabelOrId))
+                .where_data_context(Filter::Is(&Context::Procedure))
                 .collect();
 
             for procedure_sc in procedures {
@@ -204,7 +204,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("procedure")
-                    .with_data_context(Context::ProcedureLabelOrId)
+                    .with_data_context(Context::Procedure)
                     .with_building_block_id("procedure_1"),
                 vec![procedure.into_column()].as_ref(),
             )
@@ -220,7 +220,7 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::default()
                     .with_identifier("at")
-                    .with_data_context(Context::TimeAtProcedure(TimeElementType::Date))
+                    .with_data_context(Context::TimeOfProcedure(TimeElementType::Date))
                     .with_building_block_id("procedure_1"),
                 vec![time_element.into_column()].as_ref(),
             )

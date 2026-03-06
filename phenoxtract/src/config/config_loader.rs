@@ -75,8 +75,8 @@ data_sources:
     has_headers: true
     patients_are_rows: true
 
-pipeline_config:
-  transform_strategies:
+pipeline:
+  strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
   loader:
@@ -87,10 +87,20 @@ pipeline_config:
     created_by: "PhenoXtract creators"
     submitted_by: "PhenoXtract submitters"
     cohort_name: "my_cohort"
-    hp_resource:
+    hpo_resource:
       id: "hp"
       version: "2025-09-01"
 "#;
+
+    const YAML_DATA_EXTRA_FIELD: &[u8] = br#"
+type: "csv"
+source: "test/path"
+separator: ","
+has_headers: true
+patients_are_rows: true
+blah: "blahblah"
+"#;
+
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
@@ -116,6 +126,15 @@ pipeline_config:
             }
             _ => panic!("Wrong data source type. Expected Csv."),
         }
+    }
+
+    #[rstest]
+    fn test_unexpected_field_fail(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).unwrap();
+        file.write_all(YAML_DATA_EXTRA_FIELD).unwrap();
+        let result: Result<DataSourceConfig, ConfigError> = ConfigLoader::load(file_path);
+        assert!(result.is_err());
     }
 
     #[rstest]
@@ -155,10 +174,10 @@ pipeline_config:
                     separator: Some(','),
                     has_headers: true,
                     patients_are_rows: true,
-                    contexts: vec![
+                    series_contexts: vec![
                         SeriesContextConfig::new(Identifier::Regex("patient_id".to_string()))
                             .header_context(Context::SubjectId)
-                            .data_context(Context::HpoLabelOrId)
+                            .data_context(Context::Hpo)
                             .fill_missing(CellValue::String(
                                 "Zollinger-Ellison syndrome".to_string(),
                             ))
@@ -180,7 +199,7 @@ pipeline_config:
                             },
                         ),
                         SeriesContextConfig::new("procedure_time")
-                            .data_context(Context::TimeAtProcedure(TimeElementType::Age)),
+                            .data_context(Context::TimeOfProcedure(TimeElementType::Age)),
                     ],
                 }),
                 // Second data source: Excel
@@ -191,10 +210,10 @@ pipeline_config:
                             sheet_name: "Sheet1".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Regex("lab_result_.*".to_string()),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),
@@ -212,14 +231,14 @@ pipeline_config:
                             sheet_name: "Sheet2".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),
