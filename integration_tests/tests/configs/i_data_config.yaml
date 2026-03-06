@@ -1,0 +1,187 @@
+data_sources:
+  - type: "excel"
+    source: "$HOME/data/usidnet/i_data_edited.xlsx"
+    sheets:
+      - sheet_name: "Cohort"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "PatientId"
+            data_context: subject_id
+          - identifier: "YOB"
+            data_context: date_of_birth
+          - identifier: "Living"
+            data_context: vital_status
+            alias_map:
+              mappings:
+                "Yes": "ALIVE"
+                "No": "DECEASED"
+              output_data_type: String
+          - identifier: "Age of Death (Years)"
+            data_context:
+              time_of_death: age
+            alias_map:
+              mappings:
+                "less than 1 year": "0"
+              output_data_type: Int64
+          - identifier: "Sex"
+            data_context: subject_sex
+          - identifier: "Most Recent Visit Date"
+            data_context:
+              time_at_last_encounter: date
+          - identifier: "Diagnosis"
+            data_context: disease
+            building_block_id: "D"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "ALIAS"
+              output_data_type: String
+          - identifier: "Onset Age (Years)"
+            data_context:
+              onset: age
+            building_block_id: "D"
+            alias_map:
+              mappings:
+                "less than 1 year": "0"
+              output_data_type: Int64
+          #- identifier: "Gene Mutation"
+          #  data_context: hgnc
+          #  building_block_id: "D"
+          #  alias_map:
+          #    mappings:
+          #      path: "/Users/rouvenreuter/data/usidnet/mappings/hgnc_matchings.csv"
+          #      key_column_name: "FREE_TEXT"
+          #      alias_column_name: "LABEL"
+          #    output_data_type: String
+
+      - sheet_name: "Vitals"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Vitals Date"
+            data_context:
+              time_of_measurement: date
+            building_block_id: "M"
+          - identifier: "Height (cm)"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:8302-2"
+                unit_ontology_id: "UO:0000015"
+            building_block_id: "M"
+          - identifier: "Weight (kg)"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:29463-7"
+                unit_ontology_id: "UO:0000009"
+            building_block_id: "M"
+          - identifier: "Body Mass Index"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:39156-5"
+                unit_ontology_id: "UO:0000086"
+            building_block_id: "M"
+
+      - sheet_name: "Head Circ."
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Head Circumf Date"
+            data_context:
+              time_of_measurement: date
+            building_block_id: "M"
+          - identifier: "Head (cm)"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:9843-4"
+                unit_ontology_id: "UO:0000015"
+            building_block_id: "M"
+
+      - sheet_name: "Infections"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Infection"
+            data_context: hpo_or_disease
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/infections_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+
+      - sheet_name: "Molecular Info"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Gene Mutation"
+            data_context: hgnc
+            building_block_id: "Gene"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/hgnc_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "LABEL"
+              output_data_type: String
+          - identifier: "Diagnosis"
+            data_context: disease
+            building_block_id: "Gene"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "ALIAS"
+              output_data_type: String
+
+      - sheet_name: "Condition"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Condition"
+            data_context: hpo_or_disease
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/conditions_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+pipeline:
+  strategies:
+    - alias_map
+    - default_mapping: sex_mapping
+    - date_to_age
+    - age_to_iso8601
+    - hpo_disease_splitter
+
+  loader:
+    file_system:
+      output_dir: "$HOME/data/usidnet/phenopackets"
+      create_dir: true
+  meta_data:
+    created_by: Robinson Lab
+    submitted_by: Robinson Lab
+    cohort_name: "I_COHORT"
+    hpo_resource:
+      id: "HP"
+      version: "2026-02-16"
+    unit_resources:
+      - id: "UO"
+        version: "2026-01-09"
+    disease_resources:
+      - id: "MONDO"
+    assay_resources:
+      - id: "LOINC"
+        secrets:
+          user: ${LOINC_USERNAME}
+          password: ${LOINC_PASSWORD}
