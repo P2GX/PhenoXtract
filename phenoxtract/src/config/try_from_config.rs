@@ -12,13 +12,16 @@ use crate::error::ConstructionError;
 use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::{CsvDataSource, DataSource, ExcelDataSource};
 use crate::load::loader_factory::LoaderFactory;
+use crate::ontology::CachedOntologyFactory;
 use crate::phenoxtract::Phenoxtract;
-use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
+use crate::transform::transform_context::TransformContext;
 use crate::transform::{PhenopacketBuilder, TransformerModule};
-use crate::utils::get_cache_dir;
+use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
+use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
+use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use pivot::hgnc::CachedHGNCClient;
 use pivot::hgvs::CachedHGVSClient;
 use polars::prelude::{CsvReadOptions, SerReader};
@@ -57,64 +60,70 @@ impl TryFrom<PipelineConfig> for Pipeline {
     type Error = ConstructionError;
 
     fn try_from(config: PipelineConfig) -> Result<Self, Self::Error> {
-        let ontology_registry_dir = get_cache_dir()?.join("ontology_registry");
+        let cache_dir = config
+            .cache_dir
+            .expect("Pipeline config missing cache_dir.");
+        let ontology_registry_dir = cache_dir.join("ontology_registry");
 
         if !ontology_registry_dir.exists() {
             fs::create_dir_all(&ontology_registry_dir)?;
         }
 
-        let mut resource_factory = ResourceConfigFactory::default();
+        let ontology_registry = FileSystemOntologyRegistry::new(
+            ontology_registry_dir,
+            BioRegistryMetadataProvider::default(),
+            OboLibraryProvider::default(),
+        );
 
-        let mut hpo_bidict_library = BiDictLibrary::empty_with_name("HPO");
-        let mut disease_bidict_library = BiDictLibrary::empty_with_name("DISEASE");
-        let mut assay_bidict_library = BiDictLibrary::empty_with_name("ASSAY");
-        let mut unit_bidict_library = BiDictLibrary::empty_with_name("UNIT");
-        let mut qualitative_measurement_bidict_library = BiDictLibrary::empty_with_name("QUAL");
+        let mut resource_factory =
+            ResourceConfigFactory::new(CachedOntologyFactory::new(ontology_registry));
 
-        if let Some(hp_resource) = &config.meta_data.hp_resource {
-            let hpo_bidict = resource_factory.build(hp_resource)?;
-            hpo_bidict_library.add_bidict(hpo_bidict);
+        let mut ctx_builder = TransformContext::builder(
+            config.meta_data.clone().into(),
+            Arc::new(CachedHGNCClient::new_with_defaults()?),
+            Arc::new(CachedHGVSClient::new_with_defaults()?),
+        );
+
+        if let Some(hpo_resource) = &config.meta_data.hpo_resource {
+            let hpo_bidict = resource_factory.build(hpo_resource)?;
+            ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
         for disease_resource in &config.meta_data.disease_resources {
             let disease_bidict = resource_factory.build(disease_resource)?;
-            disease_bidict_library.add_bidict(disease_bidict);
+            ctx_builder.add_disease_bidict(disease_bidict);
         }
 
         for assay_resource in &config.meta_data.assay_resources {
             let assay_bidict = resource_factory.build(assay_resource)?;
-            assay_bidict_library.add_bidict(assay_bidict);
+            ctx_builder.add_assay_bidict(assay_bidict);
         }
 
         for unit_ontology_ref in &config.meta_data.unit_resources {
             let unit_bidict = resource_factory.build(unit_ontology_ref)?;
-            unit_bidict_library.add_bidict(unit_bidict);
+            ctx_builder.add_unit_bidict(unit_bidict);
         }
 
         for qualitative_measurement_ontology_ref in
             &config.meta_data.qualitative_measurement_resources
         {
             let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
-            qualitative_measurement_bidict_library.add_bidict(qual_bidict);
+            ctx_builder.add_qualitative_measurement_bidict(qual_bidict);
         }
 
-        let mut strategy_factory = StrategyFactory::new(resource_factory.into_ontology_factory());
-        let phenopacket_builder = PhenopacketBuilder::new(
-            config.meta_data.into(),
-            Box::new(CachedHGNCClient::default()),
-            Box::new(CachedHGVSClient::default()),
-            hpo_bidict_library,
-            disease_bidict_library,
-            unit_bidict_library,
-            assay_bidict_library,
-            qualitative_measurement_bidict_library,
-        );
+        let ctx = ctx_builder.build();
 
+        let mut strategy_factory =
+            StrategyFactory::new(resource_factory.into_ontology_factory(), ctx);
         let strategies: Vec<Box<dyn Strategy>> = config
-            .transform_strategies
+            .strategies
             .iter()
             .map(|strat| strategy_factory.try_from_config(strat))
             .collect::<Result<Vec<_>, _>>()?;
+
+        let (_, ctx) = strategy_factory.into_components();
+
+        let phenopacket_builder = PhenopacketBuilder::new(ctx);
 
         let tf_module = TransformerModule::new(
             strategies,
@@ -178,7 +187,7 @@ impl TryFrom<ExcelSheetConfig> for TableContext {
 
     fn try_from(config: ExcelSheetConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
@@ -192,7 +201,7 @@ impl TryFrom<CsvConfig> for CsvDataSource {
 
     fn try_from(config: CsvConfig) -> Result<Self, Self::Error> {
         let scs = config
-            .contexts
+            .series_contexts
             .into_iter()
             .map(SeriesContext::try_from)
             .collect::<Result<Vec<SeriesContext>, ConstructionError>>()?;
@@ -310,11 +319,6 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    #[fixture]
-    fn another_temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
-
     #[rstest]
     fn test_try_from_phenoxtract_config(temp_dir: TempDir) {
         dotenv().ok();
@@ -344,9 +348,9 @@ mod tests {
     }
 
     #[rstest]
-    fn test_try_from_pipeline_config(another_temp_dir: TempDir) {
+    fn test_try_from_pipeline_config(temp_dir: TempDir) {
         dotenv().ok();
-        let file_path = another_temp_dir.path().join("config.yaml");
+        let file_path = temp_dir.path().join("config.yaml");
         let mut file = StdFile::create(&file_path).expect("Failed to create config file");
         file.write_all(PIPELINE_CONFIG_FILE)
             .expect("Failed to write config file");
@@ -373,7 +377,7 @@ mod tests {
 
         match csv_datasource_from_config {
             DataSource::Csv(csv_source) => {
-                assert_eq!(csv_source.context.context().len(), 1);
+                assert_eq!(csv_source.context.context().len(), 3);
             }
             DataSource::Excel(_) => {
                 panic!("Loaded Excel Datasource instead of Csv!")

@@ -1,9 +1,11 @@
 use crate::config::context::Context;
+use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
 use crate::extract::contextualized_dataframe_filters::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
 use crate::validation::table_context_validation::validate_unique_identifiers;
 use polars::prelude::{DataType, TimeUnit};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -22,29 +24,29 @@ use validator::Validate;
 pub struct TableContext {
     name: String,
     #[validate(custom(function = "validate_unique_identifiers"))]
-    context: Vec<SeriesContext>,
+    series_contexts: Vec<SeriesContext>,
 }
 
 impl TableContext {
     pub fn new(name: impl Into<String>, context: Vec<SeriesContext>) -> Self {
         TableContext {
             name: name.into(),
-            context,
+            series_contexts: context,
         }
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn name_mut(&mut self) -> &mut String {
+    pub fn name_mut(&mut self) -> &mut str {
         &mut self.name
     }
 
-    pub fn context(&self) -> &Vec<SeriesContext> {
-        &self.context
+    pub fn context(&self) -> &[SeriesContext] {
+        &self.series_contexts
     }
     pub fn context_mut(&mut self) -> &mut Vec<SeriesContext> {
-        &mut self.context
+        &mut self.series_contexts
     }
 
     pub fn with_name(mut self, name: &str) -> Self {
@@ -53,7 +55,7 @@ impl TableContext {
     }
 
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
-        SeriesContextFilter::new(self.context.as_ref())
+        SeriesContextFilter::new(self.series_contexts.as_ref())
     }
 }
 
@@ -122,6 +124,36 @@ impl Display for Identifier {
         match self {
             Identifier::Regex(regex) => write!(f, "{}", regex),
             Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+        }
+    }
+}
+
+impl Identifier {
+    pub fn identify<'a>(&self, col_names: &[&'a str]) -> Vec<&'a str> {
+        match self {
+            Identifier::Regex(id) => {
+                let exact_matches: Vec<&str> =
+                    col_names.iter().copied().filter(|col| col == id).collect();
+
+                if !exact_matches.is_empty() {
+                    return exact_matches;
+                }
+
+                Regex::new(id)
+                    .map(|re| {
+                        col_names
+                            .iter()
+                            .copied()
+                            .filter(|col| re.is_match(col))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            }
+            Identifier::Multi(ids) => col_names
+                .iter()
+                .copied()
+                .filter(|col| ids.iter().any(|id| id == *col))
+                .collect(),
         }
     }
 }
@@ -245,43 +277,54 @@ impl SeriesContext {
     pub fn get_fill_missing(&self) -> Option<&CellValue> {
         self.fill_missing.as_ref()
     }
+}
+impl SeriesContextBuilding<AliasMap> for SeriesContext {
+    fn from_identifier(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map: None,
+            building_block_id: None,
+        }
+    }
 
-    pub fn with_identifier(mut self, identifier: Identifier) -> Self {
-        let identifier_ref = &mut self.identifier;
-        *identifier_ref = identifier;
+    fn with_identifier(mut self, identifier: impl Into<Identifier>) -> Self {
+        self.identifier = identifier.into();
         self
     }
 
-    pub fn with_header_context(mut self, context: Context) -> Self {
-        let header_context_ref = &mut self.header_context;
-        *header_context_ref = context;
+    fn with_header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
         self
     }
 
-    pub fn with_data_context(mut self, context: Context) -> Self {
-        let data_context_ref = &mut self.data_context;
-        *data_context_ref = context;
+    fn with_data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
         self
     }
 
-    pub fn with_alias_map(mut self, alias_map: Option<AliasMap>) -> Self {
-        let alias_ref = &mut self.alias_map;
-        *alias_ref = alias_map;
+    fn with_fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
         self
     }
 
-    pub fn with_building_block_id(mut self, building_block_id: Option<String>) -> Self {
-        let building_block_id_ref = &mut self.building_block_id;
-        *building_block_id_ref = building_block_id;
+    fn with_alias_map(mut self, alias_map_config: AliasMap) -> Self {
+        self.alias_map = Some(alias_map_config);
         self
     }
 
-    pub fn with_fill_missing(mut self, fill_missing: Option<CellValue>) -> Self {
-        self.fill_missing = fill_missing;
-        self
+    fn with_building_block_id(mut self, building_block_id: impl IntoOptionalString) -> Self {
+        if let Some(id) = building_block_id.into_opt_string() {
+            self.building_block_id = Some(id);
+            self
+        } else {
+            self.building_block_id = None;
+            self
+        }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,5 +341,96 @@ mod tests {
             OutputDataType::Datetime.as_polars(),
             DataType::Datetime(TimeUnit::Nanoseconds, None)
         );
+    }
+
+    #[test]
+    fn regex_exact_match_returns_match() {
+        let id = Identifier::Regex("foo".to_string());
+        let cols = &["foo", "bar", "baz"];
+        assert_eq!(id.identify(cols), vec!["foo"]);
+    }
+
+    #[test]
+    fn regex_exact_match_takes_priority_over_regex() {
+        let id = Identifier::Regex("foo".to_string());
+        let cols = &["foo", "foobar"];
+        assert_eq!(id.identify(cols), vec!["foo"]);
+    }
+
+    #[test]
+    fn regex_falls_back_to_pattern_when_no_exact_match() {
+        let id = Identifier::Regex("^col_\\d+$".to_string());
+        let cols = &["col_1", "col_2", "other", "col_abc"];
+        let mut result = id.identify(cols);
+        result.sort();
+        assert_eq!(result, vec!["col_1", "col_2"]);
+    }
+
+    #[test]
+    fn regex_returns_empty_when_no_match() {
+        let id = Identifier::Regex("^xyz$".to_string());
+        let cols = &["foo", "bar"];
+        assert!(id.identify(cols).is_empty());
+    }
+
+    #[test]
+    fn regex_invalid_pattern_returns_empty() {
+        let id = Identifier::Regex("[invalid".to_string());
+        let cols = &["foo", "bar"];
+        assert!(id.identify(cols).is_empty());
+    }
+
+    #[test]
+    fn regex_empty_col_names_returns_empty() {
+        let id = Identifier::Regex("foo".to_string());
+        assert!(id.identify(&[]).is_empty());
+    }
+
+    #[test]
+    fn regex_multiple_exact_matches() {
+        let id = Identifier::Regex("foo".to_string());
+        let cols = &["foo", "foo", "bar"];
+        assert_eq!(id.identify(cols), vec!["foo", "foo"]);
+    }
+
+    #[test]
+    fn multi_returns_matching_columns() {
+        let id = Identifier::Multi(vec!["foo".to_string(), "baz".to_string()]);
+        let cols = &["foo", "bar", "baz"];
+        assert_eq!(id.identify(cols), vec!["foo", "baz"]);
+    }
+
+    #[test]
+    fn multi_returns_empty_when_no_match() {
+        let id = Identifier::Multi(vec!["xyz".to_string()]);
+        let cols = &["foo", "bar"];
+        assert!(id.identify(cols).is_empty());
+    }
+
+    #[test]
+    fn multi_empty_ids_returns_empty() {
+        let id = Identifier::Multi(vec![]);
+        let cols = &["foo", "bar"];
+        assert!(id.identify(cols).is_empty());
+    }
+
+    #[test]
+    fn multi_empty_col_names_returns_empty() {
+        let id = Identifier::Multi(vec!["foo".to_string()]);
+        assert!(id.identify(&[]).is_empty());
+    }
+
+    #[test]
+    fn multi_does_not_do_regex_matching() {
+        let id = Identifier::Multi(vec!["^foo$".to_string()]);
+        let cols = &["foo", "^foo$"];
+        assert_eq!(id.identify(cols), vec!["^foo$"]);
+    }
+
+    #[test]
+    fn multi_preserves_col_order_not_id_order() {
+        let id = Identifier::Multi(vec!["baz".to_string(), "foo".to_string()]);
+        let cols = &["foo", "bar", "baz"];
+        assert_eq!(id.identify(cols), vec!["foo", "baz"]);
     }
 }

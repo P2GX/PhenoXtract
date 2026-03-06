@@ -264,15 +264,15 @@ pub(crate) fn default_treatment_intent() -> OntologyClass {
 
 pub(crate) fn default_treatment_response() -> OntologyClass {
     OntologyClass {
-        id: "SNOMED:182987007".to_string(),
-        label: "Fair response to treatment (situation)".to_string(),
+        id: "NCIT:C123618".to_string(),
+        label: "Very Good Partial Response".to_string(),
     }
 }
 
 pub(crate) fn default_treatment_termination_reason() -> OntologyClass {
     OntologyClass {
-        id: "SNOMED:341009".to_string(),
-        label: "ABO incompatibility reaction (disorder)".to_string(),
+        id: "NCIT:C57960".to_string(),
+        label: "Grade 3 Injection Site Reaction or Extravasation Changes, CTCAE".to_string(),
     }
 }
 

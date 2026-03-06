@@ -103,7 +103,6 @@ impl Strategy for OntologyNormaliserStrategy {
             }
         }
 
-        // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
             Err(MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
@@ -120,6 +119,7 @@ impl Strategy for OntologyNormaliserStrategy {
 mod tests {
     use crate::config::context::{Context, ContextKind};
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::test_suite::ontology_mocking::HPO_DICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
@@ -130,16 +130,15 @@ mod tests {
     use polars::prelude::Column;
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
+
     #[fixture]
     fn tc() -> TableContext {
-        let sc = SeriesContext::default()
-            .with_identifier(Identifier::Multi(vec![
-                "phenotypic_features".to_string(),
-                "more_phenotypic_features".to_string(),
-            ]))
-            .with_data_context(Context::HpoLabelOrId);
-        let sc_pid = SeriesContext::default()
-            .with_identifier(Identifier::from("subject_ids"))
+        let sc = SeriesContext::from_identifier(Identifier::Multi(vec![
+            "phenotypic_features".to_string(),
+            "more_phenotypic_features".to_string(),
+        ]))
+        .with_data_context(Context::Hpo);
+        let sc_pid = SeriesContext::from_identifier(Identifier::from("subject_ids"))
             .with_data_context(Context::SubjectId);
         TableContext::new("patient_data".to_string(), vec![sc, sc_pid])
     }
@@ -170,9 +169,9 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
-        let _ = get_hpo_labels_strat.transform(&mut [&mut cdf]);
+        get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
 
         let expected_col1 = Column::new(
             "phenotypic_features".into(),
@@ -209,7 +208,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 
@@ -281,7 +280,7 @@ mod tests {
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
             ontology_dict: HPO_DICT.clone(),
-            data_context_kind: ContextKind::HpoLabelOrId,
+            data_context_kind: ContextKind::Hpo,
         };
         let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
 

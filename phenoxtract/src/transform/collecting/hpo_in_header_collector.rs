@@ -22,17 +22,17 @@ impl Collect for HpoInHeaderCollector {
         for patient_cdf in patient_cdfs {
             let hpo_term_in_header_scs = patient_cdf
                 .filter_series_context()
-                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_header_context(Filter::Is(&Context::Hpo))
                 .where_data_context(Filter::Is(&Context::ObservationStatus))
                 .collect();
 
             for hpo_sc in hpo_term_in_header_scs {
                 let sc_id = hpo_sc.get_identifier();
-                let hpo_cols = patient_cdf.get_columns(sc_id);
+                let hpo_cols = patient_cdf.identify_columns(sc_id);
 
                 let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
                     hpo_sc.get_building_block_id(),
-                    &[Context::OnsetAge, Context::OnsetDate],
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 for hpo_col in hpo_cols {
@@ -91,7 +91,9 @@ impl Collect for HpoInHeaderCollector {
 mod tests {
     use super::*;
     use crate::config::TableContext;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{
         default_patient_id, generate_minimal_cdf, generate_minimal_cdf_components,
@@ -143,18 +145,16 @@ mod tests {
         patient_cdf
             .builder()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("phenotypes".into())
-                    .with_data_context(Context::HpoLabelOrId)
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                SeriesContext::from_identifier("phenotypes")
+                    .with_data_context(Context::Hpo)
+                    .with_building_block_id("phenotype_1"),
                 vec![phenotypes.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("onset".into())
-                    .with_data_context(Context::OnsetAge)
-                    .with_building_block_id(Some("phenotype_1".to_string())),
+                SeriesContext::from_identifier("onset")
+                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_building_block_id("phenotype_1"),
                 vec![onset.into_column()].as_ref(),
             )
             .unwrap()
@@ -190,15 +190,13 @@ mod tests {
 
         let context = vec![
             sc,
-            SeriesContext::default()
+            SeriesContext::from_identifier(phenotype_col_name)
                 .with_data_context(Context::ObservationStatus)
-                .with_building_block_id(Some("bb1".to_string()))
-                .with_header_context(Context::HpoLabelOrId)
-                .with_identifier(phenotype_col_name.into()),
-            SeriesContext::default()
-                .with_data_context(Context::OnsetAge)
-                .with_building_block_id(Some("bb1".to_string()))
-                .with_identifier(pneumonia_onset_col.name().to_string().into()),
+                .with_building_block_id("bb1")
+                .with_header_context(Context::Hpo),
+            SeriesContext::from_identifier(pneumonia_onset_col.name().to_string())
+                .with_data_context(Context::Onset(TimeElementType::Age))
+                .with_building_block_id("bb1"),
         ];
 
         let cdf = ContextualizedDataFrame::new(

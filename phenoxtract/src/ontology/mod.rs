@@ -10,3 +10,4 @@ pub use ontology_factory::CachedOntologyFactory;
 pub mod bioportal_client;
 pub mod loinc_client;
 pub mod traits;
+pub mod types;

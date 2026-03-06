@@ -16,8 +16,8 @@ target
 .idea/
 .vscode/
 
-tests/assets/integration_test/output_phenopackets/*
-tests/assets/big_null_test/output_phenopackets/*
+integration_tests/tests/assets/big_null_test/extracted_phenopackets/*
+integration_tests/tests/assets/integration_test/extracted_phenopackets/*
 
 ~$*
 

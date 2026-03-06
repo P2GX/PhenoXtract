@@ -11,11 +11,12 @@ use mockall::predicate::*;
 use once_cell::sync::Lazy;
 use ontology_registry::enums::{FileType, Version};
 use ontology_registry::error::OntologyRegistryError;
-use ontology_registry::traits::OntologyRegistry;
+use ontology_registry::traits::OntologyRegistration;
 use phenopackets::schema::v2::Phenopacket;
 use std::any::Any;
 use std::fmt::Debug;
 use std::fs;
+use std::io::{Cursor, Read};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -130,11 +131,12 @@ mock! {
     }
 }
 
-pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(CachedOntologyFactory::new(Box::new(
-        MockOntologyRegistry::default(),
-    ))))
-});
+pub(crate) static ONTOLOGY_FACTORY: Lazy<Arc<Mutex<CachedOntologyFactory<MockOntologyRegistry>>>> =
+    Lazy::new(|| {
+        Arc::new(Mutex::new(CachedOntologyFactory::new(
+            MockOntologyRegistry::default(),
+        )))
+    });
 
 #[derive(Debug)]
 pub(crate) struct MockOntologyRegistry {
@@ -149,13 +151,14 @@ impl Default for MockOntologyRegistry {
     }
 }
 
-impl OntologyRegistry<PathBuf> for MockOntologyRegistry {
+impl OntologyRegistration for MockOntologyRegistry {
     fn register(
         &self,
-        ontology_id: &str,
-        version: &Version,
-        file_type: &FileType,
-    ) -> Result<PathBuf, OntologyRegistryError> {
+        ontology_id: impl Into<String>,
+        version: Version,
+        file_type: FileType,
+    ) -> Result<impl Read, OntologyRegistryError> {
+        let ontology_id = ontology_id.into();
         if version.to_string() == Version::Latest.to_string() {
             let entries =
                 fs::read_dir(self.registry_path.clone()).expect("Failed to read registry path");
@@ -169,21 +172,16 @@ impl OntologyRegistry<PathBuf> for MockOntologyRegistry {
                     .to_str()
                     .expect("Conversion error");
 
-                let found_ontology_id = file_name
-                    .split("_")
-                    .last()
-                    .unwrap()
-                    .split(".")
-                    .next()
-                    .unwrap()
-                    .to_string();
+                let found_ontology_id = file_name.split("_").next().unwrap().to_string();
                 if found_ontology_id == ontology_id {
-                    return Ok(path);
+                    return Ok(fs::File::open(&path).unwrap_or_else(|_| {
+                        panic!("Failed to open file {}", path.to_str().unwrap())
+                    }));
                 }
             }
         }
 
-        let file_name = format!("{version}_{ontology_id}{}", file_type.as_file_ending());
+        let file_name = format!("{ontology_id}_{version}{}", file_type.as_file_ending());
         let file_path = self.registry_path.join(file_name);
 
         if !file_path.exists() {
@@ -195,22 +193,29 @@ impl OntologyRegistry<PathBuf> for MockOntologyRegistry {
             });
         }
 
-        Ok(file_path)
+        Ok(fs::File::open(&file_path)
+            .unwrap_or_else(|_| panic!("Failed to open file {}", file_path.to_str().unwrap())))
     }
 
     #[allow(unused)]
     fn unregister(
         &self,
-        ontology_id: &str,
-        version: &Version,
-        file_type: &FileType,
+        ontology_id: impl Into<String>,
+        version: Version,
+        file_type: FileType,
     ) -> Result<(), OntologyRegistryError> {
         todo!()
     }
 
     #[allow(unused)]
-    fn get(&self, ontology_id: &str, version: &Version, file_type: &FileType) -> Option<PathBuf> {
-        todo!()
+    fn get(
+        &self,
+        ontology_id: impl Into<String>,
+        version: Version,
+        file_type: FileType,
+    ) -> Option<impl Read> {
+        panic!("Mock ontology factory get is not implemented yet");
+        None::<Cursor<Vec<u8>>>
     }
     #[allow(unused)]
     fn list(&self) -> Vec<String> {

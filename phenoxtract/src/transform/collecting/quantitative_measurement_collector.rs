@@ -1,4 +1,4 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::{Boundary, Context, ContextKind};
 use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -33,21 +33,21 @@ impl Collect for QuantitativeMeasurementCollector {
                     .map_err(|err| CollectorError::ContextError(err.to_string()))?;
 
                 let quant_measurement_cols =
-                    patient_cdf.get_columns(quant_measurement_sc.get_identifier());
+                    patient_cdf.identify_columns(quant_measurement_sc.get_identifier());
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::OnsetAge, Context::OnsetDate],
+                    Context::ONSET_VARIANTS,
                 )?;
 
                 let ref_low_col = patient_cdf.get_single_linked_column_as_float(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::ReferenceRangeLow],
+                    &[Context::ReferenceRange(Boundary::Start)],
                 )?;
 
                 let ref_high_col = patient_cdf.get_single_linked_column_as_float(
                     quant_measurement_sc.get_building_block_id(),
-                    &[Context::ReferenceRangeHigh],
+                    &[Context::ReferenceRange(Boundary::End)],
                 )?;
 
                 for quant_measurement_col in quant_measurement_cols {
@@ -106,7 +106,9 @@ impl Collect for QuantitativeMeasurementCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::{Boundary, TimeElementType};
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -164,36 +166,36 @@ mod tests {
             .builder()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("height".into())
+                    .with_identifier("height")
                     .with_data_context(Context::QuantitativeMeasurement {
                         assay_id: default_quant_loinc().id,
                         unit_ontology_id: default_uo_term().id,
                     })
-                    .with_building_block_id(Some("height_measurement".to_string())),
+                    .with_building_block_id("height_measurement"),
                 vec![measurements.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("time_observed".into())
-                    .with_data_context(Context::OnsetAge)
-                    .with_building_block_id(Some("height_measurement".to_string())),
+                    .with_identifier("time_observed")
+                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_building_block_id("height_measurement"),
                 vec![time_observed.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("ref_low".into())
-                    .with_data_context(Context::ReferenceRangeLow)
-                    .with_building_block_id(Some("height_measurement".to_string())),
+                    .with_identifier("ref_low")
+                    .with_data_context(Context::ReferenceRange(Boundary::Start))
+                    .with_building_block_id("height_measurement"),
                 vec![ref_low.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("ref_high".into())
-                    .with_data_context(Context::ReferenceRangeHigh)
-                    .with_building_block_id(Some("height_measurement".to_string())),
+                    .with_identifier("ref_high")
+                    .with_data_context(Context::ReferenceRange(Boundary::End))
+                    .with_building_block_id("height_measurement"),
                 vec![ref_high.into_column()].as_ref(),
             )
             .unwrap()

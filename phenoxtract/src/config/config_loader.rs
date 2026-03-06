@@ -45,7 +45,7 @@ impl ConfigLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::context::Context;
+    use crate::config::context::{Context, TimeElementType};
     use crate::config::loader_config::LoaderConfig;
 
     use crate::config::datasource_config::{
@@ -75,8 +75,8 @@ data_sources:
     has_headers: true
     patients_are_rows: true
 
-pipeline_config:
-  transform_strategies:
+pipeline:
+  strategies:
     - "alias_map"
     - "multi_hpo_col_expansion"
   loader:
@@ -87,10 +87,20 @@ pipeline_config:
     created_by: "PhenoXtract creators"
     submitted_by: "PhenoXtract submitters"
     cohort_name: "my_cohort"
-    hp_resource:
+    hpo_resource:
       id: "hp"
       version: "2025-09-01"
 "#;
+
+    const YAML_DATA_EXTRA_FIELD: &[u8] = br#"
+type: "csv"
+source: "test/path"
+separator: ","
+has_headers: true
+patients_are_rows: true
+blah: "blahblah"
+"#;
+
     #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
@@ -116,6 +126,15 @@ pipeline_config:
             }
             _ => panic!("Wrong data source type. Expected Csv."),
         }
+    }
+
+    #[rstest]
+    fn test_unexpected_field_fail(temp_dir: TempDir) {
+        let file_path = temp_dir.path().join("config.yaml");
+        let mut file = StdFile::create(&file_path).unwrap();
+        file.write_all(YAML_DATA_EXTRA_FIELD).unwrap();
+        let result: Result<DataSourceConfig, ConfigError> = ConfigLoader::load(file_path);
+        assert!(result.is_err());
     }
 
     #[rstest]
@@ -146,6 +165,7 @@ pipeline_config:
                     output_dir: PathBuf::from("some/dir"),
                     create_dir: true,
                 },
+                Some("./src/test_suite/test_cache".parse().unwrap()),
             ),
             data_sources: vec![
                 // First data source: CSV
@@ -154,25 +174,33 @@ pipeline_config:
                     separator: Some(','),
                     has_headers: true,
                     patients_are_rows: true,
-                    contexts: vec![SeriesContextConfig {
-                        identifier: Identifier::Regex("patient_id".to_string()),
-                        header_context: Context::SubjectId,
-                        data_context: Context::HpoLabelOrId,
-                        fill_missing: Some(CellValue::String(
-                            "Zollinger-Ellison syndrome".to_string(),
-                        )),
-                        alias_map_config: Some(AliasMapConfig {
-                            mappings: MappingsConfig::HashMap(HashMap::from([
-                                ("null".to_string(), None),
-                                ("M".to_string(), Some("Male".to_string())),
-                                ("102".to_string(), Some("High quantity".to_string())),
-                                ("169.5".to_string(), Some("Very high quantity".to_string())),
-                                ("true".to_string(), Some("smoker".to_string())),
-                            ])),
-                            output_data_type: OutputDataType::String,
-                        }),
-                        building_block_id: Some("block_1".to_string()),
-                    }],
+                    series_contexts: vec![
+                        SeriesContextConfig::new(Identifier::Regex("patient_id".to_string()))
+                            .header_context(Context::SubjectId)
+                            .data_context(Context::Hpo)
+                            .fill_missing(CellValue::String(
+                                "Zollinger-Ellison syndrome".to_string(),
+                            ))
+                            .alias_map_config(AliasMapConfig {
+                                mappings: MappingsConfig::HashMap(HashMap::from([
+                                    ("null".to_string(), None),
+                                    ("M".to_string(), Some("Male".to_string())),
+                                    ("102".to_string(), Some("High quantity".to_string())),
+                                    ("169.5".to_string(), Some("Very high quantity".to_string())),
+                                    ("true".to_string(), Some("smoker".to_string())),
+                                ])),
+                                output_data_type: OutputDataType::String,
+                            })
+                            .building_block_id("block_1".to_string()),
+                        SeriesContextConfig::new("quantitative_measurement").data_context(
+                            Context::QuantitativeMeasurement {
+                                assay_id: "LOINC:9843-4".to_string(),
+                                unit_ontology_id: "UO:0000015".to_string(),
+                            },
+                        ),
+                        SeriesContextConfig::new("procedure_time")
+                            .data_context(Context::TimeOfProcedure(TimeElementType::Age)),
+                    ],
                 }),
                 // Second data source: Excel
                 DataSourceConfig::Excel(ExcelWorkbookConfig {
@@ -182,10 +210,10 @@ pipeline_config:
                             sheet_name: "Sheet1".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Regex("lab_result_.*".to_string()),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),
@@ -203,14 +231,14 @@ pipeline_config:
                             sheet_name: "Sheet2".to_string(),
                             has_headers: true,
                             patients_are_rows: true,
-                            contexts: vec![SeriesContextConfig {
+                            series_contexts: vec![SeriesContextConfig {
                                 identifier: Identifier::Multi(vec![
                                     "Col_1".to_string(),
                                     "Col_2".to_string(),
                                     "Col_3".to_string(),
                                 ]),
                                 header_context: Context::SubjectId,
-                                data_context: Context::HpoLabelOrId,
+                                data_context: Context::Hpo,
                                 fill_missing: Some(CellValue::String(
                                     "Zollinger-Ellison syndrome".to_string(),
                                 )),

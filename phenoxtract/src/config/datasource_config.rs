@@ -1,28 +1,32 @@
 use crate::config::context::Context;
 use crate::config::table_context::{CellValue, Identifier, OutputDataType};
+use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum DataSourceConfig {
     Csv(CsvConfig),
     Excel(ExcelWorkbookConfig),
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct CsvConfig {
     pub source: PathBuf,
     #[serde(default)]
     pub separator: Option<char>,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelWorkbookConfig {
     pub source: PathBuf,
     #[serde(default)]
@@ -30,15 +34,17 @@ pub struct ExcelWorkbookConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExcelSheetConfig {
     pub sheet_name: String,
     #[serde(default)]
-    pub contexts: Vec<SeriesContextConfig>,
+    pub series_contexts: Vec<SeriesContextConfig>,
     pub has_headers: bool,
     pub patients_are_rows: bool,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SeriesContextConfig {
     pub identifier: Identifier,
     #[serde(default)]
@@ -48,18 +54,107 @@ pub struct SeriesContextConfig {
     #[serde(default)]
     pub fill_missing: Option<CellValue>,
     #[serde(default)]
+    #[serde(rename = "alias_map")]
     pub alias_map_config: Option<AliasMapConfig>,
     #[serde(default)]
     pub building_block_id: Option<String>,
 }
 
+impl SeriesContextBuilding<AliasMapConfig> for SeriesContextConfig {
+    fn from_identifier(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map_config: None,
+            building_block_id: None,
+        }
+    }
+
+    fn with_identifier(mut self, identifier: impl Into<Identifier>) -> Self {
+        self.identifier = identifier.into();
+        self
+    }
+
+    fn with_header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
+        self
+    }
+
+    fn with_data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
+        self
+    }
+
+    fn with_fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
+        self
+    }
+
+    fn with_alias_map(mut self, alias_map_config: AliasMapConfig) -> Self {
+        self.alias_map_config = Some(alias_map_config);
+        self
+    }
+
+    fn with_building_block_id(mut self, building_block_id: impl IntoOptionalString) -> Self {
+        if let Some(id) = building_block_id.into_opt_string() {
+            self.building_block_id = Some(id);
+            self
+        } else {
+            self.building_block_id = None;
+            self
+        }
+    }
+}
+
+impl SeriesContextConfig {
+    pub fn new(identifier: impl Into<Identifier>) -> Self {
+        Self {
+            identifier: identifier.into(),
+            header_context: Context::default(),
+            data_context: Context::default(),
+            fill_missing: None,
+            alias_map_config: None,
+            building_block_id: None,
+        }
+    }
+
+    pub fn header_context(mut self, header_context: Context) -> Self {
+        self.header_context = header_context;
+        self
+    }
+
+    pub fn data_context(mut self, data_context: Context) -> Self {
+        self.data_context = data_context;
+        self
+    }
+
+    pub fn fill_missing(mut self, fill_missing: CellValue) -> Self {
+        self.fill_missing = Some(fill_missing);
+        self
+    }
+
+    pub fn alias_map_config(mut self, alias_map_config: AliasMapConfig) -> Self {
+        self.alias_map_config = Some(alias_map_config);
+        self
+    }
+
+    pub fn building_block_id(mut self, building_block_id: String) -> Self {
+        self.building_block_id = Some(building_block_id);
+        self
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct AliasMapConfig {
     pub mappings: MappingsConfig,
     pub output_data_type: OutputDataType,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum MappingsConfig {
     Csv(MappingsCsvConfig),
@@ -67,6 +162,7 @@ pub enum MappingsConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MappingsCsvConfig {
     pub path: PathBuf,
     pub key_column_name: String,
@@ -84,7 +180,7 @@ impl CsvConfig {
         Self {
             source,
             separator,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
         }
@@ -106,29 +202,9 @@ impl ExcelSheetConfig {
     ) -> Self {
         Self {
             sheet_name,
-            contexts,
+            series_contexts: contexts,
             has_headers,
             patients_are_rows,
-        }
-    }
-}
-
-impl SeriesContextConfig {
-    pub fn new(
-        identifier: Identifier,
-        header_context: Context,
-        data_context: Context,
-        fill_missing: Option<CellValue>,
-        alias_map_config: Option<AliasMapConfig>,
-        building_block_id: Option<String>,
-    ) -> Self {
-        Self {
-            identifier,
-            header_context,
-            data_context,
-            fill_missing,
-            alias_map_config,
-            building_block_id,
         }
     }
 }

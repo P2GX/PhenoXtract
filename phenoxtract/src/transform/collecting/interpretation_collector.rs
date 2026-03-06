@@ -19,27 +19,24 @@ impl Collect for InterpretationCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let subject_sex =
-            get_single_multiplicity_element(patient_cdfs, Context::SubjectSex, Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::SubjectSex, &Context::None)?;
 
         for patient_cdf in patient_cdfs {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let disease_cols = patient_cdf.get_columns(sc_id);
+                let disease_cols = patient_cdf.identify_columns(sc_id);
 
-                let stringified_linked_hgnc_cols =
-                    patient_cdf.get_stringified_cols(patient_cdf.get_linked_cols_with_context(
-                        bb_id,
-                        &Context::HgncSymbolOrId,
-                        &Context::None,
-                    ))?;
+                let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
+                    patient_cdf.get_linked_cols_with_context(bb_id, &Context::Hgnc, &Context::None),
+                )?;
                 let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
                     patient_cdf.get_linked_cols_with_context(bb_id, &Context::Hgvs, &Context::None),
                 )?;
@@ -90,7 +87,8 @@ impl Collect for InterpretationCollector {
 mod tests {
     use super::*;
     use crate::config::TableContext;
-    use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf_components};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -217,24 +215,20 @@ mod tests {
             [AnyValue::String("NM_001173464.1:c.2860C>T")],
         );
 
-        let diseases_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("diseases".to_string()))
-            .with_data_context(Context::DiseaseLabelOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
+        let diseases_sc = SeriesContext::from_identifier("diseases".to_string())
+            .with_data_context(Context::Disease)
+            .with_building_block_id("Block_3");
 
-        let gene_sc = SeriesContext::default()
-            .with_identifier(Identifier::Regex("gene".to_string()))
-            .with_data_context(Context::HgncSymbolOrId)
-            .with_building_block_id(Some("Block_3".to_string()));
+        let gene_sc = SeriesContext::from_identifier("gene".to_string())
+            .with_data_context(Context::Hgnc)
+            .with_building_block_id("Block_3");
 
-        let hgvs_sc1 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs1".to_string()))
+        let hgvs_sc1 = SeriesContext::from_identifier("hgvs1".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
-        let hgvs_sc2 = SeriesContext::default()
-            .with_identifier(Identifier::Regex("hgvs2".to_string()))
+            .with_building_block_id("Block_3");
+        let hgvs_sc2 = SeriesContext::from_identifier("hgvs2".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id(Some("Block_3".to_string()));
+            .with_building_block_id("Block_3");
 
         let patient_cdf = ContextualizedDataFrame::new(
             TableContext::new(

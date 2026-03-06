@@ -137,7 +137,7 @@ impl BioPortalClient {
             None => CurieParser::general(),
         };
 
-        // BioPortal class IRI pattern (common across ontologies hosted there)
+        // BioPortal class IRI pattern (common across ontologies hosted on bioportal)
         let iri_prefix = format!("http://purl.bioontology.org/ontology/{}/", ontology);
 
         // Rate limiter: 4 requests / second (token bucket)

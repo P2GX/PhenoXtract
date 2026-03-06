@@ -10,6 +10,7 @@ pub mod pathogenic_gene_variant_info;
 mod phenopacket_access;
 pub mod strategies;
 pub mod traits;
+pub mod transform_context;
 pub mod transform_module;
 mod utils;
 

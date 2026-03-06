@@ -3,7 +3,7 @@ use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{
-    Disease, Individual, Interpretation, Measurement, PhenotypicFeature, Resource,
+    Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
 };
 
 pub trait PhenopacketBuilding {
@@ -108,4 +108,5 @@ pub(crate) trait PhenopacketAccessors {
     fn push_measurement(&mut self, measurement: Measurement);
 
     fn push_disease(&mut self, disease: Disease);
+    fn push_medical_action(&mut self, medical_action: MedicalAction);
 }

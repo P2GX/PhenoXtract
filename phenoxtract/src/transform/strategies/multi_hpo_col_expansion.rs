@@ -1,5 +1,6 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
+use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
@@ -105,19 +106,10 @@ impl Strategy for MultiHPOColExpansionStrategy {
                 }
             }
 
-            let contexts_to_drop: Vec<Identifier> = table
-                .filter_series_context()
-                .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::MultiHpoId))
-                .collect()
-                .iter()
-                .map(|sc| sc.get_identifier().clone())
-                .collect();
-
             let cdf_builder = table.builder();
             cdf_builder
                 .insert_scs_alongside_cols(inserts.as_slice())?
-                .drop_scs_alongside_cols(contexts_to_drop.as_slice())?
+                .drop_scs_alongside_cols_with_context(&Context::None, &Context::MultiHpoId)?
                 .build()?;
         }
 
@@ -207,11 +199,10 @@ impl MultiHPOColExpansionStrategy {
             new_hpo_col_names.push(new_hpo_col.name().to_string());
             new_hpo_cols.push(new_hpo_col);
         }
-        let new_sc = SeriesContext::default()
-            .with_identifier(Identifier::Multi(new_hpo_col_names.clone()))
-            .with_header_context(Context::HpoLabelOrId)
+        let new_sc = SeriesContext::from_identifier(Identifier::Multi(new_hpo_col_names.clone()))
+            .with_header_context(Context::Hpo)
             .with_data_context(Context::ObservationStatus)
-            .with_building_block_id(building_block_id.map(|bb_id| bb_id.to_string()));
+            .with_building_block_id(building_block_id);
 
         (new_hpo_cols, new_sc)
     }
@@ -219,7 +210,9 @@ impl MultiHPOColExpansionStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
+    use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use polars::prelude::*;
     use pretty_assertions::assert_eq;
@@ -255,21 +248,16 @@ mod tests {
         let tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("subject_id".to_string()))
+                SeriesContext::from_identifier("subject_id".to_string())
                     .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Multi_HPOs_Block_A".to_string()))
+                SeriesContext::from_identifier("age".to_string())
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
+                SeriesContext::from_identifier("Multi_HPOs_Block_A".to_string())
                     .with_data_context(Context::MultiHpoId)
-                    .with_building_block_id(Some("A".to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block_1".to_string()))
+                    .with_building_block_id("A"),
+                SeriesContext::from_identifier("Multi_HPOs_No_Block_1".to_string())
                     .with_data_context(Context::MultiHpoId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("Multi_HPOs_No_Block_2".to_string()))
+                SeriesContext::from_identifier("Multi_HPOs_No_Block_2".to_string())
                     .with_data_context(Context::MultiHpoId),
             ],
         );
@@ -318,29 +306,25 @@ mod tests {
         let expected_tc = TableContext::new(
             "TestTable".to_string(),
             vec![
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("subject_id".to_string()))
+                SeriesContext::from_identifier("subject_id".to_string())
                     .with_data_context(Context::SubjectId),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Regex("age".to_string()))
-                    .with_data_context(Context::AgeAtLastEncounter),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111#A".to_string(),
-                        "HP:2222222#A".to_string(),
-                        "HP:3333333#A".to_string(),
-                    ]))
-                    .with_header_context(Context::HpoLabelOrId)
-                    .with_data_context(Context::ObservationStatus)
-                    .with_building_block_id(Some("A".to_string())),
-                SeriesContext::default()
-                    .with_identifier(Identifier::Multi(vec![
-                        "HP:1111111".to_string(),
-                        "HP:4444444".to_string(),
-                        "HP:5555555".to_string(),
-                    ]))
-                    .with_header_context(Context::HpoLabelOrId)
-                    .with_data_context(Context::ObservationStatus),
+                SeriesContext::from_identifier("age".to_string())
+                    .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
+                SeriesContext::from_identifier(vec![
+                    "HP:1111111#A".to_string(),
+                    "HP:2222222#A".to_string(),
+                    "HP:3333333#A".to_string(),
+                ])
+                .with_header_context(Context::Hpo)
+                .with_data_context(Context::ObservationStatus)
+                .with_building_block_id("A"),
+                SeriesContext::from_identifier(vec![
+                    "HP:1111111".to_string(),
+                    "HP:4444444".to_string(),
+                    "HP:5555555".to_string(),
+                ])
+                .with_header_context(Context::Hpo)
+                .with_data_context(Context::ObservationStatus),
             ],
         );
 
@@ -455,9 +439,9 @@ mod tests {
         assert_eq!(new_cols, vec![expected_col1, expected_col2]);
 
         let expected_sc = SeriesContext::default()
-            .with_header_context(Context::HpoLabelOrId)
+            .with_header_context(Context::Hpo)
             .with_data_context(Context::ObservationStatus)
-            .with_building_block_id(Some("A".to_string()))
+            .with_building_block_id("A")
             .with_identifier(Identifier::Multi(vec![
                 "HP:1111111#A".to_string(),
                 "HP:2222222#A".to_string(),

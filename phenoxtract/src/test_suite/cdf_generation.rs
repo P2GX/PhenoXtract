@@ -1,6 +1,7 @@
 use crate::config::TableContext;
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
+use crate::config::traits::SeriesContextBuilding;
 use crate::extract::ContextualizedDataFrame;
 use polars::df;
 use polars::prelude::Column;
@@ -22,7 +23,7 @@ pub(crate) fn generate_minimal_cdf(
         "Test",
         vec![
             SeriesContext::default()
-                .with_identifier(Identifier::from("subject_id"))
+                .with_identifier("subject_id")
                 .with_data_context(Context::SubjectId),
         ],
     );

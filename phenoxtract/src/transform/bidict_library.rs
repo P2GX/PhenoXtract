@@ -1,12 +1,13 @@
 use crate::ontology::resource_references::ResourceRef;
-use crate::ontology::traits::{BiDict, HasPrefixId};
-use crate::utils::check_curie_format;
+use crate::ontology::traits::BiDict;
 use phenopackets::schema::v2::core::OntologyClass;
+use securiety::{CurieRegexValidator, CurieValidation};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct BiDictLibrary {
     name: String,
     bidicts: Vec<Box<dyn BiDict>>,
+    curie_validator: CurieRegexValidator,
 }
 
 impl BiDictLibrary {
@@ -14,6 +15,7 @@ impl BiDictLibrary {
         BiDictLibrary {
             name: name.to_string(),
             bidicts,
+            curie_validator: CurieRegexValidator::general(),
         }
     }
 
@@ -21,6 +23,7 @@ impl BiDictLibrary {
         BiDictLibrary {
             name: name.to_string(),
             bidicts: vec![],
+            curie_validator: CurieRegexValidator::general(),
         }
     }
 
@@ -28,7 +31,7 @@ impl BiDictLibrary {
         self.bidicts.push(bidict);
     }
 
-    pub fn get_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
@@ -40,9 +43,9 @@ impl BiDictLibrary {
         self.bidicts.is_empty()
     }
 
-    pub(crate) fn query_bidicts(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
+    pub(crate) fn lookup(&self, query: &str) -> Option<(OntologyClass, ResourceRef)> {
         for bidict in self.bidicts.iter() {
-            if check_curie_format(query, Some(bidict.reference().prefix_id()), None) {
+            if self.curie_validator.validate(query) {
                 if let Ok(label) = bidict.get_label(query) {
                     return Some((
                         OntologyClass {
@@ -99,10 +102,10 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    fn test_query_bidicts_with_valid_label() {
+    fn test_lookup_bidicts_with_valid_label() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
-            .query_bidicts(&phenotype.label)
+            .lookup(&phenotype.label)
             .unwrap();
 
         assert_eq!(result.0.label, phenotype.label);
@@ -110,10 +113,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_with_valid_id() {
+    fn test_lookup_bidicts_with_valid_id() {
         let phenotype = default_phenotype_oc();
         let result = build_test_hpo_bidict_library()
-            .query_bidicts(&phenotype.id)
+            .lookup(&phenotype.id)
             .unwrap();
 
         assert_eq!(result.0.label, phenotype.label);
@@ -121,7 +124,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_query_bidicts_not_a_curie_fail() {
+    fn test_lookup_bidicts_not_a_curie_fail() {
         dotenv().ok();
         let bidict_lib = BiDictLibrary::new("LOINC", vec![Box::new(LoincClient::default())]);
 
@@ -133,33 +136,33 @@ mod tests {
             .1
             .to_string();
 
-        let result = bidict_lib.query_bidicts(loinc_id.as_str());
+        let result = bidict_lib.lookup(loinc_id.as_str());
         assert!(result.is_none());
     }
 
     #[rstest]
-    fn test_query_bidicts_invalid_query() {
-        let result = build_test_mondo_bidict_library().query_bidicts("NonexistentTerm");
+    fn test_lookup_bidicts_invalid_query() {
+        let result = build_test_mondo_bidict_library().lookup("NonexistentTerm");
 
         assert!(result.is_none());
     }
 
     #[rstest]
-    fn test_query_bidicts_on_empty_library() {
+    fn test_lookup_bidicts_on_empty_library() {
         let library = BiDictLibrary::empty_with_name("EmptyLib");
-        let result = library.query_bidicts("AnyQuery");
+        let result = library.lookup("AnyQuery");
 
         assert!(result.is_none());
     }
 
     #[rstest]
-    fn test_query_bidicts_returns_correct_resource_ref() {
+    fn test_lookup_bidicts_returns_correct_resource_ref() {
         let phenotype = default_phenotype_oc();
         let library = build_test_hpo_bidict_library();
 
         let expected_ref = library.get_bidicts()[0].reference();
 
-        let result = library.query_bidicts(&phenotype.label).unwrap();
+        let result = library.lookup(&phenotype.label).unwrap();
 
         assert_eq!(&result.1, expected_ref);
     }

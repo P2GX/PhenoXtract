@@ -20,19 +20,17 @@ impl Collect for DiseaseCollector {
             let disease_in_cells_scs = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect();
 
             for disease_sc in disease_in_cells_scs {
                 let sc_id = disease_sc.get_identifier();
                 let bb_id = disease_sc.get_building_block_id();
 
-                let disease_cols = patient_cdf.get_columns(sc_id);
+                let disease_cols = patient_cdf.identify_columns(sc_id);
 
-                let stringified_linked_onset_col = patient_cdf.get_single_linked_column_as_str(
-                    bb_id,
-                    &[Context::OnsetAge, Context::OnsetDate],
-                )?;
+                let stringified_linked_onset_col =
+                    patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
@@ -75,7 +73,9 @@ impl Collect for DiseaseCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
+    use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
@@ -123,17 +123,17 @@ mod tests {
         cdf.builder()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("disease".into())
-                    .with_data_context(Context::DiseaseLabelOrId)
-                    .with_building_block_id(Some("disease_1".to_string())),
+                    .with_identifier("disease")
+                    .with_data_context(Context::Disease)
+                    .with_building_block_id("disease_1"),
                 vec![disease_col].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::default()
-                    .with_identifier("onset".into())
-                    .with_data_context(Context::OnsetAge)
-                    .with_building_block_id(Some("disease_1".to_string())),
+                    .with_identifier("onset")
+                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_building_block_id("disease_1"),
                 vec![onset_col].as_ref(),
             )
             .unwrap()
