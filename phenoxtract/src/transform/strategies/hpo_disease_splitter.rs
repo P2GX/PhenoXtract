@@ -95,6 +95,15 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 let new_hpo_col = Column::new(new_hpo_col_name.into(), new_hpo_col_data);
                 let new_disease_col =
                     Column::new(new_disease_col_name.into(), new_disease_col_data);
+                print!("Inserting hpo column in hpo data.");
+
+                if !error_info.is_empty() {
+                    return Err(MappingError {
+                        strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                        message: "Could not find ontology terms for these strings.".to_string(),
+                        info: error_info.into_iter().collect(),
+                    });
+                }
 
                 table
                     .builder()
@@ -109,15 +118,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 .build()?;
         }
 
-        if !error_info.is_empty() {
-            Err(MappingError {
-                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
-                message: "Could not find ontology terms for these strings.".to_string(),
-                info: error_info.into_iter().collect(),
-            })
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
