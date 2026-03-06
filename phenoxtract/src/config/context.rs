@@ -84,6 +84,22 @@ pub enum Context {
     ResponseToTreatment,
     TreatmentTerminationReason,
     Procedure,
+
+    TreatmentAgent,
+    RouteOfAdministration,
+
+    // Dose Interval
+    DoseIntervalQuantity {
+        unit_ontology_id: String,
+    },
+    DoseInterval(Boundary),
+    DoseScheduleFrequency,
+
+    DrugType,
+    CumulativeDose {
+        unit_ontology_id: String,
+    },
+
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
 
@@ -146,6 +162,11 @@ impl Context {
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement
                 | ContextKind::ReferenceRange
+                | ContextKind::TreatmentAgent
+                | ContextKind::RouteOfAdministration
+                | ContextKind::DoseIntervalQuantity
+                | ContextKind::DrugType
+                | ContextKind::CumulativeDose
                 | ContextKind::TreatmentTarget
                 | ContextKind::TreatmentIntent
                 | ContextKind::ResponseToTreatment
@@ -154,6 +175,8 @@ impl Context {
                 | ContextKind::ProcedureBodySite
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
+                | ContextKind::DoseInterval
+                | ContextKind::DoseScheduleFrequency
                 | ContextKind::None => None,
             })
             .collect()

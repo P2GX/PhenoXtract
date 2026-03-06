@@ -1,4 +1,5 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::{Context, ContextError, ContextKind};
+use crate::config::table_context::Identifier;
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
@@ -272,6 +273,14 @@ pub enum CollectorError {
         patient_id: String,
         phenotype: String,
     },
+    #[error(
+        "Expected context '{context}' to be part of a building block in table '{table_name}' for patient '{patient_id}'."
+    )]
+    ExpectedBuildingBlock {
+        table_name: String,
+        patient_id: String,
+        context: ContextKind,
+    },
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -285,9 +294,11 @@ pub enum CollectorError {
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
     #[error("Error collecting gene variant data: {0}")]
-    GeneVariantData(String),
-    #[error("Blah: {0}")]
-    ContextError(String),
+    GeneVariantDataError(String),
+    #[error("Found unexpected context '{0}' on column with identifier '{1}'")]
+    UnexpectedContextError(ContextKind, Identifier),
+    #[error(transparent)]
+    TryIntoContextError(#[from] ContextError),
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]
