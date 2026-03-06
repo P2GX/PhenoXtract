@@ -1,6 +1,6 @@
 data_sources:
   - type: "excel"
-    source: "~/data/usidnet/i_data_edited.xlsx"
+    source: "/Users/rouvenreuter/data/usidnet/old_registry_data.xlsx"
     sheets:
       - sheet_name: "Cohort"
         has_headers: true
@@ -18,7 +18,8 @@ data_sources:
                 "No": "DECEASED"
               output_data_type: String
           - identifier: "Age of Death (Years)"
-            data_context: time_of_death
+            data_context:
+              time_of_death: age
             alias_map:
               mappings:
                 "less than 1 year": "0"
@@ -26,18 +27,20 @@ data_sources:
           - identifier: "Sex"
             data_context: subject_sex
           - identifier: "Most Recent Visit Date"
-            data_context: date_at_last_encounter
+            data_context:
+              time_at_last_encounter: date
           - identifier: "Diagnosis"
-            data_context: disease_label_or_id
+            data_context: disease
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "/Users/patrick/Downloads/I_DATA/alias_csv_files/disease_aliases.csv"
+                path: "/Users/rouvenreuter/data/usidnet/mappings/disease_aliases.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "ALIAS"
               output_data_type: String
           - identifier: "Onset Age (Years)"
-            data_context: onset_age
+            data_context:
+              onset: age
             building_block_id: "D"
             alias_map:
               mappings:
@@ -50,7 +53,8 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Vitals Date"
-            data_context: onset_date
+            data_context:
+              time_of_measurement: date
             building_block_id: "M"
           - identifier: "Height (cm)"
             data_context:
@@ -77,7 +81,8 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Head Circumf Date"
-            data_context: onset_date
+            data_context:
+              time_of_measurement: date
             building_block_id: "M"
           - identifier: "Head (cm)"
             data_context:
@@ -92,10 +97,10 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Infection"
-            data_context: disease_label_or_id
+            data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "~/data/usidnet/mappings/conditions_matchings.csv"
+                path: "/Users/rouvenreuter/data/usidnet/mappings/conditions_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -106,7 +111,7 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Condition"
-            data_context: hpo_label_or_id
+            data_context: hpo
             alias_map:
               mappings:
                 path: "~/data/usidnet/mappings/conditions_matchings.csv"
@@ -116,6 +121,7 @@ data_sources:
 pipeline:
   strategies:
     - alias_map
+    - hpo_disease_splitter
     - default_mapping: sex_mapping
     - date_to_age
     - age_to_iso8601
