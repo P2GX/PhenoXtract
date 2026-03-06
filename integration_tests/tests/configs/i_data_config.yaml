@@ -1,6 +1,6 @@
 data_sources:
   - type: "excel"
-    source: "/Users/rouvenreuter/data/usidnet/old_registry_data.xlsx"
+    source: "/Users/rouvenreuter/data/usidnet/i_data_edited.xlsx"
     sheets:
       - sheet_name: "Cohort"
         has_headers: true
@@ -100,7 +100,7 @@ data_sources:
             data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "/Users/rouvenreuter/data/usidnet/mappings/conditions_matchings.csv"
+                path: "/Users/rouvenreuter/data/usidnet/mappings/infections_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -111,23 +111,24 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Condition"
-            data_context: hpo
+            data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "~/data/usidnet/mappings/conditions_matchings.csv"
+                path: "/Users/rouvenreuter/data/usidnet/mappings/conditions_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 pipeline:
   strategies:
     - alias_map
-    - hpo_disease_splitter
     - default_mapping: sex_mapping
     - date_to_age
     - age_to_iso8601
+    - hpo_disease_splitter
+
   loader:
     file_system:
-      output_dir: "/Users/patrick/Downloads/I_DATA/i_data_phenopackets"
+      output_dir: "/Users/rouvenreuter/data/usidnet/phenopackets"
       create_dir: true
   meta_data:
     created_by: Patrick Nairne
@@ -135,7 +136,7 @@ pipeline:
     cohort_name: "I_COHORT"
     hpo_resource:
       id: "HP"
-      version: "2025-09-01"
+      version: "2026-02-16"
     unit_resources:
       - id: "UO"
         version: "2026-01-09"
