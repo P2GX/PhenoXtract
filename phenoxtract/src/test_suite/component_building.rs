@@ -7,8 +7,8 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::transform_context::TransformContext;
 use dotenvy::dotenv;
-use pivot::hgnc::{CachedHGNCClient, HGNCClient};
-use pivot::hgvs::{CachedHGVSClient, HGVSClient};
+use pivotal::hgnc::{CachedHGNCClient, HGNCClient};
+use pivotal::hgvs::{CachedHGVSClient, HGVSClient};
 use std::path::Path;
 use std::sync::Arc;
 

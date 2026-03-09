@@ -25,8 +25,8 @@ use phenopackets::schema::v2::core::{
     OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
     Value as ValueStruct, VitalStatus,
 };
-use pivot::hgnc::GeneQuery;
-use pivot::hgvs::AlleleCount;
+use pivotal::hgnc::GeneQuery;
+use pivotal::hgvs::AlleleCount;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::sync::Arc;
