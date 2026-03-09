@@ -245,11 +245,10 @@ impl TryFrom<SeriesContextConfig> for SeriesContext {
     type Error = ConstructionError;
 
     fn try_from(config: SeriesContextConfig) -> Result<Self, Self::Error> {
-        let alias_map = if let Some(am_config) = config.alias_map_config {
-            Some(AliasMap::try_from(am_config)?)
-        } else {
-            None
-        };
+        let alias_map = config
+            .alias_map_config
+            .map(|alias_map| AliasMap::from)
+            .collect();
 
         Ok(SeriesContext::new(
             config.identifier.try_into()?,
