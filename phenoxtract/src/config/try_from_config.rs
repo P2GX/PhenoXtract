@@ -247,8 +247,8 @@ impl TryFrom<SeriesContextConfig> for SeriesContext {
     fn try_from(config: SeriesContextConfig) -> Result<Self, Self::Error> {
         let alias_map = config
             .alias_map_config
-            .map(|alias_map| AliasMap::from)
-            .collect();
+            .map(AliasMap::try_from)
+            .transpose()?;
 
         Ok(SeriesContext::new(
             config.identifier.try_into()?,
