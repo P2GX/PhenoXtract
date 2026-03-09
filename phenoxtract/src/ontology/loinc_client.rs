@@ -2,7 +2,7 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use elsa::FrozenMap;
+use elsa::sync::FrozenMap;
 use regex::Regex;
 use reqwest::blocking::Client;
 use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
@@ -198,28 +198,33 @@ impl BiDict for LoincClient {
             .cache
             .insert(id.to_string(), Box::from(result.long_common_name));
 
-        Ok(label_ref)
+        self.cache
+            .get(id)
+            .ok_or_else(|| BiDictError::NotFound(id.to_string()))
     }
 
-    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
-        if let Some(loinc_number) = self.cache.get(term) {
+    fn get_id(&self, label: &str) -> Result<&str, BiDictError> {
+        if let Some(loinc_number) = self.cache.get(label) {
             return Ok(loinc_number);
         }
 
-        let cleaned: String = term.chars().filter(|c| !c.is_ascii_punctuation()).collect();
+        let cleaned: String = label
+            .chars()
+            .filter(|c| !c.is_ascii_punctuation())
+            .collect();
 
         let loinc_search_results = self.query(&cleaned)?;
 
         for loinc_result in loinc_search_results {
-            if loinc_result.long_common_name.to_lowercase() == term.to_lowercase() {
+            if loinc_result.long_common_name.to_lowercase() == label.to_lowercase() {
                 self.cache.insert(
-                    term.to_string(),
+                    label.to_string(),
                     Box::from(Self::format_loinc_curie(&loinc_result.loinc_num)),
                 );
             }
         }
-        match self.cache.get(term) {
-            None => Err(BiDictError::NotFound(term.into())),
+        match self.cache.get(label) {
+            None => Err(BiDictError::NotFound(label.to_string())),
             Some(id) => Ok(id),
         }
     }
@@ -266,32 +271,27 @@ mod tests {
     #[rstest]
     fn test_get_id(loinc_client: LoincClient) {
         let label = default_qual_loinc().label;
-        let res = loinc_client.get_id(label.as_str());
+        let res = loinc_client
+            .get_id(label.as_str())
+            .unwrap_or_else(|_| panic!("Should find an ID for term: {}", label));
 
-        assert!(res.is_ok(), "Should find an ID for term: {}", label);
-        assert_eq!(res.unwrap(), default_qual_loinc().id);
+        assert_eq!(res, default_qual_loinc().id);
     }
 
     #[rstest]
     fn test_get_bidirectional(loinc_client: LoincClient) {
         let id_input = "LOINC:97062-4";
 
-        let label_res = loinc_client.get(id_input);
+        let label_res = loinc_client
+            .get(id_input)
+            .unwrap_or_else(|_| panic!("Should find an ID for label: {}", id_input));
 
-        assert!(
-            label_res.is_ok(),
-            "Should find an ID for input: {}",
-            id_input
-        );
-        let found_label = label_res.unwrap();
+        let found_label = label_res;
 
-        let id_res = loinc_client.get(found_label);
-        assert!(
-            id_res.is_ok(),
-            "Should find an ID for output: {}",
-            found_label
-        );
+        let id_res = loinc_client
+            .get(found_label)
+            .unwrap_or_else(|_| panic!("Should find an ID for label: {}", found_label));
 
-        assert_eq!(id_res.unwrap(), id_input);
+        assert_eq!(id_res, id_input);
     }
 }

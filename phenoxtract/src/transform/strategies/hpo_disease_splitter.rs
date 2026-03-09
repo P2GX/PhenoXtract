@@ -10,6 +10,7 @@ use log::info;
 use polars::prelude::{AnyValue, Column};
 use std::any::type_name;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 /// This strategy will find every column whose context is HpoOrDisease
 /// And split it into two separate columns: a Hpo column and a disease column.
@@ -19,13 +20,13 @@ use std::collections::HashSet;
 ///
 #[derive(Debug)]
 pub struct HpoDiseaseSplitterStrategy {
-    hpo_dict_lib: BiDictLibrary,
-    disease_dict_lib: BiDictLibrary,
+    hpo_dict_lib: Arc<BiDictLibrary>,
+    disease_dict_lib: Arc<BiDictLibrary>,
 }
 
 impl HpoDiseaseSplitterStrategy {
     #[allow(unused)]
-    pub fn new(hpo_dict_lib: BiDictLibrary, disease_dict_lib: BiDictLibrary) -> Self {
+    pub fn new(hpo_dict_lib: Arc<BiDictLibrary>, disease_dict_lib: Arc<BiDictLibrary>) -> Self {
         Self {
             hpo_dict_lib,
             disease_dict_lib,
@@ -95,14 +96,18 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 let new_disease_col =
                     Column::new(new_disease_col_name.into(), new_disease_col_data);
 
+                if !error_info.is_empty() {
+                    return Err(MappingError {
+                        strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
+                        message: "Could not find ontology terms for these strings.".to_string(),
+                        info: error_info.into_iter().collect(),
+                    });
+                }
+
                 table
                     .builder()
-                    .insert_col_with_context(new_hpo_col, Context::None, Context::HpoLabelOrId)?
-                    .insert_col_with_context(
-                        new_disease_col,
-                        Context::None,
-                        Context::DiseaseLabelOrId,
-                    )?
+                    .insert_col_with_context(new_hpo_col, Context::None, Context::Hpo)?
+                    .insert_col_with_context(new_disease_col, Context::None, Context::Disease)?
                     .build()?;
             }
 
@@ -112,15 +117,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 .build()?;
         }
 
-        if !error_info.is_empty() {
-            Err(MappingError {
-                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
-                message: "Could not find ontology terms for these strings.".to_string(),
-                info: error_info.into_iter().collect(),
-            })
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
@@ -136,6 +133,7 @@ mod tests {
     use polars::prelude::{AnyValue, Column};
     use rstest::rstest;
     use std::collections::HashSet;
+    use std::sync::Arc;
 
     #[rstest]
     fn test_hpo_disease_splitter() {
@@ -173,8 +171,11 @@ mod tests {
             .unwrap();
 
         let strategy = HpoDiseaseSplitterStrategy {
-            hpo_dict_lib: BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())]),
-            disease_dict_lib: BiDictLibrary::new("disease", vec![Box::new(MONDO_BIDICT.clone())]),
+            hpo_dict_lib: Arc::new(BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())])),
+            disease_dict_lib: Arc::new(BiDictLibrary::new(
+                "disease",
+                vec![Box::new(MONDO_BIDICT.clone())],
+            )),
         };
 
         strategy.transform(&mut [&mut cdf]).unwrap();
@@ -189,11 +190,7 @@ mod tests {
 
         assert_eq!(
             scs,
-            HashSet::from_iter([
-                Context::HpoLabelOrId,
-                Context::DiseaseLabelOrId,
-                Context::SubjectId
-            ])
+            HashSet::from_iter([Context::Hpo, Context::Disease, Context::SubjectId])
         );
 
         let assert_column_contains = |context: Context, expected_items: &[&str]| {
@@ -217,7 +214,7 @@ mod tests {
             }
         };
 
-        assert_column_contains(Context::HpoLabelOrId, &phenotypes);
-        assert_column_contains(Context::DiseaseLabelOrId, &diseases);
+        assert_column_contains(Context::Hpo, &phenotypes);
+        assert_column_contains(Context::Disease, &diseases);
     }
 }

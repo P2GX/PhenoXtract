@@ -511,7 +511,7 @@ mod tests {
                     .with_data_context(Context::DateOfBirth),
                 SeriesContext::default()
                     .with_identifier("bronchitis")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
             ],
         )
@@ -565,7 +565,7 @@ mod tests {
                 SeriesContext::from_identifier("subject_id".to_string())
                     .with_data_context(Context::SubjectId),
                 SeriesContext::from_identifier("pneumonia".to_string())
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::from_identifier("onset".to_string())
                     .with_data_context(Context::Onset(TimeElementType::Date)),

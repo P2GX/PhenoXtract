@@ -335,11 +335,11 @@ mod tests {
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age))
                     .with_building_block_id("block_1"),
                 SeriesContext::from_identifier("bronchitis")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
                 SeriesContext::from_identifier("overweight")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
@@ -478,7 +478,7 @@ mod tests {
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
         let extracted_col = cdf
-            .get_single_linked_column(Some("Absent_BB"), &[Context::DiseaseLabelOrId])
+            .get_single_linked_column(Some("Absent_BB"), &[Context::Disease])
             .unwrap();
 
         assert!(extracted_col.is_none());
@@ -900,12 +900,12 @@ mod builder_tests {
                     .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier("bronchitis")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus)
                     .with_building_block_id("block_1"),
                 SeriesContext::default()
                     .with_identifier("overweight")
-                    .with_header_context(Context::HpoLabelOrId)
+                    .with_header_context(Context::Hpo)
                     .with_data_context(Context::ObservationStatus),
                 SeriesContext::default()
                     .with_identifier("null")
@@ -924,7 +924,7 @@ mod builder_tests {
         let original_context_no = cdf.context().context().len();
 
         cdf.builder()
-            .drop_scs_with_context(&Context::HpoLabelOrId, &Context::ObservationStatus)
+            .drop_scs_with_context(&Context::Hpo, &Context::ObservationStatus)
             .build_dirty();
 
         assert_eq!(cdf.context().context().len(), original_context_no - 2);
@@ -1159,8 +1159,8 @@ mod builder_tests {
         let ctx = sample_ctx();
         let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let keys = vec![Context::HpoLabelOrId];
-        let values = vec![Context::DiseaseLabelOrId];
+        let keys = vec![Context::Hpo];
+        let values = vec![Context::Disease];
 
         let header_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1170,7 +1170,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+                .where_header_context(Filter::Is(&Context::Hpo))
                 .collect()
                 .len(),
             0
@@ -1178,7 +1178,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_header_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_header_context(Filter::Is(&Context::Disease))
                 .collect()
                 .len(),
             2
@@ -1195,7 +1195,7 @@ mod builder_tests {
             Context::ObservationStatus,
             Context::TimeAtLastEncounter(TimeElementType::Age),
         ];
-        let values = vec![Context::DateOfBirth, Context::DiseaseLabelOrId];
+        let values = vec![Context::DateOfBirth, Context::Disease];
 
         let data_context_hm = keys.into_iter().zip(values.into_iter()).collect();
 
@@ -1224,7 +1224,7 @@ mod builder_tests {
 
         assert_eq!(
             cdf.filter_series_context()
-                .where_data_context(Filter::Is(&Context::DiseaseLabelOrId))
+                .where_data_context(Filter::Is(&Context::Disease))
                 .collect()
                 .len(),
             2
@@ -1344,7 +1344,7 @@ mod builder_tests {
         let new_col = Column::new("test_col".into(), &[10, 11, 12]);
 
         cdf.builder()
-            .insert_col_with_context(new_col, Context::HpoLabelOrId, Context::SubjectId)
+            .insert_col_with_context(new_col, Context::Hpo, Context::SubjectId)
             .unwrap()
             .build_dirty();
 
@@ -1354,7 +1354,7 @@ mod builder_tests {
 
         let sc = cdf
             .filter_series_context()
-            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_header_context(Filter::Is(&Context::Hpo))
             .where_data_context(Filter::Is(&Context::SubjectId))
             .collect();
         assert_eq!(sc.len(), 1);
@@ -1371,11 +1371,7 @@ mod builder_tests {
         let col_b = Column::new("test_col_b".into(), &[4, 5, 6]);
 
         cdf.builder()
-            .insert_cols_with_context(
-                &[col_a, col_b],
-                Context::HpoLabelOrId,
-                Context::ObservationStatus,
-            )
+            .insert_cols_with_context(&[col_a, col_b], Context::Hpo, Context::ObservationStatus)
             .unwrap()
             .build_dirty();
 
@@ -1387,7 +1383,7 @@ mod builder_tests {
         let sc = cdf
             .filter_series_context()
             .where_data_context(Filter::Is(&Context::ObservationStatus))
-            .where_header_context(Filter::Is(&Context::HpoLabelOrId))
+            .where_header_context(Filter::Is(&Context::Hpo))
             .collect();
         assert_eq!(sc.len(), 3);
     }

@@ -37,7 +37,7 @@ impl Collect for QualitativeMeasurementCollector {
 
                 let time_observed_col = patient_cdf.get_single_linked_column_as_str(
                     qual_measurement_sc.get_building_block_id(),
-                    Context::ONSET_VARIANTS,
+                    Context::TIME_OF_MEASUREMENT_VARIANTS,
                 )?;
 
                 for qual_measurement_col in qual_measurement_cols {
@@ -145,7 +145,7 @@ mod tests {
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("time_observed")
-                    .with_data_context(Context::Onset(TimeElementType::Age))
+                    .with_data_context(Context::TimeOfMeasurement(TimeElementType::Age))
                     .with_building_block_id("nitrate_measurement"),
                 vec![time_observed.into_column()].as_ref(),
             )

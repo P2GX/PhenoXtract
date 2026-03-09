@@ -162,7 +162,7 @@ mod tests {
         let table_context = TableContext::new(
             "table_without_subject_id".to_string(),
             vec![
-                regex("test").with_header_context(Context::HpoLabelOrId),
+                regex("test").with_header_context(Context::Hpo),
                 regex("test").with_data_context(Context::None),
             ],
         );
