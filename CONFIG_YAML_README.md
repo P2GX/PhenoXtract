@@ -32,11 +32,11 @@ In this README it will be explained how to write a `config.yaml` file for PhenoX
 
 Suppose we have the following Excel Workbook with two sheets called `Basic Info` and `Phenotypes and Diseases`.
 
-<img alt="Basic Info Sheet" src="readme_assets/basic_info_sheet.png" width="1000"/>
+<img alt="Basic Info Sheet" src="phenoxtract/readme_assets/basic_info_sheet.png" width="1000"/>
 
 <br>
 
-<img alt="Phenotypes and Diseases Sheet" src="readme_assets/phenotypes_and_diseases.png" width="1000"/>
+<img alt="Phenotypes and Diseases Sheet" src="phenoxtract/readme_assets/phenotypes_and_diseases.png" width="1000"/>
 
 Here is what a typical PhenoXtract `config.yaml` file for this data might look like:
 
@@ -111,7 +111,7 @@ The `config.yaml` has two main sections: `data_sources` and `pipeline`.
 
 `data_sources` contains information on the tabular data (which may be CSV or Excel) being extracted. The user must input
 the location of the file, and specify whether the table has headers, and whether rows or columns correspond to patients.
-For each table, the user must specify a list of `series_contexts`. A Series Context is an association between a column
+For each table, the user must specify a list of `series_contexts`. A `SeriesContext` is an association between a column
 in the data, and a concept that PhenoXtract can understand. The two most important fields of a Series Context are
 `identifier` and `data_context`. For example, this:
 
@@ -320,7 +320,31 @@ where it belongs in the Phenopacket.
 
 ### Specifying a data_context or header_context in the config
 
-(TODO)
+See [Contexts](README.md#contexts) for a list of possible contexts. If a `header_context` or `data_context` has no
+parameters then they can be serialised easily, like in the following example:
+
+```yaml
+header_context: hpo
+data_context: observation_status
+```
+
+Sometimes a context, takes an enum as a parameter, for example `time_at_last_encounter: time_element_type`. In this
+case, it can be serialised like so:
+
+```yaml
+data_context:
+  time_at_last_encounter: date
+```
+
+Sometimes a context can have a couple of parameters that user must input themselves. For example
+`quantitative_measurement (assay_id: String, unit_ontology_id: String)`. This is serialised like so:
+
+```yaml
+data_context:
+  quantitative_measurement:
+    assay_id: "LOINC:12345-6"
+    unit_ontology_id: "UO:1234567"
+```
 
 ## pipeline
 
