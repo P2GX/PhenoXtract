@@ -1,15 +1,13 @@
 data_sources:
-  - type: "excel"
-    source: "/home/lukas/Desktop/RS_HPOs_final.xlsx"
-    sheets:
-      - sheet_name: "Tabelle1"
-        has_headers: true
-        patients_are_rows: true
-        series_contexts:
-          - identifier: "Patient ID"
-            data_context: subject_id
-          - identifier: "HPO ID"
-            data_context: hpo
+  - type: "csv"
+    source: "$HOME/data/lukas_data/test.csv"
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "Patient ID"
+        data_context: subject_id
+      - identifier: "HPO ID"
+        data_context: hpo
 
 pipeline:
   strategies:
@@ -21,7 +19,7 @@ pipeline:
 
   loader:
     file_system:
-      output_dir: "/home/lukas/soft/lirical-cli-2.2.1/phenopacket"
+      output_dir: "$HOME/data/lukas_data/phenopacket"
       create_dir: true
   meta_data:
     created_by: Lukas Ramlow
