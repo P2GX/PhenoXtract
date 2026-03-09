@@ -342,8 +342,8 @@ Sometimes a context can have a couple of parameters that user must input themsel
 ```yaml
 data_context:
   quantitative_measurement:
-    assay_id: "LOINC:12345-6"
-    unit_ontology_id: "UO:1234567"
+    assay_id: "LOINC:39156-5"
+    unit_ontology_id: "UO:0000086"
 ```
 
 ## pipeline
