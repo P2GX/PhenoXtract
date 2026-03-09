@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use validator::Validate;
 
 /// Defines an Excel workbook as a data source.
-#[derive(Debug, Validate, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
 #[validate(schema(
     function = "validate_extraction_config_links",
     skip_on_field_errors = false

@@ -1,12 +1,11 @@
 use crate::config::table_context::TableContext;
 use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::traits::HasSource;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use validator::Validate;
 
 /// Defines a CSV file as a data source.
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Validate)]
+#[derive(Debug, Clone, PartialEq, Validate)]
 pub struct CsvDataSource {
     /// The file path to the CSV source.
     pub(crate) source: PathBuf,

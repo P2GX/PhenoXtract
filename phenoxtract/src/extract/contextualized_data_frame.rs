@@ -354,7 +354,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("sex".to_string());
+        let id = Identifier::from("sex");
         let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 1);
@@ -367,7 +367,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("^[a,s]{1}[a-z.]*".to_string());
+        let id = Identifier::from("^[a,s]{1}[a-z.]*");
         let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 3);
@@ -405,7 +405,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(table_context, df).unwrap();
 
-        let id = Identifier::Regex("blah".to_string());
+        let id = Identifier::from("blah");
         let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
@@ -1042,7 +1042,7 @@ mod builder_tests {
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.builder()
-            .drop_sc(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc(&Identifier::from("bronchitis"))
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
@@ -1055,7 +1055,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 1;
 
         cdf.builder()
-            .drop_sc_alongside_cols(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc_alongside_cols(&Identifier::from("bronchitis"))
             .unwrap()
             .build_dirty();
 
@@ -1071,10 +1071,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 2;
 
         cdf.builder()
-            .drop_scs_alongside_cols(&[
-                Identifier::Regex("age".to_string()),
-                Identifier::Regex("overweight".to_string()),
-            ])
+            .drop_scs_alongside_cols(&[Identifier::from("age"), Identifier::from("overweight")])
             .unwrap()
             .build_dirty();
 
@@ -1316,8 +1313,8 @@ mod builder_tests {
         let expected_len = cdf.series_contexts().len() - 2;
         cdf.builder()
             .drop_scs(&[
-                Identifier::Regex("bronchitis".to_string()),
-                Identifier::Regex("overweight".to_string()),
+                Identifier::from("bronchitis"),
+                Identifier::from("overweight"),
             ])
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);
