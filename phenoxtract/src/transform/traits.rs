@@ -43,6 +43,19 @@ pub trait PhenopacketBuilding {
         evidence: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
 
+    fn insert_phenotypic_feature(
+        &mut self,
+        patient_id: &str,
+        phenotype: &str,
+        description: Option<&str>,
+        excluded: Option<bool>,
+        severity: Option<&str>,
+        modifiers: Option<Vec<&str>>,
+        onset: Option<&str>,
+        resolution: Option<&str>,
+        evidence: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError>;
+
     fn upsert_interpretation(
         &mut self,
         patient_id: &str,
