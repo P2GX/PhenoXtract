@@ -1,0 +1,17 @@
+use dotenvy::dotenv;
+use phenoxtract::phenoxtract::Phenoxtract;
+use rstest::rstest;
+use std::path::PathBuf;
+
+#[rstest]
+fn test_i_data() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    let root = env!("CARGO_MANIFEST_DIR");
+    let config_path = PathBuf::from(&format!("{}/tests/configs/i_data_config.yaml", root));
+
+    println!("config_path: {:?}", config_path);
+    let mut phenoxtract = Phenoxtract::try_from(config_path).unwrap();
+    phenoxtract.run()?;
+
+    Ok(())
+}
