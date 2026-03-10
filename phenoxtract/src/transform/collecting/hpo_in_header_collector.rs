@@ -112,16 +112,10 @@ mod tests {
     use polars::datatypes::{AnyValue, DataType};
     use polars::prelude::{Column, DataFrame, IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
 
     #[fixture]
     fn spasmus_nutans_pf_with_onset() -> PhenotypicFeature {
         generate_phenotype("HP:0010533", Some(default_age_element()))
-    }
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[fixture]
@@ -164,8 +158,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_hpo_in_header_col(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_hpo_in_header_col() {
+        let mut builder = build_test_phenopacket_builder();
         let collector = HpoInHeaderCollector;
 
         let patient_id = default_patient_id();

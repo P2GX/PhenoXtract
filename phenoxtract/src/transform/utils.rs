@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use phenopackets::schema::v2::core::Sex;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::{Age as IndividualAge, TimeElement};
-use pivot::hgvs::ChromosomalSex;
+use pivotal::hgvs::ChromosomalSex;
 use polars::datatypes::DataType;
 use polars::prelude::{AnyValue, Column};
 use prost_types::Timestamp;

@@ -2,8 +2,8 @@ use crate::extract::error::ExtractionError;
 use crate::ontology::error::{FactoryError, RegistryError};
 use crate::transform::error::TransformError;
 use config::ConfigError;
-use pivot::hgnc::HGNCError;
-use pivot::hgvs::HGVSError;
+use pivotal::hgnc::HGNCError;
+use pivotal::hgvs::HGVSError;
 use polars::prelude::PolarsError;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -23,6 +23,8 @@ pub enum ConstructionError {
     NoPipelineConfigFound,
     #[error("Could not load the aliases at {path} as a DataFrame. {err}")]
     LoadingAliases { path: PathBuf, err: PolarsError },
+    #[error("Could not load Identifier because: {reason}")]
+    Identifier { reason: String },
     #[error("Could not find config file at '{0}'")]
     NoConfigFileFound(PathBuf),
     #[error(transparent)]

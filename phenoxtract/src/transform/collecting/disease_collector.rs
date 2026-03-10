@@ -2,6 +2,7 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collecting::traits::Collect;
+use crate::transform::collecting::utils::get_str_at_index;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
@@ -32,6 +33,11 @@ impl Collect for DiseaseCollector {
                 let stringified_linked_onset_col =
                     patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
 
+                let resolution_column = patient_cdf.get_single_linked_column_as_str(
+                    disease_sc.get_building_block_id(),
+                    Context::TIME_OF_RESOLUTION_VARIANTS,
+                )?;
+
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
                         let stringified_disease_col = disease_col.str()?;
@@ -39,18 +45,16 @@ impl Collect for DiseaseCollector {
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
                             let disease_onset =
-                                if let Some(onset_col) = &stringified_linked_onset_col {
-                                    onset_col.get(row_idx)
-                                } else {
-                                    None
-                                };
+                                get_str_at_index(stringified_linked_onset_col.as_ref(), row_idx);
 
+                            let disease_resolution =
+                                get_str_at_index(resolution_column.as_ref(), row_idx);
                             builder.insert_disease(
                                 patient_id,
                                 disease,
                                 None,
                                 disease_onset,
-                                None,
+                                disease_resolution,
                                 None,
                                 None,
                                 None,
@@ -88,17 +92,11 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::MetaData;
     use polars::prelude::{AnyValue, Column};
-    use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
+    use rstest::rstest;
 
     #[rstest]
-    fn test_collect_diseases(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_diseases() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let mut cdf = generate_minimal_cdf(1, 2);
@@ -120,21 +118,31 @@ mod tests {
             [AnyValue::String(&default_iso_age()), AnyValue::Null],
         );
 
+        let resolution_col = Column::new(
+            "resolution".into(),
+            [AnyValue::String(&default_iso_age()), AnyValue::Null],
+        );
+
         cdf.builder()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("disease")
+                SeriesContext::from_identifier("disease")
                     .with_data_context(Context::Disease)
                     .with_building_block_id("disease_1"),
                 vec![disease_col].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::default()
-                    .with_identifier("onset")
+                SeriesContext::from_identifier("onset")
                     .with_data_context(Context::Onset(TimeElementType::Age))
                     .with_building_block_id("disease_1"),
                 vec![onset_col].as_ref(),
+            )
+            .unwrap()
+            .insert_sc_alongside_cols(
+                SeriesContext::from_identifier("resolution")
+                    .with_data_context(Context::TimeOfResolution(TimeElementType::Age))
+                    .with_building_block_id("disease_1"),
+                vec![resolution_col].as_ref(),
             )
             .unwrap()
             .build()
