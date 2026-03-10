@@ -3,6 +3,7 @@ use crate::config::datasource_config::{
     AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, IdentifierConfig,
     MappingsConfig, MappingsCsvConfig, SeriesContextConfig,
 };
+use crate::config::resource_config::ResourceConfig;
 use crate::config::resource_config_factory::ResourceConfigFactory;
 use crate::config::table_context::{AliasMap, Identifier, SeriesContext};
 use crate::config::{
@@ -14,6 +15,7 @@ use crate::extract::{CsvDataSource, DataSource, ExcelDataSource};
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
 use crate::ontology::error::FactoryError;
+use crate::ontology::traits::BiDict;
 use crate::phenoxtract::Phenoxtract;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
@@ -91,42 +93,30 @@ impl TryFrom<PipelineConfig> for Pipeline {
             ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
-        let mut add_resources =
-            |resources: &[_], add_fn: fn(&mut _, _)| -> Result<(), FactoryError> {
-                for resource in resources {
-                    add_fn(&mut ctx_builder, resource_factory.build(resource)?);
+        // Adds and loads BiDicts to the TransformContextBuilder
+        macro_rules! load_and_add {
+            ($resources:expr, $method:ident) => {
+                for resource in $resources {
+                    ctx_builder.$method(resource_factory.build(resource)?);
                 }
-                Ok(())
             };
+        }
 
-        add_resources(
-            &config.meta_data.disease_resources,
-            TransformContextBuilder::add_disease_bidict,
-        )?;
-        add_resources(
-            &config.meta_data.assay_resources,
-            TransformContextBuilder::add_assay_bidict,
-        )?;
-        add_resources(
-            &config.meta_data.unit_resources,
-            TransformContextBuilder::add_unit_bidict,
-        )?;
-        add_resources(
+        load_and_add!(&config.meta_data.disease_resources, add_disease_bidict);
+        load_and_add!(&config.meta_data.assay_resources, add_assay_bidict);
+        load_and_add!(&config.meta_data.unit_resources, add_unit_bidict);
+        load_and_add!(
             &config.meta_data.qualitative_measurement_resources,
-            TransformContextBuilder::add_qualitative_measurement_bidict,
-        )?;
-        add_resources(
-            &config.meta_data.procedure_resources,
-            TransformContextBuilder::add_procedure_bidict,
-        )?;
-        add_resources(
-            &config.meta_data.anatomy_resources,
-            TransformContextBuilder::add_anatomy_bidict,
-        )?;
-        add_resources(
+            add_qualitative_measurement_bidict
+        );
+        load_and_add!(&config.meta_data.procedure_resources, add_procedure_bidict);
+
+        load_and_add!(&config.meta_data.anatomy_resources, add_anatomy_bidict);
+
+        load_and_add!(
             &config.meta_data.treatment_attributes_resources,
-            TransformContextBuilder::add_treatment_attributes_bidict,
-        )?;
+            add_treatment_attributes_bidict
+        );
 
         let ctx = ctx_builder.build();
 
