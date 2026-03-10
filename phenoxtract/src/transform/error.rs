@@ -1,7 +1,6 @@
 use crate::config::context::{Context, ContextKind};
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
-use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivot::hgnc::HGNCError;
 use pivot::hgvs::HGVSError;
 use polars::error::PolarsError;
@@ -11,6 +10,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct MappingSuggestion {
@@ -119,7 +119,7 @@ pub enum DataProcessingError {
     #[error(transparent)]
     PolarsError(#[from] PolarsError),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
 }
@@ -132,7 +132,7 @@ pub enum TransformError {
     #[error(transparent)]
     DataProcessingError(#[from] Box<DataProcessingError>),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
 }
 
 impl From<CollectorError> for TransformError {
@@ -193,7 +193,7 @@ pub enum StrategyError {
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
-    ValidationError(#[from] PxValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
@@ -283,7 +283,7 @@ pub enum CollectorError {
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
     #[error("Blah: {0}")]
