@@ -911,6 +911,91 @@ mod tests {
         assert_eq!(feature_onset, &default_age_element());
     }
 
+    #[fixture]
+    fn basic_pp_with_disease_info() -> Phenopacket {
+        let disease = default_disease_oc();
+        let pp_id = default_phenopacket_id();
+
+        Phenopacket {
+            id: pp_id.to_string(),
+            interpretations: vec![Interpretation {
+                id: format!("{}-{}", pp_id, disease.id),
+                progress_status: ProgressStatus::UnknownProgress.into(),
+                diagnosis: Some(Diagnosis {
+                    disease: Some(disease),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            meta_data: Some(MetaData {
+                resources: vec![mondo_meta_data_resource()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[rstest]
+    fn test_insert_phenotypic_feature() {
+        let mut builder = build_test_phenopacket_builder();
+        let phenotype = default_phenotype_oc();
+        let patient_id = default_patient_id();
+
+        builder
+            .insert_phenotypic_feature(
+                patient_id.as_str(),
+                &phenotype.label.to_string(),
+                None,
+                None,
+                None,
+                None,
+                Some(default_iso_age().as_str()),
+                None,
+                None,
+            )
+            .unwrap();
+
+        builder
+            .insert_phenotypic_feature(
+                patient_id.as_str(),
+                &phenotype.label.to_string(),
+                None,
+                None,
+                None,
+                None,
+                Some(default_timestamp().to_string().as_str()),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert!(
+            builder
+                .subject_to_phenopacket
+                .contains_key(&default_phenopacket_id())
+        );
+
+        let phenopacket = builder
+            .subject_to_phenopacket
+            .get(&default_phenopacket_id())
+            .unwrap();
+        assert_eq!(phenopacket.phenotypic_features.len(), 2);
+
+        for feature in phenopacket.phenotypic_features.clone() {
+            assert!(feature.r#type.is_some());
+            let ontology_class = feature.r#type.as_ref().unwrap();
+            assert_eq!(ontology_class.id, phenotype.id);
+            assert_eq!(ontology_class.label, phenotype.label);
+
+            assert!(feature.onset.is_some());
+            let feature_onset = feature.onset.as_ref().unwrap();
+            assert!(
+                feature_onset == &default_age_element()
+                    || feature_onset == &default_timestamp_element()
+            );
+        }
+    }
+
     #[rstest]
     fn test_upsert_phenotypic_feature_invalid_term() {
         let mut builder = build_test_phenopacket_builder();
@@ -1090,30 +1175,6 @@ mod tests {
         assert!(feature.onset.is_some());
         let feature_onset = feature.onset.as_ref().unwrap();
         assert_eq!(feature_onset, &default_timestamp_element());
-    }
-
-    #[fixture]
-    fn basic_pp_with_disease_info() -> Phenopacket {
-        let disease = default_disease_oc();
-        let pp_id = default_phenopacket_id();
-
-        Phenopacket {
-            id: pp_id.to_string(),
-            interpretations: vec![Interpretation {
-                id: format!("{}-{}", pp_id, disease.id),
-                progress_status: ProgressStatus::UnknownProgress.into(),
-                diagnosis: Some(Diagnosis {
-                    disease: Some(disease),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }],
-            meta_data: Some(MetaData {
-                resources: vec![mondo_meta_data_resource()],
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
     }
 
     #[rstest]
@@ -1528,6 +1589,7 @@ mod tests {
         let patient_id = default_patient_id();
         let disease = default_disease_oc();
         let onset_age = default_iso_age();
+        let resolution_ts = default_timestamp();
 
         builder
             .insert_disease(
@@ -1535,7 +1597,7 @@ mod tests {
                 &disease.id,
                 None,
                 Some(&onset_age),
-                None,
+                Some(resolution_ts.to_string().as_str()),
                 None,
                 None,
                 None,
@@ -1548,6 +1610,7 @@ mod tests {
             diseases: vec![Disease {
                 term: Some(disease),
                 onset: Some(default_age_element()),
+                resolution: Some(default_timestamp_element()),
                 ..Default::default()
             }],
             meta_data: Some(MetaData {
