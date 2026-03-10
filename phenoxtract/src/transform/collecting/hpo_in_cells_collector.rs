@@ -2,9 +2,9 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collecting::traits::Collect;
+use crate::transform::collecting::utils::get_str_at_index;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
-use polars::prelude::StringChunked;
 use std::any::Any;
 
 #[derive(Debug)]
@@ -51,11 +51,10 @@ impl Collect for HpoInCellsCollector {
                     for row_idx in 0..stringified_hpo_col.len() {
                         let hpo = stringified_hpo_col.get(row_idx);
                         if let Some(hpo) = hpo {
-                            let hpo_onset = Self::get_str_at_index(onset_column.as_ref(), row_idx);
+                            let hpo_onset = get_str_at_index(onset_column.as_ref(), row_idx);
                             let hpo_resolution =
-                                Self::get_str_at_index(resolution_column.as_ref(), row_idx);
-                            let hpo_severity =
-                                Self::get_str_at_index(severity_column.as_ref(), row_idx);
+                                get_str_at_index(resolution_column.as_ref(), row_idx);
+                            let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
 
                             if self.upsert {
                                 builder.upsert_phenotypic_feature(
@@ -92,12 +91,6 @@ impl Collect for HpoInCellsCollector {
     }
     fn as_any(&self) -> &dyn Any {
         self
-    }
-}
-
-impl HpoInCellsCollector {
-    fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -> Option<&str> {
-        column_opt?.get(idx)
     }
 }
 

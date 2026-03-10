@@ -376,9 +376,6 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         if excluded.is_some() {
             warn!("excluded disease not implemented yet");
         }
-        if resolution.is_some() {
-            warn!("resolution disease not implemented yet");
-        }
         if disease_stage.is_some() {
             warn!("disease stage of disease not implemented yet");
         }
@@ -407,6 +404,16 @@ impl PhenopacketBuilding for PhenopacketBuilder {
                 }
             })?;
             disease_element.onset = Some(onset_te);
+        }
+
+        if let Some(resolution) = resolution {
+            let resolution_te = try_parse_time_element(resolution).ok_or_else(|| {
+                PhenopacketBuilderError::ParsingError {
+                    what: "TimeElement".to_string(),
+                    value: resolution.to_string(),
+                }
+            })?;
+            disease_element.resolution = Some(resolution_te);
         }
 
         let pp = self.get_or_create_phenopacket(patient_id);
@@ -648,9 +655,6 @@ impl PhenopacketBuilder {
     ) -> Result<(PhenotypicFeature, OntologyClass, ResourceRef), PhenopacketBuilderError> {
         if modifiers.is_some() {
             warn!("modifiers phenotypic feature not implemented yet");
-        }
-        if resolution.is_some() {
-            warn!("resolution phenotypic feature not implemented yet");
         }
         if evidence.is_some() {
             warn!("evidence phenotypic feature not implemented yet");
