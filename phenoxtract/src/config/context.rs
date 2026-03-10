@@ -62,6 +62,9 @@ pub enum Context {
     MultiHpoId,
     Onset(TimeElementType),
     HpoOrDisease,
+    TimeOfResolution(TimeElementType),
+    Severity,
+    ObservationStatus,
 
     // Genetic Data
     Hgvs,
@@ -86,11 +89,6 @@ pub enum Context {
     Procedure,
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
-
-    // other
-    ObservationStatus,
-    TimeOfResolution(TimeElementType),
-    Severity,
 
     #[default]
     None,
