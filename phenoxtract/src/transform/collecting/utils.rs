@@ -2,7 +2,7 @@ use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::CollectorError;
-use polars::datatypes::DataType;
+use polars::datatypes::{DataType, StringChunked};
 
 /// Extracts a uniquely-defined value from matching contexts given a collection of CDFs.
 ///
@@ -74,6 +74,10 @@ pub(crate) fn get_single_multiplicity_element(
             header_context: ContextKind::from(header_context),
         }),
     }
+}
+
+pub(crate) fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -> Option<&str> {
+    column_opt?.get(idx)
 }
 
 #[cfg(test)]
