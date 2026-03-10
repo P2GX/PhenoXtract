@@ -8,15 +8,47 @@ use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::{ChunkApply, Column};
 use std::borrow::Cow;
 
-/// Given a collection of contextualised dataframes, this strategy will apply all the aliases
-/// found in the SeriesContexts.
-/// For example if a Contextualised Dataframe has a SeriesContext consisting of a SubjectSex column
-/// and a ToString AliasMap which converts "M" to "Male" and "F" to "Female"
+/// # Description
+///
+/// Given a collection of `ContextualiseDataframes`, this strategy will apply all the aliases
+/// found in the `SeriesContexts`.
+///
+/// For example if a `ContextualisedDataframe` has a `SeriesContext` consisting of a `subject_sex` column
+/// and a `ToString` `AliasMap`, which converts "M" to "Male" and "F" to "Female",
 /// then the strategy will apply those aliases to each cell.
+///
 /// # NOTE
 /// - This does not transform the headers of the Dataframe.
 /// - Only non-null cells may be aliased.
 /// - Non-null cells may be aliased to null.
+///
+/// # Example
+///
+/// If the `SeriesContext` for the `age_at_last_encounter` column
+/// has a `ToInt` `AliasMap` with a single alias `Less than 1 year` -> `0` then the table
+///
+/// ```text
+/// PatientId, age_at_last_encounter
+/// P001, 4
+/// P002, Less than 1 year
+/// ```
+///
+/// is mapped to
+/// ```text
+/// PatientId, age_at_last_encounter
+/// P001, 4
+/// P002, 0
+/// ```
+///
+/// # Errors
+///
+/// Errors will be thrown if:
+/// - Any columns to be aliased cannot be cast to String datatype.
+/// - Once the aliases have been applied,
+///   the column cannot be cast to the desired `OutputDataType` of the `AliasMap`.
+///   For example if it is a `ToInt` `AliasMap`, yet there remain strings in the column after
+///   the aliases have been applied.
+///
 #[derive(Debug)]
 pub struct AliasMapStrategy;
 

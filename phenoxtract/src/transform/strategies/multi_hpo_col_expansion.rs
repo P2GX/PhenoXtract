@@ -11,7 +11,9 @@ use ordermap::{OrderMap, OrderSet};
 use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
 
-/// A strategy for converting columns whose cells contain HPO IDs
+/// # Description
+///
+/// A strategy for converting columns whose cells contain multiple HPO IDs
 /// into several columns whose headers are exactly those HPO IDs
 /// and whose cells contain the ObservationStatus for each patient.
 ///
@@ -21,8 +23,28 @@ use regex::Regex;
 /// A new SeriesContext will be added for each block of new columns.
 ///
 /// The old columns and contexts will be removed.
+///
+/// # Example
+///
+/// Data of the format
+///
+/// ```text
+/// PatientId, MultiHpo
+/// P001,HP:1111111 and HP:2222222
+/// P002,HP:2222222
+/// ```
+/// will be mapped to
+/// ```text
+/// PatientId,HP:1111111,HP:2222222
+/// P001,true,true
+/// P002,,true
+/// ```
+/// # Errors
+///
+/// An error will occur if there are MultiHpoId columns which do not have String datatype.
 #[derive(Debug)]
 pub struct MultiHPOColExpansionStrategy;
+
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {

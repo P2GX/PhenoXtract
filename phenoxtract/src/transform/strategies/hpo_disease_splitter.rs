@@ -12,24 +12,54 @@ use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+/// # Description
+///
 /// This strategy will find every column whose context is HpoOrDisease
 /// And split it into two separate columns: a Hpo column and a disease column.
 ///
 /// Hpo is prioritised: the strategy will find all Hpo labels and IDs, and then put them into the
 /// Hpo column. All other cells will be assumed to refer to disease.
 ///
+/// # Fields
+///
+/// * `hpo_bidict_lib` - This should contain BiDictLibrary for the version of HPO that you want to use.
+/// * `disease_bidict_lib` - All non-HPO cells will be processed by this disease BiDictLibrary.
+///
+/// # Example
+///
+/// The table
+///
+/// ```text
+/// PatientId, conditions
+/// P001, HP:1234567
+/// P002, Arachnodactyly
+/// P003, Marfan Syndrome
+/// ```
+/// is mapped to
+///
+/// ```text
+/// PatientId, conditions_hpo, conditions_disease
+/// P001, HP:1234567,
+/// P002, Arachnodactyly,
+/// P003,,Marfan Syndrome
+/// ```
+///
+/// # Errors
+///
+/// A `TransformError::MappingError` will be thrown if any cells in the HpoOrDisease column
+/// are not a label or ID in either the `hpo_bidict_lib` or the `disease_bidict_lib`.
 #[derive(Debug)]
 pub struct HpoDiseaseSplitterStrategy {
-    hpo_dict_lib: Arc<BiDictLibrary>,
-    disease_dict_lib: Arc<BiDictLibrary>,
+    hpo_bidict_lib: Arc<BiDictLibrary>,
+    disease_bidict_lib: Arc<BiDictLibrary>,
 }
 
 impl HpoDiseaseSplitterStrategy {
     #[allow(unused)]
-    pub fn new(hpo_dict_lib: Arc<BiDictLibrary>, disease_dict_lib: Arc<BiDictLibrary>) -> Self {
+    pub fn new(hpo_bidict_lib: Arc<BiDictLibrary>, disease_bidict_lib: Arc<BiDictLibrary>) -> Self {
         Self {
-            hpo_dict_lib,
-            disease_dict_lib,
+            hpo_bidict_lib,
+            disease_bidict_lib,
         }
     }
 }
@@ -67,10 +97,10 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 for hpo_or_disease_opt in hpo_or_disease_col.str()?.iter() {
                     match hpo_or_disease_opt {
                         Some(hpo_or_disease) => {
-                            if self.hpo_dict_lib.lookup(hpo_or_disease).is_some() {
+                            if self.hpo_bidict_lib.lookup(hpo_or_disease).is_some() {
                                 new_hpo_col_data.push(AnyValue::String(hpo_or_disease));
                                 new_disease_col_data.push(AnyValue::Null);
-                            } else if self.disease_dict_lib.lookup(hpo_or_disease).is_some() {
+                            } else if self.disease_bidict_lib.lookup(hpo_or_disease).is_some() {
                                 new_hpo_col_data.push(AnyValue::Null);
                                 new_disease_col_data.push(AnyValue::String(hpo_or_disease))
                             } else {
@@ -171,8 +201,8 @@ mod tests {
             .unwrap();
 
         let strategy = HpoDiseaseSplitterStrategy {
-            hpo_dict_lib: Arc::new(BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())])),
-            disease_dict_lib: Arc::new(BiDictLibrary::new(
+            hpo_bidict_lib: Arc::new(BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())])),
+            disease_bidict_lib: Arc::new(BiDictLibrary::new(
                 "disease",
                 vec![Box::new(MONDO_BIDICT.clone())],
             )),
