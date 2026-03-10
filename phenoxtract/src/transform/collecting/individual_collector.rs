@@ -133,12 +133,6 @@ mod tests {
     use polars::prelude::Column;
     use prost_types::Timestamp;
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
 
     #[fixture]
     fn patient_id() -> String {

@@ -123,13 +123,7 @@ mod tests {
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::mocks::MockCollector;
-    use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
+    use rstest::rstest;
 
     fn build_test_cdf_broker() -> CdfCollectorBroker {
         let builder = build_test_phenopacket_builder();

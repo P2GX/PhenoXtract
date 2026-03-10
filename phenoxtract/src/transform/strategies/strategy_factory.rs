@@ -86,13 +86,7 @@ mod tests {
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::resource_references::MONDO_REF;
     use crate::transform::strategies::mapping::DefaultMapping;
-    use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
+    use rstest::rstest;
 
     fn create_test_factory() -> StrategyFactory<MockOntologyRegistry> {
         StrategyFactory {

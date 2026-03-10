@@ -88,13 +88,7 @@ mod tests {
     use phenopackets::schema::v2::Phenopacket;
     use phenopackets::schema::v2::core::MetaData;
     use polars::prelude::{AnyValue, Column};
-    use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
+    use rstest::rstest;
 
     #[rstest]
     fn test_collect_diseases() {

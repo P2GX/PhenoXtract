@@ -756,12 +756,6 @@ mod tests {
     use phenopackets::schema::v2::core::{Individual, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
 
     #[rstest]
     fn test_build() {

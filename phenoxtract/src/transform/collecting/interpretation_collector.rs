@@ -114,7 +114,6 @@ mod tests {
     use polars::frame::DataFrame;
     use polars::prelude::Column;
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
 
     #[fixture]
     fn dysostosis_interpretation() -> Interpretation {
@@ -191,11 +190,6 @@ mod tests {
             }),
             summary: "".to_string(),
         }
-    }
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
     #[rstest]
