@@ -225,12 +225,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_individual(
-        temp_dir: TempDir,
-        individual_info_cdf: ContextualizedDataFrame,
-        patient_id: String,
-    ) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_individual(individual_info_cdf: ContextualizedDataFrame, patient_id: String) {
+        let mut builder = build_test_phenopacket_builder();
 
         IndividualCollector
             .collect(&mut builder, &[individual_info_cdf], &patient_id)

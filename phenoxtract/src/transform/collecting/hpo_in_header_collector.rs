@@ -164,8 +164,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_hpo_in_header_col(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_hpo_in_header_col() {
+        let mut builder = build_test_phenopacket_builder();
         let collector = HpoInHeaderCollector;
 
         let patient_id = default_patient_id();

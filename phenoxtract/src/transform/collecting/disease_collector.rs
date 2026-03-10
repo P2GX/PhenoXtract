@@ -97,8 +97,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_diseases(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_diseases() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let mut cdf = generate_minimal_cdf(1, 2);

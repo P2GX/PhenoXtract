@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_interpretations(dysostosis_interpretation: Interpretation, temp_dir: TempDir) {
+    fn test_collect_interpretations(dysostosis_interpretation: Interpretation) {
         let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
         let disease_col = Column::new(
             "diseases".into(),
@@ -246,7 +246,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         InterpretationCollector

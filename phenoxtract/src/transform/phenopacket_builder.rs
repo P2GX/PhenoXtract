@@ -764,8 +764,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_build(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_build() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let phenopacket = Phenopacket {
@@ -800,8 +800,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_success(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_phenotypic_feature_success() {
+        let mut builder = build_test_phenopacket_builder();
         let phenotype = default_phenotype_oc();
         let patient_id = default_patient_id();
 
@@ -844,8 +844,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_phenotypic_feature_invalid_term(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_phenotypic_feature_invalid_term() {
+        let mut builder = build_test_phenopacket_builder();
 
         let result = builder.upsert_phenotypic_feature(
             default_phenopacket_id().as_str(),
@@ -863,8 +863,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_multiple_phenotypic_features_same_phenopacket(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_multiple_phenotypic_features_same_phenopacket() {
+        let mut builder = build_test_phenopacket_builder();
         let phenotype = default_phenotype_oc();
         let pp_id = default_patient_id();
 
@@ -904,8 +904,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_different_phenopacket_ids(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_different_phenopacket_ids() {
+        let mut builder = build_test_phenopacket_builder();
 
         let p_ids = generate_patient_ids(2);
 
@@ -937,8 +937,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_phenotypic_features(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_update_phenotypic_features() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
         let phenopacket_id = default_phenopacket_id();
 
@@ -977,8 +977,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_update_onset_of_phenotypic_feature(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_update_onset_of_phenotypic_feature() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         builder
@@ -1049,11 +1049,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_no_variants_no_genes(
-        basic_pp_with_disease_info: Phenopacket,
-        temp_dir: TempDir,
-    ) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_no_variants_no_genes(basic_pp_with_disease_info: Phenopacket) {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         builder
@@ -1072,8 +1069,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_homozygous_variant(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_homozygous_variant() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         let homozygous_variant = PathogenicGeneVariantData::HomozygousVariant {
@@ -1132,8 +1129,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_variant_pair(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_heterozygous_variant_pair() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         let compound_heterozygous_pair =
@@ -1195,8 +1192,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_autosomal_heterozygous_variant(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_autosomal_heterozygous_variant() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1255,8 +1252,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_hemizygous_x_variant(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_hemizygous_x_variant() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         let single_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1315,8 +1312,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_heterozygous_x_variant(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_heterozygous_x_variant() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
         let single_variant = PathogenicGeneVariantData::SingleVariant {
@@ -1375,11 +1372,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_update(
-        basic_pp_with_disease_info: Phenopacket,
-        temp_dir: TempDir,
-    ) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_update(basic_pp_with_disease_info: Phenopacket) {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let existing_pp = basic_pp_with_disease_info;
@@ -1417,11 +1411,11 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_interpretation_single_gene(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_interpretation_single_gene() {
+        let mut builder = build_test_phenopacket_builder();
         let disease_id = default_disease_oc().id.clone();
 
-        let gene_data = PathogenicGeneVariantData::CausativeGene("KIF21A".to_string());
+        let gene_data = PathogenicGeneVariantData::CausativeGene("CLOCK".to_string());
 
         builder
             .upsert_interpretation(&default_patient_id(), &disease_id, &gene_data, None)
@@ -1451,7 +1445,7 @@ mod tests {
 
         match pp_gi.clone().call.unwrap() {
             Call::Gene(gd) => {
-                assert_eq!(gd.symbol.clone(), "KIF21A");
+                assert_eq!(gd.symbol.clone(), "CLOCK");
             }
             Call::VariantInterpretation(_) => {
                 panic!("Call should be a GeneDescriptor!")
@@ -1460,8 +1454,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_disease(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_insert_disease() {
+        let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
         let disease = default_disease_oc();
@@ -1501,8 +1495,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_same_disease_twice(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_insert_same_disease_twice() {
+        let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
         let disease = default_disease_oc();
@@ -1539,8 +1533,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_individual(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_individual() {
+        let mut builder = build_test_phenopacket_builder();
 
         let phenopacket_id = default_phenopacket_id();
         let individual_id = default_patient_id();
@@ -1581,8 +1575,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_upsert_vital_status(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_upsert_vital_status() {
+        let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
 
@@ -1614,8 +1608,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_quantitative_measurement(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_insert_quantitative_measurement() {
+        let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
         let measurement_val = 1.1;
@@ -1643,8 +1637,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_qualitative_measurement(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_insert_qualitative_measurement() {
+        let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
         let measurement_val = "Present";
@@ -1670,8 +1664,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_or_create_phenopacket(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_get_or_create_phenopacket() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         builder.get_or_create_phenopacket(&patient_id);
@@ -1682,8 +1676,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_ensure_resource(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_ensure_resource() {
+        let mut builder = build_test_phenopacket_builder();
         let pp_id = default_phenopacket_id();
 
         builder.ensure_resource(
@@ -1706,8 +1700,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_generate_phenopacket_id(temp_dir: TempDir) {
-        let builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_generate_phenopacket_id() {
+        let builder = build_test_phenopacket_builder();
         let p_id = default_patient_id();
 
         std::assert_eq!(
@@ -1717,8 +1711,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_parse_procedure(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_parse_procedure() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let procedure_code = default_procedure_oc();
@@ -1766,8 +1760,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_parse_medical_action(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_parse_medical_action() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let target_disease = default_disease_oc();
@@ -1810,8 +1804,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_insert_medical_procedure(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_insert_medical_procedure() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
 
         let procedure_code = default_procedure_oc();

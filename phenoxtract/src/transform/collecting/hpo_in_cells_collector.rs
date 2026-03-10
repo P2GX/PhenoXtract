@@ -138,9 +138,8 @@ mod tests {
     fn test_collect_phenotypic_features(
         spasmus_nutans_pf_with_onset: PhenotypicFeature,
         phenotypes_in_rows_cdf: ContextualizedDataFrame,
-        temp_dir: TempDir,
     ) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
         HpoInCellsCollector
             .collect(&mut builder, &[phenotypes_in_rows_cdf], &patient_id)

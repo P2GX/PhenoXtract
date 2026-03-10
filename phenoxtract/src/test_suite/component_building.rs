@@ -7,9 +7,8 @@ use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::transform_context::TransformContext;
 use dotenvy::dotenv;
-use pivotal::hgnc::{CachedHGNCClient, HGNCClient};
-use pivotal::hgvs::{CachedHGVSClient, HGVSClient};
-use std::path::Path;
+use pivotal::hgnc::MockHGNCClient;
+use pivotal::hgvs::MockHGVSClient;
 use std::sync::Arc;
 
 pub(crate) fn build_test_hpo_bidict_library() -> BiDictLibrary {
@@ -20,22 +19,11 @@ pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
     BiDictLibrary::new("MONDO", vec![Box::new(MONDO_BIDICT.clone())])
 }
 
-pub(crate) fn build_hgnc_test_client(temp_dir: &Path) -> CachedHGNCClient {
-    CachedHGNCClient::new(temp_dir.join("test_hgnc_cache"), HGNCClient::default()).unwrap()
-}
-
-pub(crate) fn build_hgvs_test_client(temp_dir: &Path) -> CachedHGVSClient {
-    CachedHGVSClient::new(temp_dir.join("test_hgvs_cache"), HGVSClient::default()).unwrap()
-}
-
-pub(crate) fn default_builder_context(temp_dir: &Path) -> TransformContext {
-    let hgnc_client = build_hgnc_test_client(temp_dir);
-    let hgvs_client = build_hgvs_test_client(temp_dir);
-
+pub(crate) fn default_builder_context() -> TransformContext {
     let mut builder = TransformContext::builder(
         default_meta_data().into(),
-        Arc::new(hgnc_client),
-        Arc::new(hgvs_client),
+        Arc::new(MockHGNCClient::default()),
+        Arc::new(MockHGVSClient::default()),
     );
 
     builder.add_hpo_bidict(Box::new(HPO_DICT.clone()));
@@ -50,7 +38,7 @@ pub(crate) fn default_builder_context(temp_dir: &Path) -> TransformContext {
     builder.build()
 }
 
-pub fn build_test_phenopacket_builder(temp_dir: &Path) -> PhenopacketBuilder {
+pub fn build_test_phenopacket_builder() -> PhenopacketBuilder {
     dotenv().ok();
-    PhenopacketBuilder::new(default_builder_context(temp_dir))
+    PhenopacketBuilder::new(default_builder_context())
 }

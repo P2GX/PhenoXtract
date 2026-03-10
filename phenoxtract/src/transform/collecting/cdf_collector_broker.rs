@@ -131,8 +131,8 @@ mod tests {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
 
-    fn build_test_cdf_broker(temp_dir: TempDir) -> CdfCollectorBroker {
-        let builder = build_test_phenopacket_builder(temp_dir.path());
+    fn build_test_cdf_broker() -> CdfCollectorBroker {
+        let builder = build_test_phenopacket_builder();
 
         let mut mock1 = MockCollector::new();
         let mut mock2 = MockCollector::new();
@@ -171,8 +171,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_process(temp_dir: TempDir) {
-        let mut broker = build_test_cdf_broker(temp_dir);
+    fn test_process() {
+        let mut broker = build_test_cdf_broker();
 
         let cdf1 = generate_minimal_cdf(2, 2);
         let cdf2 = generate_minimal_cdf(1, 5);
