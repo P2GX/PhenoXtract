@@ -13,11 +13,12 @@ use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::{CsvDataSource, DataSource, ExcelDataSource};
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
+use crate::ontology::error::FactoryError;
 use crate::phenoxtract::Phenoxtract;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
-use crate::transform::transform_context::TransformContext;
+use crate::transform::transform_context::{TransformContext, TransformContextBuilder};
 use crate::transform::{PhenopacketBuilder, TransformerModule};
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
@@ -90,27 +91,42 @@ impl TryFrom<PipelineConfig> for Pipeline {
             ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
-        for disease_resource in &config.meta_data.disease_resources {
-            let disease_bidict = resource_factory.build(disease_resource)?;
-            ctx_builder.add_disease_bidict(disease_bidict);
-        }
+        let mut add_resources =
+            |resources: &[_], add_fn: fn(&mut _, _)| -> Result<(), FactoryError> {
+                for resource in resources {
+                    add_fn(&mut ctx_builder, resource_factory.build(resource)?);
+                }
+                Ok(())
+            };
 
-        for assay_resource in &config.meta_data.assay_resources {
-            let assay_bidict = resource_factory.build(assay_resource)?;
-            ctx_builder.add_assay_bidict(assay_bidict);
-        }
-
-        for unit_ontology_ref in &config.meta_data.unit_resources {
-            let unit_bidict = resource_factory.build(unit_ontology_ref)?;
-            ctx_builder.add_unit_bidict(unit_bidict);
-        }
-
-        for qualitative_measurement_ontology_ref in
-            &config.meta_data.qualitative_measurement_resources
-        {
-            let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
-            ctx_builder.add_qualitative_measurement_bidict(qual_bidict);
-        }
+        add_resources(
+            &config.meta_data.disease_resources,
+            TransformContextBuilder::add_disease_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.assay_resources,
+            TransformContextBuilder::add_assay_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.unit_resources,
+            TransformContextBuilder::add_unit_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.qualitative_measurement_resources,
+            TransformContextBuilder::add_qualitative_measurement_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.procedure_resources,
+            TransformContextBuilder::add_procedure_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.anatomy_resources,
+            TransformContextBuilder::add_anatomy_bidict,
+        )?;
+        add_resources(
+            &config.meta_data.treatment_attributes_resources,
+            TransformContextBuilder::add_treatment_attributes_bidict,
+        )?;
 
         let ctx = ctx_builder.build();
 
