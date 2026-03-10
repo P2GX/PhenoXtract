@@ -104,12 +104,6 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
 
     #[fixture]
     fn pato_absent() -> OntologyClass {
@@ -156,8 +150,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_qualitative_measurement(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_qualitative_measurement() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
         QualitativeMeasurementCollector
             .collect(&mut builder, &[qual_measurement_cdf()], &patient_id)
