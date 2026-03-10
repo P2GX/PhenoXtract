@@ -3,7 +3,6 @@ use crate::config::datasource_config::{
     AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, IdentifierConfig,
     MappingsConfig, MappingsCsvConfig, SeriesContextConfig,
 };
-use crate::config::resource_config::ResourceConfig;
 use crate::config::resource_config_factory::ResourceConfigFactory;
 use crate::config::table_context::{AliasMap, Identifier, SeriesContext};
 use crate::config::{
@@ -14,13 +13,11 @@ use crate::extract::extraction_config::ExtractionConfig;
 use crate::extract::{CsvDataSource, DataSource, ExcelDataSource};
 use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
-use crate::ontology::error::FactoryError;
-use crate::ontology::traits::BiDict;
 use crate::phenoxtract::Phenoxtract;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
-use crate::transform::transform_context::{TransformContext, TransformContextBuilder};
+use crate::transform::transform_context::TransformContext;
 use crate::transform::{PhenopacketBuilder, TransformerModule};
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
