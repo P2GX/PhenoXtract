@@ -1,8 +1,8 @@
 use crate::config::context::{Context, ContextKind};
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
-use pivot::hgnc::HGNCError;
-use pivot::hgvs::HGVSError;
+use pivotal::hgnc::HGNCError;
+use pivotal::hgvs::HGVSError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::{HashMap, HashSet};
