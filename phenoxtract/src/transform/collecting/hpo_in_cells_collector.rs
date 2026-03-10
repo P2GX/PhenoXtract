@@ -9,7 +9,7 @@ use std::any::Any;
 
 #[derive(Debug)]
 pub struct HpoInCellsCollector {
-    upsert: bool,
+    allow_duplicate_phenotypes: bool,
 }
 
 impl Collect for HpoInCellsCollector {
@@ -56,8 +56,8 @@ impl Collect for HpoInCellsCollector {
                                 get_str_at_index(resolution_column.as_ref(), row_idx);
                             let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
 
-                            if self.upsert {
-                                builder.upsert_phenotypic_feature(
+                            if self.allow_duplicate_phenotypes {
+                                builder.insert_phenotypic_feature(
                                     patient_id,
                                     hpo,
                                     None,
@@ -69,7 +69,7 @@ impl Collect for HpoInCellsCollector {
                                     None,
                                 )?;
                             } else {
-                                builder.insert_phenotypic_feature(
+                                builder.upsert_phenotypic_feature(
                                     patient_id,
                                     hpo,
                                     None,
@@ -96,7 +96,9 @@ impl Collect for HpoInCellsCollector {
 
 impl Default for HpoInCellsCollector {
     fn default() -> Self {
-        HpoInCellsCollector { upsert: true }
+        HpoInCellsCollector {
+            allow_duplicate_phenotypes: false,
+        }
     }
 }
 
