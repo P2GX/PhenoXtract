@@ -8,11 +8,13 @@ data_sources:
         data_context: subject_id
       - identifier: "sex"
         data_context: subject_sex
-
+        alias_map:
+          mappings:
+            "transgender": "OTHER_SEX"
+          output_data_type: String
       - identifier: "age"
         data_context:
           time_at_last_encounter: age
-        building_block_id: "diagnosis"
 
   - type: "csv"
     source: "$HOME/data/phq9/rorschach_output.csv"
