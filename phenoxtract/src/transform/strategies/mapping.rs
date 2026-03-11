@@ -98,6 +98,22 @@ impl MappingStrategy {
                     Sex::OtherSex.as_str_name().to_string(),
                 ),
                 ("other".to_string(), Sex::OtherSex.as_str_name().to_string()),
+                (
+                    Sex::Male.as_str_name().to_lowercase(),
+                    Sex::Male.as_str_name().to_string(),
+                ),
+                (
+                    Sex::Female.as_str_name().to_lowercase(),
+                    Sex::Female.as_str_name().to_string(),
+                ),
+                (
+                    Sex::OtherSex.as_str_name().to_lowercase(),
+                    Sex::OtherSex.as_str_name().to_string(),
+                ),
+                (
+                    Sex::UnknownSex.as_str_name().to_lowercase(),
+                    Sex::UnknownSex.as_str_name().to_string(),
+                ),
             ]),
             Context::SubjectSex,
             Context::None,
@@ -130,6 +146,18 @@ impl MappingStrategy {
                 ),
                 (
                     "no data".to_string(),
+                    Status::UnknownStatus.as_str_name().to_string(),
+                ),
+                (
+                    Status::Alive.as_str_name().to_lowercase(),
+                    Status::Alive.as_str_name().to_string(),
+                ),
+                (
+                    Status::Deceased.as_str_name().to_lowercase(),
+                    Status::Deceased.as_str_name().to_string(),
+                ),
+                (
+                    Status::UnknownStatus.as_str_name().to_lowercase(),
                     Status::UnknownStatus.as_str_name().to_string(),
                 ),
             ]),
@@ -207,7 +235,7 @@ impl Strategy for MappingStrategy {
                             error_info.insert_error(
                                 col.name().to_string(),
                                 table.context().name().to_string(),
-                                cell_value.to_string(),
+                                cell_value.to_lowercase(),
                                 MappingSuggestion::from_hashmap(&self.synonym_map),
                             );
                             cell_value
