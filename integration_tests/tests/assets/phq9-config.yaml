@@ -1,0 +1,210 @@
+data_sources:
+  - type: "csv"
+    source: "$HOME/data/phq9/phq9_patent_data.csv"
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "user_id"
+        data_context: subject_id
+      - identifier: "sex"
+        data_context: subject_sex
+
+      - identifier: "age"
+        data_context:
+          time_at_last_encounter: age
+        building_block_id: "diagnosis"
+
+  - type: "csv"
+    source: "$HOME/data/phq9/rorschach_output.csv"
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "id"
+        data_context: subject_id
+      - identifier: "diagnosis_term_id"
+        data_context: disease
+        building_block_id: "diagnosis"
+      - identifier: "diagnosis_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "diagnosis"
+      - identifier: "diagnosis_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "diagnosis"
+
+
+      - identifier: "phenotype_1_term_id"
+        data_context: hpo
+        building_block_id: "hpo_1"
+      - identifier: "phenotype_1_severity_id"
+        data_context: severity
+        building_block_id: "hpo_1"
+      - identifier: "phenotype_1_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_1"
+      - identifier: "phenotype_1_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_1"
+
+      - identifier: "phenotype_2_term_id"
+        data_context: hpo
+        building_block_id: "hpo_2"
+      - identifier: "phenotype_2_severity_id"
+        data_context: severity
+        building_block_id: "hpo_2"
+      - identifier: "phenotype_2_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_2"
+      - identifier: "phenotype_2_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_2"
+
+      - identifier: "phenotype_3_term_id"
+        data_context: hpo
+        building_block_id: "hpo_3"
+      - identifier: "phenotype_3_severity_id"
+        data_context: severity
+        building_block_id: "hpo_3"
+      - identifier: "phenotype_3_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_3"
+      - identifier: "phenotype_3_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_3"
+
+      - identifier: "phenotype_4_term_id"
+        data_context: hpo
+        building_block_id: "hpo_4"
+      - identifier: "phenotype_4_severity_id"
+        data_context: severity
+        building_block_id: "hpo_4"
+      - identifier: "phenotype_4_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_4"
+      - identifier: "phenotype_4_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_4"
+
+      - identifier: "phenotype_5_term_id"
+        data_context: hpo
+        building_block_id: "hpo_5"
+      - identifier: "phenotype_5_severity_id"
+        data_context: severity
+        building_block_id: "hpo_5"
+      - identifier: "phenotype_5_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_5"
+      - identifier: "phenotype_5_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_5"
+
+      - identifier: "phenotype_6_term_id"
+        data_context: hpo
+        building_block_id: "hpo_6"
+      - identifier: "phenotype_6_severity_id"
+        data_context: severity
+        building_block_id: "hpo_6"
+      - identifier: "phenotype_6_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_6"
+      - identifier: "phenotype_6_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_6"
+
+      - identifier: "phenotype_7_term_id"
+        data_context: hpo
+        building_block_id: "hpo_7"
+      - identifier: "phenotype_7_severity_id"
+        data_context: severity
+        building_block_id: "hpo_7"
+      - identifier: "phenotype_7_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_7"
+      - identifier: "phenotype_7_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_7"
+
+      - identifier: "phenotype_8_term_id"
+        data_context: hpo
+        building_block_id: "hpo_8"
+      - identifier: "phenotype_8_severity_id"
+        data_context: severity
+        building_block_id: "hpo_8"
+      - identifier: "phenotype_8_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_8"
+      - identifier: "phenotype_8_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_8"
+
+      - identifier: "phenotype_9_term_id"
+        data_context: hpo
+        building_block_id: "hpo_9"
+      - identifier: "phenotype_9_severity_id"
+        data_context: severity
+        building_block_id: "hpo_9"
+      - identifier: "phenotype_9_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_9"
+      - identifier: "phenotype_9_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_9"
+
+      - identifier: "phenotype_10_term_id"
+        data_context: hpo
+        building_block_id: "hpo_10"
+      - identifier: "phenotype_10_severity_id"
+        data_context: severity
+        building_block_id: "hpo_10"
+      - identifier: "phenotype_10_observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_10"
+      - identifier: "phenotype_10_observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_10"
+
+
+pipeline:
+  cache_dir: "$HOME/data/phq9/pxt_cache"
+  strategies:
+    - alias_map
+    - default_mapping: sex_mapping
+    - date_to_age
+    - age_to_iso8601
+    - hpo_disease_splitter
+
+  loader:
+    file_system:
+      output_dir: "$HOME/data/phq9/phenopackets"
+      create_dir: true
+  meta_data:
+    created_by: Robinson Lab
+    submitted_by: Robinson Lab
+    cohort_name: "Kaggle-PHQ9"
+    hpo_resource:
+      id: "HP"
+      version: "2026-02-16"
+    disease_resources:
+      - id: "MONDO"
+        version: "2026-02-03"
