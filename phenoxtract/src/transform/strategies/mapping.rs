@@ -98,6 +98,22 @@ impl MappingStrategy {
                     Sex::OtherSex.as_str_name().to_string(),
                 ),
                 ("other".to_string(), Sex::OtherSex.as_str_name().to_string()),
+                (
+                    Sex::Male.as_str_name().to_lowercase(),
+                    Sex::Male.as_str_name().to_string(),
+                ),
+                (
+                    Sex::Female.as_str_name().to_lowercase(),
+                    Sex::Female.as_str_name().to_string(),
+                ),
+                (
+                    Sex::OtherSex.as_str_name().to_lowercase(),
+                    Sex::OtherSex.as_str_name().to_string(),
+                ),
+                (
+                    Sex::UnknownSex.as_str_name().to_lowercase(),
+                    Sex::UnknownSex.as_str_name().to_string(),
+                ),
             ]),
             Context::SubjectSex,
             Context::None,
@@ -132,6 +148,18 @@ impl MappingStrategy {
                     "no data".to_string(),
                     Status::UnknownStatus.as_str_name().to_string(),
                 ),
+                (
+                    Status::Alive.as_str_name().to_lowercase(),
+                    Status::Alive.as_str_name().to_string(),
+                ),
+                (
+                    Status::Deceased.as_str_name().to_lowercase(),
+                    Status::Deceased.as_str_name().to_string(),
+                ),
+                (
+                    Status::UnknownStatus.as_str_name().to_lowercase(),
+                    Status::UnknownStatus.as_str_name().to_string(),
+                ),
             ]),
             Context::VitalStatus,
             Context::None,
@@ -162,7 +190,6 @@ impl Strategy for MappingStrategy {
             "Applying Mapping strategy to data. Applying synonyms to columns with header_context {} and data_context {}.",
             self.header_context, self.data_context
         );
-
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
@@ -207,7 +234,7 @@ impl Strategy for MappingStrategy {
                             error_info.insert_error(
                                 col.name().to_string(),
                                 table.context().name().to_string(),
-                                cell_value.to_string(),
+                                cell_value.to_lowercase(),
                                 MappingSuggestion::from_hashmap(&self.synonym_map),
                             );
                             cell_value
@@ -253,8 +280,8 @@ mod tests {
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null],
-            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::String("9")],
+            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null, AnyValue::String("OTHER_SEX")],
+            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::String("9"), AnyValue::String("10")],
         ]
         .unwrap();
 
@@ -308,6 +335,7 @@ mod tests {
                 "FEMALE",
                 "MALE",
                 "FEMALE",
+                "OTHER_SEX",
                 "OTHER_SEX"
             ]
         );
@@ -397,6 +425,7 @@ mod tests {
                 "OTHER_SEX",
                 "mole",
                 "",
+                "OTHER_SEX"
             ]
         );
     }
