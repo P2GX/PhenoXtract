@@ -27,7 +27,9 @@ use std::collections::{HashMap, HashSet};
 /// If there is no data on a certain patient's date of birth,
 /// yet there is a date corresponding to this patient,
 /// then an error will be thrown.
-pub struct DateToAgeStrategy;
+pub struct DateToAgeStrategy {
+    strict: bool,
+}
 
 impl Strategy for DateToAgeStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
@@ -123,23 +125,34 @@ impl Strategy for DateToAgeStrategy {
                             subject_id_opt.expect("SubjectID column should have no gaps.");
                         let subject_dob_opt = patient_dob_hash_map.get(subject_id);
 
-                        if let Some(date) = date_opt {
-                            if let Some(subject_dob) = subject_dob_opt
-                                && let Ok(age) =
-                                    Self::date_and_dob_to_age(subject_id, subject_dob.clone(), date)
-                            {
-                                AnyValue::StringOwned(age.into())
-                            } else {
-                                error_info.insert_error(
-                                    date_col_name.clone(),
-                                    table.context().name().to_string(),
-                                    date.to_string(),
-                                    vec![],
+                        match (date_opt, subject_dob_opt) {
+                            (Some(date), Some(subject_dob)) => {
+                                let date_and_dob_to_age_result = Self::date_and_dob_to_age(
+                                    subject_id,
+                                    subject_dob.clone(),
+                                    date,
                                 );
-                                AnyValue::String(date)
+                                if let Ok(age) =
+                                    date_and_dob_to_age_result
+                                {
+                                    AnyValue::StringOwned(age.into())
+                                } else {
+                                    return date_and_dob_to_age_result.err().unwrap()
+                                }
                             }
-                        } else {
-                            AnyValue::Null
+                            (Some(date), None) => {
+                                if self.strict {
+                                    return Err(StrategyError::DateToAgeError {
+                                        subject_id: subject_id.to_string(),
+                                        problem: format!(
+                                            "Date {date} found in {date_col_name} but no DOB data."
+                                        ),
+                                    });
+                                } else {
+                                    AnyValue::String(date)
+                                }
+                            }
+                            (None, Some(_)) => AnyValue::Null,
                         }
                     })
                     .collect();

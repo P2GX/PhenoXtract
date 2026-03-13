@@ -208,19 +208,8 @@ pub enum StrategyError {
         message: String,
         patients: Vec<String>,
     },
-    #[error("Could not parse {unparseable_date} as a date or datetime for {subject_id}")]
-    DateParsingError {
-        subject_id: String,
-        unparseable_date: String,
-    },
-    #[error(
-        "Date of event occurs earlier than the date of birth of {subject_id}. Date of birth: {date_of_birth}, Date: {date}"
-    )]
-    NegativeAge {
-        subject_id: String,
-        date_of_birth: String,
-        date: String,
-    },
+    #[error("DateToAgeStrategy failed for {subject_id}. Problem: {problem}")]
+    DateToAgeError { subject_id: String, problem: String },
     #[error(
         "The column {column_name} had datatype {found_datatype} in strategy {strategy}. Only the datatypes {allowed_datatypes:?} are accepted."
     )]
