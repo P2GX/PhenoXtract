@@ -23,6 +23,8 @@ pub enum DefaultMapping {
     SexMapping,
 }
 
+/// # Description
+///
 /// A strategy for mapping string values to standardized terms using a synonym dictionary.
 ///
 /// `MappingStrategy` transforms data by replacing cell values with their corresponding
@@ -48,7 +50,7 @@ pub enum DefaultMapping {
 /// # Errors
 ///
 /// Returns `TransformError::MappingError` if any values in the data cannot be found
-/// in the synonym map, providing details about unmapped values and suggestions.
+/// in the synonym map. The error will provide details about unmapped values and make suggestions.
 #[derive(Debug)]
 pub struct MappingStrategy {
     synonym_map: HashMap<String, String>,

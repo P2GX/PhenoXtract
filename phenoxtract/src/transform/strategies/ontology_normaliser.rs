@@ -15,12 +15,21 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 #[derive(Debug)]
+/// # Description
+///
 /// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
 /// It is case-insensitive.
 ///
 /// This strategy processes string columns in data tables by looking up values in an ontology
 /// bidirectional dictionary and replacing labels with their corresponding IDs.
 /// It only operates on columns that have no header context and match the specified data context.
+///
+/// When applied to tables, the strategy:
+/// 1. Identifies string columns with no header context that match the data context
+/// 2. For each cell value, attempts to maps it via the ontology dictionary to its ID.
+/// 3. Replaces the original value with the ID
+/// 4. Collects mapping errors for any values that couldn't be resolved
+/// 5. Returns an error if any labels failed to map (except for null values)
 ///
 /// # Fields
 ///
@@ -29,14 +38,26 @@ use std::sync::Arc;
 /// * `data_context` - The specific data context that columns must match to be processed
 ///   by this strategy. E.g. HpoLabelOrId
 ///
-/// # Behavior
+/// # Example
 ///
-/// When applied to tables, the strategy:
-/// 1. Identifies string columns with no header context that match the data context
-/// 2. For each cell value, attempts to maps it via the ontology dictionary to its ID.
-/// 3. Replaces the original value with the ID
-/// 4. Collects mapping errors for any values that couldn't be resolved
-/// 5. Returns an error if any labels failed to map (except for null values)
+/// If `OntologyNormaliser` is applied with `ContextKind = Hpo`, then
+///
+/// ```text
+/// PatientId, Hpo
+/// P001, Pneumonia
+/// P002, HP:1234567
+/// ```
+/// is mapped to
+/// ```text
+/// PatientId, Hpo
+/// P001, HP:0002090
+/// P002, HP:1234567
+/// ```
+///
+/// # Errors
+///
+/// Returns `TransformError::MappingError` if any cell values do not match an ontology ID or label.
+///
 pub struct OntologyNormaliserStrategy {
     ontology_dict: Arc<OntologyBiDict>,
     data_context_kind: ContextKind,
