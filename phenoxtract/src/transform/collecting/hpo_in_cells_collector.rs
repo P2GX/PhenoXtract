@@ -2,12 +2,15 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collecting::traits::Collect;
+use crate::transform::collecting::utils::get_str_at_index;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
-#[derive(Debug)]
-pub struct HpoInCellsCollector;
+#[derive(Debug, Default)]
+pub struct HpoInCellsCollector {
+    allow_duplicate_phenotypes: bool,
+}
 
 impl Collect for HpoInCellsCollector {
     fn collect(
@@ -32,21 +35,52 @@ impl Collect for HpoInCellsCollector {
                     Context::ONSET_VARIANTS,
                 )?;
 
+                let resolution_column = patient_cdf.get_single_linked_column_as_str(
+                    hpo_sc.get_building_block_id(),
+                    Context::TIME_OF_RESOLUTION_VARIANTS,
+                )?;
+
+                let severity_column = patient_cdf.get_single_linked_column_as_str(
+                    hpo_sc.get_building_block_id(),
+                    &[Context::Severity],
+                )?;
+
                 for hpo_col in hpo_cols {
                     let stringified_hpo_col = hpo_col.str()?;
 
                     for row_idx in 0..stringified_hpo_col.len() {
                         let hpo = stringified_hpo_col.get(row_idx);
                         if let Some(hpo) = hpo {
-                            let hpo_onset = if let Some(onset_col) = &onset_column {
-                                onset_col.get(row_idx)
-                            } else {
-                                None
-                            };
+                            let hpo_onset = get_str_at_index(onset_column.as_ref(), row_idx);
+                            let hpo_resolution =
+                                get_str_at_index(resolution_column.as_ref(), row_idx);
+                            let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
 
-                            builder.upsert_phenotypic_feature(
-                                patient_id, hpo, None, None, None, None, hpo_onset, None, None,
-                            )?;
+                            if self.allow_duplicate_phenotypes {
+                                builder.insert_phenotypic_feature(
+                                    patient_id,
+                                    hpo,
+                                    None,
+                                    None,
+                                    hpo_severity,
+                                    None,
+                                    hpo_onset,
+                                    hpo_resolution,
+                                    None,
+                                )?;
+                            } else {
+                                builder.upsert_phenotypic_feature(
+                                    patient_id,
+                                    hpo,
+                                    None,
+                                    None,
+                                    hpo_severity,
+                                    None,
+                                    hpo_onset,
+                                    hpo_resolution,
+                                    None,
+                                )?;
+                            }
                         }
                     }
                 }
@@ -135,7 +169,7 @@ mod tests {
     ) {
         let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
-        HpoInCellsCollector
+        HpoInCellsCollector::default()
             .collect(&mut builder, &[phenotypes_in_rows_cdf], &patient_id)
             .unwrap();
 

@@ -90,27 +90,30 @@ impl TryFrom<PipelineConfig> for Pipeline {
             ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
-        for disease_resource in &config.meta_data.disease_resources {
-            let disease_bidict = resource_factory.build(disease_resource)?;
-            ctx_builder.add_disease_bidict(disease_bidict);
+        // Adds and loads BiDicts to the TransformContextBuilder
+        macro_rules! load_and_add {
+            ($resources:expr, $method:ident) => {
+                for resource in $resources {
+                    ctx_builder.$method(resource_factory.build(resource)?);
+                }
+            };
         }
 
-        for assay_resource in &config.meta_data.assay_resources {
-            let assay_bidict = resource_factory.build(assay_resource)?;
-            ctx_builder.add_assay_bidict(assay_bidict);
-        }
+        load_and_add!(&config.meta_data.disease_resources, add_disease_bidict);
+        load_and_add!(&config.meta_data.assay_resources, add_assay_bidict);
+        load_and_add!(&config.meta_data.unit_resources, add_unit_bidict);
+        load_and_add!(
+            &config.meta_data.qualitative_measurement_resources,
+            add_qualitative_measurement_bidict
+        );
+        load_and_add!(&config.meta_data.procedure_resources, add_procedure_bidict);
 
-        for unit_ontology_ref in &config.meta_data.unit_resources {
-            let unit_bidict = resource_factory.build(unit_ontology_ref)?;
-            ctx_builder.add_unit_bidict(unit_bidict);
-        }
+        load_and_add!(&config.meta_data.anatomy_resources, add_anatomy_bidict);
 
-        for qualitative_measurement_ontology_ref in
-            &config.meta_data.qualitative_measurement_resources
-        {
-            let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
-            ctx_builder.add_qualitative_measurement_bidict(qual_bidict);
-        }
+        load_and_add!(
+            &config.meta_data.treatment_attributes_resources,
+            add_treatment_attributes_bidict
+        );
 
         let ctx = ctx_builder.build();
 

@@ -78,6 +78,19 @@ mock! {
             evidence: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 
+        fn insert_phenotypic_feature<'a>(
+            &mut self,
+            patient_id: &'a str,
+            phenotype: &'a str,
+            description: Option<&'a str>,
+            excluded: Option<bool>,
+            severity: Option<&'a str>,
+            modifiers: Option<Vec<&'a str>>,
+            onset: Option<&'a str>,
+            resolution: Option<&'a str>,
+            evidence: Option<&'a str>,
+        ) -> Result<(), PhenopacketBuilderError>;
+
         fn upsert_interpretation<'a>(
             &mut self,
             patient_id: &'a str,
