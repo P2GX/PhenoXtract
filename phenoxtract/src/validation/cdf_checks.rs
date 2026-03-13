@@ -20,7 +20,7 @@ pub(crate) fn check_orphaned_columns(
         err.add_param(Cow::from("identifier"), &sc_identifier);
         err.add_param(Cow::from("col_names"), &col_names);
         err.add_param(Cow::from("orphaned_col_names"), &orphaned_cols);
-        let error_message = "Error inserting SeriesContext with columns due to orphaned columns.";
+        let error_message = "Not all columns were matched by the SeriesContext identifier.";
 
         return Err(err.with_message(Cow::Borrowed(error_message)));
     }
