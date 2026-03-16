@@ -29,17 +29,21 @@ pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],
     data_context: &Context,
     header_context: &Context,
+    bb_id: Option<&str>,
 ) -> Result<Option<String>, CollectorError> {
     let mut cols_of_element_type = vec![];
 
     for patient_cdf in patient_cdfs {
-        cols_of_element_type.extend(
-            patient_cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(data_context))
-                .where_header_context(Filter::Is(header_context))
-                .collect(),
-        );
+        let filter = patient_cdf
+            .filter_columns()
+            .where_data_context(Filter::Is(data_context))
+            .where_header_context(Filter::Is(header_context));
+
+        if let Some(bb_id) = bb_id {
+            filter.clone().where_building_block(Filter::Is(bb_id));
+        }
+
+        cols_of_element_type.extend(filter.collect());
     }
 
     if cols_of_element_type.is_empty() {
@@ -137,9 +141,10 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(context, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&[cdf], &Context::SubjectSex, &Context::None)
-            .unwrap()
-            .unwrap();
+        let sme =
+            get_single_multiplicity_element(&[cdf], &Context::SubjectSex, &Context::None, None)
+                .unwrap()
+                .unwrap();
         assert_eq!(sme, "MALE");
     }
 
@@ -164,7 +169,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
-        let sme = get_single_multiplicity_element(&[cdf], &context, &Context::None);
+        let sme = get_single_multiplicity_element(&[cdf], &context, &Context::None, None);
         assert!(sme.is_err());
     }
 }

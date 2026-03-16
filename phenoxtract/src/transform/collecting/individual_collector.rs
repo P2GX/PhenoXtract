@@ -17,10 +17,10 @@ impl Collect for IndividualCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let date_of_birth =
-            get_single_multiplicity_element(patient_cdfs, &Context::DateOfBirth, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::DateOfBirth, &Context::None, None)?;
 
         let subject_sex =
-            get_single_multiplicity_element(patient_cdfs, &Context::SubjectSex, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::SubjectSex, &Context::None, None)?;
 
         let time_at_last_encounter =
             Self::find_single_time_element(patient_cdfs, Context::LAST_ENCOUNTER_VARIANTS)?;
@@ -52,7 +52,7 @@ impl IndividualCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         let status =
-            get_single_multiplicity_element(patient_cdfs, &Context::VitalStatus, &Context::None)?;
+            get_single_multiplicity_element(patient_cdfs, &Context::VitalStatus, &Context::None, None)?;
 
         if let Some(status) = status {
             let time_of_death =
@@ -62,12 +62,14 @@ impl IndividualCollector {
                 patient_cdfs,
                 &Context::CauseOfDeath,
                 &Context::None,
+                None
             )?;
 
             let survival_time_days = get_single_multiplicity_element(
                 patient_cdfs,
                 &Context::SurvivalTimeDays,
                 &Context::None,
+                None
             )?;
 
             let survival_time_days = survival_time_days
@@ -95,6 +97,7 @@ impl IndividualCollector {
                 patient_cdfs,
                 time_element_context,
                 &Context::None,
+                None
             )?;
             if time_element.is_some() {
                 break;

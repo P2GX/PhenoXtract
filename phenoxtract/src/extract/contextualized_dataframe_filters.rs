@@ -12,6 +12,7 @@ pub enum Filter<T> {
     IsNone,
 }
 
+#[derive(Clone)]
 pub struct SeriesContextFilter<'a> {
     items: Vec<&'a SeriesContext>,
     identifier: Vec<Filter<&'a Identifier>>,
@@ -207,6 +208,7 @@ impl<'a> SeriesContextFilter<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct ColumnFilter<'a> {
     items: &'a ContextualizedDataFrame,
     series_filter: SeriesContextFilter<'a>,

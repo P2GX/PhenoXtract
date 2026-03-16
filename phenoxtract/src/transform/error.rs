@@ -286,8 +286,11 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
+    //TODO this needs to be fixed
     #[error("Blah: {0}")]
     ContextError(String),
+    #[error("TemporaryError")]
+    TemporaryError,
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]
