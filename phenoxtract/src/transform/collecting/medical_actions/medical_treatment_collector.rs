@@ -3,8 +3,7 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
-use crate::transform::collecting::medical_actions::quantity_data::QuantityData;
-use crate::transform::collecting::medical_actions::treatment_data::TreatmentData;
+use crate::transform::collecting::medical_actions::treatment_data::{Treatment, TreatmentData};
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
@@ -32,14 +31,18 @@ impl<'a> MedicalTreatmentIterator<'a> {
 }
 
 impl<'a> Iterator for MedicalTreatmentIterator<'a> {
-    type Item = MedicalTreatmentIterElement<'a>;
+    type Item = Result<MedicalTreatmentIterElement<'a>, CollectorError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_index >= self.max_iterations {
             return None;
         }
 
-        let treatment = &self.treatment_data.get(self.current_index);
+        let treatment = match self.treatment_data.get(self.current_index) {
+            Ok(treatment) => treatment,
+            Err(err) => return Some(Err(err)),
+        };
+
         let general_medical_action_data = &self.medical_action_data.get(self.current_index);
 
         let mut unit = None;
@@ -59,7 +62,7 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
 
         self.current_index += 1;
 
-        Some(MedicalTreatmentIterElement {
+        Some(Ok(MedicalTreatmentIterElement {
             agent: treatment.agent,
             route_of_administration: treatment.route_of_administration,
             dose_intervals: vec![],
@@ -71,9 +74,10 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
             treatment_intent: general_medical_action_data.treatment_intent,
             response_to_treatment: general_medical_action_data.response_to_treatment,
             treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
-        })
+        }))
     }
 }
+
 struct MedicalTreatmentIterElement<'a> {
     agent: Option<&'a str>,
     route_of_administration: Option<&'a str>,

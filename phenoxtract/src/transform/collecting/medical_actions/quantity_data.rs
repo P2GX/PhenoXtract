@@ -113,6 +113,7 @@ impl QuantityData {
             }
         }
 
+        // TODO: This should throw an error, if either reference_range is found and value isn't
         self.value.get(idx).map(|value| Quantity {
             unit: &self.unit,
             value,

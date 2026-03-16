@@ -11,7 +11,7 @@ use crate::validation::error::ValidationError;
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::mem::ManuallyDrop;
 use std::ptr;
 use thiserror::Error;
@@ -91,6 +91,22 @@ impl ContextualizedDataFrame {
                 self.data
                     .column(col_name)
                     .expect("Column was unexpectedly not found in data.")
+            })
+            .collect()
+    }
+
+    pub fn get_building_block_childs(&self, sc: &SeriesContext) -> Vec<&SeriesContext> {
+        let sub_blocks: HashSet<&str> = sc
+            .get_sub_blocks()
+            .iter()
+            .map(|sub_bb| sub_bb.as_str())
+            .collect();
+
+        self.series_contexts()
+            .iter()
+            .filter(|ctx| {
+                ctx.get_building_block_id()
+                    .is_some_and(|id| sub_blocks.contains(id))
             })
             .collect()
     }

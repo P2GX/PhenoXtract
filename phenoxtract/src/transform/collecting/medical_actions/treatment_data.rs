@@ -1,21 +1,26 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::collecting::medical_actions::dose_interval_data::DoseIntervalData;
-use crate::transform::collecting::medical_actions::quantity_data::QuantityData;
+use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::transform::collecting::medical_actions::dose_interval_data::{
+    DoseInterval, DoseIntervalData,
+};
+use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
 use crate::transform::error::CollectorError;
 use polars::datatypes::StringChunked;
+use std::collections::HashSet;
 
 pub(super) struct Treatment<'a> {
-    pub(super) agent: Option<&'a str>,
+    pub(super) agent: &'a str,
     pub(super) route_of_administration: Option<&'a str>,
-    pub(super) dose_intervals: Option<&'a str>, // TODO: Change to dose interval
+    pub(super) dose_intervals: Vec<DoseInterval<'a>>,
     pub(super) drug_type: Option<&'a str>,
-    pub(super) quantity_data: Option<&'a QuantityData>,
+    pub(super) quantity_data: Option<Quantity<'a>>,
 }
+
 pub(super) struct TreatmentData {
     pub(super) agent: StringChunked,
     pub(super) route_of_administration: Option<StringChunked>,
-    pub(super) dose_intervals: Option<DoseIntervalData>,
+    pub(super) dose_intervals: Vec<DoseIntervalData>,
     pub(super) drug_type: Option<StringChunked>,
     pub(super) cumulative_dose: Option<QuantityData>,
 }
@@ -42,14 +47,14 @@ impl TreatmentData {
                     building_block,
                     &[Context::RouteOfAdministration],
                 )?;
-                // TODO: Construct dose intervals here
+
                 let drug_type = patient_cdf
                     .get_single_linked_column_as_str(building_block, &[Context::DrugType])?;
 
                 Ok(Self {
                     agent,
                     route_of_administration,
-                    dose_intervals: None,
+                    dose_intervals: Self::find_dose_interval_data(building_block, patient_cdf)?,
                     drug_type,
                     cumulative_dose: QuantityData::new(
                         patient_cdf,
@@ -61,19 +66,93 @@ impl TreatmentData {
         }
     }
 
+    pub(super) fn find_dose_interval_data(
+        building_block: Option<&str>,
+        patient_cdf: &ContextualizedDataFrame,
+    ) -> Result<Vec<DoseIntervalData>, CollectorError> {
+        if let Some(bb_id) = building_block {
+            let agent_scs = patient_cdf
+                .filter_series_context()
+                .where_data_context(Filter::Is(&Context::TreatmentAgent))
+                .where_building_block(Filter::Is(bb_id))
+                .collect();
+
+            let child_bb = patient_cdf.get_building_block_childs(agent_scs.first().unwrap());
+
+            let dose_building_block = child_bb
+                .iter()
+                .filter_map(|sc| {
+                    let context = sc.get_data_context();
+                    if context.is_dose_schedule_frequency()
+                        || [
+                            Context::DoseInterval(Boundary::Start),
+                            Context::DoseInterval(Boundary::End),
+                        ]
+                        .contains(context)
+                        || context.is_dose_interval_quantity()
+                    {
+                        sc.get_building_block_id()
+                    } else {
+                        None
+                    }
+                })
+                .collect::<HashSet<&str>>();
+
+            let intervals = dose_building_block
+                .into_iter()
+                .filter_map(|bb| DoseIntervalData::new(Some(bb), patient_cdf).transpose())
+                .collect::<Result<Vec<_>, _>>()?;
+
+            Ok(intervals)
+        } else {
+            Err(CollectorError::ExpectedBuildingBlock {
+                table_name: patient_cdf.context().name().to_string(),
+                patient_id: patient_cdf.get_subject_id_col().get(0)?.to_string(),
+                context: ContextKind::DoseInterval,
+            })
+        }
+    }
+
     pub(super) fn len(&self) -> usize {
         self.agent.len()
     }
-    pub(super) fn get(&'_ self, idx: usize) -> Treatment<'_> {
-        Treatment {
-            agent: self.agent.as_ref().get(idx),
-            route_of_administration: self
-                .route_of_administration
-                .as_ref()
-                .and_then(|col| col.get(idx)),
-            dose_intervals: None, //TODO
-            drug_type: self.drug_type.as_ref().and_then(|col| col.get(idx)),
-            quantity_data: self.cumulative_dose.as_ref(),
+    pub(super) fn get(&'_ self, idx: usize) -> Result<Option<Treatment<'_>>, CollectorError> {
+        let agent_opt = self.agent.as_ref().get(idx);
+        let route_of_administration = self
+            .route_of_administration
+            .as_ref()
+            .and_then(|col| col.get(idx));
+        let drug_type = self.drug_type.as_ref().and_then(|col| col.get(idx));
+        let quantity_data = self.cumulative_dose.as_ref().and_then(|col| col.get(idx));
+
+        let dose_intervals: Vec<DoseInterval> = self
+            .dose_intervals
+            .iter()
+            .filter_map(|di| di.get(idx).transpose())
+            .collect::<Result<Vec<DoseInterval>, CollectorError>>()?;
+
+        match agent_opt {
+            Some(agent) => Ok(Some(Treatment {
+                agent,
+                route_of_administration,
+                dose_intervals,
+                drug_type,
+                quantity_data,
+            })),
+            None => {
+                let has_orphaned_data = route_of_administration.is_some()
+                    || drug_type.is_some()
+                    || quantity_data.is_some()
+                    || !dose_intervals.is_empty();
+
+                if has_orphaned_data {
+                    // "Agent is missing, but other treatment data is present"
+                    Err(CollectorError::RequiredValueMissingError)
+                } else {
+                    // "No treatment data found at this index"
+                    Ok(None)
+                }
+            }
         }
     }
 }

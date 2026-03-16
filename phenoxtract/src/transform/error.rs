@@ -281,6 +281,16 @@ pub enum CollectorError {
         patient_id: String,
         context: ContextKind,
     },
+    #[error(
+        "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
+    )]
+    DataTypeError {
+        column_name: String,
+        found_datatype: DataType,
+        allowed_datatypes: Vec<DataType>,
+    },
+    #[error("TODO")]
+    RequiredValueMissingError,
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -299,14 +309,6 @@ pub enum CollectorError {
     UnexpectedContextError(ContextKind, Identifier),
     #[error(transparent)]
     TryIntoContextError(#[from] ContextError),
-    #[error(
-        "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
-    )]
-    DataTypeError {
-        column_name: String,
-        found_datatype: DataType,
-        allowed_datatypes: Vec<DataType>,
-    },
 }
 
 impl From<DataProcessingError> for CollectorError {
