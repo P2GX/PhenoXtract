@@ -125,9 +125,7 @@ impl Strategy for DateToAgeStrategy {
 
                         match (date_opt, subject_dob_opt) {
                             (Some(date), Some(subject_dob)) => {
-                                let date_and_dob_to_age_result =
-                                    Self::date_and_dob_to_age(subject_dob.clone(), date);
-                                match date_and_dob_to_age_result {
+                                match Self::date_and_dob_to_age(subject_dob.clone(), date) {
                                     Ok(age) => AnyValue::StringOwned(age.into()),
                                     Err(problem) => {
                                         error_info.insert_error(
