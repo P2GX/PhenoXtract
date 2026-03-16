@@ -180,6 +180,47 @@ fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
     result
 }
 
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct DateToAgeErrorInfo {
+    pub table_name: String,
+    pub date_col: String,
+    pub date: String,
+    pub subject_id: String,
+    pub problem: String,
+}
+
+pub trait PushDateToAgeError {
+    fn insert_error(
+        &mut self,
+        table_name: String,
+        date_col: String,
+        date: String,
+        subject_id: String,
+        problem: String,
+    );
+}
+impl PushDateToAgeError for HashSet<DateToAgeErrorInfo> {
+    fn insert_error(
+        &mut self,
+        table_name: String,
+        date_col: String,
+        date: String,
+        subject_id: String,
+        problem: String,
+    ) {
+        let date_to_age_error_info = DateToAgeErrorInfo {
+            table_name,
+            date_col,
+            date,
+            subject_id,
+            problem,
+        };
+        if !self.contains(&date_to_age_error_info) {
+            self.insert(date_to_age_error_info);
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
@@ -192,6 +233,8 @@ pub enum StrategyError {
         message: String,
         info: Vec<MappingErrorInfo>,
     },
+    #[error("Errors applying DateToAgeStrategy: \n {info:?}")]
+    DateToAgeError { info: Vec<DateToAgeErrorInfo> },
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
@@ -208,8 +251,6 @@ pub enum StrategyError {
         message: String,
         patients: Vec<String>,
     },
-    #[error("DateToAgeStrategy failed for {subject_id}. Problem: {problem}")]
-    DateToAgeError { subject_id: String, problem: String },
     #[error(
         "The column {column_name} had datatype {found_datatype} in strategy {strategy}. Only the datatypes {allowed_datatypes:?} are accepted."
     )]

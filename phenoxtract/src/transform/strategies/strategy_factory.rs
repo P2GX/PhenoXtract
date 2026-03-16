@@ -64,7 +64,9 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
                 )))
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
-            StrategyConfig::DateToAge => Ok(Box::new(DateToAgeStrategy)),
+            StrategyConfig::DateToAge { strict } => {
+                Ok(Box::new(DateToAgeStrategy { strict: *strict }))
+            }
             StrategyConfig::HpoDiseaseSplitter => Ok(Box::new(HpoDiseaseSplitterStrategy::new(
                 self.ctx.hpo_bidict_lib().clone(),
                 self.ctx.disease_bidict_lib().clone(),
@@ -111,7 +113,7 @@ mod tests {
     #[rstest]
     fn test_try_from_config_date_to_age() {
         let mut factory = create_test_factory();
-        let config = StrategyConfig::DateToAge;
+        let config = StrategyConfig::DateToAge { strict: false };
 
         let result = factory.try_from_config(&config);
 

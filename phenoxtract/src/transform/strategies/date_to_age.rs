@@ -1,6 +1,5 @@
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::transform::error::StrategyError::MappingError;
-use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
+use crate::transform::error::{DateToAgeErrorInfo, PushDateToAgeError, StrategyError};
 use log::{info, warn};
 
 use crate::extract::contextualized_dataframe_filters::Filter;
@@ -15,7 +14,6 @@ use chrono::NaiveDateTime;
 use date_differencer::date_diff;
 use iso8601_duration::Duration;
 use polars::prelude::{AnyValue, Column, DataType};
-use std::any::type_name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -28,7 +26,7 @@ use std::collections::{HashMap, HashSet};
 /// yet there is a date corresponding to this patient,
 /// then an error will be thrown.
 pub struct DateToAgeStrategy {
-    strict: bool,
+    pub strict: bool,
 }
 
 impl Strategy for DateToAgeStrategy {
@@ -72,7 +70,7 @@ impl Strategy for DateToAgeStrategy {
     ) -> Result<(), StrategyError> {
         info!("Applying DateToAge strategy to data.");
 
-        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
+        let mut error_info: HashSet<DateToAgeErrorInfo> = HashSet::new();
 
         let patient_dob_hash_map = Self::map_patient_to_dob(tables)?;
 
@@ -127,32 +125,37 @@ impl Strategy for DateToAgeStrategy {
 
                         match (date_opt, subject_dob_opt) {
                             (Some(date), Some(subject_dob)) => {
-                                let date_and_dob_to_age_result = Self::date_and_dob_to_age(
-                                    subject_id,
-                                    subject_dob.clone(),
-                                    date,
-                                );
-                                if let Ok(age) =
-                                    date_and_dob_to_age_result
-                                {
-                                    AnyValue::StringOwned(age.into())
-                                } else {
-                                    return date_and_dob_to_age_result.err().unwrap()
+                                let date_and_dob_to_age_result =
+                                    Self::date_and_dob_to_age(subject_dob.clone(), date);
+                                match date_and_dob_to_age_result {
+                                    Ok(age) => AnyValue::StringOwned(age.into()),
+                                    Err(problem) => {
+                                        error_info.insert_error(
+                                            table.context().name().to_string(),
+                                            date_col_name.to_string(),
+                                            date.to_string(),
+                                            subject_id.to_string(),
+                                            problem,
+                                        );
+                                        AnyValue::Null
+                                    }
                                 }
                             }
                             (Some(date), None) => {
                                 if self.strict {
-                                    return Err(StrategyError::DateToAgeError {
-                                        subject_id: subject_id.to_string(),
-                                        problem: format!(
-                                            "Date {date} found in {date_col_name} but no DOB data."
-                                        ),
-                                    });
+                                    error_info.insert_error(
+                                        table.context().name().to_string(),
+                                        date_col_name.to_string(),
+                                        date.to_string(),
+                                        subject_id.to_string(),
+                                        "Date found for subject, but not DOB data.".to_string(),
+                                    );
+                                    AnyValue::Null
                                 } else {
                                     AnyValue::String(date)
                                 }
                             }
-                            (None, Some(_)) => AnyValue::Null,
+                            _ => AnyValue::Null,
                         }
                     })
                     .collect();
@@ -171,12 +174,8 @@ impl Strategy for DateToAgeStrategy {
                 .build()?;
         }
 
-        // return an error if not every cell term could be parsed
         if !error_info.is_empty() {
-            Err(MappingError {
-                strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
-                message: "DOB data is missing, or DOB/date could not be parsed as NaiveDate."
-                    .to_string(),
+            Err(StrategyError::DateToAgeError {
                 info: error_info.into_iter().collect(),
             })
         } else {
@@ -244,32 +243,22 @@ impl DateToAgeStrategy {
     ///
     /// An error will be thrown if the date of birth, or the date, cannot be interpreted as
     /// chrono::NaiveDate.
-    fn date_and_dob_to_age(
-        subject_id: &str,
-        dob: String,
-        date: &str,
-    ) -> Result<String, StrategyError> {
+    fn date_and_dob_to_age(dob: String, date: &str) -> Result<String, String> {
         let dob_object = if let Some(dob) = try_parse_string_date(dob.as_str()) {
             dob.and_hms_opt(0, 0, 0).unwrap()
         } else {
-            try_parse_string_datetime(dob.as_str()).ok_or_else(|| {
-                StrategyError::DateParsingError {
-                    subject_id: subject_id.to_string(),
-                    unparseable_date: dob,
-                }
-            })?
+            try_parse_string_datetime(dob.as_str())
+                .ok_or_else(|| format!("Could not parse DOB: {dob}"))?
         };
 
         let date_object = if let Some(date) = try_parse_string_date(date) {
             date.and_hms_opt(0, 0, 0).unwrap()
         } else {
-            try_parse_string_datetime(date).ok_or_else(|| StrategyError::DateParsingError {
-                subject_id: subject_id.to_string(),
-                unparseable_date: date.to_string(),
-            })?
+            try_parse_string_datetime(date)
+                .ok_or_else(|| format!("Could not parse date: {date}"))?
         };
 
-        Self::date_differencer(subject_id, dob_object, date_object)
+        Self::date_differencer(dob_object, date_object)
     }
 
     fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
@@ -279,21 +268,13 @@ impl DateToAgeStrategy {
             .collect()
     }
 
-    fn date_differencer(
-        subject_id: &str,
-        dob: NaiveDateTime,
-        date: NaiveDateTime,
-    ) -> Result<String, StrategyError> {
+    fn date_differencer(dob: NaiveDateTime, date: NaiveDateTime) -> Result<String, String> {
         if dob == date {
             Ok("P0Y".to_string())
         } else {
             let diff = date_diff(dob, date);
             if diff.years < 0 || diff.months < 0 || diff.days < 0 {
-                Err(StrategyError::NegativeAge {
-                    subject_id: subject_id.to_string(),
-                    date_of_birth: dob.to_string(),
-                    date: date.to_string(),
-                })
+                Err(format!("Negative Age. DOB: {dob}, date: {date}"))
             } else {
                 let dur = Duration::new(
                     diff.years as f32,
@@ -316,7 +297,6 @@ mod tests {
     use crate::config::context::TimeElementType;
     use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
-    use crate::test_suite::cdf_generation::default_patient_id;
     use crate::test_suite::phenopacket_component_generation::default_datetime;
     use chrono::NaiveDateTime;
     use chrono::{Datelike, NaiveDate};
@@ -492,6 +472,16 @@ mod tests {
     }
 
     #[fixture]
+    fn df_with_missing_dobs() -> DataFrame {
+        df!(
+        "subject_id" => &["Alice", "Bob", "Charlie"],
+        "DOB" => &[AnyValue::Null, AnyValue::Null, AnyValue::Null],
+        "bronchitis" => &["Observed", "Not observed", "Observed"],
+        )
+        .unwrap()
+    }
+
+    #[fixture]
     fn df_with_date_dob() -> DataFrame {
         df!(
         "subject_id" => &["Alice", "Bob", "Charlie"],
@@ -602,7 +592,7 @@ mod tests {
         let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), onset_df).unwrap();
         let tables = &mut [&mut cdf1, &mut cdf2];
 
-        let date_to_age_strat = DateToAgeStrategy;
+        let date_to_age_strat = DateToAgeStrategy { strict: true };
         date_to_age_strat.transform(tables).unwrap();
 
         //check the transformation is as expected
@@ -641,14 +631,50 @@ mod tests {
     }
 
     #[rstest]
+    fn test_date_to_age_strict_non_strict(
+        df_with_missing_dobs: DataFrame,
+        df_with_str_onset: DataFrame,
+    ) {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_missing_dobs).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset).unwrap();
+        let tables = &mut [&mut cdf1, &mut cdf2];
+
+        let strict_date_to_age_strat = DateToAgeStrategy { strict: true };
+        let result = strict_date_to_age_strat.transform(tables);
+
+        assert!(result.is_err());
+
+        let non_strict_date_to_age_strat = DateToAgeStrategy { strict: false };
+        let result = non_strict_date_to_age_strat.transform(tables);
+
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn test_date_to_age_errs(df_with_missing_dobs: DataFrame, df_with_str_onset: DataFrame) {
+        let mut cdf1 = ContextualizedDataFrame::new(dob_tc(), df_with_missing_dobs).unwrap();
+        let mut cdf2 = ContextualizedDataFrame::new(onset_tc(), df_with_str_onset).unwrap();
+        let tables = &mut [&mut cdf1, &mut cdf2];
+
+        let strict_date_to_age_strat = DateToAgeStrategy { strict: true };
+        let result = strict_date_to_age_strat.transform(tables);
+
+        let err = result.err().unwrap();
+
+        if let StrategyError::DateToAgeError { info } = err {
+            assert_eq!(info.len(), 2)
+        } else {
+            panic!("Wrong error")
+        }
+    }
+
+    #[rstest]
     fn test_date_and_dob_to_age() {
         let onset_age_bob =
-            DateToAgeStrategy::date_and_dob_to_age("P001", dob_bob_string(), onset_bob().as_str())
-                .unwrap();
+            DateToAgeStrategy::date_and_dob_to_age(dob_bob_string(), onset_bob().as_str()).unwrap();
         assert_eq!(onset_age_bob, "P1M");
 
         let onset_age_charlie = DateToAgeStrategy::date_and_dob_to_age(
-            "P001",
             dob_charlie_eu_string(),
             onset_charlie().as_str(),
         )
@@ -660,19 +686,15 @@ mod tests {
     fn test_date_and_dob_to_age_with_datetimes() {
         let mut onset_bob_datetime = onset_bob();
         onset_bob_datetime.push_str(" 00:00:00.000");
-        let onset_age_bob = DateToAgeStrategy::date_and_dob_to_age(
-            "P001",
-            dob_bob_datetime_str(),
-            onset_bob().as_str(),
-        )
-        .unwrap();
+        let onset_age_bob =
+            DateToAgeStrategy::date_and_dob_to_age(dob_bob_datetime_str(), onset_bob().as_str())
+                .unwrap();
         assert_eq!(onset_age_bob, "P1M");
     }
 
     #[rstest]
     fn test_date_and_dob_to_age_err() {
-        let result =
-            DateToAgeStrategy::date_and_dob_to_age("P001", "2000-13-50".to_string(), "2025-11-21");
+        let result = DateToAgeStrategy::date_and_dob_to_age("2000-13-50".to_string(), "2025-11-21");
         assert!(result.is_err());
     }
 
@@ -798,7 +820,7 @@ mod tests {
             .unwrap()
             .and_time(dob.time());
         assert_eq!(
-            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).unwrap(),
+            DateToAgeStrategy::date_differencer(dob, date).unwrap(),
             "P1Y".to_string()
         );
     }
@@ -808,7 +830,7 @@ mod tests {
         let dob = default_datetime();
         let date = dob;
         assert_eq!(
-            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).unwrap(),
+            DateToAgeStrategy::date_differencer(dob, date).unwrap(),
             "P0Y".to_string()
         );
     }
@@ -821,8 +843,6 @@ mod tests {
             .with_year(dob.year() - 1)
             .unwrap()
             .and_time(dob.time());
-        assert!(
-            DateToAgeStrategy::date_differencer(default_patient_id().as_str(), dob, date).is_err()
-        );
+        assert!(DateToAgeStrategy::date_differencer(dob, date).is_err());
     }
 }
