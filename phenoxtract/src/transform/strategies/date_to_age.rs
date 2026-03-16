@@ -22,9 +22,9 @@ use std::collections::{HashMap, HashSet};
 /// This strategy finds columns whose cells contain dates, and converts these dates
 /// to a certain age of the patient, by leveraging the patient's date of birth.
 ///
-/// If there is no data on a certain patient's date of birth,
-/// yet there is a date corresponding to this patient,
-/// then an error will be thrown.
+/// If strict is true, then an error will be thrown
+/// if there is no data on a certain patient's date of birth,
+/// yet there is a date corresponding to this patient.
 pub struct DateToAgeStrategy {
     pub strict: bool,
 }
