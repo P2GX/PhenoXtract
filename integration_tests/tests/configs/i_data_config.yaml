@@ -229,7 +229,7 @@ pipeline:
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
-    treatment_attributes_resources:
-      - id: "NCIT"
-        secrets:
-          token: ${BIOPORTAL}
+    #treatment_attributes_resources:
+    #  - id: "NCIT"
+    #    secrets:
+    #      token: ${BIOPORTAL}
