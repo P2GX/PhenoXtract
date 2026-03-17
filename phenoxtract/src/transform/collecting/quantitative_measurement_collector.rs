@@ -124,12 +124,6 @@ mod tests {
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};
-    use tempfile::TempDir;
-
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        tempfile::tempdir().expect("Failed to create temporary directory")
-    }
 
     #[fixture]
     fn measurements() -> [f64; 2] {
@@ -205,8 +199,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_quantitative_measurement(temp_dir: TempDir) {
-        let mut builder = build_test_phenopacket_builder(temp_dir.path());
+    fn test_collect_quantitative_measurement() {
+        let mut builder = build_test_phenopacket_builder();
         let patient_id = default_patient_id();
         QuantitativeMeasurementCollector
             .collect(&mut builder, &[quant_measurement_cdf()], &patient_id)

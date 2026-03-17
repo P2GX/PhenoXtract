@@ -58,6 +58,7 @@ pub(crate) fn default_disease() -> Disease {
 pub(crate) fn default_disease_with_age_onset() -> Disease {
     let mut default_disease = default_disease();
     default_disease.onset = Some(default_age_element());
+    default_disease.resolution = Some(default_age_element());
 
     default_disease
 }

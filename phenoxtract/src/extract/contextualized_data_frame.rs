@@ -7,7 +7,6 @@ use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
-use crate::validation::error::ValidationError;
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
@@ -15,7 +14,7 @@ use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
 use thiserror::Error;
-use validator::Validate;
+use validator::{Validate, ValidationError, ValidationErrors};
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
 ///
@@ -31,7 +30,7 @@ pub struct ContextualizedDataFrame {
 }
 
 impl ContextualizedDataFrame {
-    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationError> {
+    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationErrors> {
         let cdf = ContextualizedDataFrame { context, data };
         cdf.validate()?;
         Ok(cdf)
@@ -814,7 +813,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
+    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationErrors> {
         let builder = ManuallyDrop::new(self.mark_clean());
 
         let cdf_ref = unsafe { ptr::read(&builder.cdf) };
