@@ -35,8 +35,8 @@ use std::sync::Arc;
 ///
 /// * `ontology_dict` - A thread-safe reference to a bidirectional ontology dictionary that
 ///   maps between HPO labels and their primary identifiers. E.g. the HPO bidirectional dictionary
-/// * `data_context` - The specific [`Context`] that columns must match to be processed
-///   by this strategy. E.g. [`Context::Hpo`]
+/// * `data_context` - The specific [`crate::config::context::Context`] that columns must match to be processed
+///   by this strategy. E.g. [`crate::config::context::Context::Hpo`]
 ///
 /// # Example
 ///

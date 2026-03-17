@@ -15,7 +15,7 @@ use std::borrow::Cow;
 /// Given a collection of [`ContextualizedDataFrame`], this strategy will apply all the aliases
 /// found in the  [`crate::config::table_context::SeriesContext`].
 ///
-/// For example if a [`ContextualizedDataFrame`] has a [`crate::config::table_context::SeriesContext`] consisting of a [`Context::SubjectSex`] column
+/// For example if a [`ContextualizedDataFrame`] has a [`crate::config::table_context::SeriesContext`] consisting of a [`crate::config::context::Context::SubjectSex`] column
 /// and an [`AliasMap`] of [`OutputDataType::String`] type, which converts "M" to "Male" and "F" to "Female",
 /// then the strategy will apply those aliases to each cell.
 ///
@@ -26,7 +26,7 @@ use std::borrow::Cow;
 ///
 /// # Example
 ///
-/// If the [`crate::config::table_context::SeriesContext`] for the [`Context::TimeAtLastEncounter`] column
+/// If the [`crate::config::table_context::SeriesContext`] for the [`crate::config::context::Context::TimeAtLastEncounter`] column
 /// has an [`AliasMap`] of [`OutputDataType::Int64`] type with a single alias `Less than 1 year` -> `0` then the table:
 ///
 /// ```csv
