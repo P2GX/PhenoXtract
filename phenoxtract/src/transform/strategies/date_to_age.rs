@@ -26,7 +26,13 @@ use std::collections::{HashMap, HashSet};
 /// if there is no data on a certain patient's date of birth,
 /// yet there is a date corresponding to this patient.
 pub struct DateToAgeStrategy {
-    pub strict: bool,
+    strict: bool,
+}
+
+impl DateToAgeStrategy {
+    pub fn new(strict: bool) -> DateToAgeStrategy {
+        DateToAgeStrategy { strict }
+    }
 }
 
 impl Strategy for DateToAgeStrategy {
@@ -122,38 +128,39 @@ impl Strategy for DateToAgeStrategy {
                         let subject_id =
                             subject_id_opt.expect("SubjectID column should have no gaps.");
                         let subject_dob_opt = patient_dob_hash_map.get(subject_id);
+                        let Some(date): Option<&str> = date_opt else {
+                            return AnyValue::Null;
+                        };
+                        let mut log_error = |problem: String| {
+                            error_info.insert_error(
+                                table.context().name().to_string(),
+                                date_col_name.to_string(),
+                                date.to_string(),
+                                subject_id.to_string(),
+                                problem,
+                            );
+                        };
 
-                        match (date_opt, subject_dob_opt) {
-                            (Some(date), Some(subject_dob)) => {
-                                match Self::date_and_dob_to_age(subject_dob.clone(), date) {
-                                    Ok(age) => AnyValue::StringOwned(age.into()),
-                                    Err(problem) => {
-                                        error_info.insert_error(
-                                            table.context().name().to_string(),
-                                            date_col_name.to_string(),
-                                            date.to_string(),
-                                            subject_id.to_string(),
-                                            problem,
-                                        );
-                                        AnyValue::Null
-                                    }
-                                }
-                            }
-                            (Some(date), None) => {
+                        match subject_dob_opt {
+                            None => {
                                 if self.strict {
-                                    error_info.insert_error(
-                                        table.context().name().to_string(),
-                                        date_col_name.to_string(),
-                                        date.to_string(),
-                                        subject_id.to_string(),
-                                        "Date found for subject, but not DOB data.".to_string(),
+                                    log_error(
+                                        "Date found for subject, but no DOB data.".to_string(),
                                     );
                                     AnyValue::Null
                                 } else {
                                     AnyValue::String(date)
                                 }
                             }
-                            _ => AnyValue::Null,
+                            Some(subject_dob) => {
+                                match Self::date_and_dob_to_age(subject_dob.clone(), date) {
+                                    Ok(age) => AnyValue::StringOwned(age.into()),
+                                    Err(problem) => {
+                                        log_error(problem);
+                                        AnyValue::Null
+                                    }
+                                }
+                            }
                         }
                     })
                     .collect();
@@ -256,7 +263,7 @@ impl DateToAgeStrategy {
                 .ok_or_else(|| format!("Could not parse date: {date}"))?
         };
 
-        Self::date_differencer(dob_object, date_object)
+        Self::date_difference(dob_object, date_object)
     }
 
     fn date_to_age_contexts_hash_map() -> HashMap<Context, Context> {
@@ -266,7 +273,7 @@ impl DateToAgeStrategy {
             .collect()
     }
 
-    fn date_differencer(dob: NaiveDateTime, date: NaiveDateTime) -> Result<String, String> {
+    fn date_difference(dob: NaiveDateTime, date: NaiveDateTime) -> Result<String, String> {
         if dob == date {
             Ok("P0Y".to_string())
         } else {
@@ -818,7 +825,7 @@ mod tests {
             .unwrap()
             .and_time(dob.time());
         assert_eq!(
-            DateToAgeStrategy::date_differencer(dob, date).unwrap(),
+            DateToAgeStrategy::date_difference(dob, date).unwrap(),
             "P1Y".to_string()
         );
     }
@@ -828,7 +835,7 @@ mod tests {
         let dob = default_datetime();
         let date = dob;
         assert_eq!(
-            DateToAgeStrategy::date_differencer(dob, date).unwrap(),
+            DateToAgeStrategy::date_difference(dob, date).unwrap(),
             "P0Y".to_string()
         );
     }
@@ -841,6 +848,6 @@ mod tests {
             .with_year(dob.year() - 1)
             .unwrap()
             .and_time(dob.time());
-        assert!(DateToAgeStrategy::date_differencer(dob, date).is_err());
+        assert!(DateToAgeStrategy::date_difference(dob, date).is_err());
     }
 }

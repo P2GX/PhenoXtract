@@ -147,7 +147,7 @@ fn big_null_test(
             onto_factory.build_bidict(&pato_ref, None).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
-        Box::new(DateToAgeStrategy { strict: true }),
+        Box::new(DateToAgeStrategy::new(true)),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),

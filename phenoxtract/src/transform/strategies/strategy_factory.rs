@@ -64,9 +64,7 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
                 )))
             }
             StrategyConfig::AgeToIso8601 => Ok(Box::new(AgeToIso8601Strategy::default())),
-            StrategyConfig::DateToAge { strict } => {
-                Ok(Box::new(DateToAgeStrategy { strict: *strict }))
-            }
+            StrategyConfig::DateToAge { strict } => Ok(Box::new(DateToAgeStrategy::new(*strict))),
             StrategyConfig::HpoDiseaseSplitter => Ok(Box::new(HpoDiseaseSplitterStrategy::new(
                 self.ctx.hpo_bidict_lib().clone(),
                 self.ctx.disease_bidict_lib().clone(),

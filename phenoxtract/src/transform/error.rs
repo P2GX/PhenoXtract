@@ -53,27 +53,6 @@ pub struct MappingErrorInfo {
     pub possible_mappings: Vec<MappingSuggestion>,
 }
 
-impl Display for MappingErrorInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Column '{}' in table '{}' with value '{}'",
-            self.column, self.table, self.old_value
-        )?;
-        if !self.possible_mappings.is_empty() {
-            write!(f, " (possible mappings: ")?;
-            for (i, mapping) in self.possible_mappings.iter().enumerate() {
-                if i > 0 {
-                    write!(f, ", ")?;
-                }
-                write!(f, "{}", mapping)?;
-            }
-            write!(f, ")")?;
-        }
-        Ok(())
-    }
-}
-
 pub trait PushMappingError {
     fn insert_error(
         &mut self,
@@ -101,6 +80,39 @@ impl PushMappingError for HashSet<MappingErrorInfo> {
             self.insert(mapping_error_info);
         }
     }
+}
+
+fn format_mapping_errors(errors: &[MappingErrorInfo]) -> String {
+    let mut grouped: HashMap<(&str, &str), Vec<&MappingErrorInfo>> = HashMap::new();
+
+    for error in errors {
+        grouped
+            .entry((&error.column, &error.table))
+            .or_default()
+            .push(error);
+    }
+
+    let mut result = String::new();
+    for ((column, table), group) in grouped {
+        result.push_str(&format!("  Column '{}' in table '{}':\n", column, table));
+        for error in group {
+            result.push_str(&format!("    - '{}'", error.old_value));
+            if !error.possible_mappings.is_empty() {
+                result.push_str(&format!(
+                    " (possible mappings: {})",
+                    error
+                        .possible_mappings
+                        .iter()
+                        .map(|pm| pm.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ));
+            }
+            result.push('\n');
+        }
+    }
+
+    result
 }
 
 #[derive(Debug, Error)]
@@ -147,39 +159,6 @@ impl From<DataProcessingError> for TransformError {
     }
 }
 
-fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
-    let mut grouped: HashMap<(&str, &str), Vec<&MappingErrorInfo>> = HashMap::new();
-
-    for error in errors {
-        grouped
-            .entry((&error.column, &error.table))
-            .or_default()
-            .push(error);
-    }
-
-    let mut result = String::new();
-    for ((column, table), group) in grouped {
-        result.push_str(&format!("  Column '{}' in table '{}':\n", column, table));
-        for error in group {
-            result.push_str(&format!("    - '{}'", error.old_value));
-            if !error.possible_mappings.is_empty() {
-                result.push_str(&format!(
-                    " (possible mappings: {})",
-                    error
-                        .possible_mappings
-                        .iter()
-                        .map(|pm| pm.to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                ));
-            }
-            result.push('\n');
-        }
-    }
-
-    result
-}
-
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct DateToAgeErrorInfo {
     pub table_name: String,
@@ -221,19 +200,50 @@ impl PushDateToAgeError for HashSet<DateToAgeErrorInfo> {
     }
 }
 
+fn format_date_to_age_errors(errors: &[DateToAgeErrorInfo]) -> String {
+    let mut grouped: HashMap<(&str, &str), Vec<&DateToAgeErrorInfo>> = HashMap::new();
+
+    for error in errors {
+        grouped
+            .entry((&error.date_col, &error.table_name))
+            .or_default()
+            .push(error);
+    }
+
+    let mut result = String::new();
+    for ((date_column, table), group) in grouped {
+        result.push_str(&format!(
+            "Date column '{}' in table '{}':\n",
+            date_column, table
+        ));
+        for error in group {
+            result.push_str(&format!(
+                "    - 'Patient: {}, Date: {}, Problem: {}'",
+                error.date, error.date, error.problem
+            ));
+            result.push('\n');
+        }
+    }
+
+    result
+}
+
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
     #[error(
         "{message}. Strategy '{strategy_name}' unable to map: \n {}",
-        format_grouped_errors(info)
+        format_mapping_errors(info)
     )]
     MappingError {
         strategy_name: String,
         message: String,
         info: Vec<MappingErrorInfo>,
     },
-    #[error("Errors applying DateToAgeStrategy: \n {info:?}")]
+    #[error(
+        "Errors applying DateToAgeStrategy: \n {}",
+        format_date_to_age_errors(info)
+    )]
     DateToAgeError { info: Vec<DateToAgeErrorInfo> },
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
