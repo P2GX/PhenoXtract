@@ -23,6 +23,8 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Default)]
 /// # Description
 ///
+/// When possible, converts dates to ages.
+///
 /// This strategy finds columns whose cells contain dates, and converts these dates
 /// to a certain age of the patient, by leveraging the patient's date of birth.
 ///
@@ -34,7 +36,7 @@ use std::collections::{HashMap, HashSet};
 ///
 /// The table
 ///
-/// ```text
+/// ```csv
 /// PatientId, DOB, TimeAtLastEncounter
 /// P001, 1990, 1995
 /// P002, 1992,
@@ -43,7 +45,7 @@ use std::collections::{HashMap, HashSet};
 /// ```
 ///
 /// is mapped to
-/// ```text
+/// ```csv
 /// PatientId, DOB, TimeAtLastEncounter
 /// P001, 1990, 5
 /// P002, 1992,
@@ -54,8 +56,8 @@ use std::collections::{HashMap, HashSet};
 /// # Errors
 ///
 /// An error will be thrown if
-/// 1. A DOB is before to a date for a patient, leading to a negative age.
-/// 2. There exists a date which cannot be converted to an age due to missing DOB data.
+/// - A DOB is before to a date for a patient, leading to a negative age.
+/// - There exists a date which cannot be converted to an age due to missing DOB data.
 ///
 pub struct DateToAgeStrategy;
 

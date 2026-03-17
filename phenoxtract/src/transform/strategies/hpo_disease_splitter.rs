@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::bidict_library::BiDictLibrary;
-use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use log::info;
@@ -14,8 +13,10 @@ use std::sync::Arc;
 
 /// # Description
 ///
-/// This strategy will find every column whose context is HpoOrDisease
-/// And split it into two separate columns: a Hpo column and a disease column.
+/// Splits a [`Context::HpoOrDisease`] column into [`Context::Hpo`] and [`Context::Disease`] columns.
+///
+/// This strategy will find every column whose context is [`Context::HpoOrDisease`]
+/// And split it into two separate columns: a [`Context::Hpo`] column and a [`Context::Disease`] column.
 ///
 /// Hpo is prioritised: the strategy will find all Hpo labels and IDs, and then put them into the
 /// Hpo column. All other cells will be assumed to refer to disease.
@@ -29,7 +30,7 @@ use std::sync::Arc;
 ///
 /// The table
 ///
-/// ```text
+/// ```csv
 /// PatientId, conditions
 /// P001, HP:1234567
 /// P002, Arachnodactyly
@@ -37,7 +38,7 @@ use std::sync::Arc;
 /// ```
 /// is mapped to
 ///
-/// ```text
+/// ```csv
 /// PatientId, conditions_hpo, conditions_disease
 /// P001, HP:1234567,
 /// P002, Arachnodactyly,
@@ -46,7 +47,7 @@ use std::sync::Arc;
 ///
 /// # Errors
 ///
-/// A `TransformError::MappingError` will be thrown if any cells in the HpoOrDisease column
+/// A [`StrategyError::MappingError`] will be thrown if any cells in the [`Context::HpoOrDisease`] column
 /// are not a label or ID in either the `hpo_bidict_lib` or the `disease_bidict_lib`.
 #[derive(Debug)]
 pub struct HpoDiseaseSplitterStrategy {
@@ -127,7 +128,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                     Column::new(new_disease_col_name.into(), new_disease_col_data);
 
                 if !error_info.is_empty() {
-                    return Err(MappingError {
+                    return Err(StrategyError::MappingError {
                         strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                         message: "Could not find ontology terms for these strings.".to_string(),
                         info: error_info.into_iter().collect(),

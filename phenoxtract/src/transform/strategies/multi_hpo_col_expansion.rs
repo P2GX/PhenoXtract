@@ -13,6 +13,8 @@ use regex::Regex;
 
 /// # Description
 ///
+/// Converts [`Context::MultiHpoId`] columns into many columns with HPO IDs in the header.
+///
 /// A strategy for converting columns whose cells contain multiple HPO IDs
 /// into several columns whose headers are exactly those HPO IDs
 /// and whose cells contain the ObservationStatus for each patient.
@@ -20,28 +22,28 @@ use regex::Regex;
 /// The columns are created on a "block by block" basis
 /// so that building blocks are preserved after the transformation.
 ///
-/// A new SeriesContext will be added for each block of new columns.
+/// A new [`SeriesContext`] will be added for each block of new columns.
 ///
-/// The old columns and contexts will be removed.
+/// The old columns and [`Context::MultiHpoId`] context will be removed.
 ///
 /// # Example
 ///
 /// Data of the format
 ///
-/// ```text
+/// ```csv
 /// PatientId, MultiHpo
 /// P001,HP:1111111 and HP:2222222
 /// P002,HP:2222222
 /// ```
 /// will be mapped to
-/// ```text
+/// ```csv
 /// PatientId,HP:1111111,HP:2222222
 /// P001,true,true
 /// P002,,true
 /// ```
 /// # Errors
 ///
-/// An error will occur if there are MultiHpoId columns which do not have String datatype.
+/// An error will occur if there are [`Context::MultiHpoId`] columns which do not have [`DataType::String`].
 #[derive(Debug)]
 pub struct MultiHPOColExpansionStrategy;
 

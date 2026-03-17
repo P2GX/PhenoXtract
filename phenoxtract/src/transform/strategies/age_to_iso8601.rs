@@ -15,24 +15,24 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug)]
 /// # Description
 ///
+/// Converts integer ages to ISO8601 durations.
+///
 /// Given a column whose cells contains ages (e.g. subject age, age of death, age of onset)
 /// this strategy converts integer entries to ISO8601 durations: 47 -> P47Y
-///
-/// NOTE: the integers must be between 0 and 150.
 ///
 /// If an entry is already in ISO8601 duration format, it will be left unchanged.
 ///
 /// # Example
 ///
 /// The table
-/// ```text
+/// ```csv
 /// PatientId, age_at_last_encounter
 /// P001, 47
 /// P002, P56Y12M3D
 /// ```
 ///
 /// will be mapped to
-/// ```text
+/// ```csv
 /// PatientId, age_at_last_encounter
 /// P001, P47Y
 /// P002, P56Y12M3D

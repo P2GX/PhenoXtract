@@ -1,7 +1,6 @@
 use crate::config::context::ContextKind;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use log::info;
@@ -18,6 +17,7 @@ use std::sync::Arc;
 /// # Description
 ///
 /// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
+///
 /// It is case-insensitive.
 ///
 /// This strategy processes string columns in data tables by looking up values in an ontology
@@ -28,27 +28,27 @@ use std::sync::Arc;
 /// 1. Identifies string columns with no header context that match the data context
 /// 2. For each cell value, attempts to maps it via the ontology dictionary to its ID.
 /// 3. Replaces the original value with the ID
-/// 4. Collects mapping errors for any values that couldn't be resolved
+/// 4. Collects [`MappingErrorInfo`] for any values that couldn't be resolved
 /// 5. Returns an error if any labels failed to map (except for null values)
 ///
 /// # Fields
 ///
 /// * `ontology_dict` - A thread-safe reference to a bidirectional ontology dictionary that
 ///   maps between HPO labels and their primary identifiers. E.g. the HPO bidirectional dictionary
-/// * `data_context` - The specific data context that columns must match to be processed
-///   by this strategy. E.g. HpoLabelOrId
+/// * `data_context` - The specific [`Context`] that columns must match to be processed
+///   by this strategy. E.g. [`Context::Hpo`]
 ///
 /// # Example
 ///
-/// If `OntologyNormaliser` is applied with `ContextKind = Hpo`, then
+/// If `OntologyNormaliser` is applied with [`ContextKind`] = [`ContextKind::Hpo`]`, then
 ///
-/// ```text
+/// ```csv
 /// PatientId, Hpo
 /// P001, Pneumonia
 /// P002, HP:1234567
 /// ```
 /// is mapped to
-/// ```text
+/// ```csv
 /// PatientId, Hpo
 /// P001, HP:0002090
 /// P002, HP:1234567
@@ -56,7 +56,7 @@ use std::sync::Arc;
 ///
 /// # Errors
 ///
-/// Returns `TransformError::MappingError` if any cell values do not match an ontology ID or label.
+/// Returns [`StrategyError::MappingError`] if any cell values do not match an ontology ID or label.
 ///
 pub struct OntologyNormaliserStrategy {
     ontology_dict: Arc<OntologyBiDict>,
@@ -125,7 +125,7 @@ impl Strategy for OntologyNormaliserStrategy {
         }
 
         if !error_info.is_empty() {
-            Err(MappingError {
+            Err(StrategyError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 message: "Could not find ontology terms for these strings.".to_string(),
                 info: error_info.into_iter().collect(),

@@ -10,11 +10,13 @@ use std::borrow::Cow;
 
 /// # Description
 ///
-/// Given a collection of `ContextualiseDataframes`, this strategy will apply all the aliases
-/// found in the `SeriesContexts`.
+/// Applies all aliases found in all the [`crate::config::table_context::SeriesContext`].
 ///
-/// For example if a `ContextualisedDataframe` has a `SeriesContext` consisting of a `subject_sex` column
-/// and a `ToString` `AliasMap`, which converts "M" to "Male" and "F" to "Female",
+/// Given a collection of [`ContextualizedDataFrame`], this strategy will apply all the aliases
+/// found in the  [`crate::config::table_context::SeriesContext`].
+///
+/// For example if a [`ContextualizedDataFrame`] has a [`crate::config::table_context::SeriesContext`] consisting of a [`Context::SubjectSex`] column
+/// and an [`AliasMap`] of [`OutputDataType::String`] type, which converts "M" to "Male" and "F" to "Female",
 /// then the strategy will apply those aliases to each cell.
 ///
 /// # NOTE
@@ -24,17 +26,17 @@ use std::borrow::Cow;
 ///
 /// # Example
 ///
-/// If the `SeriesContext` for the `age_at_last_encounter` column
-/// has a `ToInt` `AliasMap` with a single alias `Less than 1 year` -> `0` then the table
+/// If the [`crate::config::table_context::SeriesContext`] for the [`Context::TimeAtLastEncounter`] column
+/// has an [`AliasMap`] of [`OutputDataType::Int64`] type with a single alias `Less than 1 year` -> `0` then the table:
 ///
-/// ```text
+/// ```csv
 /// PatientId, age_at_last_encounter
 /// P001, 4
 /// P002, Less than 1 year
 /// ```
 ///
 /// is mapped to
-/// ```text
+/// ```csv
 /// PatientId, age_at_last_encounter
 /// P001, 4
 /// P002, 0
@@ -43,10 +45,10 @@ use std::borrow::Cow;
 /// # Errors
 ///
 /// Errors will be thrown if:
-/// - Any columns to be aliased cannot be cast to String datatype.
+/// - Any columns to be aliased cannot be cast to [`DataType::String`] datatype.
 /// - Once the aliases have been applied,
-///   the column cannot be cast to the desired `OutputDataType` of the `AliasMap`.
-///   For example if it is a `ToInt` `AliasMap`, yet there remain strings in the column after
+///   the column cannot be cast to the desired [`OutputDataType`] of the [`AliasMap`].
+///   For example if it is an [`AliasMap`] of [`OutputDataType::Int64`] type, yet there remain strings in the column after
 ///   the aliases have been applied.
 ///
 #[derive(Debug)]
