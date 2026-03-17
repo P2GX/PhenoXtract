@@ -7,7 +7,7 @@ use phenopackets::schema::v2::core::{
     Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
 };
 
-pub(crate) trait PhenopacketBuilding {
+pub trait PhenopacketBuilding {
     fn build(&self) -> Vec<Phenopacket>;
 
     fn upsert_individual(
@@ -108,6 +108,7 @@ pub(crate) trait PhenopacketBuilding {
         treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
 
+    #[allow(dead_code)]
     fn insert_medical_treatment(
         &mut self,
         patient_id: &str,
