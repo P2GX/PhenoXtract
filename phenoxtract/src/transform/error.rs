@@ -219,7 +219,7 @@ fn format_date_to_age_errors(errors: &[DateToAgeErrorInfo]) -> String {
         for error in group {
             result.push_str(&format!(
                 "    - 'Patient: {}, Date: {}, Problem: {}'",
-                error.date, error.date, error.problem
+                error.subject_id, error.date, error.problem
             ));
             result.push('\n');
         }
@@ -232,7 +232,7 @@ fn format_date_to_age_errors(errors: &[DateToAgeErrorInfo]) -> String {
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
     #[error(
-        "{message}. Strategy '{strategy_name}' unable to map: \n {}",
+        "{message}. Strategy '{strategy_name}' unable to map: \n{}",
         format_mapping_errors(info)
     )]
     MappingError {
@@ -241,7 +241,7 @@ pub enum StrategyError {
         info: Vec<MappingErrorInfo>,
     },
     #[error(
-        "Errors applying DateToAgeStrategy: \n {}",
+        "Errors applying DateToAgeStrategy: \n{}",
         format_date_to_age_errors(info)
     )]
     DateToAgeError { info: Vec<DateToAgeErrorInfo> },
