@@ -9,4 +9,3 @@ pub mod qualitative_measurement_collector;
 pub mod quantitative_measurement_collector;
 pub mod traits;
 pub(super) mod utils;
-pub mod new_interpretation_collector;

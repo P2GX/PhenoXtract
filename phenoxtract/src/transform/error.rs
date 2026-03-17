@@ -289,8 +289,10 @@ pub enum CollectorError {
     //TODO this needs to be fixed
     #[error("Blah: {0}")]
     ContextError(String),
-    #[error("TemporaryError")]
-    TemporaryError,
+    #[error(
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block be both: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+    )]
+    InterpretationBlockFormat { patient_id: String, bb_id: String },
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]

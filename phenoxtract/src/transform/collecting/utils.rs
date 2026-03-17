@@ -10,6 +10,9 @@ use polars::datatypes::{DataType, StringChunked};
 /// then enforces cardinality constraints: zero matches returns `None`, exactly one match
 /// returns that value, but multiple distinct values trigger an error.
 ///
+/// If bb_id = Some("B"), then only columns within that building block will be considered.
+/// If bb_id = None, then all columns in the CDFs will be considered.
+///
 /// # Examples
 ///
 /// ```ignore
@@ -17,7 +20,8 @@ use polars::datatypes::{DataType, StringChunked};
 /// let dob = get_single_multiplicity_element(
 ///     patient_cdfs,
 ///     Context::DateOfBirth,
-///     Context::None
+///     Context::None,
+///     None
 /// )?;
 /// ```
 ///
