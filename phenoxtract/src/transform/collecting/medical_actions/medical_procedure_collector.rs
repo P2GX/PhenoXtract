@@ -4,7 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
 use crate::transform::collecting::medical_actions::procedure_data::ProcedureData;
-use crate::transform::collecting::traits::{Collect, Getter};
+use crate::transform::collecting::traits::{Collect, Getter, Pluck};
 use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
@@ -53,7 +53,7 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 }
             };
 
-            let general_medical_action_data = self
+            let medical_action_data = self
                 .medical_action_data
                 .get(self.current_index)
                 .expect("Can't throw an error");
@@ -64,18 +64,11 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 procedure: procedure.procedure,
                 body_part: procedure.body_part,
                 time_element: procedure.time_element,
-                treatment_target: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_target),
-                treatment_intent: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_intent),
-                response_to_treatment: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.response_to_treatment),
-                treatment_termination_reason: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_termination_reason),
+                treatment_target: medical_action_data.pluck(|d| d.treatment_target),
+                treatment_intent: medical_action_data.pluck(|d| d.treatment_intent),
+                response_to_treatment: medical_action_data.pluck(|d| d.response_to_treatment),
+                treatment_termination_reason: medical_action_data
+                    .pluck(|d| d.treatment_termination_reason),
             }));
         }
         None

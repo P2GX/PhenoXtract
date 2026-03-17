@@ -5,7 +5,7 @@ use crate::transform::collecting::traits::Getter;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
-pub(crate) struct DoseInterval<'a> {
+pub struct DoseInterval<'a> {
     quantity: Quantity<'a>,
     schedule_frequency: &'a str,
     interval_start: &'a str,
@@ -124,7 +124,6 @@ impl Getter for DoseIntervalData {
                 }))
             }
             (None, None, None, None) => Ok(None),
-            // TODO: Add actual fields and messages to error
             _ => Err(GetterError::RequiredValueMissingError {
                 n_required: 4,
                 context: "DoseIntervalData".to_string(),

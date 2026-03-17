@@ -5,7 +5,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
 use crate::transform::collecting::medical_actions::treatment_data::TreatmentData;
-use crate::transform::collecting::traits::{Collect, Getter};
+use crate::transform::collecting::traits::{Collect, Getter, Pluck};
 use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
@@ -59,46 +59,22 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
                 .get(self.current_index)
                 .expect("Cant throw error.");
 
-            let mut unit = None;
-            let mut value = None;
-            let mut reference_range = None;
-
-            if let Some(entry) = self
-                .treatment_data
-                .cumulative_dose
-                .as_ref()
-                .and_then(|doses| doses.get(self.current_index))
-            {
-                unit = Some(entry.unit);
-                value = Some(entry.value);
-                reference_range = entry.reference_range;
-            }
-
-            let dose_intervals: Vec<DoseInterval> =
-                treatment.dose_intervals.into_iter().map(|di| di).collect();
-
             self.current_index += 1;
 
             return Some(Ok(MedicalTreatmentIterElement {
                 agent: treatment.agent,
                 route_of_administration: treatment.route_of_administration,
-                dose_intervals,
+                dose_intervals: treatment.dose_intervals,
                 drug_type: treatment.drug_type,
-                unit,
-                value,
-                reference_range,
-                treatment_target: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_target),
-                treatment_intent: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_intent),
+                unit: treatment.cumulative_dose.pluck(|cd| Some(cd.unit)),
+                value: treatment.cumulative_dose.pluck(|cd| Some(cd.value)),
+                reference_range: treatment.cumulative_dose.pluck(|cd| cd.reference_range),
+                treatment_target: general_medical_action_data.pluck(|d| d.treatment_target),
+                treatment_intent: general_medical_action_data.pluck(|d| d.treatment_intent),
                 response_to_treatment: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.response_to_treatment),
+                    .pluck(|d| d.response_to_treatment),
                 treatment_termination_reason: general_medical_action_data
-                    .as_ref()
-                    .and_then(|d| d.treatment_termination_reason),
+                    .pluck(|d| d.treatment_termination_reason),
             }));
         }
 
@@ -131,21 +107,22 @@ impl Collect for MedicalTreatmentCollector {
         patient_id: &str,
     ) -> Result<(), CollectorError> {
         for patient_cdf in patient_cdfs {
-            let procedures = patient_cdf
+            let treatment_agents_sc = patient_cdf
                 .filter_series_context()
-                .where_data_context(Filter::Is(&Context::Procedure))
+                .where_data_context(Filter::Is(&Context::TreatmentAgent))
                 .collect();
 
-            for procedure_sc in procedures {
-                let procedure_data =
-                    TreatmentData::new(patient_cdf, procedure_sc.get_building_block_id())?;
-                let medical_action_data =
-                    MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
+            for treatment_agent_sc in treatment_agents_sc {
+                let treatment_data =
+                    TreatmentData::new(patient_cdf, treatment_agent_sc.get_building_block_id())?;
+                let medical_action_data = MedicalActionData::new(
+                    patient_cdf,
+                    treatment_agent_sc.get_building_block_id(),
+                )?;
 
-                let procedure_iterator =
-                    MedicalTreatmentIterator::new(&procedure_data, &medical_action_data);
-
-                for treatment_values in procedure_iterator {
+                for treatment_values in
+                    MedicalTreatmentIterator::new(&treatment_data, &medical_action_data)
+                {
                     let treatment_values = treatment_values?;
                     builder.insert_medical_treatment(
                         patient_id,

@@ -15,7 +15,7 @@ pub(super) struct Treatment<'a> {
     pub(super) route_of_administration: Option<&'a str>,
     pub(super) dose_intervals: Vec<DoseInterval<'a>>,
     pub(super) drug_type: Option<&'a str>,
-    pub(super) quantity_data: Option<Quantity<'a>>,
+    pub(super) cumulative_dose: Option<Quantity<'a>>,
 }
 
 pub(super) struct TreatmentData {
@@ -143,7 +143,7 @@ impl Getter for TreatmentData {
                 route_of_administration,
                 dose_intervals,
                 drug_type,
-                quantity_data,
+                cumulative_dose: quantity_data,
             })),
             None => Ok(None),
         }
