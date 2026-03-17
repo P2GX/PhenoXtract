@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use phenopackets::schema::v2::Phenopacket;
@@ -6,7 +7,7 @@ use phenopackets::schema::v2::core::{
     Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
 };
 
-pub trait PhenopacketBuilding {
+pub(crate) trait PhenopacketBuilding {
     fn build(&self) -> Vec<Phenopacket>;
 
     fn upsert_individual(
@@ -99,7 +100,7 @@ pub trait PhenopacketBuilding {
         patient_id: &str,
         agent: &str,
         route_of_administration: Option<&str>,
-        dose_intervals: Vec<usize>, // TODO
+        dose_intervals: Vec<DoseInterval>, // TODO
         drug_type: Option<&str>,
         unit: Option<&str>,
         value: Option<f64>,

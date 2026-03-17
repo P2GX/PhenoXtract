@@ -309,6 +309,8 @@ pub enum CollectorError {
     UnexpectedContextError(ContextKind, Identifier),
     #[error(transparent)]
     TryIntoContextError(#[from] ContextError),
+    #[error(transparent)]
+    GetterError(#[from] GetterError),
 }
 
 impl From<DataProcessingError> for CollectorError {
@@ -333,4 +335,12 @@ pub enum PhenopacketBuilderError {
     HgncError(#[from] HGNCError),
     #[error(transparent)]
     BidictError(#[from] BiDictError),
+}
+
+#[derive(Debug, Error)]
+pub enum GetterError {
+    #[error("Expected {n_required} required values for {context}")]
+    RequiredValueMissingError { n_required: usize, context: String },
+    #[error("OutOfBounds")]
+    OutOfBounds,
 }

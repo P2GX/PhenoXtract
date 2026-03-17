@@ -1,10 +1,11 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::traits::Getter;
+use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
 pub(super) struct Procedure<'a> {
-    pub(super) procedure: Option<&'a str>,
+    pub(super) procedure: &'a str,
     pub(super) body_part: Option<&'a str>,
     pub(super) time_element: Option<&'a str>,
 }
@@ -43,12 +44,28 @@ impl ProcedureData {
             }),
         }
     }
+}
 
-    pub(super) fn get(&'_ self, idx: usize) -> Procedure<'_> {
-        Procedure {
-            procedure: self.procedure_col.as_ref().get(idx),
-            body_part: self.body_part_col.as_ref().and_then(|col| col.get(idx)),
-            time_element: self.time_element_col.as_ref().and_then(|col| col.get(idx)),
+impl Getter for ProcedureData {
+    type Item<'a> = Procedure<'a>;
+
+    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+        if self.len() <= idx {
+            return Err(GetterError::OutOfBounds);
+        };
+
+        if let Some(procedure) = self.procedure_col.as_ref().get(idx) {
+            Ok(Some(Procedure {
+                procedure,
+                body_part: self.body_part_col.as_ref().and_then(|col| col.get(idx)),
+                time_element: self.time_element_col.as_ref().and_then(|col| col.get(idx)),
+            }))
+        } else {
+            Ok(None)
         }
+    }
+
+    fn len(&self) -> usize {
+        self.procedure_col.len()
     }
 }

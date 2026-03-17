@@ -2,10 +2,11 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::contextualized_dataframe_filters::Filter;
 
+use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
-use crate::transform::collecting::medical_actions::treatment_data::{Treatment, TreatmentData};
-use crate::transform::collecting::traits::Collect;
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::medical_actions::treatment_data::TreatmentData;
+use crate::transform::collecting::traits::{Collect, Getter};
+use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
@@ -34,54 +35,81 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
     type Item = Result<MedicalTreatmentIterElement<'a>, CollectorError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index >= self.max_iterations {
-            return None;
+        for _ in 0..self.max_iterations {
+            let treatment = match self.treatment_data.get(self.current_index) {
+                Ok(treatment_opt) => match treatment_opt {
+                    Some(treatment) => treatment,
+                    None => {
+                        self.current_index += 1;
+                        continue;
+                    }
+                },
+                Err(err) => {
+                    return match err {
+                        GetterError::RequiredValueMissingError { .. } => {
+                            Some(Err(CollectorError::from(err)))
+                        }
+                        GetterError::OutOfBounds => None,
+                    };
+                }
+            };
+
+            let general_medical_action_data = &self
+                .medical_action_data
+                .get(self.current_index)
+                .expect("Cant throw error.");
+
+            let mut unit = None;
+            let mut value = None;
+            let mut reference_range = None;
+
+            if let Some(entry) = self
+                .treatment_data
+                .cumulative_dose
+                .as_ref()
+                .and_then(|doses| doses.get(self.current_index))
+            {
+                unit = Some(entry.unit);
+                value = Some(entry.value);
+                reference_range = entry.reference_range;
+            }
+
+            let dose_intervals: Vec<DoseInterval> =
+                treatment.dose_intervals.into_iter().map(|di| di).collect();
+
+            self.current_index += 1;
+
+            return Some(Ok(MedicalTreatmentIterElement {
+                agent: treatment.agent,
+                route_of_administration: treatment.route_of_administration,
+                dose_intervals,
+                drug_type: treatment.drug_type,
+                unit,
+                value,
+                reference_range,
+                treatment_target: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_target),
+                treatment_intent: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_intent),
+                response_to_treatment: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.response_to_treatment),
+                treatment_termination_reason: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_termination_reason),
+            }));
         }
 
-        let treatment = match self.treatment_data.get(self.current_index) {
-            Ok(treatment) => treatment,
-            Err(err) => return Some(Err(err)),
-        };
-
-        let general_medical_action_data = &self.medical_action_data.get(self.current_index);
-
-        let mut unit = None;
-        let mut value = None;
-        let mut reference_range = None;
-
-        if let Some(entry) = self
-            .treatment_data
-            .cumulative_dose
-            .as_ref()
-            .and_then(|doses| doses.get(self.current_index))
-        {
-            unit = Some(entry.unit);
-            value = Some(entry.value);
-            reference_range = entry.reference_range;
-        }
-
-        self.current_index += 1;
-
-        Some(Ok(MedicalTreatmentIterElement {
-            agent: treatment.agent,
-            route_of_administration: treatment.route_of_administration,
-            dose_intervals: vec![],
-            drug_type: treatment.drug_type,
-            unit,
-            value,
-            reference_range,
-            treatment_target: general_medical_action_data.treatment_target,
-            treatment_intent: general_medical_action_data.treatment_intent,
-            response_to_treatment: general_medical_action_data.response_to_treatment,
-            treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
-        }))
+        None
     }
 }
 
 struct MedicalTreatmentIterElement<'a> {
-    agent: Option<&'a str>,
+    agent: &'a str,
     route_of_administration: Option<&'a str>,
-    dose_intervals: Vec<usize>, // TODO
+    dose_intervals: Vec<DoseInterval<'a>>,
     drug_type: Option<&'a str>,
     unit: Option<&'a str>,
     value: Option<f64>,
@@ -118,22 +146,21 @@ impl Collect for MedicalTreatmentCollector {
                     MedicalTreatmentIterator::new(&procedure_data, &medical_action_data);
 
                 for treatment_values in procedure_iterator {
-                    if let Some(agent) = treatment_values.agent {
-                        builder.insert_medical_treatment(
-                            patient_id,
-                            agent,
-                            treatment_values.route_of_administration,
-                            treatment_values.dose_intervals,
-                            treatment_values.drug_type,
-                            treatment_values.unit,
-                            treatment_values.value,
-                            treatment_values.reference_range,
-                            treatment_values.treatment_target,
-                            treatment_values.treatment_intent,
-                            treatment_values.response_to_treatment,
-                            treatment_values.treatment_termination_reason,
-                        )?
-                    }
+                    let treatment_values = treatment_values?;
+                    builder.insert_medical_treatment(
+                        patient_id,
+                        treatment_values.agent,
+                        treatment_values.route_of_administration,
+                        treatment_values.dose_intervals,
+                        treatment_values.drug_type,
+                        treatment_values.unit,
+                        treatment_values.value,
+                        treatment_values.reference_range,
+                        treatment_values.treatment_target,
+                        treatment_values.treatment_intent,
+                        treatment_values.response_to_treatment,
+                        treatment_values.treatment_termination_reason,
+                    )?
                 }
             }
         }

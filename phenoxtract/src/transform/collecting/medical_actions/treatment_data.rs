@@ -5,7 +5,8 @@ use crate::transform::collecting::medical_actions::dose_interval_data::{
     DoseInterval, DoseIntervalData,
 };
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::traits::Getter;
+use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 use std::collections::HashSet;
 
@@ -112,11 +113,16 @@ impl TreatmentData {
             })
         }
     }
+}
 
-    pub(super) fn len(&self) -> usize {
-        self.agent.len()
-    }
-    pub(super) fn get(&'_ self, idx: usize) -> Result<Option<Treatment<'_>>, CollectorError> {
+impl Getter for TreatmentData {
+    type Item<'a> = Treatment<'a>;
+
+    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+        if self.len() <= idx {
+            return Err(GetterError::OutOfBounds);
+        }
+
         let agent_opt = self.agent.as_ref().get(idx);
         let route_of_administration = self
             .route_of_administration
@@ -129,7 +135,7 @@ impl TreatmentData {
             .dose_intervals
             .iter()
             .filter_map(|di| di.get(idx).transpose())
-            .collect::<Result<Vec<DoseInterval>, CollectorError>>()?;
+            .collect::<Result<Vec<DoseInterval>, GetterError>>()?;
 
         match agent_opt {
             Some(agent) => Ok(Some(Treatment {
@@ -139,20 +145,11 @@ impl TreatmentData {
                 drug_type,
                 quantity_data,
             })),
-            None => {
-                let has_orphaned_data = route_of_administration.is_some()
-                    || drug_type.is_some()
-                    || quantity_data.is_some()
-                    || !dose_intervals.is_empty();
-
-                if has_orphaned_data {
-                    // "Agent is missing, but other treatment data is present"
-                    Err(CollectorError::RequiredValueMissingError)
-                } else {
-                    // "No treatment data found at this index"
-                    Ok(None)
-                }
-            }
+            None => Ok(None),
         }
+    }
+
+    fn len(&self) -> usize {
+        self.agent.len()
     }
 }

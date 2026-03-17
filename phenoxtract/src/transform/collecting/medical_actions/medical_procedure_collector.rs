@@ -4,8 +4,8 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
 use crate::transform::collecting::medical_actions::procedure_data::ProcedureData;
-use crate::transform::collecting::traits::Collect;
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::traits::{Collect, Getter};
+use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
@@ -31,32 +31,58 @@ impl<'a> MedicalProcedureIterator<'a> {
 }
 
 impl<'a> Iterator for MedicalProcedureIterator<'a> {
-    type Item = MedicalProcedureIterElement<'a>;
+    type Item = Result<MedicalProcedureIterElement<'a>, CollectorError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index >= self.max_iterations {
-            return None;
+        for _ in 0..self.max_iterations {
+            let procedure = match self.procedure_data.get(self.current_index) {
+                Ok(procedure_opt) => match procedure_opt {
+                    Some(procedure) => procedure,
+                    None => {
+                        self.current_index += 1;
+                        continue;
+                    }
+                },
+                Err(err) => {
+                    return match err {
+                        GetterError::RequiredValueMissingError { .. } => {
+                            Some(Err(CollectorError::from(err)))
+                        }
+                        GetterError::OutOfBounds => None,
+                    };
+                }
+            };
+
+            let general_medical_action_data = self
+                .medical_action_data
+                .get(self.current_index)
+                .expect("Can't throw an error");
+
+            self.current_index += 1;
+
+            return Some(Ok(MedicalProcedureIterElement {
+                procedure: procedure.procedure,
+                body_part: procedure.body_part,
+                time_element: procedure.time_element,
+                treatment_target: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_target),
+                treatment_intent: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_intent),
+                response_to_treatment: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.response_to_treatment),
+                treatment_termination_reason: general_medical_action_data
+                    .as_ref()
+                    .and_then(|d| d.treatment_termination_reason),
+            }));
         }
-
-        let procedure_data = self.procedure_data.get(self.current_index);
-
-        let general_medical_action_data = self.medical_action_data.get(self.current_index);
-
-        self.current_index += 1;
-
-        Some(MedicalProcedureIterElement {
-            procedure: procedure_data.procedure,
-            body_part: procedure_data.body_part,
-            time_element: procedure_data.time_element,
-            treatment_target: general_medical_action_data.treatment_target,
-            treatment_intent: general_medical_action_data.treatment_intent,
-            response_to_treatment: general_medical_action_data.response_to_treatment,
-            treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
-        })
+        None
     }
 }
 struct MedicalProcedureIterElement<'a> {
-    procedure: Option<&'a str>,
+    procedure: &'a str,
     body_part: Option<&'a str>,
     time_element: Option<&'a str>,
     treatment_target: Option<&'a str>,
@@ -91,18 +117,18 @@ impl Collect for MedicalProcedureCollector {
                     MedicalProcedureIterator::new(&procedure_data, &medical_action_data);
 
                 for procedure_values in procedure_iterator {
-                    if let Some(procedure) = procedure_values.procedure {
-                        builder.insert_medical_procedure(
-                            patient_id,
-                            procedure,
-                            procedure_values.body_part,
-                            procedure_values.time_element,
-                            procedure_values.treatment_target,
-                            procedure_values.treatment_intent,
-                            procedure_values.response_to_treatment,
-                            procedure_values.treatment_termination_reason,
-                        )?
-                    }
+                    let procedure_values = procedure_values?;
+
+                    builder.insert_medical_procedure(
+                        patient_id,
+                        procedure_values.procedure,
+                        procedure_values.body_part,
+                        procedure_values.time_element,
+                        procedure_values.treatment_target,
+                        procedure_values.treatment_intent,
+                        procedure_values.response_to_treatment,
+                        procedure_values.treatment_termination_reason,
+                    )?
                 }
             }
         }

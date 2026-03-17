@@ -1,10 +1,11 @@
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::traits::Getter;
+use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
-pub(super) struct DoseInterval<'a> {
+pub(crate) struct DoseInterval<'a> {
     quantity: Quantity<'a>,
     schedule_frequency: &'a str,
     interval_start: &'a str,
@@ -98,8 +99,16 @@ impl DoseIntervalData {
             Ok(())
         }
     }
+}
 
-    pub(super) fn get(&'_ self, idx: usize) -> Result<Option<DoseInterval>, CollectorError> {
+impl Getter for DoseIntervalData {
+    type Item<'a> = DoseInterval<'a>;
+
+    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+        if self.len() <= idx {
+            return Err(GetterError::OutOfBounds);
+        }
+
         match (
             self.quantity.get(idx),
             self.schedule_frequency.get(idx),
@@ -116,7 +125,14 @@ impl DoseIntervalData {
             }
             (None, None, None, None) => Ok(None),
             // TODO: Add actual fields and messages to error
-            _ => Err(CollectorError::RequiredValueMissingError {}),
+            _ => Err(GetterError::RequiredValueMissingError {
+                n_required: 4,
+                context: "DoseIntervalData".to_string(),
+            }),
         }
+    }
+
+    fn len(&self) -> usize {
+        self.schedule_frequency.len()
     }
 }

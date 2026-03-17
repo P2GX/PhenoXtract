@@ -1,6 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::error::CollectorError;
+use crate::transform::collecting::traits::Getter;
+use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
 pub(super) struct MedicalActionData {
@@ -35,9 +36,21 @@ impl MedicalActionData {
             )?,
         })
     }
+}
 
-    pub(super) fn get(&'_ self, idx: usize) -> MedicalAction<'_> {
-        MedicalAction {
+impl Getter for MedicalActionData {
+    type Item<'a> = MedicalAction<'a>;
+
+    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+        if self.treatment_target_col.is_none()
+            && self.treatment_intent_col.is_none()
+            && self.treatment_termination_reason_col.is_none()
+            && self.response_to_treatment_col.is_none()
+        {
+            return Ok(None);
+        }
+
+        Ok(Some(MedicalAction {
             treatment_target: self
                 .treatment_target_col
                 .as_ref()
@@ -54,6 +67,20 @@ impl MedicalActionData {
                 .treatment_termination_reason_col
                 .as_ref()
                 .and_then(|col| col.get(idx)),
+        }))
+    }
+
+    fn len(&self) -> usize {
+        if let Some(tt_col) = &self.treatment_target_col {
+            tt_col.len()
+        } else if let Some(ti_col) = &self.treatment_intent_col {
+            ti_col.len()
+        } else if let Some(reason_col) = &self.treatment_termination_reason_col {
+            reason_col.len()
+        } else if let Some(response_col) = &self.response_to_treatment_col {
+            response_col.len()
+        } else {
+            0
         }
     }
 }
