@@ -7,7 +7,6 @@ use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
-use crate::validation::error::ValidationError;
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
@@ -15,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem::ManuallyDrop;
 use std::ptr;
 use thiserror::Error;
-use validator::Validate;
+use validator::{Validate, ValidationError, ValidationErrors};
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
 ///
@@ -31,7 +30,7 @@ pub struct ContextualizedDataFrame {
 }
 
 impl ContextualizedDataFrame {
-    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationError> {
+    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationErrors> {
         let cdf = ContextualizedDataFrame { context, data };
         cdf.validate()?;
         Ok(cdf)
@@ -370,7 +369,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("sex".to_string());
+        let id = Identifier::from("sex");
         let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 1);
@@ -383,7 +382,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::Regex("^[a,s]{1}[a-z.]*".to_string());
+        let id = Identifier::from("^[a,s]{1}[a-z.]*");
         let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 3);
@@ -421,7 +420,7 @@ mod tests {
         );
         let cdf = ContextualizedDataFrame::new(table_context, df).unwrap();
 
-        let id = Identifier::Regex("blah".to_string());
+        let id = Identifier::from("blah");
         let cols = cdf.identify_columns(&id);
 
         let col_names: Vec<&str> = cols.iter().map(|c| c.name().as_str()).collect();
@@ -830,7 +829,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         Ok(self.mark_dirty())
     }
 
-    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
+    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationErrors> {
         let builder = ManuallyDrop::new(self.mark_clean());
 
         let cdf_ref = unsafe { ptr::read(&builder.cdf) };
@@ -1058,7 +1057,7 @@ mod builder_tests {
 
         let expected_len = cdf.series_contexts().len() - 1;
         cdf.builder()
-            .drop_sc(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc(&Identifier::from("bronchitis"))
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);
     }
@@ -1071,7 +1070,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 1;
 
         cdf.builder()
-            .drop_sc_alongside_cols(&Identifier::Regex("bronchitis".to_string()))
+            .drop_sc_alongside_cols(&Identifier::from("bronchitis"))
             .unwrap()
             .build_dirty();
 
@@ -1087,10 +1086,7 @@ mod builder_tests {
         let expected_len = cdf.context().context().len() - 2;
 
         cdf.builder()
-            .drop_scs_alongside_cols(&[
-                Identifier::Regex("age".to_string()),
-                Identifier::Regex("overweight".to_string()),
-            ])
+            .drop_scs_alongside_cols(&[Identifier::from("age"), Identifier::from("overweight")])
             .unwrap()
             .build_dirty();
 
@@ -1332,8 +1328,8 @@ mod builder_tests {
         let expected_len = cdf.series_contexts().len() - 2;
         cdf.builder()
             .drop_scs(&[
-                Identifier::Regex("bronchitis".to_string()),
-                Identifier::Regex("overweight".to_string()),
+                Identifier::from("bronchitis"),
+                Identifier::from("overweight"),
             ])
             .build_dirty();
         assert_eq!(cdf.series_contexts().len(), expected_len);

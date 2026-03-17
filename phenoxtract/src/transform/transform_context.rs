@@ -1,8 +1,8 @@
 use crate::config::MetaData;
 use crate::ontology::traits::BiDict;
 use crate::transform::bidict_library::BiDictLibrary;
-use pivot::hgnc::HGNCData;
-use pivot::hgvs::HGVSData;
+use pivotal::hgnc::HGNCData;
+use pivotal::hgvs::HGVSData;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Default)]

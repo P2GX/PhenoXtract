@@ -1,10 +1,10 @@
 use crate::Pipeline;
 use crate::config::datasource_config::{
-    AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, MappingsConfig,
-    MappingsCsvConfig, SeriesContextConfig,
+    AliasMapConfig, CsvConfig, ExcelSheetConfig, ExcelWorkbookConfig, IdentifierConfig,
+    MappingsConfig, MappingsCsvConfig, SeriesContextConfig,
 };
 use crate::config::resource_config_factory::ResourceConfigFactory;
-use crate::config::table_context::{AliasMap, SeriesContext};
+use crate::config::table_context::{AliasMap, Identifier, SeriesContext};
 use crate::config::{
     ConfigLoader, DataSourceConfig, PhenoXtractConfig, PipelineConfig, TableContext,
 };
@@ -22,9 +22,10 @@ use crate::transform::{PhenopacketBuilder, TransformerModule};
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
-use pivot::hgnc::CachedHGNCClient;
-use pivot::hgvs::CachedHGVSClient;
+use pivotal::hgnc::CachedHGNCClient;
+use pivotal::hgvs::CachedHGVSClient;
 use polars::prelude::{CsvReadOptions, SerReader};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -89,27 +90,30 @@ impl TryFrom<PipelineConfig> for Pipeline {
             ctx_builder.add_hpo_bidict(hpo_bidict);
         };
 
-        for disease_resource in &config.meta_data.disease_resources {
-            let disease_bidict = resource_factory.build(disease_resource)?;
-            ctx_builder.add_disease_bidict(disease_bidict);
+        // Adds and loads BiDicts to the TransformContextBuilder
+        macro_rules! load_and_add {
+            ($resources:expr, $method:ident) => {
+                for resource in $resources {
+                    ctx_builder.$method(resource_factory.build(resource)?);
+                }
+            };
         }
 
-        for assay_resource in &config.meta_data.assay_resources {
-            let assay_bidict = resource_factory.build(assay_resource)?;
-            ctx_builder.add_assay_bidict(assay_bidict);
-        }
+        load_and_add!(&config.meta_data.disease_resources, add_disease_bidict);
+        load_and_add!(&config.meta_data.assay_resources, add_assay_bidict);
+        load_and_add!(&config.meta_data.unit_resources, add_unit_bidict);
+        load_and_add!(
+            &config.meta_data.qualitative_measurement_resources,
+            add_qualitative_measurement_bidict
+        );
+        load_and_add!(&config.meta_data.procedure_resources, add_procedure_bidict);
 
-        for unit_ontology_ref in &config.meta_data.unit_resources {
-            let unit_bidict = resource_factory.build(unit_ontology_ref)?;
-            ctx_builder.add_unit_bidict(unit_bidict);
-        }
+        load_and_add!(&config.meta_data.anatomy_resources, add_anatomy_bidict);
 
-        for qualitative_measurement_ontology_ref in
-            &config.meta_data.qualitative_measurement_resources
-        {
-            let qual_bidict = resource_factory.build(qualitative_measurement_ontology_ref)?;
-            ctx_builder.add_qualitative_measurement_bidict(qual_bidict);
-        }
+        load_and_add!(
+            &config.meta_data.treatment_attributes_resources,
+            add_treatment_attributes_bidict
+        );
 
         let ctx = ctx_builder.build();
 
@@ -223,18 +227,34 @@ impl TryFrom<CsvConfig> for CsvDataSource {
     }
 }
 
+impl TryFrom<IdentifierConfig> for Identifier {
+    type Error = ConstructionError;
+
+    fn try_from(value: IdentifierConfig) -> Result<Self, Self::Error> {
+        match value {
+            IdentifierConfig::Regex(regex_str) => {
+                let regex =
+                    Regex::new(&regex_str).map_err(|err| ConstructionError::Identifier {
+                        reason: format!("{}", err),
+                    })?;
+                Ok(Identifier::Regex(regex))
+            }
+            IdentifierConfig::Multi(multi) => Ok(Identifier::Multi(multi)),
+        }
+    }
+}
+
 impl TryFrom<SeriesContextConfig> for SeriesContext {
     type Error = ConstructionError;
 
     fn try_from(config: SeriesContextConfig) -> Result<Self, Self::Error> {
-        let alias_map = if let Some(am_config) = config.alias_map_config {
-            Some(AliasMap::try_from(am_config)?)
-        } else {
-            None
-        };
+        let alias_map = config
+            .alias_map_config
+            .map(AliasMap::try_from)
+            .transpose()?;
 
         Ok(SeriesContext::new(
-            config.identifier,
+            config.identifier.try_into()?,
             config.header_context,
             config.data_context,
             config.fill_missing,

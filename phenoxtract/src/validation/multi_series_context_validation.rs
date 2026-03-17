@@ -1,11 +1,10 @@
 use crate::config::table_context::{Identifier, SeriesContext};
-use crate::validation::validation_utils::validate_regex;
 use std::borrow::Cow;
 use validator::ValidationError;
 
 pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), ValidationError> {
     match series_context.get_identifier() {
-        Identifier::Regex(r) => validate_regex(r),
+        Identifier::Regex(_) => Ok(()),
         Identifier::Multi(vec) => {
             if vec.is_empty() {
                 let mut error = ValidationError::new("invalid_multi_identifier");
@@ -27,7 +26,7 @@ mod tests {
 
     #[rstest]
     fn test_multi_identifier_regex_delegates() {
-        let id = Identifier::Regex("^[a-z]+$".to_string());
+        let id = Identifier::from("^[a-z]+$");
         let sc = SeriesContext::from_identifier(id);
         let result = validate_identifier(&sc);
         assert!(result.is_ok());

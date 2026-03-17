@@ -1,5 +1,6 @@
 use crate::config::table_context::Identifier;
-use crate::validation::error::ValidationError as PxValidationError;
+use std::borrow::Cow;
+use validator::ValidationError;
 
 /// Validates that all columns are matched by the SeriesContext identifier.
 ///
@@ -7,7 +8,7 @@ use crate::validation::error::ValidationError as PxValidationError;
 pub(crate) fn check_orphaned_columns(
     col_names: &[&str],
     sc_identifier: &Identifier,
-) -> Result<(), PxValidationError> {
+) -> Result<(), ValidationError> {
     let matched_cols = sc_identifier.identify(col_names);
     let orphaned_cols: Vec<&&str> = col_names
         .iter()
@@ -15,10 +16,13 @@ pub(crate) fn check_orphaned_columns(
         .collect();
 
     if !orphaned_cols.is_empty() {
-        return Err(PxValidationError::OrphanedColumns {
-            col_names: orphaned_cols.iter().map(|s| s.to_string()).collect(),
-            when: format!("inserting SeriesContext with id '{}'.", sc_identifier,).to_string(),
-        });
+        let mut err = ValidationError::new("orphaned_columns");
+        err.add_param(Cow::from("identifier"), &sc_identifier);
+        err.add_param(Cow::from("col_names"), &col_names);
+        err.add_param(Cow::from("orphaned_col_names"), &orphaned_cols);
+        let error_message = "Not all columns were matched by the SeriesContext identifier.";
+
+        return Err(err.with_message(Cow::Borrowed(error_message)));
     }
     Ok(())
 }
@@ -27,11 +31,12 @@ pub(crate) fn check_orphaned_columns(
 mod tests {
     use super::*;
     use rstest::rstest;
+    use serde_json::from_value;
 
     #[rstest]
     fn test_check_orphaned_columns_regex_all_matched() {
         let cols = vec!["col_1", "col_2", "col_3"];
-        let identifier = Identifier::Regex("col_.*".to_string());
+        let identifier = Identifier::from("col_.*");
 
         assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }
@@ -39,13 +44,15 @@ mod tests {
     #[rstest]
     fn test_check_orphaned_columns_regex_some_orphaned() {
         let cols = vec!["col_1", "col_2", "other"];
-        let identifier = Identifier::Regex("col_.*".to_string());
+        let identifier = Identifier::from("col_.*");
 
         let result = check_orphaned_columns(cols.as_slice(), &identifier);
         assert!(result.is_err());
 
-        if let Err(PxValidationError::OrphanedColumns { col_names, .. }) = result {
-            assert_eq!(col_names, vec!["other"]);
+        if let Err(err) = result {
+            let orphaned_col_names: Vec<String> =
+                from_value(err.params.get("orphaned_col_names").unwrap().clone()).unwrap();
+            assert_eq!(orphaned_col_names, vec!["other".to_string()]);
         }
     }
 
@@ -65,15 +72,17 @@ mod tests {
         let result = check_orphaned_columns(cols.as_slice(), &identifier);
         assert!(result.is_err());
 
-        if let Err(PxValidationError::OrphanedColumns { col_names, .. }) = result {
-            assert_eq!(col_names, vec!["d"]);
+        if let Err(err) = result {
+            let orphaned_col_names: Vec<String> =
+                from_value(err.params.get("orphaned_col_names").unwrap().clone()).unwrap();
+            assert_eq!(orphaned_col_names, vec!["d".to_string()]);
         }
     }
 
     #[rstest]
     fn test_check_orphaned_columns_empty() {
         let cols: Vec<&str> = vec![];
-        let identifier = Identifier::Regex(".*".to_string());
+        let identifier = Identifier::from(".*");
 
         assert!(check_orphaned_columns(cols.as_slice(), &identifier).is_ok());
     }

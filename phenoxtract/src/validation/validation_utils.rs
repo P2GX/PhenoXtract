@@ -1,4 +1,3 @@
-use regex::Regex;
 use serde::Serialize;
 use std::borrow::Cow;
 use validator::ValidationError;
@@ -14,18 +13,6 @@ pub(crate) fn fail_validation_on_duplicates<T: Serialize>(
         let mut error = ValidationError::new(error_id);
         error.add_param(Cow::from("duplicates"), &duplicates);
         Err(error.with_message(Cow::Owned(reason.to_string())))
-    }
-}
-
-pub(crate) fn validate_regex(regex: &str) -> Result<(), ValidationError> {
-    let regex_validation = Regex::new(regex);
-    match regex_validation {
-        Ok(_) => Ok(()),
-        Err(_) => {
-            let mut error = ValidationError::new("invalid_regex");
-            error.add_param(Cow::from("regex"), &regex);
-            Err(error.with_message(Cow::Owned("Invalid Regex string.".to_string())))
-        }
     }
 }
 
@@ -48,18 +35,5 @@ mod tests {
         let res =
             fail_validation_on_duplicates(&duplicates, "duplicate_ids", "Too many duplicates");
         assert!(res.is_ok());
-    }
-
-    #[rstest]
-    fn test_validate_regex() {
-        let regex = "^[a-zA-Z0-9]*$";
-        let res = validate_regex(regex);
-        assert!(res.is_ok());
-    }
-    #[rstest]
-    fn validate_regex_err() {
-        let regex = "^[a-zA-Z0-9*$";
-        let res = validate_regex(regex);
-        assert!(res.is_err());
     }
 }

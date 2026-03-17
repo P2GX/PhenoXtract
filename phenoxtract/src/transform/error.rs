@@ -2,9 +2,8 @@ use crate::config::context::{Context, ContextError, ContextKind};
 use crate::config::table_context::Identifier;
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
-use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
-use pivot::hgnc::HGNCError;
-use pivot::hgvs::HGVSError;
+use pivotal::hgnc::HGNCError;
+use pivotal::hgvs::HGVSError;
 use polars::error::PolarsError;
 use polars::prelude::DataType;
 use std::collections::{HashMap, HashSet};
@@ -12,6 +11,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct MappingSuggestion {
@@ -120,7 +120,7 @@ pub enum DataProcessingError {
     #[error(transparent)]
     PolarsError(#[from] PolarsError),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
 }
@@ -133,7 +133,7 @@ pub enum TransformError {
     #[error(transparent)]
     DataProcessingError(#[from] Box<DataProcessingError>),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
 }
 
 impl From<CollectorError> for TransformError {
@@ -194,7 +194,7 @@ pub enum StrategyError {
         info: Vec<MappingErrorInfo>,
     },
     #[error(transparent)]
-    ValidationError(#[from] PxValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
@@ -302,7 +302,7 @@ pub enum CollectorError {
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantDataError(String),
     #[error("Found unexpected context '{0}' on column with identifier '{1}'")]

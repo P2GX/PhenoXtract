@@ -385,8 +385,8 @@ mod tests {
 
     #[rstest]
     fn test_filter_by_identifier() {
-        let id1 = Identifier::Regex("id1".to_string());
-        let id2 = Identifier::Regex("id2".to_string());
+        let id1 = Identifier::from("id1");
+        let id2 = Identifier::from("id2");
 
         let series = vec![
             SeriesContext::default().with_identifier(id1.clone()),
@@ -673,7 +673,7 @@ mod tests {
 
     #[rstest]
     fn test_filter_multiple_conditions() {
-        let id1 = Identifier::Regex("id1".to_string());
+        let id1 = Identifier::from("id1");
         let ctx1 = Context::Hpo;
 
         let series = vec![
@@ -707,8 +707,8 @@ mod tests {
 
     #[rstest]
     fn test_filter_no_matches() {
-        let id1 = Identifier::Regex("id1".to_string());
-        let id_nonexistent = Identifier::Regex("nonexistent".to_string());
+        let id1 = Identifier::from("id1");
+        let id_nonexistent = Identifier::from("nonexistent");
 
         let series = vec![
             SeriesContext::default().with_identifier(id1.clone()),
@@ -733,7 +733,7 @@ mod tests {
 
     #[rstest]
     fn test_filter_chain_order_independence() {
-        let id1 = Identifier::Regex("id1".to_string());
+        let id1 = Identifier::from("id1");
         let ctx1 = Context::Hpo;
 
         let series = vec![

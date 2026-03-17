@@ -20,6 +20,12 @@ pub struct MetaData {
     pub unit_resources: Vec<ResourceConfig>,
     #[serde(default)]
     pub qualitative_measurement_resources: Vec<ResourceConfig>,
+    #[serde(default)]
+    pub procedure_resources: Vec<ResourceConfig>,
+    #[serde(default)]
+    pub anatomy_resources: Vec<ResourceConfig>,
+    #[serde(default)]
+    pub treatment_attributes_resources: Vec<ResourceConfig>,
 }
 impl MetaData {
     #[allow(clippy::too_many_arguments)]
@@ -32,6 +38,9 @@ impl MetaData {
         assay_resources: Vec<ResourceConfig>,
         unit_resources: Vec<ResourceConfig>,
         qualitative_measurement_resources: Vec<ResourceConfig>,
+        procedure_resources: Vec<ResourceConfig>,
+        anatomy_resources: Vec<ResourceConfig>,
+        treatment_attributes_resources: Vec<ResourceConfig>,
     ) -> Self {
         Self {
             created_by: match created_by {
@@ -48,6 +57,9 @@ impl MetaData {
             assay_resources,
             unit_resources,
             qualitative_measurement_resources,
+            procedure_resources,
+            anatomy_resources,
+            treatment_attributes_resources,
         }
     }
 }
@@ -63,6 +75,9 @@ impl Default for MetaData {
             assay_resources: vec![],
             unit_resources: vec![],
             qualitative_measurement_resources: vec![],
+            procedure_resources: vec![],
+            anatomy_resources: vec![],
+            treatment_attributes_resources: vec![],
         }
     }
 }
@@ -104,6 +119,9 @@ mod tests {
         assert_eq!(metadata.hpo_resource, None);
         assert_eq!(metadata.disease_resources, vec![]);
         assert_eq!(metadata.unit_resources, vec![]);
+        assert_eq!(metadata.procedure_resources, vec![]);
+        assert_eq!(metadata.anatomy_resources, vec![]);
+        assert_eq!(metadata.treatment_attributes_resources, vec![]);
     }
 
     #[fixture]
@@ -135,5 +153,8 @@ mod tests {
         assert_eq!(default_meta_data.hpo_resource, None);
         assert_eq!(default_meta_data.disease_resources, vec![]);
         assert_eq!(default_meta_data.unit_resources, vec![]);
+        assert_eq!(default_meta_data.procedure_resources, vec![]);
+        assert_eq!(default_meta_data.anatomy_resources, vec![]);
+        assert_eq!(default_meta_data.treatment_attributes_resources, vec![]);
     }
 }
