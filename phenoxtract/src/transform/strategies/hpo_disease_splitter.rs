@@ -180,7 +180,7 @@ mod tests {
 
         strategy.transform(&mut [&mut cdf]).unwrap();
 
-        assert_eq!(cdf.data().iter().len(), 3);
+        assert_eq!(cdf.data().height(), 3);
         let scs: HashSet<Context> = cdf
             .context()
             .context()

@@ -96,10 +96,13 @@ mod tests {
     fn sex_cdf() -> ContextualizedDataFrame {
         let bb_id = "bb1";
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let df = DataFrame::new(vec![
-            subject_col.clone(),
-            Column::new("sex".into(), &["FEMALE", "MALE"]),
-        ])
+        let df = DataFrame::new(
+            subject_col.len(),
+            vec![
+                subject_col.clone(),
+                Column::new("sex".into(), &["FEMALE", "MALE"]),
+            ],
+        )
         .unwrap();
         let tc = TableContext::new(
             "sex_cdf".to_string(),
@@ -117,13 +120,16 @@ mod tests {
     fn test_collect_single_multiplicity_element_multiple() {
         let (subject_col, subject_tc) = generate_minimal_cdf_components(1, 2);
 
-        let df = DataFrame::new(vec![
-            subject_col.clone(),
-            Column::new(
-                "sex".into(),
-                &[AnyValue::String("MALE"), AnyValue::String("MALE")],
-            ),
-        ])
+        let df = DataFrame::new(
+            subject_col.len(),
+            vec![
+                subject_col.clone(),
+                Column::new(
+                    "sex".into(),
+                    &[AnyValue::String("MALE"), AnyValue::String("MALE")],
+                ),
+            ],
+        )
         .unwrap();
 
         let context = TableContext::new(
@@ -148,10 +154,10 @@ mod tests {
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
         let context = Context::TimeAtLastEncounter(TimeElementType::Age);
 
-        let df = DataFrame::new(vec![
-            subject_col.clone(),
-            Column::new("age".into(), &[46, 22]),
-        ])
+        let df = DataFrame::new(
+            subject_col.len(),
+            vec![subject_col.clone(), Column::new("age".into(), &[46, 22])],
+        )
         .unwrap();
         let tc = TableContext::new(
             "test_collect_single_multiplicity_element_err".to_string(),

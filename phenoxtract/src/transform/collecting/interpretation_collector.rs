@@ -229,13 +229,10 @@ mod tests {
                 "test",
                 vec![patient_sc, diseases_sc, hgvs_sc1, hgvs_sc2, gene_sc],
             ),
-            DataFrame::new(vec![
-                patient_col,
-                disease_col,
-                hgvs_col1,
-                hgvs_col2,
-                gene_col,
-            ])
+            DataFrame::new(
+                patient_col.len(),
+                vec![patient_col, disease_col, hgvs_col1, hgvs_col2, gene_col],
+            )
             .unwrap(),
         )
         .unwrap();
