@@ -174,7 +174,7 @@ mod tests {
                 AnyValue::Int64(15),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -189,8 +189,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -206,7 +209,7 @@ mod tests {
                 AnyValue::Float64(15.0),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -221,8 +224,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -238,7 +244,7 @@ mod tests {
                 AnyValue::String("15"),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -253,8 +259,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -270,7 +279,7 @@ mod tests {
                 AnyValue::String("15"),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
