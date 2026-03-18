@@ -5,7 +5,7 @@ use crate::transform::collecting::medical_actions::dose_interval_data::{
     DoseInterval, DoseIntervalData,
 };
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::collecting::traits::{Getter, Pluck};
+use crate::transform::collecting::traits::Getter;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 use std::collections::HashSet;
