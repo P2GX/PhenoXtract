@@ -11,8 +11,6 @@ use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-/// # Description
-///
 /// Splits a [`Context::HpoOrDisease`] column into [`Context::Hpo`] and [`Context::Disease`] columns.
 ///
 /// This strategy will find every column whose context is [`Context::HpoOrDisease`]

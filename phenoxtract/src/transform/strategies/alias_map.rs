@@ -8,8 +8,6 @@ use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::{ChunkApply, Column};
 use std::borrow::Cow;
 
-/// # Description
-///
 /// Applies all aliases found in all the [`crate::config::table_context::SeriesContext`].
 ///
 /// Given a collection of [`ContextualizedDataFrame`], this strategy will apply all the aliases

@@ -21,8 +21,6 @@ use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
-/// # Description
-///
 /// When possible, converts dates to ages.
 ///
 /// This strategy finds columns whose cells contain dates, and converts these dates

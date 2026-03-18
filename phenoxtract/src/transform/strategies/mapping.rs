@@ -23,8 +23,6 @@ pub enum DefaultMapping {
     SexMapping,
 }
 
-/// # Description
-///
 /// A strategy for mapping string values to standardized terms using a synonym dictionary.
 ///
 /// `MappingStrategy` transforms data by replacing cell values with their corresponding

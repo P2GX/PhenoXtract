@@ -11,8 +11,6 @@ use ordermap::{OrderMap, OrderSet};
 use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
 
-/// # Description
-///
 /// Converts [`Context::MultiHpoId`] columns into many columns with HPO IDs in the header.
 ///
 /// A strategy for converting columns whose cells contain multiple HPO IDs

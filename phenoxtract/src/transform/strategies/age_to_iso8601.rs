@@ -13,8 +13,6 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
-/// # Description
-///
 /// Converts integer ages to ISO8601 durations.
 ///
 /// Given a column whose cells contains ages (e.g. subject age, age of death, age of onset)
