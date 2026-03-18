@@ -367,7 +367,7 @@ mod tests {
         let hpo_col_indexes = vec![2, 3, 4, 5];
         let stringified_multi_hpo_cols = hpo_col_indexes
             .into_iter()
-            .map(|idx| cdf.data().get_columns()[idx].str().unwrap())
+            .map(|idx| cdf.data().columns()[idx].str().unwrap())
             .collect::<Vec<&StringChunked>>();
         let patient_to_hpo = MultiHPOColExpansionStrategy::get_patient_to_hpo_data(
             stringified_subject_id_col,

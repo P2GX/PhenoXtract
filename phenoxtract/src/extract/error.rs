@@ -1,7 +1,7 @@
-use crate::validation::error::ValidationError;
 use calamine::XlsxError;
 use polars::prelude::PolarsError;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
 pub enum ExtractionError {
@@ -22,5 +22,5 @@ pub enum ExtractionError {
     #[error(transparent)]
     Calamine(#[from] XlsxError),
     #[error(transparent)]
-    Validation(#[from] ValidationError),
+    Validation(#[from] ValidationErrors),
 }
