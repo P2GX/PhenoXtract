@@ -1,4 +1,5 @@
 use crate::ontology::error::BiDictError;
+use crate::ontology::ontology_factory::Ontology;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
 use fastobo::ast::OboDoc;
@@ -111,6 +112,13 @@ impl OntologyBiDict {
         key.trim().to_lowercase()
     }
 
+    pub fn from_ontology(ontology: Ontology, ontology_prefix: &str) -> Self {
+        match ontology {
+            Ontology::Ontolius(onto) => Self::from_ontolius_ontology(onto, ontology_prefix),
+            Ontology::OboDoc(obodoc) => Self::from_obodoc_ontology(obodoc, ontology_prefix),
+        }
+    }
+
     pub fn from_ontolius_ontology(ontology: Arc<FullCsrOntology>, ontology_prefix: &str) -> Self {
         let map_size = ontology.len();
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
@@ -136,7 +144,7 @@ impl OntologyBiDict {
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
 
-    pub fn from_obo_ontology(_obo_doc: OboDoc, _ontology_prefix: &str) -> Self {
+    pub fn from_obodoc_ontology(_obo_doc: OboDoc, _ontology_prefix: &str) -> Self {
         //TODO
         Self::default()
     }

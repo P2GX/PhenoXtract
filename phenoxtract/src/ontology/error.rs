@@ -1,3 +1,4 @@
+use fastobo::error::Error as FastOboError;
 use std::fmt::Debug;
 use thiserror::Error;
 #[derive(Debug, Error)]
@@ -28,6 +29,12 @@ pub enum ClientError {
 pub enum FactoryError {
     #[error("Failed to build ontology '{reason}'")]
     CantBuild { reason: String },
+    #[error(
+        "Currently PhenoXtract only accepts ontologies which have .json or .obo ontology files on BioFoundry. Ontology {ontology_prefix} had neither."
+    )]
+    NoValidOntologyFilesAvailable { ontology_prefix: String },
+    #[error(transparent)]
+    FastOboError(#[from] FastOboError),
 }
 
 #[derive(Debug, Error)]
