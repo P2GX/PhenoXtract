@@ -183,7 +183,7 @@ mod tests {
             ],
         );
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
-        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -200,8 +200,11 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let expected_df =
-            DataFrame::new(vec![expected_col1, expected_col2, col_pid.clone()]).unwrap();
+        let expected_df = DataFrame::new(
+            expected_col1.len(),
+            vec![expected_col1, expected_col2, col_pid.clone()],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -222,7 +225,7 @@ mod tests {
         );
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
 
-        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -273,8 +276,11 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let df_after_strat =
-            DataFrame::new(vec![col1_after_strat, col2_after_strat, col_pid]).unwrap();
+        let df_after_strat = DataFrame::new(
+            col1_after_strat.len(),
+            vec![col1_after_strat, col2_after_strat, col_pid],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
     }
 
@@ -294,7 +300,7 @@ mod tests {
 
         let col_subject_id = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
 
-        let df = DataFrame::new(vec![col1, col_subject_id.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col_subject_id.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
@@ -318,7 +324,8 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, col_subject_id]).unwrap();
+        let expected_df =
+            DataFrame::new(expected_col1.len(), vec![expected_col1, col_subject_id]).unwrap();
         assert_eq!(cdf.data(), &expected_df);
     }
 }

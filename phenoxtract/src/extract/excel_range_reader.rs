@@ -23,9 +23,13 @@ impl ExcelRangeReader {
     pub fn extract_to_df(self) -> Result<DataFrame, ExtractionError> {
         let mut loading_vectors = self.create_loading_vectors();
         self.load_data_to_vectors(&mut loading_vectors)?;
-        let columns_result = self.convert_vectors_to_columns(loading_vectors);
-        let columns = columns_result?;
-        let dataframe = DataFrame::new(columns)?;
+        let columns = self.convert_vectors_to_columns(loading_vectors)?;
+        let height = match columns.first() {
+            None => 0,
+            Some(col) => col.len(),
+        };
+
+        let dataframe = DataFrame::new(height, columns)?;
         Ok(dataframe)
     }
 

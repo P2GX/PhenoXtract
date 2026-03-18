@@ -246,7 +246,7 @@ mod tests {
         let col3 = Column::new("survival_time_days".into(), [10.1, 20.2, 30.3, 40.4]);
         let col4 = Column::new("smokes1".into(), [true, true, false, false]);
         let col5 = Column::new("smokes2".into(), [true, true, false, false]);
-        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5]).unwrap()
     }
 
     #[fixture]
@@ -260,7 +260,7 @@ mod tests {
         let col2 = Column::new("age".into(), [10, 20, 30, 40]);
         let col3 = Column::new("survival_time_days".into(), [10.2, 20.3, 30.4, 40.5]);
         let col4 = Column::new("smokes".into(), [true, true, true, true]);
-        DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4]).unwrap()
     }
 
     #[fixture]
@@ -333,7 +333,7 @@ mod tests {
                 AnyValue::Boolean(false),
             ],
         );
-        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5]).unwrap()
     }
 
     #[fixture]
