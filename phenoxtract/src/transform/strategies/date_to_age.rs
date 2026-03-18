@@ -19,6 +19,8 @@ use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
+/// When possible, converts dates to ages.
+///
 /// This strategy finds columns whose cells contain dates, and converts these dates
 /// to a certain age of the patient, by leveraging the patient's date of birth.
 ///
@@ -34,6 +36,38 @@ impl DateToAgeStrategy {
         DateToAgeStrategy { strict }
     }
 }
+/// If there is no data on a certain patient's date of birth,
+/// yet there is a date corresponding to this patient,
+/// then an error will be thrown.
+///
+/// # Example
+///
+/// The table
+///
+/// ```csv
+/// PatientId, DOB, TimeAtLastEncounter
+/// P001, 1990, 1995
+/// P002, 1992,
+/// P003, 2000, 2004
+/// P004,,
+/// ```
+///
+/// is mapped to
+/// ```csv
+/// PatientId, DOB, TimeAtLastEncounter
+/// P001, 1990, 5
+/// P002, 1992,
+/// P003, 2000, 4
+/// P004,,
+/// ```
+///
+/// # Errors
+///
+/// An error will be thrown if
+/// - A DOB is before to a date for a patient, leading to a negative age.
+/// - There exists a date which cannot be converted to an age due to missing DOB data.
+///
+pub struct DateToAgeStrategy;
 
 impl Strategy for DateToAgeStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
