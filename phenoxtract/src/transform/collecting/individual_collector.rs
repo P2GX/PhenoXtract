@@ -213,16 +213,19 @@ mod tests {
         );
         let survival_time_col = Column::new("survival_time".into(), [AnyValue::Int32(155)]);
 
-        DataFrame::new(vec![
-            id_col,
-            subject_sex_col,
-            vital_status_col,
-            time_of_death_col,
-            cause_of_death_col,
-            survival_time_col,
-            dob_col,
-            tale_col,
-        ])
+        DataFrame::new(
+            id_col.len(),
+            vec![
+                id_col,
+                subject_sex_col,
+                vital_status_col,
+                time_of_death_col,
+                cause_of_death_col,
+                survival_time_col,
+                dob_col,
+                tale_col,
+            ],
+        )
         .unwrap()
     }
     #[fixture]

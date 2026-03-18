@@ -2,6 +2,7 @@ use crate::transform::data_processing::parsing::{
     try_parse_string_date, try_parse_string_datetime,
 };
 use crate::transform::error::DataProcessingError;
+use chrono::NaiveDate;
 use log::debug;
 use num_traits::{Float, FromPrimitive, Zero};
 use polars::datatypes::{AnyValue, DataType, TimeUnit};
@@ -152,7 +153,11 @@ fn cast_to_date(column: &Column) -> Result<Column, DataProcessingError> {
         .iter()
         .map(|opt| match opt {
             Some(raw_date) => try_parse_string_date(raw_date)
-                .map(|datetime| AnyValue::Date(datetime.to_epoch_days()))
+                .map(|datetime| {
+                    let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+                    let days = datetime.signed_duration_since(epoch).num_days() as i32;
+                    AnyValue::Date(days)
+                })
                 .ok_or(DataProcessingError::CastingError {
                     col_name: col_name.to_string(),
                     from: column.dtype().clone(),
