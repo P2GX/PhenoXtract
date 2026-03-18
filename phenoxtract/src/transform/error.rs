@@ -286,11 +286,10 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
-    //TODO this needs to be fixed
-    #[error("Blah: {0}")]
+    #[error("Context Error: {0}")]
     ContextError(String),
     #[error(
-        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block be both: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
     )]
     InterpretationBlockFormat { patient_id: String, bb_id: String },
     #[error(

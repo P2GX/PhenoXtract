@@ -26,7 +26,6 @@ impl Collect for InterpretationCollector {
             None,
         )?;
 
-        // STEP 1: COLLECT DISEASE BB_IDS
         let mut disease_bb_ids = HashSet::new();
 
         for patient_cdf in patient_cdfs {
@@ -44,7 +43,6 @@ impl Collect for InterpretationCollector {
             }
         }
 
-        // STEP 2: FIGURE OUT HOW MANY CDFS ARE RELEVANT TO EACH DISEASE_BB_ID
         let mut disease_bb_id_to_cdf = HashMap::new();
 
         for bb_id in disease_bb_ids {
@@ -61,8 +59,6 @@ impl Collect for InterpretationCollector {
                 }
             }
         }
-
-        // STEP 3: decide which form of collection to apply
 
         for (bb_id, cdf_names) in disease_bb_id_to_cdf {
             if cdf_names.len() == 1 {
@@ -112,7 +108,7 @@ impl InterpretationCollector {
 
         let stringified_disease_cols = patient_cdf.get_stringified_cols(disease_cols)?;
 
-        let resolve_diseases = |row_idx| {
+        let resolve_diseases_at_index = |row_idx| {
             let mut diseases = vec![];
 
             for disease_col in &stringified_disease_cols {
@@ -129,7 +125,7 @@ impl InterpretationCollector {
             patient_id,
             &bb_id,
             subject_sex,
-            resolve_diseases,
+            resolve_diseases_at_index,
         )
     }
 
@@ -152,7 +148,7 @@ impl InterpretationCollector {
         })?;
 
         if let Some(disease) = disease {
-            let resolve_disease = |_| vec![disease.as_str()];
+            let resolve_diseases_at_index = |_| vec![disease.as_str()];
 
             for patient_cdf in patient_cdfs {
                 Self::collect_genes_and_variants_in_bb(
@@ -161,7 +157,7 @@ impl InterpretationCollector {
                     patient_id,
                     &bb_id,
                     subject_sex,
-                    resolve_disease,
+                    resolve_diseases_at_index,
                 )?;
             }
         }
@@ -175,7 +171,7 @@ impl InterpretationCollector {
         patient_id: &str,
         bb_id: &str,
         subject_sex: &Option<String>,
-        mut resolve_disease: F,
+        mut resolve_diseases_at_index: F,
     ) -> Result<(), CollectorError>
     where
         F: FnMut(usize) -> Vec<&'a str>,
@@ -207,12 +203,12 @@ impl InterpretationCollector {
                 continue;
             }
 
-            for disease in resolve_disease(row_idx) {
+            for disease in resolve_diseases_at_index(row_idx) {
                 builder.upsert_interpretation(
                     patient_id,
                     disease,
                     &gene_variant_data,
-                    subject_sex.clone(),
+                    subject_sex.as_deref(),
                 )?;
             }
         }
@@ -330,13 +326,16 @@ mod tests {
         }
     }
 
-    #[rstest]
-    fn test_collect_interpretations(dysostosis_interpretation: Interpretation) {
-        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
-        let disease_col = Column::new(
+    #[fixture]
+    fn disease_col() -> Column {
+        Column::new(
             "diseases".into(),
             [AnyValue::String(default_disease_oc().label.as_str())],
-        );
+        )
+    }
+
+    #[fixture]
+    fn genetics_cols() -> Vec<Column> {
         let gene_col = Column::new("gene".into(), [AnyValue::String("KIF21A")]);
         let hgvs_col1 = Column::new(
             "hgvs1".into(),
@@ -346,45 +345,35 @@ mod tests {
             "hgvs2".into(),
             [AnyValue::String("NM_001173464.1:c.2860C>T")],
         );
+        vec![gene_col, hgvs_col1, hgvs_col2]
+    }
 
-        let diseases_sc = SeriesContext::from_identifier("diseases".to_string())
+    #[fixture]
+    fn disease_sc() -> SeriesContext {
+        SeriesContext::from_identifier("diseases".to_string())
             .with_data_context(Context::Disease)
-            .with_building_block_id("Block_3");
+            .with_building_block_id("D")
+    }
 
+    #[fixture]
+    fn genetics_scs() -> Vec<SeriesContext> {
         let gene_sc = SeriesContext::from_identifier("gene".to_string())
             .with_data_context(Context::Hgnc)
-            .with_building_block_id("Block_3");
+            .with_building_block_id("D");
 
         let hgvs_sc1 = SeriesContext::from_identifier("hgvs1".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id("Block_3");
+            .with_building_block_id("D");
         let hgvs_sc2 = SeriesContext::from_identifier("hgvs2".to_string())
             .with_data_context(Context::Hgvs)
-            .with_building_block_id("Block_3");
+            .with_building_block_id("D");
 
-        let patient_cdf = ContextualizedDataFrame::new(
-            TableContext::new(
-                "test",
-                vec![patient_sc, diseases_sc, hgvs_sc1, hgvs_sc2, gene_sc],
-            ),
-            DataFrame::new(
-                patient_col.len(),
-                vec![patient_col, disease_col, hgvs_col1, hgvs_col2, gene_col],
-            )
-            .unwrap(),
-        )
-        .unwrap();
+        vec![gene_sc, hgvs_sc1, hgvs_sc2]
+    }
 
-        let mut builder = build_test_phenopacket_builder();
-        let patient_id = default_patient_id();
-
-        InterpretationCollector
-            .collect(&mut builder, &[patient_cdf], &patient_id)
-            .unwrap();
-
-        let mut phenopackets = builder.build();
-
-        let mut expected_phenopacket = Phenopacket {
+    #[fixture]
+    fn phenopacket_with_interpretation(dysostosis_interpretation: Interpretation) -> Phenopacket {
+        Phenopacket {
             id: default_phenopacket_id(),
             interpretations: vec![dysostosis_interpretation],
             meta_data: Some(MetaData {
@@ -399,9 +388,135 @@ mod tests {
                 ..Default::default()
             }),
             ..Default::default()
-        };
+        }
+    }
+
+    #[rstest]
+    fn test_collect_interpretations_single_sheet(
+        phenopacket_with_interpretation: Phenopacket,
+        disease_col: Column,
+        genetics_cols: Vec<Column>,
+        disease_sc: SeriesContext,
+        genetics_scs: Vec<SeriesContext>,
+    ) {
+        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
+
+        let mut cols = vec![patient_col, disease_col];
+        let mut scs = vec![patient_sc, disease_sc];
+        cols.extend(genetics_cols);
+        scs.extend(genetics_scs);
+
+        let patient_cdf = ContextualizedDataFrame::new(
+            TableContext::new("test", scs),
+            DataFrame::new(1, cols).unwrap(),
+        )
+        .unwrap();
+
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+
+        InterpretationCollector
+            .collect(&mut builder, &[patient_cdf], &patient_id)
+            .unwrap();
+
+        let mut phenopackets = builder.build();
 
         pretty_assertions::assert_eq!(phenopackets.len(), 1);
-        assert_phenopackets(&mut phenopackets[0], &mut expected_phenopacket);
+        assert_phenopackets(
+            &mut phenopackets[0],
+            &mut phenopacket_with_interpretation.clone(),
+        );
+    }
+
+    #[rstest]
+    fn test_collect_interpretations_multi_sheet(
+        phenopacket_with_interpretation: Phenopacket,
+        disease_col: Column,
+        genetics_cols: Vec<Column>,
+        disease_sc: SeriesContext,
+        genetics_scs: Vec<SeriesContext>,
+    ) {
+        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 1);
+
+        let disease_cdf_cols = vec![patient_col.clone(), disease_col];
+        let disease_cdf_scs = vec![patient_sc.clone(), disease_sc];
+
+        let mut genetics_cdf_cols = vec![patient_col];
+        let mut genetics_cdf_scs = vec![patient_sc];
+
+        genetics_cdf_cols.extend(genetics_cols);
+        genetics_cdf_scs.extend(genetics_scs);
+
+        let disease_cdf = ContextualizedDataFrame::new(
+            TableContext::new("test", disease_cdf_scs),
+            DataFrame::new(1, disease_cdf_cols).unwrap(),
+        )
+        .unwrap();
+
+        let genetics_cdf = ContextualizedDataFrame::new(
+            TableContext::new("test", genetics_cdf_scs),
+            DataFrame::new(1, genetics_cdf_cols).unwrap(),
+        )
+        .unwrap();
+
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+
+        InterpretationCollector
+            .collect(&mut builder, &[disease_cdf, genetics_cdf], &patient_id)
+            .unwrap();
+
+        let mut phenopackets = builder.build();
+
+        pretty_assertions::assert_eq!(phenopackets.len(), 1);
+        assert_phenopackets(
+            &mut phenopackets[0],
+            &mut phenopacket_with_interpretation.clone(),
+        );
+    }
+
+    #[rstest]
+    fn test_collect_interpretations_invalid_format_err(disease_sc: SeriesContext) {
+        let (patient_col, patient_sc) = generate_minimal_cdf_components(1, 2);
+
+        let disease_col = Column::new(
+            "diseases".into(),
+            [
+                AnyValue::String(default_disease_oc().label.as_str()),
+                AnyValue::String("Another disease"),
+            ],
+        );
+
+        let gene_col = Column::new(
+            "gene".into(),
+            [AnyValue::String("CLOCK"), AnyValue::String("SHH")],
+        );
+
+        let gene_sc = SeriesContext::from_identifier("gene".to_string())
+            .with_data_context(Context::Hgnc)
+            .with_building_block_id("D");
+
+        let disease_cdf = ContextualizedDataFrame::new(
+            TableContext::new("test", vec![patient_sc.clone(), disease_sc]),
+            DataFrame::new(2, vec![patient_col.clone(), disease_col]).unwrap(),
+        )
+        .unwrap();
+
+        let genetics_cdf = ContextualizedDataFrame::new(
+            TableContext::new("test", vec![patient_sc, gene_sc]),
+            DataFrame::new(2, vec![patient_col, gene_col]).unwrap(),
+        )
+        .unwrap();
+
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+
+        let result = InterpretationCollector.collect(
+            &mut builder,
+            &[disease_cdf, genetics_cdf],
+            &patient_id,
+        );
+
+        assert!(result.is_err());
     }
 }
