@@ -92,16 +92,12 @@ pub enum Context {
     RouteOfAdministration,
 
     // Dose Interval
-    DoseIntervalQuantity {
-        unit_ontology_id: String,
-    },
+    QuantityValue,
+    QuantityUnit,
     DoseInterval(Boundary),
     DoseScheduleFrequency,
 
     DrugType,
-    CumulativeDose {
-        unit_ontology_id: String,
-    },
 
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
@@ -168,9 +164,7 @@ impl Context {
                 | ContextKind::ReferenceRange
                 | ContextKind::TreatmentAgent
                 | ContextKind::RouteOfAdministration
-                | ContextKind::DoseIntervalQuantity
                 | ContextKind::DrugType
-                | ContextKind::CumulativeDose
                 | ContextKind::TreatmentTarget
                 | ContextKind::TreatmentIntent
                 | ContextKind::ResponseToTreatment
@@ -181,6 +175,8 @@ impl Context {
                 | ContextKind::MultiHpoId
                 | ContextKind::DoseInterval
                 | ContextKind::DoseScheduleFrequency
+                | ContextKind::QuantityUnit
+                | ContextKind::QuantityValue
                 | ContextKind::Severity
                 | ContextKind::None => None,
             })

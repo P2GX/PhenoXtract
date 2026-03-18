@@ -1,4 +1,4 @@
-use crate::config::context::{Boundary, Context, ContextKind};
+use crate::config::context::{Boundary, Context};
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
 use crate::transform::collecting::traits::Getter;
@@ -22,23 +22,20 @@ pub(super) struct DoseIntervalData {
 
 impl DoseIntervalData {
     pub(super) fn new(
-        building_block: Option<&str>,
+        building_block: &str,
         patient_cdf: &ContextualizedDataFrame,
     ) -> Result<Option<Self>, CollectorError> {
-        let quantity = QuantityData::new(
-            patient_cdf,
-            building_block,
-            &ContextKind::DoseIntervalQuantity,
+        let quantity = QuantityData::new(patient_cdf, building_block)?;
+        let schedule_frequency = patient_cdf.get_single_linked_column_as_str(
+            Some(building_block),
+            &[Context::DoseScheduleFrequency],
         )?;
-        let schedule_frequency = patient_cdf
-            .get_single_linked_column_as_str(building_block, &[Context::DoseScheduleFrequency])?;
-
         let interval_start = patient_cdf.get_single_linked_column_as_str(
-            building_block,
+            Some(building_block),
             &[Context::DoseInterval(Boundary::Start)],
         )?;
         let interval_end = patient_cdf.get_single_linked_column_as_str(
-            building_block,
+            Some(building_block),
             &[Context::DoseInterval(Boundary::End)],
         )?;
 
@@ -69,7 +66,7 @@ impl DoseIntervalData {
 
     fn linked_col_guard(
         patient_cdf: &ContextualizedDataFrame,
-        building_block: Option<&str>,
+        building_block: &str,
         quantity: &Option<QuantityData>,
         schedule_frequency: &Option<StringChunked>,
         interval_start: &Option<StringChunked>,
@@ -81,9 +78,7 @@ impl DoseIntervalData {
             || interval_end.is_none()
         {
             let contexts: Vec<Context> = [
-                quantity.is_none().then_some(Context::DoseIntervalQuantity {
-                    unit_ontology_id: "".to_string(),
-                }),
+                quantity.is_none().then_some(Context::QuantityValue),
                 schedule_frequency
                     .is_none()
                     .then_some(Context::DoseScheduleFrequency),
@@ -100,9 +95,7 @@ impl DoseIntervalData {
 
             Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
                 table_name: patient_cdf.context().name().to_string(),
-                bb_id: building_block
-                    .unwrap_or("Missing Building Block")
-                    .to_string(),
+                bb_id: building_block.to_string(),
                 contexts: contexts.clone(),
                 n_found: 4 - contexts.len(),
                 n_expected: 4,
@@ -122,7 +115,7 @@ impl Getter for DoseIntervalData {
         }
 
         match (
-            self.quantity.get(idx),
+            self.quantity.get(idx)?,
             self.schedule_frequency.get(idx),
             self.interval_start.get(idx),
             self.interval_end.get(idx),
@@ -154,7 +147,9 @@ mod tests {
     use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
-    use crate::test_suite::phenopacket_component_generation::default_schedule_frequency;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_schedule_frequency, default_timestamp,
+    };
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};
@@ -177,10 +172,18 @@ mod tests {
         );
 
         let interval_start = Series::new(
-            "schedule_frequency".into(),
+            "interval_start".into(),
             &[
-                AnyValue::String(&default_schedule_frequency().clone().label),
-                AnyValue::String(&default_schedule_frequency().clone().label),
+                AnyValue::String(&default_timestamp().to_string()),
+                AnyValue::String(&default_timestamp().to_string()),
+            ],
+        );
+
+        let interval_end = Series::new(
+            "interval_end".into(),
+            &[
+                AnyValue::String(&default_timestamp().to_string()),
+                AnyValue::String(&default_timestamp().to_string()),
             ],
         );
         patient_cdf
@@ -188,15 +191,22 @@ mod tests {
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("schedule_frequency")
                     .with_data_context(Context::DoseScheduleFrequency)
-                    .with_building_block_id(Some(building_block.to_string())),
+                    .with_building_block_id(building_block.to_string()),
                 vec![schedule_frequency.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::from_identifier("schedule_frequency")
+                SeriesContext::from_identifier("interval_start")
                     .with_data_context(Context::DoseInterval(Boundary::Start))
-                    .with_building_block_id(Some(building_block.to_string())),
+                    .with_building_block_id(building_block.to_string()),
                 vec![interval_start.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_sc_alongside_cols(
+                SeriesContext::from_identifier("interval_end")
+                    .with_data_context(Context::DoseInterval(Boundary::End))
+                    .with_building_block_id(building_block),
+                vec![interval_end.into_column()].as_ref(),
             )
             .unwrap()
             .build()
@@ -209,9 +219,49 @@ mod tests {
         cdf: ContextualizedDataFrame,
         building_block: String,
     ) -> DoseIntervalData {
-        DoseIntervalData::new(Some(&building_block), &cdf)
+        DoseIntervalData::new(&building_block, &cdf)
             .unwrap()
             .unwrap()
+    }
+
+    #[rstest]
+    #[case(Context::QuantityValue)]
+    #[case(Context::QuantityUnit)]
+    #[case(Context::DoseInterval(Boundary::End))]
+    #[case(Context::DoseInterval(Boundary::Start))]
+    #[case(Context::DoseScheduleFrequency)]
+    fn test_incomplete_dose_interval_data(
+        mut cdf: ContextualizedDataFrame,
+        building_block: String,
+        #[case] drop_context: Context,
+    ) {
+        let cdf = cdf
+            .builder()
+            .drop_scs_alongside_cols_with_context(&Context::None, &drop_context)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        match DoseIntervalData::new(&building_block, &cdf) {
+            Err(err) => match err {
+                CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
+                    table_name: _,
+                    bb_id: _,
+                    contexts,
+                    n_found,
+                    n_expected: _,
+                } => {
+                    assert_eq!(n_found, 3);
+                    assert!(contexts.contains(&drop_context));
+                }
+                _ => {
+                    panic!("Unexpected error")
+                }
+            },
+            Ok(_) => {
+                panic!("Should not be ok")
+            }
+        };
     }
 
     #[rstest]

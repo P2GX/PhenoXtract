@@ -289,6 +289,7 @@ pub enum CollectorError {
         found_datatype: DataType,
         allowed_datatypes: Vec<DataType>,
     },
+    //TODO
     #[error("TODO")]
     RequiredValueMissingError,
     #[error(transparent)]

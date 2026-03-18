@@ -1,7 +1,9 @@
-use crate::config::context::{Boundary, Context, ContextKind};
+use crate::config::context::{Boundary, Context};
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
-use crate::transform::error::CollectorError;
+
+use crate::transform::collecting::traits::Getter;
+use crate::transform::error::{CollectorError, GetterError};
+use polars::datatypes::StringChunked;
 use polars::prelude::Float64Chunked;
 
 #[derive(Debug)]
@@ -12,7 +14,7 @@ pub(super) struct Quantity<'a> {
 }
 
 pub(super) struct QuantityData {
-    pub(super) unit: String,
+    pub(super) unit: StringChunked,
     pub(super) value: Float64Chunked,
     pub(super) reference_range_start: Option<Float64Chunked>,
     pub(super) reference_range_end: Option<Float64Chunked>,
@@ -21,79 +23,35 @@ pub(super) struct QuantityData {
 impl QuantityData {
     pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
-        building_block: Option<&str>,
-        data_context: &ContextKind,
+        building_block: &str,
     ) -> Result<Option<Self>, CollectorError> {
-        let bb = building_block.ok_or_else(|| {
-            let patient_id = patient_cdf
-                .get_subject_id_col()
-                .get(0)
-                .expect("CDF should always have patient id.")
-                .to_string();
-            CollectorError::ExpectedBuildingBlock {
-                table_name: patient_cdf.context().name().to_string(),
-                patient_id,
-                context: *data_context,
-            }
-        })?;
+        let values = patient_cdf
+            .get_single_linked_column_as_float(Some(building_block), &[Context::QuantityValue])?;
+        let unit = patient_cdf
+            .get_single_linked_column_as_str(Some(building_block), &[Context::QuantityUnit])?;
+        let reference_range_low = patient_cdf.get_single_linked_column_as_float(
+            Some(building_block),
+            &[Context::ReferenceRange(Boundary::Start)],
+        )?;
+        let reference_range_high = patient_cdf.get_single_linked_column_as_float(
+            Some(building_block),
+            &[Context::ReferenceRange(Boundary::End)],
+        )?;
 
-        let scs = patient_cdf
-            .filter_series_context()
-            .where_data_context_kind(Filter::Is(data_context))
-            .where_building_block(Filter::Is(bb))
-            .collect();
+        Self::linked_col_guard(
+            patient_cdf,
+            building_block,
+            &values,
+            &unit,
+            &reference_range_low,
+            &reference_range_high,
+        )?;
 
-        if scs.len() == 1 {
-            let quantity_sc = scs.first().unwrap();
-            let unit = quantity_sc
-                .get_data_context()
-                .try_as_cumulative_dose()
-                .expect("Cumulative dose should be a Cumulative dose");
-
-            let contextualized_context = match data_context {
-                ContextKind::DoseIntervalQuantity => {
-                    Ok::<Context, CollectorError>(Context::DoseIntervalQuantity {
-                        unit_ontology_id: unit.to_string(),
-                    })
-                }
-                ContextKind::CumulativeDose => Ok(Context::CumulativeDose {
-                    unit_ontology_id: unit.to_string(),
-                }),
-                _ => {
-                    return Err(CollectorError::UnexpectedContextError(
-                        *data_context,
-                        quantity_sc.get_identifier().clone(),
-                    ));
-                }
-            }?;
-
-            let values = match patient_cdf
-                .get_single_linked_column_as_float(building_block, &[contextualized_context])?
-            {
-                None => Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
-                    table_name: patient_cdf.context().name().to_string(),
-                    bb_id: bb.to_string(),
-                    contexts: vec![Context::CumulativeDose {
-                        unit_ontology_id: unit.to_string(),
-                    }],
-                    n_found: 0,
-                    n_expected: 1,
-                }),
-                Some(val) => Ok(val),
-            }?;
-
-            let reference_range_low = patient_cdf.get_single_linked_column_as_float(
-                building_block,
-                &[Context::ReferenceRange(Boundary::Start)],
-            )?;
-
-            let reference_range_high = patient_cdf.get_single_linked_column_as_float(
-                building_block,
-                &[Context::ReferenceRange(Boundary::End)],
-            )?;
-
+        if let Some(values) = values
+            && let Some(units) = unit
+        {
             Ok(Some(Self {
-                unit: unit.to_string(),
+                unit: units,
                 value: values,
                 reference_range_start: reference_range_low,
                 reference_range_end: reference_range_high,
@@ -103,22 +61,60 @@ impl QuantityData {
         }
     }
 
-    pub(super) fn get(&'_ self, idx: usize) -> Option<Quantity<'_>> {
+    fn linked_col_guard(
+        patient_cdf: &ContextualizedDataFrame,
+        building_block: &str,
+        values: &Option<Float64Chunked>,
+        unit: &Option<StringChunked>,
+        reference_range_low: &Option<Float64Chunked>,
+        reference_range_high: &Option<Float64Chunked>,
+    ) -> Result<(), CollectorError> {
+        if values.is_none() || unit.is_none() {
+            // TODO: Fill error
+            return Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
+                table_name: patient_cdf.context().name().to_string(),
+                bb_id: building_block.to_string(),
+                contexts: vec![],
+                n_found: 0,
+                n_expected: 0,
+            });
+        } else if reference_range_low.is_none() && reference_range_high.is_some()
+            || reference_range_low.is_some() && unit.is_some() && reference_range_high.is_none()
+        {
+            // TODO: Fill error
+            return Err(CollectorError::RequiredValueMissingError);
+        }
+
+        Ok(())
+    }
+}
+
+impl Getter for QuantityData {
+    type Item<'a> = Quantity<'a>;
+
+    fn get(&'_ self, idx: usize) -> Result<Option<Quantity<'_>>, GetterError> {
+        if self.len() <= idx {
+            return Err(GetterError::OutOfBounds);
+        }
         let mut range: Option<(f64, f64)> = None;
         if let (Some(start), Some(end)) = (&self.reference_range_start, &self.reference_range_end) {
-            let a = start.get(idx);
-            let b = end.get(idx);
+            let interval_start = start.get(idx);
+            let interval_end = end.get(idx);
 
-            if let (Some(a), Some(b)) = (a, b) {
-                range = Some((a, b));
+            if let (Some(start), Some(end)) = (interval_start, interval_end) {
+                range = Some((start, end));
             }
         }
 
         // TODO: This should throw an error, if either reference_range is found and value isn't
-        self.value.get(idx).map(|value| Quantity {
-            unit: &self.unit,
-            value,
+        Ok(Some(Quantity {
+            unit: self.unit.get(idx).unwrap(),
+            value: self.value.get(idx).unwrap(),
             reference_range: range,
-        })
+        }))
+    }
+
+    fn len(&self) -> usize {
+        self.value.len()
     }
 }

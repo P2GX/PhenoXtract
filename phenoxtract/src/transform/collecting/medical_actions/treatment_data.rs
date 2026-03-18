@@ -5,7 +5,7 @@ use crate::transform::collecting::medical_actions::dose_interval_data::{
     DoseInterval, DoseIntervalData,
 };
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::traits::{Getter, Pluck};
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 use std::collections::HashSet;
@@ -57,11 +57,10 @@ impl TreatmentData {
                     route_of_administration,
                     dose_intervals: Self::find_dose_interval_data(building_block, patient_cdf)?,
                     drug_type,
-                    cumulative_dose: QuantityData::new(
-                        patient_cdf,
-                        building_block,
-                        &ContextKind::CumulativeDose,
-                    )?,
+                    cumulative_dose: building_block
+                        .map(|bb| QuantityData::new(patient_cdf, bb))
+                        .transpose()?
+                        .flatten(),
                 })
             }
         }
@@ -90,7 +89,6 @@ impl TreatmentData {
                             Context::DoseInterval(Boundary::End),
                         ]
                         .contains(context)
-                        || context.is_dose_interval_quantity()
                     {
                         sc.get_building_block_id()
                     } else {
@@ -101,7 +99,7 @@ impl TreatmentData {
 
             let intervals = dose_building_block
                 .into_iter()
-                .filter_map(|bb| DoseIntervalData::new(Some(bb), patient_cdf).transpose())
+                .filter_map(|bb| DoseIntervalData::new(bb, patient_cdf).transpose())
                 .collect::<Result<Vec<_>, _>>()?;
 
             Ok(intervals)
@@ -129,7 +127,13 @@ impl Getter for TreatmentData {
             .as_ref()
             .and_then(|col| col.get(idx));
         let drug_type = self.drug_type.as_ref().and_then(|col| col.get(idx));
-        let quantity_data = self.cumulative_dose.as_ref().and_then(|col| col.get(idx));
+
+        let cumulative_dose = self
+            .cumulative_dose
+            .as_ref()
+            .map(|col| col.get(idx))
+            .transpose()
+            .map(|o| o.flatten())?;
 
         let dose_intervals: Vec<DoseInterval> = self
             .dose_intervals
@@ -143,7 +147,7 @@ impl Getter for TreatmentData {
                 route_of_administration,
                 dose_intervals,
                 drug_type,
-                cumulative_dose: quantity_data,
+                cumulative_dose,
             })),
             None => Ok(None),
         }
