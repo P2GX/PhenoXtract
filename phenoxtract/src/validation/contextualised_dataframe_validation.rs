@@ -113,7 +113,7 @@ mod tests {
         let col4 = Column::new("abcabc".into(), ["P001"]);
         let col5 = Column::new("abcabcabc".into(), ["P001"]);
         let col6 = Column::new("column_6".into(), ["P001"]);
-        DataFrame::new(vec![col1, col2, col3, col4, col5, col6]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5, col6]).unwrap()
     }
 
     fn regex(regex: &str) -> SeriesContext {
@@ -182,7 +182,7 @@ mod tests {
     fn test_validate_single_subject_id_column_no_subject_id() {
         let result = ContextualizedDataFrame::new(
             TableContext::default().with_name("test_table"),
-            DataFrame::new(vec![]).unwrap(),
+            DataFrame::new(0, vec![]).unwrap(),
         );
 
         assert!(result.is_err());
@@ -218,10 +218,13 @@ mod tests {
                 "test_table".to_string(),
                 vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
             ),
-            DataFrame::new(vec![
-                Column::new("sub_col_1".into(), ["P001"]),
-                Column::new("sub_col_2".into(), ["P001"]),
-            ])
+            DataFrame::new(
+                1,
+                vec![
+                    Column::new("sub_col_1".into(), ["P001"]),
+                    Column::new("sub_col_2".into(), ["P001"]),
+                ],
+            )
             .unwrap(),
         );
 
