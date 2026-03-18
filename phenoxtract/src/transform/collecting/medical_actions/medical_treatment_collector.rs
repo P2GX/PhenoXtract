@@ -157,8 +157,8 @@ mod tests {
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_procedure, default_procedure_oc, default_treatment_intent,
-        default_treatment_response, default_treatment_termination_reason,
+        default_disease_oc, default_procedure_oc, default_treatment_agent,
+        default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
     };
     use crate::test_suite::phenopacket_component_generation::{
         default_procedure_body_side_oc, default_timestamp,
@@ -172,13 +172,13 @@ mod tests {
     use rstest::{fixture, rstest};
 
     #[fixture]
-    fn procedure_cdf() -> ContextualizedDataFrame {
+    fn medical_treatment_cdf() -> ContextualizedDataFrame {
         let mut patient_cdf = generate_minimal_cdf(1, 2);
         let procedure = Series::new(
-            "procedure".into(),
+            "agent".into(),
             &[
                 AnyValue::Null,
-                AnyValue::String(&default_procedure().clone().code.unwrap().label),
+                AnyValue::String(&default_treatment_agent().clone().label),
             ],
         );
 
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_procedure(procedure_cdf: ContextualizedDataFrame) {
+    fn test_collect_procedure(medical_treatment_cdf: ContextualizedDataFrame) {
         let mut builder = MockPhenopacketBuilding::new();
         let collector = MedicalTreatmentCollector;
 
@@ -322,7 +322,7 @@ mod tests {
             .returning(|_, _, _, _, _, _, _, _| Ok(()));
 
         collector
-            .collect(&mut builder, &[procedure_cdf], &patient_id)
+            .collect(&mut builder, &[medical_treatment_cdf], &patient_id)
             .unwrap();
     }
 }

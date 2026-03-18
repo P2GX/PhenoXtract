@@ -6,14 +6,14 @@ use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
 use dotenvy::dotenv;
-use phenopackets::schema::v2::core::Procedure;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::{
     Age, Disease, Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange,
-    TimeElement, Value as ValueStruct,
+    TimeElement, TimeInterval, Value as ValueStruct,
 };
+use phenopackets::schema::v2::core::{DoseInterval, Procedure};
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
@@ -128,7 +128,7 @@ pub(crate) fn default_qual_loinc() -> OntologyClass {
     }
 }
 
-pub(crate) fn default_uo_term() -> OntologyClass {
+pub(crate) fn default_unit_oc() -> OntologyClass {
     OntologyClass {
         id: "UO:0000015".to_string(),
         label: "centimeter".to_string(),
@@ -155,7 +155,7 @@ pub(crate) fn default_quant_measurement() -> Measurement {
         default_quant_loinc(),
         default_quant_value(),
         Some(default_age_element()),
-        default_uo_term().id.as_str(),
+        default_unit_oc().id.as_str(),
         Some(default_reference_range()),
     )
 }
@@ -254,6 +254,56 @@ pub(crate) fn default_procedure_body_side_oc() -> OntologyClass {
         id: "UBERON:0003403".to_string(),
         label: "skin of forearm".to_string(),
     }
+}
+
+pub(crate) fn default_treatment_agent() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C62045".to_string(),
+        label: "Methylphenidate".to_string(),
+    }
+}
+
+pub(crate) fn default_route_of_administration() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C38288".to_string(),
+        label: "Oral Route of Administration".to_string(),
+    }
+}
+
+pub(crate) fn default_schedule_frequency() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C159853".to_string(),
+        label: "At Least Once a Week".to_string(),
+    }
+}
+
+pub(crate) fn default_quantity() -> Quantity {
+    Quantity {
+        unit: Some(default_unit_oc()),
+        value: 1.0,
+        reference_range: Some(ReferenceRange {
+            unit: Some(default_unit_oc()),
+            low: default_reference_range().0,
+            high: default_reference_range().1,
+        }),
+    }
+}
+
+pub(crate) fn default_time_interval() -> TimeInterval {
+    TimeInterval {
+        start: Some(default_timestamp()),
+        end: Some(default_timestamp()),
+    }
+}
+
+pub(crate) fn default_dose_intervals(n_intervals: usize) -> Vec<DoseInterval> {
+    (0..n_intervals)
+        .map(|_| DoseInterval {
+            quantity: Some(default_quantity()),
+            schedule_frequency: Some(default_schedule_frequency()),
+            interval: Some(default_time_interval()),
+        })
+        .collect()
 }
 
 pub(crate) fn default_treatment_intent() -> OntologyClass {

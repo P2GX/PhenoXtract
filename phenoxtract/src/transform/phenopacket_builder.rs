@@ -843,7 +843,7 @@ mod tests {
         default_qual_loinc, default_qual_measurement, default_quant_loinc,
         default_quant_measurement, default_reference_range, default_timestamp,
         default_timestamp_element, default_treatment_intent, default_treatment_response,
-        default_treatment_termination_reason, default_uo_term, generate_phenotype,
+        default_treatment_termination_reason, default_unit_oc, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
@@ -1772,7 +1772,7 @@ mod tests {
                 measurement_val,
                 Some(default_iso_age().as_str()),
                 default_quant_loinc().id.as_str(),
-                default_uo_term().id.as_str(),
+                default_unit_oc().id.as_str(),
                 Some(default_reference_range()),
             )
             .unwrap();

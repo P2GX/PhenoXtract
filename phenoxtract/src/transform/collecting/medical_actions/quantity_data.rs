@@ -4,6 +4,7 @@ use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::error::CollectorError;
 use polars::prelude::Float64Chunked;
 
+#[derive(Debug)]
 pub(super) struct Quantity<'a> {
     pub(super) unit: &'a str,
     pub(super) value: f64,
