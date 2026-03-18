@@ -4,8 +4,10 @@ use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
+use fastobo::ast::OboDoc;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
+use ontology_registry::OntologyMetadataProviding;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
@@ -13,7 +15,7 @@ use ontology_registry::enums::FileType;
 use ontology_registry::traits::OntologyRegistration;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -23,8 +25,14 @@ struct CacheKey {
 }
 
 #[derive(Debug)]
+enum Ontology {
+    Ontolius(Arc<FullCsrOntology>),
+    Obo(OboDoc),
+}
+
+#[derive(Debug)]
 struct CachedOntology {
-    ontology: Arc<FullCsrOntology>,
+    ontology: Ontology,
     bidict: OnceLock<Arc<OntologyBiDict>>,
 }
 
@@ -32,6 +40,7 @@ struct CachedOntology {
 pub struct CachedOntologyFactory<OR: OntologyRegistration> {
     cache: HashMap<CacheKey, CachedOntology>,
     registry: OR,
+    metadata_provider: BioRegistryMetadataProvider,
 }
 
 /// A factory for creating and caching ontology instances.
@@ -74,6 +83,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         Self {
             cache: HashMap::new(),
             registry,
+            metadata_provider: BioRegistryMetadataProvider::default(),
         }
     }
 
@@ -101,7 +111,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// - The registry path cannot be determined
     /// - The ontology file cannot be registered or located
     /// - The ontology file cannot be parsed or initialized
-    pub fn build_ontology(
+    pub fn build_ontolius_ontology(
         &mut self,
         ontology: &ResourceRef,
         file_name: Option<&str>,
@@ -111,8 +121,10 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             file_name: file_name.map(str::to_string),
         };
 
-        if let Some(onto) = self.cache.get(&cache_key) {
-            return Ok(onto.ontology.clone());
+        if let Some(onto) = self.cache.get(&cache_key)
+            && let Ontology::Ontolius(onto) = &onto.ontology
+        {
+            return Ok(onto.clone());
         }
 
         let lower = ontology.prefix_id().to_lowercase();
@@ -131,12 +143,49 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         self.cache.insert(
             cache_key,
             CachedOntology {
-                ontology: ontology_build.clone(),
+                ontology: Ontology::Ontolius(ontology_build.clone()),
                 bidict: OnceLock::new(),
             },
         );
 
         Ok(ontology_build)
+    }
+
+    pub fn build_obodoc_ontology(
+        &mut self,
+        ontology: &ResourceRef,
+        file_name: Option<&str>,
+    ) -> Result<OboDoc, FactoryError> {
+        let cache_key = CacheKey {
+            ontology: ontology.clone(),
+            file_name: file_name.map(str::to_string),
+        };
+
+        if let Some(onto) = self.cache.get(&cache_key)
+            && let Ontology::Obo(onto) = &onto.ontology
+        {
+            return Ok(onto.clone());
+        }
+
+        let lower = ontology.prefix_id().to_lowercase();
+        let ontology_path = self
+            .registry
+            .register(&lower, ontology.clone().as_version(), FileType::Obo)
+            .map_err(|err| Self::cant_build_err_wrap(err, ontology))?;
+
+        let mut reader = BufReader::new(ontology_path);
+
+        let doc = fastobo::from_reader(&mut reader).unwrap();
+
+        self.cache.insert(
+            cache_key,
+            CachedOntology {
+                ontology: Ontology::Obo(doc.clone()),
+                bidict: OnceLock::new(),
+            },
+        );
+
+        Ok(doc)
     }
 
     /// Builds or retrieves a cached bidirectional dictionary for an ontology.
@@ -170,18 +219,50 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             file_name: file_name.map(str::to_string),
         };
 
-        self.build_ontology(ontology_ref, file_name)?;
+        let ontology_metadata = self
+            .metadata_provider
+            .provide_metadata(ontology_ref.prefix_id())
+            .unwrap();
 
-        let cached = self.cache.get(&key).expect("Just inserted");
+        if ontology_metadata.json_file_location.is_some() {
+            self.build_ontolius_ontology(ontology_ref, file_name)?;
 
-        let bidict = cached.bidict.get_or_init(|| {
-            Arc::new(OntologyBiDict::from_ontology(
-                cached.ontology.clone(),
-                ontology_ref.prefix_id(),
-            ))
-        });
+            let cached = self.cache.get(&key).expect("Just inserted");
 
-        Ok(bidict.clone())
+            if let Ontology::Ontolius(ontology_build) = &cached.ontology {
+                let bidict = cached.bidict.get_or_init(|| {
+                    Arc::new(OntologyBiDict::from_ontolius_ontology(
+                        ontology_build.clone(),
+                        ontology_ref.prefix_id(),
+                    ))
+                });
+
+                Ok(bidict.clone())
+            } else {
+                panic!("There should be an Ontolius ontology.");
+            }
+        } else if ontology_metadata.obo_file_location.is_some() {
+            self.build_obodoc_ontology(ontology_ref, file_name)?;
+
+            let cached = self.cache.get(&key).expect("Just inserted");
+
+            if let Ontology::Obo(obodoc) = &cached.ontology {
+                let bidict = cached.bidict.get_or_init(|| {
+                    Arc::new(OntologyBiDict::from_obo_ontology(
+                        obodoc.clone(),
+                        ontology_ref.prefix_id(),
+                    ))
+                });
+
+                Ok(bidict.clone())
+            } else {
+                panic!("There should be an Obodoc ontology.");
+            }
+        } else {
+            Err(FactoryError::CantBuild {
+                reason: "blah".to_string(),
+            })
+        }
     }
 
     /// Loads the Human Phenotype Ontology (HPO).
@@ -203,7 +284,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn hp(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let onto_ref = ResourceRef::new(KnownResourcePrefixes::HP, version);
-        self.build_ontology(&onto_ref, None)
+        self.build_ontolius_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Human Phenotype Ontology (HPO).
     ///
@@ -246,7 +327,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
     pub fn mondo(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
         let onto_ref = ResourceRef::new(KnownResourcePrefixes::MONDO, version);
-        self.build_ontology(&onto_ref, None)
+        self.build_ontolius_ontology(&onto_ref, None)
     }
     /// Loads the bidirectional dictionary for the Mondo Disease Ontology (MONDO).
     ///
@@ -306,7 +387,7 @@ mod tests {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let result = factory.build_ontology(&ontology, None)?;
+        let result = factory.build_ontolius_ontology(&ontology, None)?;
 
         assert!(Arc::strong_count(&result) >= 1);
 

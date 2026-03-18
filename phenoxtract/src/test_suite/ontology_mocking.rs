@@ -135,7 +135,7 @@ pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_ontology(&HPO_REF, None);
+        .build_ontolius_ontology(&HPO_REF, None);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });

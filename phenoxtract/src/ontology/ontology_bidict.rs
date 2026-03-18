@@ -1,6 +1,7 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
+use fastobo::ast::OboDoc;
 use ontolius::Identified;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontolius::ontology::{MetadataAware, OntologyTerms};
@@ -110,7 +111,7 @@ impl OntologyBiDict {
         key.trim().to_lowercase()
     }
 
-    pub fn from_ontology(ontology: Arc<FullCsrOntology>, ontology_prefix: &str) -> Self {
+    pub fn from_ontolius_ontology(ontology: Arc<FullCsrOntology>, ontology_prefix: &str) -> Self {
         let map_size = ontology.len();
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut synonym_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
@@ -134,6 +135,11 @@ impl OntologyBiDict {
 
         OntologyBiDict::new(ont_ref, label_to_id, synonym_to_id, id_to_label)
     }
+
+    pub fn from_obo_ontology(_obo_doc: OboDoc, _ontology_prefix: &str) -> Self {
+        //TODO
+        Self::default()
+    }
 }
 
 #[cfg(test)]
@@ -146,7 +152,7 @@ mod tests {
     #[rstest]
     fn test_hpo_bidict_get() {
         let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
+            OntologyBiDict::from_ontolius_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
 
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
@@ -154,14 +160,14 @@ mod tests {
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
         let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
+            OntologyBiDict::from_ontolius_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
         assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
         let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
+            OntologyBiDict::from_ontolius_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
         assert_eq!(
             hpo_dict.get("contact with nickel").unwrap(),
             "HP:4000120".to_string()
@@ -171,7 +177,7 @@ mod tests {
     #[rstest]
     fn test_hpo_bidict_chaining() {
         let hpo_dict =
-            OntologyBiDict::from_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
+            OntologyBiDict::from_ontolius_ontology(HPO.clone(), KnownResourcePrefixes::HP.as_ref());
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
             hpo_dict.get(hpo_id).unwrap(),
