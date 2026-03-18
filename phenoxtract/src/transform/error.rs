@@ -53,6 +53,27 @@ pub struct MappingErrorInfo {
     pub possible_mappings: Vec<MappingSuggestion>,
 }
 
+impl Display for MappingErrorInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Column '{}' in table '{}' with value '{}'",
+            self.column, self.table, self.old_value
+        )?;
+        if !self.possible_mappings.is_empty() {
+            write!(f, " (possible mappings: ")?;
+            for (i, mapping) in self.possible_mappings.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", mapping)?;
+            }
+            write!(f, ")")?;
+        }
+        Ok(())
+    }
+}
+
 pub trait PushMappingError {
     fn insert_error(
         &mut self,
