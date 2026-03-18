@@ -77,7 +77,7 @@ impl ContextualizedDataFrame {
     pub fn identify_columns(&self, id: &Identifier) -> Vec<&Column> {
         let cols: Vec<&str> = self
             .data
-            .get_columns()
+            .columns()
             .iter()
             .map(|col| col.name().as_str())
             .collect();
@@ -617,7 +617,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         col_name: &str,
         replacement_data: Series,
     ) -> Result<Self, CdfBuilderError> {
-        self.cdf.data.replace(col_name, replacement_data)?;
+        self.cdf.data.replace(col_name, replacement_data.into())?;
 
         Ok(self.mark_dirty())
     }
@@ -734,7 +734,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         let null_col_names = self
             .cdf
             .data
-            .get_columns()
+            .columns()
             .iter()
             .filter_map(|col| {
                 if col.null_count() == col.len() {
@@ -824,7 +824,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             let cast_col = col.cast(&output_data_type)?;
             self.cdf
                 .data
-                .replace(col_name, cast_col.take_materialized_series())?;
+                .replace(col_name, cast_col.take_materialized_series().into())?;
         }
         Ok(self.mark_dirty())
     }

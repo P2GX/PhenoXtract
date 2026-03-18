@@ -46,22 +46,29 @@ impl DataSource {
             if *has_header {
                 // Assuming, that the headers are in the first column of the dataframe
                 let index_col = df
-                    .get_columns()
+                    .columns()
                     .first()
                     .ok_or(ExtractionError::EmptyTable(table_name.to_string()))?;
 
-                column_names = Some(Either::Right(index_col
-                .str()
-                .into_iter()
-                .flatten()
-                .map(|s| s.expect("Unable to cast column name into string, when transposing DataFrame. If your data is oriented horizontally make sure the identifiers are located in the first column.").to_string())
-                .collect()));
+                column_names = Some(Either::Right(
+                    index_col
+                        .cast(&polars::prelude::DataType::String)?
+                        .str()?
+                        .into_no_null_iter()
+                        .map(|s| s.to_string())
+                        .collect(),
+                ));
 
                 let col_name = index_col.name().to_string();
                 df.drop_in_place(col_name.as_str())?;
             }
 
-            let transposed = df.transpose(None, column_names.clone())?;
+            let transposed = if *has_header {
+                df.transpose(None, column_names)?
+            } else {
+                df.transpose(None, None)?
+            };
+
             return Ok(transposed);
         }
 
@@ -452,8 +459,7 @@ mod tests {
         temp_dir: TempDir,
         extraction_config_no_headers_patients_in_columns: ExtractionConfig,
     ) {
-        let test_data = r#"
-PID_1,PID_2,PID_3
+        let test_data = r#"PID_1,PID_2,PID_3
 54,55,56
 M,F,M
 18,27,89"#;
@@ -495,8 +501,7 @@ M,F,M
         temp_dir: TempDir,
         extraction_config_no_headers_patients_in_rows: ExtractionConfig,
     ) {
-        let test_data = br#"
-PID_1,54,M,18
+        let test_data = br#"PID_1,54,M,18
 PID_2,55,F,27
 PID_3,56,M,89"#;
 
@@ -538,8 +543,7 @@ PID_3,56,M,89"#;
         temp_dir: TempDir,
         extraction_config_headers_patients_in_rows: ExtractionConfig,
     ) {
-        let test_data = br#"
-Patient_IDs,HPO_IDs,SEX,AGE
+        let test_data = br#"Patient_IDs,HPO_IDs,SEX,AGE
 PID_1,54,M,18
 PID_2,55,F,27
 PID_3,56,M,89"#;
@@ -582,8 +586,7 @@ PID_3,56,M,89"#;
         temp_dir: TempDir,
         extract_config_headers_patients_in_columns: ExtractionConfig,
     ) {
-        let test_data = br#"
-Patient_IDs,PID_1,PID_2,PID_3
+        let test_data = br#"Patient_IDs,PID_1,PID_2,PID_3
 HPO_IDs,54,55,56
 SEX,M,F,M
 AGE,18,27,89"#;

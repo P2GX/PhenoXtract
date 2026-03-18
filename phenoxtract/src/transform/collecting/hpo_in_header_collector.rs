@@ -195,7 +195,11 @@ mod tests {
 
         let cdf = ContextualizedDataFrame::new(
             TableContext::new("TestTable", context),
-            DataFrame::new(vec![patient_col, pneumonia_col, pneumonia_onset_col]).unwrap(),
+            DataFrame::new(
+                patient_col.len(),
+                vec![patient_col, pneumonia_col, pneumonia_onset_col],
+            )
+            .unwrap(),
         )
         .unwrap();
 
