@@ -49,7 +49,7 @@ use std::collections::{HashMap, HashSet};
 /// # Errors
 ///
 /// An error will be thrown if
-/// - A DOB is earlier than a date for a patient, leading to a negative age.
+/// - A date of birth is earlier than a date for a patient, leading to a negative age.
 /// - If strict is true,
 ///   and there exists a date which cannot be converted to an age due to missing DOB data.
 pub struct DateToAgeStrategy {
