@@ -7,28 +7,25 @@ use polars::datatypes::{DataType, StringChunked};
 
 /// Extracts a uniquely-defined value from matching contexts given a collection of CDFs.
 ///
-/// Hunts through the CDFs for all values matching the specified data and header contexts,
+/// Hunts through the CDFs for all values matching the specified filters
 /// then enforces cardinality constraints: zero matches returns `None`, exactly one match
 /// returns that value, but multiple distinct values trigger an error.
 ///
-/// If bb_id = Some("B"), then only columns within that building block will be considered.
-/// If bb_id = None, then all columns in the CDFs will be considered.
-///
 /// # Examples
 ///
+/// Extract a patient's date of birth from CDFs of info about them:
+///
 /// ```ignore
-/// // Extract a patient's date of birth from CDFs of info about them
-/// let dob = get_single_multiplicity_element(
+///   let date_of_birth = get_single_multiplicity_element(
 ///     patient_cdfs,
-///     Context::DateOfBirth,
-///     Context::None,
-///     None
-/// )?;
+///     SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::DateOfBirth)),
+///     ColumnFilterConfig::new(),
+///   )?;
 /// ```
 ///
 /// # Errors
 ///
-/// Returns `CollectorError::ExpectedSingleValue` when multiple distinct values are found
+/// Returns [`CollectorError::ExpectedSingleValue`] when multiple distinct values are found
 /// for the given context pair.
 pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],

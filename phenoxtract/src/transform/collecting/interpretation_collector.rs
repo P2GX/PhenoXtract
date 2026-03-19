@@ -44,7 +44,7 @@ impl Collect for InterpretationCollector {
             }
         }
 
-        let mut disease_bb_id_to_cdf = HashMap::new();
+        let mut disease_bb_id_to_cdf: HashMap<String, Vec<String>> = HashMap::new();
 
         for bb_id in disease_bb_ids {
             for patient_cdf in patient_cdfs {
@@ -55,7 +55,7 @@ impl Collect for InterpretationCollector {
                 if !relevant_cols.is_empty() {
                     disease_bb_id_to_cdf
                         .entry(bb_id.to_string())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(patient_cdf.context().name().to_string());
                 }
             }
@@ -65,8 +65,8 @@ impl Collect for InterpretationCollector {
             if cdf_names.len() == 1 {
                 let cdf = patient_cdfs
                     .iter()
-                    .filter(|cdf| cdf.context().name() == cdf_names[0])
-                    .collect::<Vec<&ContextualizedDataFrame>>()[0];
+                    .find(|cdf| cdf.context().name() == cdf_names[0])
+                    .expect("CDF should exist.");
                 Self::collect_single_sheet_disease_building_block(
                     builder,
                     cdf,
