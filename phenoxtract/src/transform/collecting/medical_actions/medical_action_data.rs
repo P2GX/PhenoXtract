@@ -41,20 +41,6 @@ impl MedicalActionData {
 impl Getter for MedicalActionData {
     type Item<'a> = MedicalAction<'a>;
 
-    fn len(&self) -> usize {
-        if let Some(tt_col) = &self.treatment_target_col {
-            tt_col.len()
-        } else if let Some(ti_col) = &self.treatment_intent_col {
-            ti_col.len()
-        } else if let Some(reason_col) = &self.treatment_termination_reason_col {
-            reason_col.len()
-        } else if let Some(response_col) = &self.response_to_treatment_col {
-            response_col.len()
-        } else {
-            0
-        }
-    }
-
     fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if self.treatment_target_col.is_none()
             && self.treatment_intent_col.is_none()
@@ -82,5 +68,19 @@ impl Getter for MedicalActionData {
                 .as_ref()
                 .and_then(|col| col.get(idx)),
         }))
+    }
+
+    fn len(&self) -> usize {
+        if let Some(tt_col) = &self.treatment_target_col {
+            tt_col.len()
+        } else if let Some(ti_col) = &self.treatment_intent_col {
+            ti_col.len()
+        } else if let Some(reason_col) = &self.treatment_termination_reason_col {
+            reason_col.len()
+        } else if let Some(response_col) = &self.response_to_treatment_col {
+            response_col.len()
+        } else {
+            0
+        }
     }
 }

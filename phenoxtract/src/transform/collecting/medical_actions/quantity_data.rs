@@ -12,7 +12,7 @@ pub(super) struct Quantity<'a> {
     pub(super) value: f64,
     pub(super) reference_range: Option<(f64, f64)>,
 }
-
+#[derive(Debug)]
 pub(super) struct QuantityData {
     pub(super) unit: StringChunked,
     pub(super) value: Float64Chunked,

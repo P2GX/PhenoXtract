@@ -119,25 +119,26 @@ impl Collect for MedicalTreatmentCollector {
                     patient_cdf,
                     treatment_agent_sc.get_building_block_id(),
                 )?;
-
-                for treatment_values in
-                    MedicalTreatmentIterator::new(&treatment_data, &medical_action_data)
-                {
-                    let treatment_values = treatment_values?;
-                    builder.insert_medical_treatment(
-                        patient_id,
-                        treatment_values.agent,
-                        treatment_values.route_of_administration,
-                        treatment_values.dose_intervals,
-                        treatment_values.drug_type,
-                        treatment_values.unit,
-                        treatment_values.value,
-                        treatment_values.reference_range,
-                        treatment_values.treatment_target,
-                        treatment_values.treatment_intent,
-                        treatment_values.response_to_treatment,
-                        treatment_values.treatment_termination_reason,
-                    )?
+                if let Some(treatment_data) = treatment_data {
+                    for treatment_values in
+                        MedicalTreatmentIterator::new(&treatment_data, &medical_action_data)
+                    {
+                        let treatment_values = treatment_values?;
+                        builder.insert_medical_treatment(
+                            patient_id,
+                            treatment_values.agent,
+                            treatment_values.route_of_administration,
+                            treatment_values.dose_intervals,
+                            treatment_values.drug_type,
+                            treatment_values.unit,
+                            treatment_values.value,
+                            treatment_values.reference_range,
+                            treatment_values.treatment_target,
+                            treatment_values.treatment_intent,
+                            treatment_values.response_to_treatment,
+                            treatment_values.treatment_termination_reason,
+                        )?
+                    }
                 }
             }
         }

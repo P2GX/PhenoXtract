@@ -12,6 +12,7 @@ pub struct DoseInterval<'a> {
     interval_start: &'a str,
     interval_end: &'a str,
 }
+#[derive(Debug)]
 
 pub(super) struct DoseIntervalData {
     quantity: QuantityData,
@@ -214,6 +215,7 @@ mod tests {
 
         patient_cdf
     }
+
     #[fixture]
     fn dose_interval_data(
         cdf: ContextualizedDataFrame,
