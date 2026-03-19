@@ -1,4 +1,4 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use pivotal::hgnc::HGNCError;
@@ -318,12 +318,12 @@ pub enum CollectorError {
         n_expected: usize,
     },
     #[error(
-        "Found multiple values for context data: '{data_context}' header: '{header_context}' for '{patient_id}' when there should only be one."
+        "Found multiple values for '{patient_id}' when there should only be one. Series context filters: {series_context_filter_info}, Data type filter info: {data_type_filter_info}."
     )]
     ExpectedSingleValue {
         patient_id: String,
-        data_context: ContextKind,
-        header_context: ContextKind,
+        series_context_filter_info: String,
+        data_type_filter_info: String,
     },
     #[error(
         "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
@@ -347,8 +347,12 @@ pub enum CollectorError {
     ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
-    #[error("Blah: {0}")]
+    #[error("Context Error: {0}")]
     ContextError(String),
+    #[error(
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+    )]
+    InterpretationBlockFormat { patient_id: String, bb_id: String },
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]
