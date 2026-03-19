@@ -7,9 +7,14 @@ use polars::datatypes::StringChunked;
 
 #[derive(Debug)]
 pub struct DoseInterval<'a> {
+    // TODO: For now dead code, but will not be dead code anymore, when the PhenopacketBuilder builds MedicalTreatments
+    #[allow(dead_code)]
     quantity: Quantity<'a>,
+    #[allow(dead_code)]
     schedule_frequency: &'a str,
+    #[allow(dead_code)]
     interval_start: &'a str,
+    #[allow(dead_code)]
     interval_end: &'a str,
 }
 #[derive(Debug)]
@@ -277,13 +282,6 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-    }
-
-    #[rstest]
-    fn test_dose_interval_data(dose_interval_data: DoseIntervalData) {
-        let dose_interval_data = dose_interval_data.get(0).unwrap().unwrap();
-
-        dbg!(&dose_interval_data);
     }
 }
 
