@@ -116,11 +116,7 @@ impl TreatmentData {
 impl Getter for TreatmentData {
     type Item<'a> = Treatment<'a>;
 
-    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
-        if self.len() <= idx {
-            return Err(GetterError::OutOfBounds);
-        }
-
+    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         let agent_opt = self.agent.as_ref().get(idx);
         let route_of_administration = self
             .route_of_administration

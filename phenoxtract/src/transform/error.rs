@@ -340,8 +340,8 @@ pub enum PhenopacketBuilderError {
 
 #[derive(Debug, Error)]
 pub enum GetterError {
-    #[error("Expected {n_required} required values for {context}")]
-    RequiredValueMissingError { n_required: usize, context: String },
+    #[error("Missing value of context '{context}' in row {idx}")]
+    RequiredValueMissingError { idx: usize, context: ContextKind },
     #[error("OutOfBounds")]
     OutOfBounds,
 }

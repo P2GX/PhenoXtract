@@ -49,11 +49,7 @@ impl ProcedureData {
 impl Getter for ProcedureData {
     type Item<'a> = Procedure<'a>;
 
-    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
-        if self.len() <= idx {
-            return Err(GetterError::OutOfBounds);
-        };
-
+    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if let Some(procedure) = self.procedure_col.as_ref().get(idx) {
             Ok(Some(Procedure {
                 procedure,

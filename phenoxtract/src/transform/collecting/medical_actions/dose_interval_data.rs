@@ -1,4 +1,4 @@
-use crate::config::context::{Boundary, Context};
+use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
 use crate::transform::collecting::traits::Getter;
@@ -109,11 +109,7 @@ impl DoseIntervalData {
 impl Getter for DoseIntervalData {
     type Item<'a> = DoseInterval<'a>;
 
-    fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
-        if self.len() <= idx {
-            return Err(GetterError::OutOfBounds);
-        }
-
+    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         match (
             self.quantity.get(idx)?,
             self.schedule_frequency.get(idx),
@@ -130,8 +126,8 @@ impl Getter for DoseIntervalData {
             }
             (None, None, None, None) => Ok(None),
             _ => Err(GetterError::RequiredValueMissingError {
-                n_required: 4,
-                context: "DoseIntervalData".to_string(),
+                idx,
+                context: ContextKind::DoseInterval,
             }),
         }
     }
