@@ -256,21 +256,21 @@ pub(crate) fn default_procedure_body_side_oc() -> OntologyClass {
     }
 }
 
-pub(crate) fn default_treatment_agent() -> OntologyClass {
+pub(crate) fn default_treatment_agent_oc() -> OntologyClass {
     OntologyClass {
         id: "NCIT:C62045".to_string(),
         label: "Methylphenidate".to_string(),
     }
 }
 
-pub(crate) fn default_route_of_administration() -> OntologyClass {
+pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
     OntologyClass {
         id: "NCIT:C38288".to_string(),
         label: "Oral Route of Administration".to_string(),
     }
 }
 
-pub(crate) fn default_schedule_frequency() -> OntologyClass {
+pub(crate) fn default_schedule_frequency_oc() -> OntologyClass {
     OntologyClass {
         id: "NCIT:C159853".to_string(),
         label: "At Least Once a Week".to_string(),

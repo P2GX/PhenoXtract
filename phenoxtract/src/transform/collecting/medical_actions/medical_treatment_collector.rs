@@ -158,7 +158,7 @@ mod tests {
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_procedure_oc, default_treatment_agent,
+        default_disease_oc, default_procedure_oc, default_treatment_agent_oc,
         default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
     };
     use crate::test_suite::phenopacket_component_generation::{
@@ -179,7 +179,7 @@ mod tests {
             "agent".into(),
             &[
                 AnyValue::Null,
-                AnyValue::String(&default_treatment_agent().clone().label),
+                AnyValue::String(&default_treatment_agent_oc().clone().label),
             ],
         );
 

@@ -126,7 +126,7 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::phenopacket_component_generation::{
-        default_schedule_frequency, default_timestamp, default_unit_oc,
+        default_schedule_frequency_oc, default_timestamp, default_unit_oc,
     };
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
@@ -144,8 +144,8 @@ mod tests {
         let schedule_frequency = Series::new(
             "schedule_frequency".into(),
             &[
-                AnyValue::String(&default_schedule_frequency().clone().label),
-                AnyValue::String(&default_schedule_frequency().clone().label),
+                AnyValue::String(&default_schedule_frequency_oc().clone().label),
+                AnyValue::String(&default_schedule_frequency_oc().clone().label),
             ],
         );
 
@@ -292,7 +292,7 @@ mod getter_tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::phenopacket_component_generation::{
-        default_schedule_frequency, default_timestamp, default_unit_oc,
+        default_schedule_frequency_oc, default_timestamp, default_unit_oc,
     };
     use crate::transform::error::GetterError;
     use polars::datatypes::AnyValue;
@@ -311,8 +311,8 @@ mod getter_tests {
         let schedule_frequency = Series::new(
             "schedule_frequency".into(),
             &[
-                AnyValue::String(&default_schedule_frequency().label),
-                AnyValue::String(&default_schedule_frequency().label),
+                AnyValue::String(&default_schedule_frequency_oc().label),
+                AnyValue::String(&default_schedule_frequency_oc().label),
             ],
         );
         let interval_start = Series::new(
@@ -417,7 +417,10 @@ mod getter_tests {
     #[rstest]
     fn test_get_schedule_frequency_first_row(dose_interval_data: DoseIntervalData) {
         let item = dose_interval_data.get(0).unwrap().unwrap();
-        assert_eq!(item.schedule_frequency, default_schedule_frequency().label);
+        assert_eq!(
+            item.schedule_frequency,
+            default_schedule_frequency_oc().label
+        );
     }
 
     #[rstest]

@@ -164,8 +164,8 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::phenopacket_component_generation::{
-        default_route_of_administration, default_schedule_frequency, default_timestamp,
-        default_treatment_agent, default_unit_oc,
+        default_route_of_administration_oc, default_schedule_frequency_oc, default_timestamp,
+        default_treatment_agent_oc, default_unit_oc,
     };
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
@@ -191,16 +191,16 @@ mod tests {
         let agent = Series::new(
             "agent".into(),
             &[
-                AnyValue::String(&default_treatment_agent().clone().label),
-                AnyValue::String(&default_treatment_agent().clone().label),
+                AnyValue::String(&default_treatment_agent_oc().clone().label),
+                AnyValue::String(&default_treatment_agent_oc().clone().label),
             ],
         );
 
         let route_of_administration = Series::new(
             "route_of_administration".into(),
             &[
-                AnyValue::String(&default_route_of_administration().clone().label),
-                AnyValue::String(&default_route_of_administration().clone().label),
+                AnyValue::String(&default_route_of_administration_oc().clone().label),
+                AnyValue::String(&default_route_of_administration_oc().clone().label),
             ],
         );
 
@@ -249,8 +249,8 @@ mod tests {
             let schedule_frequency = Series::new(
                 schedule_frequency_col_name.clone().into(),
                 &[
-                    AnyValue::String(&default_schedule_frequency().clone().label),
-                    AnyValue::String(&default_schedule_frequency().clone().label),
+                    AnyValue::String(&default_schedule_frequency_oc().clone().label),
+                    AnyValue::String(&default_schedule_frequency_oc().clone().label),
                 ],
             );
 
