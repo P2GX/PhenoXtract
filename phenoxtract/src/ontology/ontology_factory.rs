@@ -163,6 +163,8 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         let mut reader = BufReader::new(ontology_path);
         let doc = fastobo::from_reader(&mut reader)?;
 
+        dbg!(doc.entities().len());
+
         let cache_key = CacheKey::new(ontology_ref.clone(), file_name);
 
         self.cache.insert(
@@ -210,6 +212,8 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             .metadata_provider
             .provide_metadata(ontology_ref.prefix_id())
             .unwrap();
+
+        dbg!(&ontology_metadata);
 
         if ontology_metadata.json_file_location.is_some() {
             let onto = self.build_ontolius_ontology(ontology_ref, file_name)?;
