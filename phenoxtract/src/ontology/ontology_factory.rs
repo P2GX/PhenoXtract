@@ -4,6 +4,7 @@ use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::HasPrefixId;
 use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
+use enum_dispatch::enum_dispatch;
 use fastobo::ast::OboDoc;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
@@ -33,6 +34,7 @@ impl CacheKey {
     }
 }
 
+#[enum_dispatch(OntologyLike)]
 #[derive(Debug, Clone)]
 pub enum Ontology {
     Ontolius(Arc<FullCsrOntology>),
@@ -259,8 +261,8 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
-                cached.ontology.clone(),
-                ontology_ref.prefix_id(),
+                &cached.ontology,
+                ontology_ref,
             ))
         });
 
