@@ -1,5 +1,8 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
+use crate::extract::contextualized_dataframe_filters::{
+    ColumnFilterConfig, Filter, SeriesContextFilterConfig,
+};
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
@@ -18,20 +21,22 @@ impl Collect for IndividualCollector {
     ) -> Result<(), CollectorError> {
         let date_of_birth = get_single_multiplicity_element(
             patient_cdfs,
-            &Context::DateOfBirth,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::DateOfBirth)),
+            ColumnFilterConfig::new(),
         )?;
 
         let subject_sex = get_single_multiplicity_element(
             patient_cdfs,
-            &Context::SubjectSex,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
+            ColumnFilterConfig::new(),
         )?;
 
-        let time_at_last_encounter =
-            Self::find_single_time_element(patient_cdfs, Context::LAST_ENCOUNTER_VARIANTS)?;
+        let time_at_last_encounter = get_single_multiplicity_element(
+            patient_cdfs,
+            SeriesContextFilterConfig::new()
+                .where_data_contexts_are(Context::LAST_ENCOUNTER_VARIANTS),
+            ColumnFilterConfig::new(),
+        )?;
 
         builder.upsert_individual(
             patient_id,
@@ -61,27 +66,30 @@ impl IndividualCollector {
     ) -> Result<(), CollectorError> {
         let status = get_single_multiplicity_element(
             patient_cdfs,
-            &Context::VitalStatus,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::VitalStatus)),
+            ColumnFilterConfig::new(),
         )?;
 
         if let Some(status) = status {
-            let time_of_death =
-                Self::find_single_time_element(patient_cdfs, Context::TIME_OF_DEATH_VARIANTS)?;
+            let time_of_death = get_single_multiplicity_element(
+                patient_cdfs,
+                SeriesContextFilterConfig::new()
+                    .where_data_contexts_are(Context::TIME_OF_DEATH_VARIANTS),
+                ColumnFilterConfig::new(),
+            )?;
 
             let cause_of_death = get_single_multiplicity_element(
                 patient_cdfs,
-                &Context::CauseOfDeath,
-                &Context::None,
-                None,
+                SeriesContextFilterConfig::new()
+                    .where_data_context(Filter::Is(&Context::CauseOfDeath)),
+                ColumnFilterConfig::new(),
             )?;
 
             let survival_time_days = get_single_multiplicity_element(
                 patient_cdfs,
-                &Context::SurvivalTimeDays,
-                &Context::None,
-                None,
+                SeriesContextFilterConfig::new()
+                    .where_data_context(Filter::Is(&Context::SurvivalTimeDays)),
+                ColumnFilterConfig::new(),
             )?;
 
             let survival_time_days = survival_time_days
@@ -97,26 +105,6 @@ impl IndividualCollector {
             )?;
         }
         Ok(())
-    }
-
-    fn find_single_time_element(
-        patient_cdfs: &[ContextualizedDataFrame],
-        time_element_contexts: &[Context],
-    ) -> Result<Option<String>, CollectorError> {
-        let mut time_element = None;
-        for time_element_context in time_element_contexts.iter() {
-            time_element = get_single_multiplicity_element(
-                patient_cdfs,
-                time_element_context,
-                &Context::None,
-                None,
-            )?;
-            if time_element.is_some() {
-                break;
-            }
-        }
-
-        Ok(time_element)
     }
 }
 

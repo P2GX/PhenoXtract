@@ -1,6 +1,7 @@
-use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::contextualized_dataframe_filters::{
+    ColumnFilter, ColumnFilterConfig, SeriesContextFilterConfig,
+};
 use crate::transform::error::CollectorError;
 use polars::datatypes::{DataType, StringChunked};
 
@@ -31,22 +32,14 @@ use polars::datatypes::{DataType, StringChunked};
 /// for the given context pair.
 pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],
-    data_context: &Context,
-    header_context: &Context,
-    bb_id: Option<&str>,
+    sc_filters: SeriesContextFilterConfig,
+    column_filters: ColumnFilterConfig,
 ) -> Result<Option<String>, CollectorError> {
     let mut cols_of_element_type = vec![];
 
     for patient_cdf in patient_cdfs {
-        let mut filter = patient_cdf
-            .filter_columns()
-            .where_data_context(Filter::Is(data_context))
-            .where_header_context(Filter::Is(header_context));
-
-        if let Some(bb_id) = bb_id {
-            filter = filter.where_building_block(Filter::Is(bb_id));
-        }
-
+        let filter =
+            ColumnFilter::new_with_filters(patient_cdf, sc_filters.clone(), column_filters.clone());
         cols_of_element_type.extend(filter.collect());
     }
 
@@ -78,8 +71,8 @@ pub(crate) fn get_single_multiplicity_element(
                 .get(0)?
                 .str_value()
                 .to_string(),
-            data_context: ContextKind::from(data_context),
-            header_context: ContextKind::from(header_context),
+            series_context_filter_info: sc_filters.to_string(),
+            data_type_filter_info: column_filters.to_string(),
         }),
     }
 }
@@ -92,8 +85,10 @@ pub(crate) fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -
 mod tests {
     use super::*;
     use crate::config::TableContext;
+    use crate::config::context::Context;
     use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
+    use crate::extract::contextualized_dataframe_filters::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::datatypes::AnyValue;
     use polars::prelude::{Column, DataFrame};
@@ -125,9 +120,8 @@ mod tests {
     fn test_collect_single_multiplicity_element() {
         let sme = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::String("MALE"), AnyValue::Null)],
-            &Context::SubjectSex,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
+            ColumnFilterConfig::new(),
         )
         .unwrap()
         .unwrap();
@@ -142,9 +136,8 @@ mod tests {
                 AnyValue::String("FEMALE"),
                 AnyValue::String("FEMALE"),
             )],
-            &Context::SubjectSex,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
+            ColumnFilterConfig::new(),
         )
         .unwrap()
         .unwrap();
@@ -155,9 +148,10 @@ mod tests {
     fn test_collect_single_multiplicity_bb_id_filter() {
         let sme = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::String("FEMALE"), AnyValue::Null)],
-            &Context::SubjectSex,
-            &Context::None,
-            Some("B"),
+            SeriesContextFilterConfig::new()
+                .where_data_context(Filter::Is(&Context::SubjectSex))
+                .where_building_block(Filter::Is("B")),
+            ColumnFilterConfig::new(),
         )
         .unwrap();
         assert_eq!(sme, None);
@@ -167,9 +161,8 @@ mod tests {
     fn test_collect_single_multiplicity_element_err() {
         let result = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::Int64(24), AnyValue::Int64(56))],
-            &Context::SubjectSex,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
+            ColumnFilterConfig::new(),
         );
         assert!(result.is_err());
     }

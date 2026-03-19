@@ -1,6 +1,8 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::contextualized_dataframe_filters::{
+    ColumnFilterConfig, Filter, SeriesContextFilterConfig,
+};
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
@@ -21,9 +23,8 @@ impl Collect for InterpretationCollector {
     ) -> Result<(), CollectorError> {
         let subject_sex = get_single_multiplicity_element(
             patient_cdfs,
-            &Context::SubjectSex,
-            &Context::None,
-            None,
+            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
+            ColumnFilterConfig::new(),
         )?;
 
         let mut disease_bb_ids = HashSet::new();
@@ -138,9 +139,10 @@ impl InterpretationCollector {
     ) -> Result<(), CollectorError> {
         let disease = get_single_multiplicity_element(
             patient_cdfs,
-            &Context::Disease,
-            &Context::None,
-            Some(&bb_id),
+            SeriesContextFilterConfig::new()
+                .where_data_context(Filter::Is(&Context::Disease))
+                .where_building_block(Filter::Is(&bb_id)),
+            ColumnFilterConfig::new(),
         )
         .map_err(|_| CollectorError::InterpretationBlockFormat {
             patient_id: patient_id.to_string(),
