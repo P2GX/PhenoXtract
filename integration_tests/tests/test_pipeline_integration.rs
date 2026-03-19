@@ -270,7 +270,7 @@ fn test_pipeline_integration(
             onto_factory.build_bidict(&pato_ref, None).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
-        Box::new(DateToAgeStrategy),
+        Box::new(DateToAgeStrategy::new(true)),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),
