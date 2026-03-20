@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
