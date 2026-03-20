@@ -107,12 +107,13 @@ impl OntologyBiDict {
     }
 
     pub fn from_ontology(ontology: &impl OntologyLike, ontology_ref: &ResourceRef) -> Self {
-        let map_size = ontology.ontology_len();
+        let ontology_prefix = ontology_ref.prefix_id().to_string();
+        let map_size = ontology.ontology_len(ontology_prefix.clone());
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut synonym_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
         let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
 
-        for term in ontology.iter_ontology_terms() {
+        for term in ontology.iter_ontology_terms(ontology_prefix) {
             let prefix = term.prefix();
             if term.current() && prefix == ontology_ref.prefix_id().to_lowercase() {
                 label_to_id.insert(term.label().to_lowercase(), term.ontology_id().to_string());

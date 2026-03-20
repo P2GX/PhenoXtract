@@ -22,13 +22,19 @@ use std::sync::{Arc, OnceLock};
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct CacheKey {
     ontology: ResourceRef,
+    file_type: FileType,
     file_name: Option<String>,
 }
 
 impl CacheKey {
-    pub fn new(ontology: ResourceRef, file_name: Option<impl Into<String>>) -> Self {
+    pub fn new(
+        ontology: ResourceRef,
+        file_type: FileType,
+        file_name: Option<impl Into<String>>,
+    ) -> Self {
         Self {
             ontology,
+            file_type,
             file_name: file_name.map(Into::into),
         }
     }
@@ -104,7 +110,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         ontology_ref: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let cache_key = CacheKey::new(ontology_ref.clone(), file_name);
+        let cache_key = CacheKey::new(ontology_ref.clone(), FileType::Json, file_name);
 
         if let Some(onto) = self.cache.get(&cache_key)
             && let Ontology::Ontolius(ontology) = &onto.ontology
@@ -124,8 +130,6 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         let ontology_build = Self::init_ontolius(ontology_path)
             .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))?;
 
-        let cache_key = CacheKey::new(ontology_ref.clone(), file_name);
-
         self.cache.insert(
             cache_key,
             CachedOntology {
@@ -138,12 +142,12 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     }
 
     ///TODO
-    fn build_obodoc_ontology(
+    pub(crate) fn build_obodoc_ontology(
         &mut self,
         ontology_ref: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<OboDoc, FactoryError> {
-        let cache_key = CacheKey::new(ontology_ref.clone(), file_name);
+        let cache_key = CacheKey::new(ontology_ref.clone(), FileType::Obo, file_name);
 
         if let Some(onto) = self.cache.get(&cache_key)
             && let Ontology::OboDoc(obodoc) = &onto.ontology
@@ -162,10 +166,6 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
         let mut reader = BufReader::new(ontology_path);
         let doc = fastobo::from_reader(&mut reader)?;
-
-        dbg!(doc.entities().len());
-
-        let cache_key = CacheKey::new(ontology_ref.clone(), file_name);
 
         self.cache.insert(
             cache_key,
@@ -213,8 +213,6 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             .provide_metadata(ontology_ref.prefix_id())
             .unwrap();
 
-        dbg!(&ontology_metadata);
-
         if ontology_metadata.json_file_location.is_some() {
             let onto = self.build_ontolius_ontology(ontology_ref, file_name)?;
             Ok(Ontology::Ontolius(onto))
@@ -228,6 +226,8 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         }
     }
 
+    ///TODO
+    ///
     /// Builds or retrieves a cached bidirectional dictionary for an ontology.
     ///
     /// Creates an `OntologyBiDict` that provides efficient bidirectional lookups between
@@ -254,14 +254,25 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         ontology_ref: &ResourceRef,
         file_name: Option<&str>,
     ) -> Result<Arc<OntologyBiDict>, FactoryError> {
-        let key = CacheKey {
+        self.build_ontology(ontology_ref, file_name)?;
+
+        let json_key = CacheKey {
             ontology: ontology_ref.clone(),
+            file_type: FileType::Json,
             file_name: file_name.map(str::to_string),
         };
 
-        self.build_ontology(ontology_ref, file_name)?;
+        let obo_key = CacheKey {
+            ontology: ontology_ref.clone(),
+            file_type: FileType::Obo,
+            file_name: file_name.map(str::to_string),
+        };
 
-        let cached = self.cache.get(&key).expect("Just inserted");
+        let cached = self
+            .cache
+            .get(&json_key)
+            .or_else(|| self.cache.get(&obo_key))
+            .expect("Just inserted");
 
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
@@ -391,53 +402,50 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_build_ontology_success() -> Result<(), FactoryError> {
+    fn test_build_ontology_success() {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let result = factory.build_ontolius_ontology(&ontology, None)?;
+        let result = factory.build_ontolius_ontology(&ontology, None).unwrap();
 
         assert!(Arc::strong_count(&result) >= 1);
 
         assert!(factory.cache.contains_key(&CacheKey {
             ontology: ontology.clone(),
+            file_type: FileType::Json,
             file_name: None,
         }));
-
-        Ok(())
     }
 
     #[rstest]
-    fn test_build_bidict() -> Result<(), FactoryError> {
+    fn test_build_bidict() {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let result = factory.build_bidict(&ontology, None)?;
+        let result = factory.build_bidict(&ontology, None).unwrap();
 
         assert!(Arc::strong_count(&result) >= 1);
 
         assert!(factory.cache.contains_key(&CacheKey {
             ontology: ontology.clone(),
+            file_type: FileType::Json,
             file_name: None,
         }));
-
-        Ok(())
     }
 
     #[rstest]
-    fn test_build_bidict_other() -> Result<(), FactoryError> {
+    fn test_build_bidict_other() {
         let ontology = ResourceRef::from("ro").with_latest();
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let result = factory.build_bidict(&ontology, None)?;
+        let result = factory.build_bidict(&ontology, None).unwrap();
 
         assert!(Arc::strong_count(&result) >= 1);
 
         assert!(factory.cache.contains_key(&CacheKey {
             ontology: ontology.clone(),
+            file_type: FileType::Json,
             file_name: None,
         }));
-
-        Ok(())
     }
 }

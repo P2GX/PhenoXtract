@@ -37,7 +37,11 @@ pub trait SynonymLike {
 
 #[enum_dispatch]
 pub trait OntologyLike {
-    fn ontology_len(&self) -> usize;
-    fn iter_ontology_terms<'a>(&'a self)
-    -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a>;
+    fn ontology_len(&self, ontology_prefix: String) -> usize {
+        self.iter_ontology_terms(ontology_prefix).count()
+    }
+    fn iter_ontology_terms<'a>(
+        &'a self,
+        ontology_prefix: String,
+    ) -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a>;
 }
