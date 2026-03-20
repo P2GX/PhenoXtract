@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 
