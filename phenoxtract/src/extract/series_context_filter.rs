@@ -145,7 +145,7 @@ impl<'a> SeriesContextFilter<'a> {
         }
     }
 
-    pub(crate) fn new_with_filters(
+    pub(crate) fn from_config(
         items: &'a [SeriesContext],
         filters: SeriesContextFilterConfig<'a>,
     ) -> Self {

@@ -166,7 +166,7 @@ impl<'a> ColumnFilter<'a> {
         }
     }
 
-    pub(crate) fn new_with_filters(
+    pub(crate) fn from_config(
         items: &'a ContextualizedDataFrame,
         column_filter_config: ColumnFilterConfig<'a>,
     ) -> Self {
@@ -294,7 +294,7 @@ impl<'a> ColumnFilter<'a> {
     }
 
     pub fn collect(self) -> Vec<&'a Column> {
-        let series_filter = SeriesContextFilter::new_with_filters(
+        let series_filter = SeriesContextFilter::from_config(
             self.items.series_contexts(),
             SeriesContextFilterConfig::from(&self.config),
         );

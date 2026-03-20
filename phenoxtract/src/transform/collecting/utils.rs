@@ -32,7 +32,7 @@ pub(crate) fn get_single_multiplicity_element(
     let mut cols_of_element_type = vec![];
 
     for patient_cdf in patient_cdfs {
-        let filter = ColumnFilter::new_with_filters(patient_cdf, column_filters.clone());
+        let filter = ColumnFilter::from_config(patient_cdf, column_filters.clone());
         cols_of_element_type.extend(filter.collect());
     }
 
