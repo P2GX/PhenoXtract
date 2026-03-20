@@ -4,7 +4,7 @@ use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError}
 use crate::transform::strategies::traits::Strategy;
 use log::info;
 
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::config::context::{Context, TimeElementType};
 use crate::transform::utils::is_iso8601_duration;

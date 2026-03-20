@@ -1,8 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::{
-    ColumnFilterConfig, Filter, SeriesContextFilterConfig,
-};
+use crate::extract::column_filter::ColumnFilterConfig;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
@@ -21,21 +20,17 @@ impl Collect for IndividualCollector {
     ) -> Result<(), CollectorError> {
         let date_of_birth = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::DateOfBirth)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::DateOfBirth)),
         )?;
 
         let subject_sex = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )?;
 
         let time_at_last_encounter = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new()
-                .where_data_contexts_are(Context::LAST_ENCOUNTER_VARIANTS),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_contexts_are(Context::LAST_ENCOUNTER_VARIANTS),
         )?;
 
         builder.upsert_individual(
@@ -66,30 +61,26 @@ impl IndividualCollector {
     ) -> Result<(), CollectorError> {
         let status = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::VitalStatus)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::VitalStatus)),
         )?;
 
         if let Some(status) = status {
             let time_of_death = get_single_multiplicity_element(
                 patient_cdfs,
-                SeriesContextFilterConfig::new()
+                ColumnFilterConfig::default()
                     .where_data_contexts_are(Context::TIME_OF_DEATH_VARIANTS),
-                ColumnFilterConfig::new(),
             )?;
 
             let cause_of_death = get_single_multiplicity_element(
                 patient_cdfs,
-                SeriesContextFilterConfig::new()
+                ColumnFilterConfig::default()
                     .where_data_context(Filter::Is(&Context::CauseOfDeath)),
-                ColumnFilterConfig::new(),
             )?;
 
             let survival_time_days = get_single_multiplicity_element(
                 patient_cdfs,
-                SeriesContextFilterConfig::new()
+                ColumnFilterConfig::default()
                     .where_data_context(Filter::Is(&Context::SurvivalTimeDays)),
-                ColumnFilterConfig::new(),
             )?;
 
             let survival_time_days = survival_time_days

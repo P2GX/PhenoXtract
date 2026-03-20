@@ -1,7 +1,5 @@
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::{
-    ColumnFilter, ColumnFilterConfig, SeriesContextFilterConfig,
-};
+use crate::extract::column_filter::{ColumnFilter, ColumnFilterConfig};
 use crate::transform::error::CollectorError;
 use polars::datatypes::{DataType, StringChunked};
 
@@ -29,14 +27,12 @@ use polars::datatypes::{DataType, StringChunked};
 /// for the given context pair.
 pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],
-    sc_filters: SeriesContextFilterConfig,
     column_filters: ColumnFilterConfig,
 ) -> Result<Option<String>, CollectorError> {
     let mut cols_of_element_type = vec![];
 
     for patient_cdf in patient_cdfs {
-        let filter =
-            ColumnFilter::new_with_filters(patient_cdf, sc_filters.clone(), column_filters.clone());
+        let filter = ColumnFilter::from_config(patient_cdf, column_filters.clone());
         cols_of_element_type.extend(filter.collect());
     }
 
@@ -68,8 +64,7 @@ pub(crate) fn get_single_multiplicity_element(
                 .get(0)?
                 .str_value()
                 .to_string(),
-            series_context_filter_info: sc_filters.to_string(),
-            data_type_filter_info: column_filters.to_string(),
+            filter_info: column_filters.to_string(),
         }),
     }
 }
@@ -85,7 +80,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::datatypes::AnyValue;
     use polars::prelude::{Column, DataFrame};
@@ -117,8 +112,7 @@ mod tests {
     fn test_collect_single_multiplicity_element() {
         let sme = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::String("MALE"), AnyValue::Null)],
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )
         .unwrap()
         .unwrap();
@@ -133,8 +127,7 @@ mod tests {
                 AnyValue::String("FEMALE"),
                 AnyValue::String("FEMALE"),
             )],
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )
         .unwrap()
         .unwrap();
@@ -145,10 +138,9 @@ mod tests {
     fn test_collect_single_multiplicity_bb_id_filter() {
         let sme = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::String("FEMALE"), AnyValue::Null)],
-            SeriesContextFilterConfig::new()
+            ColumnFilterConfig::default()
                 .where_data_context(Filter::Is(&Context::SubjectSex))
                 .where_building_block(Filter::Is("B")),
-            ColumnFilterConfig::new(),
         )
         .unwrap();
         assert_eq!(sme, None);
@@ -158,8 +150,7 @@ mod tests {
     fn test_collect_single_multiplicity_element_err() {
         let result = get_single_multiplicity_element(
             &[sex_cdf(None, AnyValue::Int64(24), AnyValue::Int64(56))],
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         );
         assert!(result.is_err());
     }

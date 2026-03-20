@@ -4,7 +4,7 @@ use crate::transform::error::{
 };
 
 use crate::config::context::Context;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::strategies::traits::Strategy;
 use log::{debug, info};
 use phenopackets::schema::v2::core::Sex;

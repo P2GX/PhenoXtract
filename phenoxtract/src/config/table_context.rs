@@ -1,7 +1,7 @@
 use crate::config::context::Context;
 use crate::config::datasource_config::IdentifierConfig;
 use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
-use crate::extract::contextualized_dataframe_filters::SeriesContextFilter;
+use crate::extract::series_context_filter::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
 use crate::validation::table_context_validation::validate_unique_identifiers;
