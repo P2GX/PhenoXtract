@@ -10,7 +10,7 @@ pub mod excel_data_source;
 pub use excel_data_source::ExcelDataSource;
 
 pub mod column_filter;
-pub(crate) mod enums;
+pub mod enums;
 mod excel_range_reader;
 pub mod extraction_config;
 pub mod series_context_filter;
