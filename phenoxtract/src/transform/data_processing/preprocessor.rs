@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::data_processing::casting::{is_ints, polars_column_cast_ambivalent};
 use crate::transform::error::DataProcessingError;
 use polars::datatypes::DataType;

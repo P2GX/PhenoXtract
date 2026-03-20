@@ -1,8 +1,7 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::{
-    ColumnFilterConfig, Filter, SeriesContextFilterConfig,
-};
+use crate::extract::column_filter::ColumnFilterConfig;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
@@ -23,8 +22,7 @@ impl Collect for InterpretationCollector {
     ) -> Result<(), CollectorError> {
         let subject_sex = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )?;
 
         for patient_cdf in patient_cdfs {
@@ -121,10 +119,9 @@ impl InterpretationCollector {
     ) -> Result<(), CollectorError> {
         let disease = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new()
+            ColumnFilterConfig::default()
                 .where_data_context(Filter::Is(&Context::Disease))
                 .where_building_block(Filter::Is(bb_id)),
-            ColumnFilterConfig::new(),
         )
         .map_err(|_| CollectorError::InterpretationBlockFormat {
             patient_id: patient_id.to_string(),
@@ -133,6 +130,7 @@ impl InterpretationCollector {
 
         if let Some(disease) = disease {
             let disease_col = StringChunked::from_iter(vec![disease.as_str(); patient_cdfs.len()]);
+
             for patient_cdf in patient_cdfs {
                 Self::collect_genes_and_variants_in_bb(
                     builder,
