@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use pivotal::hgnc::HGNCError;
@@ -385,4 +385,12 @@ pub enum PhenopacketBuilderError {
     HgncError(#[from] HGNCError),
     #[error(transparent)]
     BidictError(#[from] BiDictError),
+}
+
+#[derive(Debug, Error)]
+pub enum GetterError {
+    #[error("Missing value of context '{context}' in row {idx}")]
+    RequiredValueMissingError { idx: usize, context: ContextKind },
+    #[error("OutOfBounds")]
+    OutOfBounds,
 }
