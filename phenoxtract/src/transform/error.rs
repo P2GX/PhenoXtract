@@ -1,7 +1,6 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::Context;
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
-use crate::validation::error::{ValidationError as PxValidationError, ValidationError};
 use pivotal::hgnc::HGNCError;
 use pivotal::hgvs::HGVSError;
 use polars::error::PolarsError;
@@ -11,6 +10,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct MappingSuggestion {
@@ -103,51 +103,7 @@ impl PushMappingError for HashSet<MappingErrorInfo> {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum DataProcessingError {
-    #[error("DataFrame Filter result was unexpectedly empty.")]
-    EmptyFilteringError,
-
-    #[error("Unable to cast column '{col_name}' from type '{from}' to '{to}'")]
-    CastingError {
-        col_name: String,
-        from: DataType,
-        to: DataType,
-    },
-    #[error(transparent)]
-    StrategyError(#[from] StrategyError),
-    #[error(transparent)]
-    PolarsError(#[from] PolarsError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
-    #[error(transparent)]
-    CdfBuilderError(#[from] CdfBuilderError),
-}
-#[derive(Debug, Error)]
-pub enum TransformError {
-    #[error(transparent)]
-    StrategyError(#[from] StrategyError),
-    #[error(transparent)]
-    CollectorError(#[from] Box<CollectorError>),
-    #[error(transparent)]
-    DataProcessingError(#[from] Box<DataProcessingError>),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
-}
-
-impl From<CollectorError> for TransformError {
-    fn from(err: CollectorError) -> Self {
-        TransformError::CollectorError(Box::new(err))
-    }
-}
-
-impl From<DataProcessingError> for TransformError {
-    fn from(err: DataProcessingError) -> Self {
-        TransformError::DataProcessingError(Box::new(err))
-    }
-}
-
-fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
+fn format_mapping_errors(errors: &[MappingErrorInfo]) -> String {
     let mut grouped: HashMap<(&str, &str), Vec<&MappingErrorInfo>> = HashMap::new();
 
     for error in errors {
@@ -181,19 +137,137 @@ fn format_grouped_errors(errors: &[MappingErrorInfo]) -> String {
 }
 
 #[derive(Debug, Error)]
+pub enum DataProcessingError {
+    #[error("DataFrame Filter result was unexpectedly empty.")]
+    EmptyFilteringError,
+
+    #[error("Unable to cast column '{col_name}' from type '{from}' to '{to}'")]
+    CastingError {
+        col_name: String,
+        from: DataType,
+        to: DataType,
+    },
+    #[error(transparent)]
+    StrategyError(#[from] StrategyError),
+    #[error(transparent)]
+    PolarsError(#[from] PolarsError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationErrors),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
+}
+#[derive(Debug, Error)]
+pub enum TransformError {
+    #[error(transparent)]
+    StrategyError(#[from] StrategyError),
+    #[error(transparent)]
+    CollectorError(#[from] Box<CollectorError>),
+    #[error(transparent)]
+    DataProcessingError(#[from] Box<DataProcessingError>),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationErrors),
+}
+
+impl From<CollectorError> for TransformError {
+    fn from(err: CollectorError) -> Self {
+        TransformError::CollectorError(Box::new(err))
+    }
+}
+
+impl From<DataProcessingError> for TransformError {
+    fn from(err: DataProcessingError) -> Self {
+        TransformError::DataProcessingError(Box::new(err))
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct DateToAgeErrorInfo {
+    pub table_name: String,
+    pub date_col: String,
+    pub date: String,
+    pub subject_id: String,
+    pub problem: String,
+}
+
+pub trait PushDateToAgeError {
+    fn insert_error(
+        &mut self,
+        table_name: String,
+        date_col: String,
+        date: String,
+        subject_id: String,
+        problem: String,
+    );
+}
+impl PushDateToAgeError for HashSet<DateToAgeErrorInfo> {
+    fn insert_error(
+        &mut self,
+        table_name: String,
+        date_col: String,
+        date: String,
+        subject_id: String,
+        problem: String,
+    ) {
+        let date_to_age_error_info = DateToAgeErrorInfo {
+            table_name,
+            date_col,
+            date,
+            subject_id,
+            problem,
+        };
+        if !self.contains(&date_to_age_error_info) {
+            self.insert(date_to_age_error_info);
+        }
+    }
+}
+
+fn format_date_to_age_errors(errors: &[DateToAgeErrorInfo]) -> String {
+    let mut grouped: HashMap<(&str, &str), Vec<&DateToAgeErrorInfo>> = HashMap::new();
+
+    for error in errors {
+        grouped
+            .entry((&error.date_col, &error.table_name))
+            .or_default()
+            .push(error);
+    }
+
+    let mut result = String::new();
+    for ((date_column, table), group) in grouped {
+        result.push_str(&format!(
+            "Date column '{}' in table '{}':\n",
+            date_column, table
+        ));
+        for error in group {
+            result.push_str(&format!(
+                "    - 'Patient: {}, Date: {}, Problem: {}'",
+                error.subject_id, error.date, error.problem
+            ));
+            result.push('\n');
+        }
+    }
+
+    result
+}
+
+#[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum StrategyError {
     #[error(
-        "{message}. Strategy '{strategy_name}' unable to map: \n {}",
-        format_grouped_errors(info)
+        "{message}. Strategy '{strategy_name}' unable to map: \n{}",
+        format_mapping_errors(info)
     )]
     MappingError {
         strategy_name: String,
         message: String,
         info: Vec<MappingErrorInfo>,
     },
+    #[error(
+        "Errors applying DateToAgeStrategy: \n{}",
+        format_date_to_age_errors(info)
+    )]
+    DateToAgeError { info: Vec<DateToAgeErrorInfo> },
     #[error(transparent)]
-    ValidationError(#[from] PxValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
@@ -207,19 +281,6 @@ pub enum StrategyError {
         context: Context,
         message: String,
         patients: Vec<String>,
-    },
-    #[error("Could not parse {unparseable_date} as a date or datetime for {subject_id}")]
-    DateParsingError {
-        subject_id: String,
-        unparseable_date: String,
-    },
-    #[error(
-        "Date of event occurs earlier than the date of birth of {subject_id}. Date of birth: {date_of_birth}, Date: {date}"
-    )]
-    NegativeAge {
-        subject_id: String,
-        date_of_birth: String,
-        date: String,
     },
     #[error(
         "The column {column_name} had datatype {found_datatype} in strategy {strategy}. Only the datatypes {allowed_datatypes:?} are accepted."
@@ -257,12 +318,11 @@ pub enum CollectorError {
         n_expected: usize,
     },
     #[error(
-        "Found multiple values for context data: '{data_context}' header: '{header_context}' for '{patient_id}' when there should only be one."
+        "Found multiple values for '{patient_id}' when there should only be one. Filter info: {filter_info}."
     )]
     ExpectedSingleValue {
         patient_id: String,
-        data_context: ContextKind,
-        header_context: ContextKind,
+        filter_info: String,
     },
     #[error(
         "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
@@ -283,11 +343,15 @@ pub enum CollectorError {
     #[error(transparent)]
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
-    ValidationError(#[from] ValidationError),
+    ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
-    #[error("Blah: {0}")]
+    #[error("Context Error: {0}")]
     ContextError(String),
+    #[error(
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+    )]
+    InterpretationBlockFormat { patient_id: String, bb_id: String },
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]

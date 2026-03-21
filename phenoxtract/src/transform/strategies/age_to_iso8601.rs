@@ -4,7 +4,7 @@ use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError}
 use crate::transform::strategies::traits::Strategy;
 use log::info;
 
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::config::context::{Context, TimeElementType};
 use crate::transform::utils::is_iso8601_duration;
@@ -13,14 +13,34 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
+/// Converts integer ages to ISO8601 durations.
+///
 /// Given a column whose cells contains ages (e.g. subject age, age of death, age of onset)
 /// this strategy converts integer entries to ISO8601 durations: 47 -> P47Y
-/// NOTE: the integers must be between 0 and 150.
 ///
 /// If an entry is already in ISO8601 duration format, it will be left unchanged.
 ///
-/// If there are cell values which are neither ISO8601 durations nor integers
+/// # Example
+///
+/// The table
+/// ```csv
+/// PatientId, age_at_last_encounter
+/// P001, 47
+/// P002, P56Y12M3D
+/// ```
+///
+/// will be mapped to
+/// ```csv
+/// PatientId, age_at_last_encounter
+/// P001, P47Y
+/// P002, P56Y12M3D
+/// ```
+///
+/// # Errors
+///
+/// If there are cell values which are neither ISO8601 durations nor integers (between 0 and 150)
 /// an error will be returned.
+///
 pub struct AgeToIso8601Strategy {
     min_age: i32,
     max_age: i32,
@@ -174,7 +194,7 @@ mod tests {
                 AnyValue::Int64(15),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -189,8 +209,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -206,7 +229,7 @@ mod tests {
                 AnyValue::Float64(15.0),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -221,8 +244,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -238,7 +264,7 @@ mod tests {
                 AnyValue::String("15"),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
@@ -253,8 +279,11 @@ mod tests {
                 AnyValue::String("P15Y"),
             ],
         );
-        let expected_df =
-            DataFrame::new(vec![col_pid.clone(), expected_transformed_age_col]).unwrap();
+        let expected_df = DataFrame::new(
+            col_pid.len(),
+            vec![col_pid.clone(), expected_transformed_age_col],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -270,7 +299,7 @@ mod tests {
                 AnyValue::String("15"),
             ],
         );
-        let df = DataFrame::new(vec![col_pid.clone(), age_col]).unwrap();
+        let df = DataFrame::new(col_pid.len(), vec![col_pid.clone(), age_col]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let age_to_iso8601_strat = AgeToIso8601Strategy::default();
