@@ -200,7 +200,8 @@ pipeline:
   strategies:
     - alias_map
     - default_mapping: sex_mapping
-    - date_to_age
+    - date_to_age:
+        strict: true
     - age_to_iso8601
     - hpo_disease_splitter
 
