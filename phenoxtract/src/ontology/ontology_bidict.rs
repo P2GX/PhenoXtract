@@ -106,7 +106,7 @@ impl OntologyBiDict {
         key.trim().to_lowercase()
     }
 
-    pub fn from_ontology(ontology: &impl OntologyLike, ontology_ref: &ResourceRef) -> Self {
+    pub fn from_ontology(ontology: Arc<dyn OntologyLike>, ontology_ref: &ResourceRef) -> Self {
         let ontology_prefix = ontology_ref.prefix_id().to_string();
         let map_size = ontology.ontology_len(ontology_prefix.clone());
         let mut label_to_id: HashMap<String, String> = HashMap::with_capacity(map_size);
@@ -139,21 +139,29 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_suite::ontology_mocking::{HPO, PATO_OBODOC};
+    use crate::ontology::CachedOntologyFactory;
+    use crate::test_suite::mocks::MockOntologyRegistry;
+    use crate::test_suite::ontology_mocking::HPO;
     use crate::test_suite::phenopacket_component_generation::default_pato_qual_measurement;
-    use crate::test_suite::resource_references::{HPO_REF, PATO_REF};
+    use crate::test_suite::resource_references::{HPO_REF, UO_REF};
+    use ontology_registry::FileType;
     use rstest::rstest;
+    use std::io::BufReader;
 
     #[rstest]
     fn test_hpo_bidict_get() {
-        let hpo_dict = OntologyBiDict::from_ontology(&HPO.clone(), &HPO_REF);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &HPO_REF);
 
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
     #[rstest]
     fn test_pato_obodoc_bidict_get() {
-        let pato_dict = OntologyBiDict::from_ontology(&PATO_OBODOC.clone(), &PATO_REF);
+        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
+        let ontology_path = factory.register(&UO_REF, FileType::Obo).unwrap();
+        let mut reader = BufReader::new(ontology_path);
+        let uo_obodoc = Arc::new(fastobo::from_reader(&mut reader).unwrap());
+        let pato_dict = OntologyBiDict::from_ontology(uo_obodoc, &UO_REF);
 
         assert_eq!(
             pato_dict.get(&default_pato_qual_measurement().id).unwrap(),
@@ -163,13 +171,13 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_label() {
-        let hpo_dict = OntologyBiDict::from_ontology(&HPO.clone(), &HPO_REF);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &HPO_REF);
         assert_eq!(hpo_dict.get("Nystagmus").unwrap(), "HP:0000639".to_string());
     }
 
     #[rstest]
     fn test_hpo_bidict_get_id_by_synonym() {
-        let hpo_dict = OntologyBiDict::from_ontology(&HPO.clone(), &HPO_REF);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &HPO_REF);
         assert_eq!(
             hpo_dict.get("contact with nickel").unwrap(),
             "HP:4000120".to_string()
@@ -178,7 +186,7 @@ mod tests {
 
     #[rstest]
     fn test_hpo_bidict_chaining() {
-        let hpo_dict = OntologyBiDict::from_ontology(&HPO.clone(), &HPO_REF);
+        let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &HPO_REF);
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
             hpo_dict.get(hpo_id).unwrap(),

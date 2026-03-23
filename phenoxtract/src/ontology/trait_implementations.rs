@@ -1,4 +1,3 @@
-use crate::ontology::ontology_factory::Ontology;
 use crate::ontology::traits::{OntologyLike, OntologyTermLike, SynonymLike};
 use fastobo::ast::{Ident, OboDoc, Synonym as FastOboSynonym, TermClause, TermFrame};
 use ontolius::Identified;
@@ -123,103 +122,81 @@ impl SynonymLike for FastOboSynonym {
     }
 }
 
-impl OntologyLike for Ontology {
-    fn iter_ontology_terms<'a>(
-        &'a self,
-        ontology_prefix: String,
-    ) -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a> {
-        match self {
-            Ontology::Ontolius(inner) => inner.iter_ontology_terms(ontology_prefix),
-            Ontology::OboDoc(inner) => inner.iter_ontology_terms(ontology_prefix),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::ontology::CachedOntologyFactory;
-    use crate::ontology::resource_references::ResourceRef;
     use crate::test_suite::mocks::MockOntologyRegistry;
-    use crate::test_suite::phenopacket_component_generation::default_pato_qual_measurement;
+    use crate::test_suite::phenopacket_component_generation::default_unit_oc;
+    use crate::test_suite::resource_references::UO_REF;
     use fastobo::ast::SynonymScope;
     use ontolius::TermId;
+    use ontolius::io::OntologyLoaderBuilder;
+    use ontolius::term::Definition;
+    use ontology_registry::FileType;
     use rstest::{fixture, rstest};
+    use std::io::BufReader;
 
-    #[fixture]
-    fn number_of_pato_terms() -> usize {
-        1887
+    fn number_of_uo_terms() -> usize {
+        573
     }
 
-    #[fixture]
-    fn pato_obodoc() -> Arc<OboDoc> {
-        let ontology = ResourceRef::new("pato", Some("2025-05-14".to_string()));
+    fn uo_obodoc() -> Arc<OboDoc> {
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        factory.build_obodoc_ontology(&ontology).unwrap()
+        let ontology_path = factory.register(&UO_REF, FileType::Obo).unwrap();
+        let mut reader = BufReader::new(ontology_path);
+        Arc::new(fastobo::from_reader(&mut reader).unwrap())
     }
 
-    #[fixture]
-    fn pato_ontolius() -> Arc<FullCsrOntology> {
-        let ontology = ResourceRef::new("pato", Some("2025-05-14".to_string()));
+    fn uo_ontolius() -> Arc<FullCsrOntology> {
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        factory.build_ontolius_ontology(&ontology).unwrap()
+        let loader = OntologyLoaderBuilder::new().obographs_parser().build();
+        let ontology_path = factory.register(&UO_REF, FileType::Json).unwrap();
+        let ontolius = loader.load_from_read(ontology_path).unwrap();
+        Arc::new(ontolius)
     }
 
     fn assert_ontology_len(ontology: &impl OntologyLike, expected: usize) {
-        assert_eq!(ontology.ontology_len("PATO".to_string()), expected);
+        assert_eq!(ontology.ontology_len("UO".to_string()), expected);
     }
 
     #[rstest]
-    fn test_obodoc_ontology_len(pato_obodoc: Arc<OboDoc>, number_of_pato_terms: usize) {
-        assert_ontology_len(&pato_obodoc, number_of_pato_terms);
+    fn test_obodoc_ontology_len() {
+        assert_ontology_len(&uo_obodoc(), number_of_uo_terms());
     }
 
     #[rstest]
-    fn test_ontolius_ontology_len(
-        pato_ontolius: Arc<FullCsrOntology>,
-        number_of_pato_terms: usize,
-    ) {
-        assert_ontology_len(&pato_ontolius, number_of_pato_terms);
+    fn test_ontolius_ontology_len() {
+        assert_ontology_len(&uo_ontolius(), number_of_uo_terms());
     }
 
     fn assert_iter_ontology_terms(ontology: &impl OntologyLike, expected: usize) {
         assert_eq!(
-            ontology.iter_ontology_terms("PATO".to_string()).count(),
+            ontology.iter_ontology_terms("UO".to_string()).count(),
             expected
         );
     }
 
     #[rstest]
-    fn test_obodoc_iter_ontology_terms(pato_obodoc: Arc<OboDoc>, number_of_pato_terms: usize) {
-        assert_iter_ontology_terms(&pato_obodoc, number_of_pato_terms);
+    fn test_obodoc_iter_ontology_terms() {
+        assert_iter_ontology_terms(&uo_obodoc(), number_of_uo_terms());
     }
 
     #[rstest]
-    fn test_ontolius_iter_ontology_terms(
-        pato_ontolius: Arc<FullCsrOntology>,
-        number_of_pato_terms: usize,
-    ) {
-        assert_iter_ontology_terms(&pato_ontolius, number_of_pato_terms);
+    fn test_ontolius_iter_ontology_terms() {
+        assert_iter_ontology_terms(&uo_ontolius(), number_of_uo_terms());
     }
 
-    #[fixture]
-    fn present_id() -> String {
-        default_pato_qual_measurement().id
+    fn centimeter_id() -> String {
+        default_unit_oc().id
     }
 
-    #[fixture]
-    fn present_label() -> String {
-        default_pato_qual_measurement().label
+    fn centimeter_label() -> String {
+        default_unit_oc().label
     }
 
-    #[fixture]
-    fn increased_amount_id() -> String {
-        "PATO:0000470".to_string()
-    }
-
-    #[fixture]
-    fn ring_shaped_obsolete_id() -> String {
-        "PATO:0040001".to_string()
+    fn micromole_obsolete_id() -> String {
+        "UO:0010048".to_string()
     }
 
     fn obodoc_term_from_id(obodoc: Arc<OboDoc>, id: String) -> TermFrame {
@@ -238,50 +215,28 @@ mod tests {
     }
 
     #[fixture]
-    fn present_from_obodoc(pato_obodoc: Arc<OboDoc>, present_id: String) -> TermFrame {
-        obodoc_term_from_id(pato_obodoc, present_id)
+    fn centimeter_obodoc() -> TermFrame {
+        obodoc_term_from_id(uo_obodoc(), centimeter_id())
     }
 
     #[fixture]
-    fn present_from_ontolius(
-        pato_ontolius: Arc<FullCsrOntology>,
-        present_id: String,
-    ) -> SimpleTerm {
-        ontolius_term_from_id(pato_ontolius, present_id)
+    fn centimeter_ontolius() -> SimpleTerm {
+        ontolius_term_from_id(uo_ontolius(), centimeter_id())
     }
 
     #[fixture]
-    fn increased_amount_from_obodoc(
-        pato_obodoc: Arc<OboDoc>,
-        increased_amount_id: String,
-    ) -> TermFrame {
-        obodoc_term_from_id(pato_obodoc, increased_amount_id)
+    fn micromole_obodoc() -> TermFrame {
+        obodoc_term_from_id(uo_obodoc(), micromole_obsolete_id())
     }
 
     #[fixture]
-    fn increased_amount_from_ontolius(
-        pato_ontolius: Arc<FullCsrOntology>,
-        increased_amount_id: String,
-    ) -> SimpleTerm {
-        ontolius_term_from_id(pato_ontolius, increased_amount_id)
-    }
-
-    #[fixture]
-    fn ring_shaped_from_obodoc(
-        pato_obodoc: Arc<OboDoc>,
-        ring_shaped_obsolete_id: String,
-    ) -> TermFrame {
-        obodoc_term_from_id(pato_obodoc, ring_shaped_obsolete_id)
-    }
-
-    #[fixture]
-    fn ring_shaped_from_ontolius(ring_shaped_obsolete_id: String) -> SimpleTerm {
+    fn micromole_ontolius() -> SimpleTerm {
         SimpleTerm::new(
-            ring_shaped_obsolete_id.parse().unwrap(),
-            "obsolete ring-shaped",
+            micromole_obsolete_id().parse().unwrap(),
+            "micromole",
             vec![],
             true,
-            None,
+            Some(Definition { val: "DEPRECATED: Duplicate of http://purl.obolibrary.org/obo/UO_0000039. A substance unit which is equal to one millionth of a mole.".to_string(), xrefs: vec!["UOB:LTS".to_string()] }),
             None,
             vec![],
             vec![],
@@ -293,13 +248,13 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_prefix(present_from_obodoc: TermFrame) {
-        assert_prefix(&present_from_obodoc, "PATO");
+    fn test_obodoc_prefix() {
+        assert_prefix(&centimeter_obodoc(), "UO");
     }
 
     #[rstest]
-    fn test_ontolius_prefix(present_from_ontolius: SimpleTerm) {
-        assert_prefix(&present_from_ontolius, "PATO");
+    fn test_ontolius_prefix() {
+        assert_prefix(&centimeter_ontolius(), "UO");
     }
 
     fn assert_ontology_id(term: &impl OntologyTermLike, expected: &str) {
@@ -307,13 +262,13 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_id(present_from_obodoc: TermFrame, present_id: String) {
-        assert_ontology_id(&present_from_obodoc, &present_id);
+    fn test_obodoc_id() {
+        assert_ontology_id(&centimeter_obodoc(), &centimeter_id());
     }
 
     #[rstest]
-    fn test_ontolius_id(present_from_ontolius: SimpleTerm, present_id: String) {
-        assert_ontology_id(&present_from_ontolius, &present_id);
+    fn test_ontolius_id() {
+        assert_ontology_id(&centimeter_ontolius(), &centimeter_id());
     }
 
     fn assert_current(term: &impl OntologyTermLike, expected: bool) {
@@ -321,23 +276,23 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_current(present_from_obodoc: TermFrame) {
-        assert_current(&present_from_obodoc, true);
+    fn test_obodoc_current() {
+        assert_current(&centimeter_ontolius(), true);
     }
 
     #[rstest]
-    fn test_ontolius_current(present_from_ontolius: SimpleTerm) {
-        assert_current(&present_from_ontolius, true);
+    fn test_ontolius_current() {
+        assert_current(&centimeter_obodoc(), true);
     }
 
     #[rstest]
-    fn test_obodoc_obsolete(ring_shaped_from_obodoc: TermFrame) {
-        assert_current(&ring_shaped_from_obodoc, false);
+    fn test_obodoc_obsolete() {
+        assert_current(&micromole_obodoc(), false);
     }
 
     #[rstest]
-    fn test_ontolius_obsolete(ring_shaped_from_ontolius: SimpleTerm) {
-        assert_current(&ring_shaped_from_ontolius, false);
+    fn test_ontolius_obsolete() {
+        assert_current(&micromole_ontolius(), false);
     }
 
     fn assert_label(term: &impl OntologyTermLike, expected: &str) {
@@ -345,17 +300,32 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_label(present_from_obodoc: TermFrame, present_label: String) {
-        assert_label(&present_from_obodoc, &present_label);
+    fn test_obodoc_label() {
+        assert_label(&centimeter_obodoc(), &centimeter_label());
     }
 
     #[rstest]
-    fn test_ontolius_label(present_from_ontolius: SimpleTerm, present_label: String) {
-        assert_label(&present_from_ontolius, &present_label);
+    fn test_ontolius_label() {
+        assert_label(&centimeter_ontolius(), &centimeter_label());
     }
 
-    fn assert_syn_number(term: &impl OntologyTermLike, expected_no_syns: usize) {
-        assert_eq!(term.iter_synonyms().count(), expected_no_syns);
+    fn assert_syns(term: &impl OntologyTermLike, expected_syn_names: Vec<&str>) {
+        assert_eq!(
+            term.iter_synonyms()
+                .map(|s| s.syn_name())
+                .collect::<Vec<&str>>(),
+            expected_syn_names
+        );
+    }
+
+    #[rstest]
+    fn test_obodoc_iter_synonyms() {
+        assert_syns(&centimeter_obodoc(), vec!["centimetre", "cm"])
+    }
+
+    #[rstest]
+    fn test_ontolius_iter_synonyms() {
+        assert_syns(&centimeter_ontolius(), vec!["centimetre", "cm"])
     }
 
     fn assert_syn_name(syn: &dyn SynonymLike, expected: &str) {
@@ -363,37 +333,14 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_iter_synonyms_length(increased_amount_from_obodoc: TermFrame) {
-        assert_syn_number(&increased_amount_from_obodoc, 5);
-    }
-
-    #[rstest]
-    fn test_ontolius_iter_synonyms_length(increased_amount_from_ontolius: SimpleTerm) {
-        assert_syn_number(&increased_amount_from_ontolius, 5);
-    }
-
-    #[rstest]
-    fn test_obodoc_iter_synonyms_names(present_from_obodoc: TermFrame) {
-        let present_in_organism_syn = present_from_obodoc.iter_synonyms().next().unwrap();
-        assert_syn_name(present_in_organism_syn, "present in organism");
-    }
-
-    #[rstest]
-    fn test_ontolius_iter_synonyms_names(present_from_ontolius: SimpleTerm) {
-        let present_in_organism_syn = present_from_ontolius.iter_synonyms().next().unwrap();
-        assert_syn_name(present_in_organism_syn, "present in organism");
-    }
-
-    #[rstest]
     fn test_obodoc_syn_name() {
-        let present_in_organism_syn =
-            FastOboSynonym::new("present in organism", SynonymScope::Related);
-        assert_syn_name(&present_in_organism_syn, "present in organism");
+        let centimetre_syn = FastOboSynonym::new("centimetre", SynonymScope::Exact);
+        assert_syn_name(&centimetre_syn, "centimetre");
     }
 
     #[rstest]
-    fn test_ontolius_syn_name(present_from_ontolius: SimpleTerm) {
-        let present_in_organism_syn = present_from_ontolius.synonyms().first().unwrap();
-        assert_syn_name(present_in_organism_syn, "present in organism");
+    fn test_ontolius_syn_name() {
+        let centimetre_syn = centimeter_ontolius().synonyms().first().unwrap().clone();
+        assert_syn_name(&centimetre_syn, "centimetre");
     }
 }

@@ -30,7 +30,7 @@ pub trait SynonymLike {
     fn syn_name(&self) -> &str;
 }
 
-pub trait OntologyLike {
+pub trait OntologyLike: Debug + Send + Sync {
     /// The amount of CURRENT terms with the specified prefix.
     fn ontology_len(&self, ontology_prefix: String) -> usize {
         self.iter_ontology_terms(ontology_prefix).count()

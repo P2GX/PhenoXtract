@@ -1,10 +1,9 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
-use crate::ontology::traits::HasPrefixId;
+use crate::ontology::traits::{HasPrefixId, OntologyLike};
 use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
-use fastobo::ast::OboDoc;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
 use ontology_registry::OntologyMetadataProviding;
@@ -33,15 +32,9 @@ impl CacheKey {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Ontology {
-    Ontolius(Arc<FullCsrOntology>),
-    OboDoc(Arc<OboDoc>),
-}
-
 #[derive(Debug)]
 struct CachedOntology {
-    ontology: Ontology,
+    ontology: Arc<dyn OntologyLike>,
     bidict: OnceLock<Arc<OntologyBiDict>>,
 }
 
@@ -96,27 +89,32 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         }
     }
 
-    /// Retrieve from the Cache an Arc<FullCsrOntology> ontology, or build and then cache if it is not already there.
-    pub(crate) fn build_ontolius_ontology(
+    pub(crate) fn register(
         &mut self,
         ontology_ref: &ResourceRef,
-    ) -> Result<Arc<FullCsrOntology>, FactoryError> {
-        let cache_key = CacheKey::new(ontology_ref.clone(), FileType::Json);
-
-        if let Some(onto) = self.cache.get(&cache_key)
-            && let Ontology::Ontolius(ontology) = &onto.ontology
-        {
-            return Ok(ontology.clone());
-        }
-
-        let ontology_path = self
-            .registry
+        file_type: FileType,
+    ) -> Result<impl Read, FactoryError> {
+        self.registry
             .register(
                 ontology_ref.prefix_id().to_lowercase(),
                 ontology_ref.clone().as_version(),
-                FileType::Json, // Ontolius only accepts JSON
+                file_type,
             )
-            .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))?;
+            .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))
+    }
+
+    /// Retrieve from the Cache an Arc<FullCsrOntology> ontology, or build and then cache if it is not already there.
+    fn build_ontolius_ontology(
+        &mut self,
+        ontology_ref: &ResourceRef,
+    ) -> Result<Arc<dyn OntologyLike>, FactoryError> {
+        let cache_key = CacheKey::new(ontology_ref.clone(), FileType::Json);
+
+        if let Some(onto) = self.cache.get(&cache_key) {
+            return Ok(onto.ontology.clone());
+        }
+
+        let ontology_path = self.register(ontology_ref, FileType::Json)?;
 
         let ontology_build = Self::init_ontolius(ontology_path)
             .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))?;
@@ -124,7 +122,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         self.cache.insert(
             cache_key,
             CachedOntology {
-                ontology: Ontology::Ontolius(ontology_build.clone()),
+                ontology: ontology_build.clone(),
                 bidict: OnceLock::new(),
             },
         );
@@ -133,34 +131,26 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     }
 
     /// Retrieve from the Cache an Arc<OboDoc> ontology, or build and then cache if it is not already there.
-    pub(crate) fn build_obodoc_ontology(
+    fn build_obodoc_ontology(
         &mut self,
         ontology_ref: &ResourceRef,
-    ) -> Result<Arc<OboDoc>, FactoryError> {
+    ) -> Result<Arc<dyn OntologyLike>, FactoryError> {
         let cache_key = CacheKey::new(ontology_ref.clone(), FileType::Obo);
 
-        if let Some(onto) = self.cache.get(&cache_key)
-            && let Ontology::OboDoc(obodoc) = &onto.ontology
-        {
-            return Ok(obodoc.clone());
+        if let Some(onto) = self.cache.get(&cache_key) {
+            return Ok(onto.ontology.clone());
         }
 
-        let ontology_path = self
-            .registry
-            .register(
-                ontology_ref.prefix_id().to_lowercase(),
-                ontology_ref.clone().as_version(),
-                FileType::Obo,
-            )
-            .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))?;
-
-        let mut reader = BufReader::new(ontology_path);
-        let doc = Arc::new(fastobo::from_reader(&mut reader)?);
+        let doc = {
+            let ontology_path = self.register(ontology_ref, FileType::Obo)?;
+            let mut reader = BufReader::new(ontology_path);
+            Arc::new(fastobo::from_reader(&mut reader)?)
+        };
 
         self.cache.insert(
             cache_key,
             CachedOntology {
-                ontology: Ontology::OboDoc(doc.clone()),
+                ontology: doc.clone(),
                 bidict: OnceLock::new(),
             },
         );
@@ -204,7 +194,10 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// - The registry path cannot be determined
     /// - The ontology file cannot be registered or located
     /// - The ontology file cannot be parsed or initialized
-    pub fn build_ontology(&mut self, ontology_ref: &ResourceRef) -> Result<Ontology, FactoryError> {
+    pub fn build_ontology(
+        &mut self,
+        ontology_ref: &ResourceRef,
+    ) -> Result<Arc<dyn OntologyLike>, FactoryError> {
         if let Some(onto) = self.get_cached_ontology(ontology_ref) {
             return Ok(onto.ontology.clone());
         }
@@ -214,11 +207,9 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             .provide_metadata(ontology_ref.prefix_id())?;
 
         if ontology_metadata.json_file_location.is_some() {
-            let onto = self.build_ontolius_ontology(ontology_ref)?;
-            Ok(Ontology::Ontolius(onto))
+            self.build_ontolius_ontology(ontology_ref)
         } else if ontology_metadata.obo_file_location.is_some() {
-            let onto = self.build_obodoc_ontology(ontology_ref)?;
-            Ok(Ontology::OboDoc(onto))
+            self.build_obodoc_ontology(ontology_ref)
         } else {
             Err(FactoryError::NoValidOntologyFilesAvailable {
                 ontology_prefix: ontology_ref.prefix_id().to_string(),
@@ -259,7 +250,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
         let bidict = cached.bidict.get_or_init(|| {
             Arc::new(OntologyBiDict::from_ontology(
-                &cached.ontology,
+                cached.ontology.clone(),
                 ontology_ref,
             ))
         });
@@ -284,7 +275,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// # Errors
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
-    pub fn hp(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
+    pub fn hp(&mut self, version: Option<String>) -> Result<Arc<dyn OntologyLike>, FactoryError> {
         let onto_ref = ResourceRef::new(KnownResourcePrefixes::HP, version);
         self.build_ontolius_ontology(&onto_ref)
     }
@@ -327,7 +318,10 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// # Errors
     ///
     /// Returns `OntologyFactoryError` if the ontology cannot be loaded.
-    pub fn mondo(&mut self, version: Option<String>) -> Result<Arc<FullCsrOntology>, FactoryError> {
+    pub fn mondo(
+        &mut self,
+        version: Option<String>,
+    ) -> Result<Arc<dyn OntologyLike>, FactoryError> {
         let onto_ref = ResourceRef::new(KnownResourcePrefixes::MONDO, version);
         self.build_ontolius_ontology(&onto_ref)
     }
@@ -390,26 +384,19 @@ mod tests {
         let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let result = factory.build_ontology(&ontology).unwrap();
+        let onto = factory.build_ontology(&ontology).unwrap();
 
-        match result {
-            Ontology::Ontolius(onto) => {
-                assert!(Arc::strong_count(&onto) >= 1);
+        assert!(Arc::strong_count(&onto) >= 1);
 
-                assert!(factory.cache.contains_key(&CacheKey {
-                    ontology: ontology.clone(),
-                    file_type: FileType::Json,
-                }));
+        assert!(factory.cache.contains_key(&CacheKey {
+            ontology: ontology.clone(),
+            file_type: FileType::Json,
+        }));
 
-                assert!(!factory.cache.contains_key(&CacheKey {
-                    ontology: ontology.clone(),
-                    file_type: FileType::Obo,
-                }));
-            }
-            Ontology::OboDoc(_) => {
-                panic!("Ontolius ontology should be built.")
-            }
-        }
+        assert!(!factory.cache.contains_key(&CacheKey {
+            ontology: ontology.clone(),
+            file_type: FileType::Obo,
+        }));
     }
 
     #[rstest]
