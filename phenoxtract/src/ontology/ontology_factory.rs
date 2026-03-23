@@ -376,7 +376,7 @@ impl Default for CachedOntologyFactory<OntologyRegistry> {
 mod tests {
     use super::*;
     use crate::test_suite::mocks::MockOntologyRegistry;
-    use crate::test_suite::resource_references::PATO_REF;
+    use crate::test_suite::resource_references::UO_REF;
     use rstest::rstest;
 
     #[rstest]
@@ -421,7 +421,7 @@ mod tests {
 
     #[rstest]
     fn test_build_obodoc_ontology_success() {
-        let ontology = PATO_REF.clone();
+        let ontology = UO_REF.clone();
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_obodoc_ontology(&ontology).unwrap();

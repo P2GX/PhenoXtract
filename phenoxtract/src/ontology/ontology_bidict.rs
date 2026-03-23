@@ -142,7 +142,7 @@ mod tests {
     use crate::ontology::CachedOntologyFactory;
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::ontology_mocking::HPO;
-    use crate::test_suite::phenopacket_component_generation::default_pato_qual_measurement;
+    use crate::test_suite::phenopacket_component_generation::default_unit_oc;
     use crate::test_suite::resource_references::{HPO_REF, UO_REF};
     use ontology_registry::FileType;
     use rstest::rstest;
@@ -156,7 +156,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pato_obodoc_bidict_get() {
+    fn test_uo_obodoc_bidict_get() {
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let ontology_path = factory.register(&UO_REF, FileType::Obo).unwrap();
         let mut reader = BufReader::new(ontology_path);
@@ -164,8 +164,8 @@ mod tests {
         let pato_dict = OntologyBiDict::from_ontology(uo_obodoc, &UO_REF);
 
         assert_eq!(
-            pato_dict.get(&default_pato_qual_measurement().id).unwrap(),
-            default_pato_qual_measurement().label
+            pato_dict.get(&default_unit_oc().id).unwrap(),
+            default_unit_oc().label
         );
     }
 
