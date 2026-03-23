@@ -2,7 +2,7 @@ use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
 use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::utils::HpoColMaker;

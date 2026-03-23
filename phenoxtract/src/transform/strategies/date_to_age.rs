@@ -2,7 +2,7 @@ use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::transform::error::{DateToAgeErrorInfo, PushDateToAgeError, StrategyError};
 use log::{info, warn};
 
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::config::context::{Context, TimeElementType};
 

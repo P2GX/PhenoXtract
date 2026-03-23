@@ -1,15 +1,14 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::{
-    ColumnFilterConfig, Filter, SeriesContextFilterConfig,
-};
+use crate::extract::column_filter::ColumnFilterConfig;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_single_multiplicity_element;
 use crate::transform::error::CollectorError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::PhenopacketBuilding;
+use polars::prelude::StringChunked;
 use std::any::Any;
-use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
 pub struct InterpretationCollector;
@@ -23,65 +22,40 @@ impl Collect for InterpretationCollector {
     ) -> Result<(), CollectorError> {
         let subject_sex = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::SubjectSex)),
-            ColumnFilterConfig::new(),
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )?;
 
-        let mut disease_bb_ids = HashSet::new();
-
         for patient_cdf in patient_cdfs {
-            let disease_in_cells_scs = patient_cdf
+            let disease_bbs: Vec<String> = patient_cdf
                 .filter_series_context()
                 .where_header_context(Filter::Is(&Context::None))
                 .where_data_context(Filter::Is(&Context::Disease))
+                .where_building_block(Filter::IsSome)
+                .collect()
+                .into_iter()
+                .filter_map(|dsc| dsc.get_building_block_id().map(|s| s.to_string()))
                 .collect();
 
-            for disease_sc in disease_in_cells_scs {
-                let bb_id = disease_sc.get_building_block_id();
-                if let Some(bb_id) = bb_id {
-                    disease_bb_ids.insert(bb_id);
+            for disease_building_block in disease_bbs.iter() {
+                let is_spread = Self::is_spread(patient_cdfs, disease_building_block);
+
+                if is_spread {
+                    Self::collect_multi_sheet_disease_building_block(
+                        builder,
+                        patient_cdfs,
+                        patient_id,
+                        disease_building_block,
+                        subject_sex.as_deref(),
+                    )?;
+                } else {
+                    Self::collect_single_sheet_disease_building_block(
+                        builder,
+                        patient_cdf,
+                        patient_id,
+                        disease_building_block,
+                        subject_sex.as_deref(),
+                    )?;
                 }
-            }
-        }
-
-        let mut disease_bb_id_to_cdf: HashMap<String, Vec<String>> = HashMap::new();
-
-        for bb_id in disease_bb_ids {
-            for patient_cdf in patient_cdfs {
-                let relevant_cols = patient_cdf
-                    .filter_columns()
-                    .where_building_block(Filter::Is(bb_id))
-                    .collect();
-                if !relevant_cols.is_empty() {
-                    disease_bb_id_to_cdf
-                        .entry(bb_id.to_string())
-                        .or_default()
-                        .push(patient_cdf.context().name().to_string());
-                }
-            }
-        }
-
-        for (bb_id, cdf_names) in disease_bb_id_to_cdf {
-            if cdf_names.len() == 1 {
-                let cdf = patient_cdfs
-                    .iter()
-                    .find(|cdf| cdf.context().name() == cdf_names[0])
-                    .expect("CDF should exist.");
-                Self::collect_single_sheet_disease_building_block(
-                    builder,
-                    cdf,
-                    patient_id,
-                    bb_id,
-                    &subject_sex,
-                )?;
-            } else {
-                Self::collect_multi_sheet_disease_building_block(
-                    builder,
-                    patient_cdfs,
-                    patient_id,
-                    bb_id,
-                    &subject_sex,
-                )?;
             }
         }
 
@@ -93,40 +67,46 @@ impl Collect for InterpretationCollector {
 }
 
 impl InterpretationCollector {
+    fn is_spread(patient_cdfs: &[ContextualizedDataFrame], disease_bb: &str) -> bool {
+        patient_cdfs
+            .iter()
+            .filter(|cdf| {
+                !cdf.filter_series_context()
+                    .where_building_block(Filter::Is(disease_bb))
+                    .collect()
+                    .is_empty()
+            })
+            .count()
+            >= 2
+    }
+
     fn collect_single_sheet_disease_building_block(
         builder: &mut dyn PhenopacketBuilding,
         patient_cdf: &ContextualizedDataFrame,
         patient_id: &str,
-        bb_id: String,
-        subject_sex: &Option<String>,
+        bb_id: &str,
+        subject_sex: Option<&str>,
     ) -> Result<(), CollectorError> {
         let disease_cols = patient_cdf
             .filter_columns()
-            .where_building_block(Filter::Is(&bb_id))
+            .where_building_block(Filter::Is(bb_id))
             .where_header_context(Filter::Is(&Context::None))
             .where_data_context(Filter::Is(&Context::Disease))
             .collect_owned_names();
 
-        let stringified_disease_cols = patient_cdf.get_stringified_cols(disease_cols)?;
-
-        let resolve_diseases_at_index = |row_idx| {
-            let mut diseases = vec![];
-
-            for disease_col in &stringified_disease_cols {
-                if let Some(disease) = disease_col.get(row_idx) {
-                    diseases.push(disease)
-                }
-            }
-            diseases
-        };
+        let disease_col = patient_cdf
+            .get_stringified_cols(disease_cols)?
+            .first()
+            .cloned()
+            .unwrap();
 
         Self::collect_genes_and_variants_in_bb(
             builder,
             patient_cdf,
             patient_id,
-            &bb_id,
+            bb_id,
             subject_sex,
-            resolve_diseases_at_index,
+            disease_col,
         )
     }
 
@@ -134,32 +114,31 @@ impl InterpretationCollector {
         builder: &mut dyn PhenopacketBuilding,
         patient_cdfs: &[ContextualizedDataFrame],
         patient_id: &str,
-        bb_id: String,
-        subject_sex: &Option<String>,
+        bb_id: &str,
+        subject_sex: Option<&str>,
     ) -> Result<(), CollectorError> {
         let disease = get_single_multiplicity_element(
             patient_cdfs,
-            SeriesContextFilterConfig::new()
+            ColumnFilterConfig::default()
                 .where_data_context(Filter::Is(&Context::Disease))
-                .where_building_block(Filter::Is(&bb_id)),
-            ColumnFilterConfig::new(),
+                .where_building_block(Filter::Is(bb_id)),
         )
         .map_err(|_| CollectorError::InterpretationBlockFormat {
             patient_id: patient_id.to_string(),
-            bb_id: bb_id.clone(),
+            bb_id: bb_id.to_string(),
         })?;
 
         if let Some(disease) = disease {
-            let resolve_diseases_at_index = |_| vec![disease.as_str()];
+            let disease_col = StringChunked::from_iter(vec![disease.as_str(); patient_cdfs.len()]);
 
             for patient_cdf in patient_cdfs {
                 Self::collect_genes_and_variants_in_bb(
                     builder,
                     patient_cdf,
                     patient_id,
-                    &bb_id,
+                    bb_id,
                     subject_sex,
-                    resolve_diseases_at_index,
+                    &disease_col,
                 )?;
             }
         }
@@ -167,32 +146,29 @@ impl InterpretationCollector {
         Ok(())
     }
 
-    fn collect_genes_and_variants_in_bb<'a, F>(
+    fn collect_genes_and_variants_in_bb(
         builder: &mut dyn PhenopacketBuilding,
-        patient_cdf: &'a ContextualizedDataFrame,
+        patient_cdf: &ContextualizedDataFrame,
         patient_id: &str,
         bb_id: &str,
-        subject_sex: &Option<String>,
-        mut resolve_diseases_at_index: F,
-    ) -> Result<(), CollectorError>
-    where
-        F: FnMut(usize) -> Vec<&'a str>,
-    {
-        let stringified_linked_hgnc_cols = patient_cdf.get_stringified_cols(
+        subject_sex: Option<&str>,
+        disease_col: &StringChunked,
+    ) -> Result<(), CollectorError> {
+        let linked_hgnc_cols = patient_cdf.get_stringified_cols(
             patient_cdf.get_linked_cols_with_context(Some(bb_id), &Context::Hgnc, &Context::None),
         )?;
 
-        let stringified_linked_hgvs_cols = patient_cdf.get_stringified_cols(
+        let linked_hgvs_cols = patient_cdf.get_stringified_cols(
             patient_cdf.get_linked_cols_with_context(Some(bb_id), &Context::Hgvs, &Context::None),
         )?;
 
         for row_idx in 0..patient_cdf.data().height() {
-            let genes = stringified_linked_hgnc_cols
+            let genes = linked_hgnc_cols
                 .iter()
                 .filter_map(|col| col.get(row_idx))
                 .collect::<Vec<&str>>();
 
-            let variants = stringified_linked_hgvs_cols
+            let variants = linked_hgvs_cols
                 .iter()
                 .filter_map(|col| col.get(row_idx))
                 .collect::<Vec<&str>>();
@@ -205,12 +181,12 @@ impl InterpretationCollector {
                 continue;
             }
 
-            for disease in resolve_diseases_at_index(row_idx) {
+            if let Some(disease) = disease_col.get(row_idx) {
                 builder.upsert_interpretation(
                     patient_id,
                     disease,
                     &gene_variant_data,
-                    subject_sex.as_deref(),
+                    subject_sex,
                 )?;
             }
         }
@@ -409,7 +385,7 @@ mod tests {
         scs.extend(genetics_scs);
 
         let patient_cdf = ContextualizedDataFrame::new(
-            TableContext::new("test", scs),
+            TableContext::new("disease_table", scs),
             DataFrame::new(1, cols).unwrap(),
         )
         .unwrap();
@@ -450,13 +426,13 @@ mod tests {
         genetics_cdf_scs.extend(genetics_scs);
 
         let disease_cdf = ContextualizedDataFrame::new(
-            TableContext::new("test", disease_cdf_scs),
+            TableContext::new("disease_table", disease_cdf_scs),
             DataFrame::new(1, disease_cdf_cols).unwrap(),
         )
         .unwrap();
 
         let genetics_cdf = ContextualizedDataFrame::new(
-            TableContext::new("test", genetics_cdf_scs),
+            TableContext::new("genetics_table", genetics_cdf_scs),
             DataFrame::new(1, genetics_cdf_cols).unwrap(),
         )
         .unwrap();
@@ -499,13 +475,13 @@ mod tests {
             .with_building_block_id("D");
 
         let disease_cdf = ContextualizedDataFrame::new(
-            TableContext::new("test", vec![patient_sc.clone(), disease_sc]),
+            TableContext::new("disease_table", vec![patient_sc.clone(), disease_sc]),
             DataFrame::new(2, vec![patient_col.clone(), disease_col]).unwrap(),
         )
         .unwrap();
 
         let genetics_cdf = ContextualizedDataFrame::new(
-            TableContext::new("test", vec![patient_sc, gene_sc]),
+            TableContext::new("gene_table", vec![patient_sc, gene_sc]),
             DataFrame::new(2, vec![patient_col, gene_col]).unwrap(),
         )
         .unwrap();

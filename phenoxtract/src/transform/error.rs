@@ -327,12 +327,11 @@ pub enum CollectorError {
     },
 
     #[error(
-        "Found multiple values for '{patient_id}' when there should only be one. Series context filters: {series_context_filter_info}, Data type filter info: {data_type_filter_info}."
+        "Found multiple values for '{patient_id}' when there should only be one. Filter info: {filter_info}."
     )]
     ExpectedSingleValue {
         patient_id: String,
-        series_context_filter_info: String,
-        data_type_filter_info: String,
+        filter_info: String,
     },
     #[error(
         "Found conflicting information on phenotype '{phenotype}' for patient '{patient_id}' in table '{table_name}'"
