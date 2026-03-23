@@ -4,7 +4,7 @@ use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
-pub(super) struct Procedure<'a> {
+pub(super) struct ProcedureRow<'a> {
     pub(super) procedure: &'a str,
     pub(super) body_part: Option<&'a str>,
     pub(super) time_element: Option<&'a str>,
@@ -47,11 +47,11 @@ impl ProcedureData {
 }
 
 impl GetRows for ProcedureData {
-    type Item<'a> = Procedure<'a>;
+    type Item<'a> = ProcedureRow<'a>;
 
     fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if let Some(procedure) = self.procedure_col.as_ref().get(idx) {
-            Ok(Some(Procedure {
+            Ok(Some(ProcedureRow {
                 procedure,
                 body_part: self.body_part_col.as_ref().and_then(|col| col.get(idx)),
                 time_element: self.time_element_col.as_ref().and_then(|col| col.get(idx)),
