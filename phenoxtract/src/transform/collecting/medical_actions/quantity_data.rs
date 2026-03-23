@@ -1,8 +1,9 @@
 #![allow(dead_code)]
+
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 use polars::prelude::Float64Chunked;
@@ -83,10 +84,10 @@ impl QuantityData {
     }
 }
 
-impl Getter for QuantityData {
+impl GetRows for QuantityData {
     type Item<'a> = QuantityRow<'a>;
 
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         let value = self.value.get(idx);
         let unit = self.unit.get(idx);
 

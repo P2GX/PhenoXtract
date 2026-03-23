@@ -16,7 +16,7 @@ pub trait Collect: Debug {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub(crate) trait Getter {
+pub(crate) trait GetRows {
     type Item<'a>
     where
         Self: 'a;
@@ -29,11 +29,12 @@ pub(crate) trait Getter {
         Ok(())
     }
     /// Not meant to be called directly
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError>;
+    #[doc(hidden)]
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError>;
     fn len(&self) -> usize;
     fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         self.check_bounds(idx)?;
 
-        self.construct_data(idx)
+        self.construct_data_unchecked(idx)
     }
 }
