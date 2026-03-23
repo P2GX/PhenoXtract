@@ -1,6 +1,6 @@
 use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
@@ -153,7 +153,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
 #[cfg(test)]
 mod tests {
     use crate::config::context::Context;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT};
     use crate::transform::bidict_library::BiDictLibrary;
