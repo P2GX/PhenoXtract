@@ -136,7 +136,7 @@ pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_ontolius_ontology(&HPO_REF, None);
+        .build_ontolius_ontology(&HPO_REF);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -144,7 +144,7 @@ pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&HPO_REF.clone(), None);
+        .build_bidict(&HPO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -153,7 +153,7 @@ pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&UO_REF.clone(), None);
+        .build_bidict(&UO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -162,7 +162,7 @@ pub(crate) static PATO_OBODOC: Lazy<Arc<OboDoc>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_obodoc_ontology(&PATO_REF, None);
+        .build_obodoc_ontology(&PATO_REF);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -171,7 +171,7 @@ pub(crate) static PATO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&PATO_REF.clone(), None);
+        .build_bidict(&PATO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });

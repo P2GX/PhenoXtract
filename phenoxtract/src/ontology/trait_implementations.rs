@@ -137,14 +137,14 @@ mod tests {
     fn pato_obodoc() -> Arc<OboDoc> {
         let ontology = ResourceRef::new("pato", Some("2025-05-14".to_string()));
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        factory.build_obodoc_ontology(&ontology, None).unwrap()
+        factory.build_obodoc_ontology(&ontology).unwrap()
     }
 
     #[fixture]
     fn pato_ontolius() -> Arc<FullCsrOntology> {
         let ontology = ResourceRef::new("pato", Some("2025-05-14".to_string()));
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        factory.build_ontolius_ontology(&ontology, None).unwrap()
+        factory.build_ontolius_ontology(&ontology).unwrap()
     }
 
     fn assert_ontology_len(ontology: &impl OntologyLike, expected: usize) {

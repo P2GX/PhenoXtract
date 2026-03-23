@@ -56,7 +56,7 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
                 ontology: ontology_ref,
                 data_context_kind,
             } => {
-                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_ref, None)?;
+                let ontology_bi_dict = self.ontology_factory.build_bidict(ontology_ref)?;
 
                 Ok(Box::new(OntologyNormaliserStrategy::new(
                     ontology_bi_dict,
