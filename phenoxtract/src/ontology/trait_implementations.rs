@@ -8,7 +8,7 @@ use ontolius::term::simple::SimpleTerm;
 use ontolius::term::{MinimalTerm, Synonym as OntoliusSynonym, Synonymous};
 use std::sync::Arc;
 
-impl OntologyLike for Arc<FullCsrOntology> {
+impl OntologyLike for FullCsrOntology {
     fn iter_ontology_terms<'a>(
         &'a self,
         ontology_prefix: String,
@@ -18,6 +18,15 @@ impl OntologyLike for Arc<FullCsrOntology> {
                 .map(|t| t as &dyn OntologyTermLike)
                 .filter(move |t| t.prefix().eq_ignore_ascii_case(&ontology_prefix)),
         )
+    }
+}
+
+impl OntologyLike for Arc<FullCsrOntology> {
+    fn iter_ontology_terms<'a>(
+        &'a self,
+        ontology_prefix: String,
+    ) -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a> {
+        self.as_ref().iter_ontology_terms(ontology_prefix)
     }
 }
 
@@ -49,7 +58,7 @@ impl SynonymLike for OntoliusSynonym {
     }
 }
 
-impl OntologyLike for Arc<OboDoc> {
+impl OntologyLike for OboDoc {
     fn iter_ontology_terms<'a>(
         &'a self,
         ontology_prefix: String,
@@ -62,6 +71,15 @@ impl OntologyLike for Arc<OboDoc> {
                 .filter(move |t| t.prefix().eq_ignore_ascii_case(&ontology_prefix))
                 .map(|t| t as &dyn OntologyTermLike),
         )
+    }
+}
+
+impl OntologyLike for Arc<OboDoc> {
+    fn iter_ontology_terms<'a>(
+        &'a self,
+        ontology_prefix: String,
+    ) -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a> {
+        self.as_ref().iter_ontology_terms(ontology_prefix)
     }
 }
 
