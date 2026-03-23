@@ -8,7 +8,7 @@ use polars::datatypes::StringChunked;
 use polars::prelude::Float64Chunked;
 
 #[derive(Debug)]
-pub(super) struct Quantity<'a> {
+pub(super) struct QuantityRow<'a> {
     pub(super) unit: &'a str,
     pub(super) value: f64,
     pub(super) reference_range: Option<(f64, f64)>,
@@ -84,7 +84,7 @@ impl QuantityData {
 }
 
 impl Getter for QuantityData {
-    type Item<'a> = Quantity<'a>;
+    type Item<'a> = QuantityRow<'a>;
 
     fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         let value = self.value.get(idx);
@@ -126,7 +126,7 @@ impl Getter for QuantityData {
             _ => None,
         };
 
-        Ok(Some(Quantity {
+        Ok(Some(QuantityRow {
             unit,
             value,
             reference_range,
