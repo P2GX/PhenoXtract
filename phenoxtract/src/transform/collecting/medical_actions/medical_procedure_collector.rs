@@ -4,7 +4,7 @@ use crate::extract::enums::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
 use crate::transform::collecting::medical_actions::procedure_data::ProcedureData;
-use crate::transform::collecting::traits::{Collect, Getter, Pluck};
+use crate::transform::collecting::traits::{Collect, GetRows, Pluck};
 use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;

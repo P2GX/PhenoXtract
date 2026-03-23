@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
@@ -46,10 +46,10 @@ impl ProcedureData {
     }
 }
 
-impl Getter for ProcedureData {
+impl GetRows for ProcedureData {
     type Item<'a> = Procedure<'a>;
 
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if let Some(procedure) = self.procedure_col.as_ref().get(idx) {
             Ok(Some(Procedure {
                 procedure,

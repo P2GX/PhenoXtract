@@ -1,7 +1,7 @@
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::medical_actions::quantity_data::{QuantityData, QuantityRow};
+use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
@@ -9,7 +9,7 @@ use polars::datatypes::StringChunked;
 pub struct DoseInterval<'a> {
     // TODO: For now dead code, but will not be dead code anymore, when the PhenopacketBuilder builds MedicalTreatments
     #[allow(dead_code)]
-    quantity: Quantity<'a>,
+    quantity: QuantityRow<'a>,
     #[allow(dead_code)]
     schedule_frequency: &'a str,
     #[allow(dead_code)]
@@ -88,10 +88,10 @@ impl DoseIntervalData {
     }
 }
 
-impl Getter for DoseIntervalData {
+impl GetRows for DoseIntervalData {
     type Item<'a> = DoseInterval<'a>;
 
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         match (
             self.quantity.get(idx)?,
             self.schedule_frequency.get(idx),

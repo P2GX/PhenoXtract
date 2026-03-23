@@ -361,6 +361,16 @@ pub enum CollectorError {
     //TODO
     #[error("TODO")]
     RequiredValueMissingError,
+    #[error(
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+    )]
+    InterpretationBlockFormat { patient_id: String, bb_id: String },
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantDataError(String),
+    #[error("Found unexpected context '{0}' on column with identifier '{1}'")]
+    UnexpectedContextError(ContextKind, Identifier),
+    #[error(transparent)]
+    TryIntoContextError(#[from] ContextError),
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -377,18 +387,6 @@ pub enum CollectorError {
     GeneVariantData(String),
     #[error("Context Error: {0}")]
     ContextError(String),
-    #[error(
-        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
-    )]
-    InterpretationBlockFormat { patient_id: String, bb_id: String },
-    #[error(
-        "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
-    )]
-    GeneVariantDataError(String),
-    #[error("Found unexpected context '{0}' on column with identifier '{1}'")]
-    UnexpectedContextError(ContextKind, Identifier),
-    #[error(transparent)]
-    TryIntoContextError(#[from] ContextError),
     #[error(transparent)]
     GetterError(#[from] GetterError),
 }

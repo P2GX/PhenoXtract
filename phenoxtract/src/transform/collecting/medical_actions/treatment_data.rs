@@ -1,12 +1,13 @@
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
 use crate::transform::collecting::medical_actions::dose_interval_data::{
     DoseInterval, DoseIntervalData,
 };
-use crate::transform::collecting::medical_actions::quantity_data::{Quantity, QuantityData};
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::medical_actions::quantity_data::{QuantityData, QuantityRow};
+use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
+
+use crate::extract::enums::Filter;
 use polars::datatypes::StringChunked;
 use std::collections::HashSet;
 
@@ -16,7 +17,7 @@ pub(super) struct Treatment<'a> {
     pub(super) route_of_administration: Option<&'a str>,
     pub(super) dose_intervals: Vec<DoseInterval<'a>>,
     pub(super) drug_type: Option<&'a str>,
-    pub(super) cumulative_dose: Option<Quantity<'a>>,
+    pub(super) cumulative_dose: Option<QuantityRow<'a>>,
 }
 #[derive(Debug)]
 pub(super) struct TreatmentData {
@@ -102,10 +103,10 @@ impl TreatmentData {
     }
 }
 
-impl Getter for TreatmentData {
+impl GetRows for TreatmentData {
     type Item<'a> = Treatment<'a>;
 
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         let agent_opt = self.agent.as_ref().get(idx);
         let route_of_administration = self
             .route_of_administration

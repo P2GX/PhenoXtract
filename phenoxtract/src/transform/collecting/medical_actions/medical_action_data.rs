@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::transform::collecting::traits::Getter;
+use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
@@ -38,10 +38,10 @@ impl MedicalActionData {
     }
 }
 
-impl Getter for MedicalActionData {
+impl GetRows for MedicalActionData {
     type Item<'a> = MedicalAction<'a>;
 
-    fn construct_data(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
+    fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if self.treatment_target_col.is_none()
             && self.treatment_intent_col.is_none()
             && self.treatment_termination_reason_col.is_none()

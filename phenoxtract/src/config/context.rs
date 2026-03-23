@@ -92,8 +92,6 @@ pub enum Context {
     RouteOfAdministration,
 
     // Dose Interval
-    QuantityValue,
-    QuantityUnit,
     DoseInterval(Boundary),
     DoseScheduleFrequency,
 
