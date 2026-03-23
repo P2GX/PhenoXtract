@@ -128,7 +128,7 @@ pub(crate) fn default_qual_loinc() -> OntologyClass {
     }
 }
 
-pub(crate) fn default_uo_term() -> OntologyClass {
+pub(crate) fn default_unit_oc() -> OntologyClass {
     OntologyClass {
         id: "UO:0000015".to_string(),
         label: "centimeter".to_string(),
@@ -155,7 +155,7 @@ pub(crate) fn default_quant_measurement() -> Measurement {
         default_quant_loinc(),
         default_quant_value(),
         Some(default_age_element()),
-        default_uo_term().id.as_str(),
+        default_unit_oc().id.as_str(),
         Some(default_reference_range()),
     )
 }
