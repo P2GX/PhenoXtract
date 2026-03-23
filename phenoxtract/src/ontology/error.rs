@@ -1,4 +1,5 @@
 use fastobo::error::Error as FastOboError;
+use ontology_registry::OntologyRegistryError;
 use std::fmt::Debug;
 use thiserror::Error;
 #[derive(Debug, Error)]
@@ -35,6 +36,8 @@ pub enum FactoryError {
     NoValidOntologyFilesAvailable { ontology_prefix: String },
     #[error(transparent)]
     FastOboError(#[from] FastOboError),
+    #[error(transparent)]
+    OntologyRegistryError(#[from] OntologyRegistryError),
 }
 
 #[derive(Debug, Error)]

@@ -176,7 +176,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         Ok(doc)
     }
 
-    /// Retrieves and ontology from the cache, with priority for JSON/Ontolius over OBO/OboDoc.
+    /// Retrieves an ontology from the cache, with priority for JSON/Ontolius over OBO/OboDoc.
     fn get_cached_ontology(
         &self,
         ontology_ref: &ResourceRef,
@@ -192,7 +192,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     /// Builds or retrieves a cached ontology instance.
     ///
     /// This is the core method for loading ontologies. It first checks the cache for an
-    /// existing instance matching the given `ontology` reference, the `file_name`. If found,
+    /// existing instance matching the given `ontology` reference and the `file_name`. If found,
     /// it returns the cached instance. Otherwise, it loads the ontology from disk, caches
     /// it, and returns the newly created instance.
     ///
@@ -207,7 +207,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     ///
     /// # Returns
     ///
-    /// Returns an `Ontology` (which may contain an Arc<FullCsrOntology> or and OboDoc) on success.
+    /// Returns an `Ontology` (which may contain an `Arc<FullCsrOntology>` or an `Arc<OboDoc>) on success.
     /// The `Arc` allows the ontology to be shared efficiently across multiple consumers.
     ///
     /// # Errors
@@ -227,8 +227,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
         let ontology_metadata = self
             .metadata_provider
-            .provide_metadata(ontology_ref.prefix_id())
-            .unwrap();
+            .provide_metadata(ontology_ref.prefix_id())?;
 
         if ontology_metadata.json_file_location.is_some() {
             let onto = self.build_ontolius_ontology(ontology_ref, file_name)?;
@@ -405,7 +404,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontology_success() {
-        let ontology = &PATO_REF.clone();
+        let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_ontology(&ontology, None).unwrap();
@@ -434,7 +433,7 @@ mod tests {
 
     #[rstest]
     fn test_build_ontolius_ontology_success() {
-        let ontology = &PATO_REF.clone();
+        let ontology = ResourceRef::new("geno", Some("2025-07-25".to_string()));
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_ontolius_ontology(&ontology, None).unwrap();
