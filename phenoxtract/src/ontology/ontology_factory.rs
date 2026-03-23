@@ -455,7 +455,7 @@ mod tests {
 
     #[rstest]
     fn test_build_obodoc_ontology_success() {
-        let ontology = &PATO_REF.clone();
+        let ontology = PATO_REF.clone();
 
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         let result = factory.build_obodoc_ontology(&ontology, None).unwrap();
