@@ -1,3 +1,4 @@
+use crate::ontology::ontology_factory::Ontology;
 use crate::ontology::traits::{OntologyLike, OntologyTermLike, SynonymLike};
 use fastobo::ast::{Ident, OboDoc, Synonym as FastOboSynonym, TermClause, TermFrame};
 use ontolius::Identified;
@@ -48,7 +49,7 @@ impl SynonymLike for OntoliusSynonym {
     }
 }
 
-impl OntologyLike for OboDoc {
+impl OntologyLike for Arc<OboDoc> {
     fn iter_ontology_terms<'a>(
         &'a self,
         ontology_prefix: String,
@@ -104,6 +105,18 @@ impl SynonymLike for FastOboSynonym {
     }
 }
 
+impl OntologyLike for Ontology {
+    fn iter_ontology_terms<'a>(
+        &'a self,
+        ontology_prefix: String,
+    ) -> Box<dyn Iterator<Item = &'a dyn OntologyTermLike> + 'a> {
+        match self {
+            Ontology::Ontolius(inner) => inner.iter_ontology_terms(ontology_prefix),
+            Ontology::OboDoc(inner) => inner.iter_ontology_terms(ontology_prefix),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,7 +134,7 @@ mod tests {
     }
 
     #[fixture]
-    fn pato_obodoc() -> OboDoc {
+    fn pato_obodoc() -> Arc<OboDoc> {
         let ontology = ResourceRef::new("pato", Some("2025-05-14".to_string()));
         let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
         factory.build_obodoc_ontology(&ontology, None).unwrap()
@@ -139,7 +152,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_ontology_len(pato_obodoc: OboDoc, number_of_pato_terms: usize) {
+    fn test_obodoc_ontology_len(pato_obodoc: Arc<OboDoc>, number_of_pato_terms: usize) {
         assert_ontology_len(&pato_obodoc, number_of_pato_terms);
     }
 
@@ -159,7 +172,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_obodoc_iter_ontology_terms(pato_obodoc: OboDoc, number_of_pato_terms: usize) {
+    fn test_obodoc_iter_ontology_terms(pato_obodoc: Arc<OboDoc>, number_of_pato_terms: usize) {
         assert_iter_ontology_terms(&pato_obodoc, number_of_pato_terms);
     }
 
@@ -191,7 +204,7 @@ mod tests {
         "PATO:0040001".to_string()
     }
 
-    fn obodoc_term_from_id(obodoc: OboDoc, id: String) -> TermFrame {
+    fn obodoc_term_from_id(obodoc: Arc<OboDoc>, id: String) -> TermFrame {
         obodoc
             .entities()
             .iter()
@@ -207,7 +220,7 @@ mod tests {
     }
 
     #[fixture]
-    fn present_from_obodoc(pato_obodoc: OboDoc, present_id: String) -> TermFrame {
+    fn present_from_obodoc(pato_obodoc: Arc<OboDoc>, present_id: String) -> TermFrame {
         obodoc_term_from_id(pato_obodoc, present_id)
     }
 
@@ -220,7 +233,10 @@ mod tests {
     }
 
     #[fixture]
-    fn increased_amount_from_obodoc(pato_obodoc: OboDoc, increased_amount_id: String) -> TermFrame {
+    fn increased_amount_from_obodoc(
+        pato_obodoc: Arc<OboDoc>,
+        increased_amount_id: String,
+    ) -> TermFrame {
         obodoc_term_from_id(pato_obodoc, increased_amount_id)
     }
 
@@ -233,7 +249,10 @@ mod tests {
     }
 
     #[fixture]
-    fn ring_shaped_from_obodoc(pato_obodoc: OboDoc, ring_shaped_obsolete_id: String) -> TermFrame {
+    fn ring_shaped_from_obodoc(
+        pato_obodoc: Arc<OboDoc>,
+        ring_shaped_obsolete_id: String,
+    ) -> TermFrame {
         obodoc_term_from_id(pato_obodoc, ring_shaped_obsolete_id)
     }
 

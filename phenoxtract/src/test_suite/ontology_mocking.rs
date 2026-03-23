@@ -158,7 +158,7 @@ pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     result.unwrap_or_else(|err| panic!("{}", err))
 });
 
-pub(crate) static PATO_OBODOC: Lazy<OboDoc> = Lazy::new(|| {
+pub(crate) static PATO_OBODOC: Lazy<Arc<OboDoc>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()

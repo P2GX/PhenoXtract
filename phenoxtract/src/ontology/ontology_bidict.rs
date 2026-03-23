@@ -141,7 +141,7 @@ mod tests {
     use super::*;
     use crate::test_suite::ontology_mocking::{HPO, PATO_OBODOC};
     use crate::test_suite::phenopacket_component_generation::default_pato_qual_measurement;
-    use crate::test_suite::resource_references::{HPO_REF, NCIT_REF, PATO_REF};
+    use crate::test_suite::resource_references::{HPO_REF, PATO_REF};
     use rstest::rstest;
 
     #[rstest]
