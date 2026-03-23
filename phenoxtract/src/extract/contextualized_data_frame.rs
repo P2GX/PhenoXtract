@@ -1,7 +1,9 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::config::traits::SeriesContextBuilding;
-use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
+use crate::extract::column_filter::ColumnFilter;
+use crate::extract::enums::Filter;
+use crate::extract::series_context_filter::SeriesContextFilter;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
@@ -878,7 +880,7 @@ mod builder_tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::df;
     use polars::frame::DataFrame;

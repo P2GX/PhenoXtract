@@ -4,7 +4,7 @@ use crate::transform::error::{
 };
 
 use crate::config::context::Context;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::strategies::traits::Strategy;
 use log::{debug, info};
 use phenopackets::schema::v2::core::Sex;
@@ -32,23 +32,32 @@ pub enum DefaultMapping {
 /// # Fields
 ///
 /// * `synonym_map` - A mapping from input values (lowercase, trimmed) to their standardized output values
-/// * `data_context` - The context type of the data being transformed (e.g., `Context::SubjectSex`)
+/// * `data_context` - The context type of the data being transformed (e.g., [`Context::SubjectSex`])
 /// * `header_context` - The context type of the column headers to match
 /// * `column_dtype` - The expected data type of the input columns
 /// * `out_dtype` - The desired data type of the output columns after mapping
 ///
 /// # Example
 ///
-/// ```ignore
-/// let sex_mapping = MappingStrategy::default_sex_mapping_strategy();
-/// // Maps variations like "m", "male", "man" → "MALE"
-/// // and "f", "female", "woman" → "FEMALE"
+/// If we apply [`MappingStrategy::default_sex_mapping_strategy`] then
+///
+/// ```csv
+/// PatientId, sex
+/// P001, m
+/// P002, woman
+/// P003, male
 /// ```
+/// is mapped to
+///
+/// PatientId, sex
+/// P001, MALE
+/// P002, WOMAN
+/// P003, MALE
 ///
 /// # Errors
 ///
-/// Returns `TransformError::MappingError` if any values in the data cannot be found
-/// in the synonym map, providing details about unmapped values and suggestions.
+/// Returns [`StrategyError::MappingError`] if any values in the data cannot be found
+/// in the synonym map. The error will provide details about unmapped values and make suggestions.
 #[derive(Debug)]
 pub struct MappingStrategy {
     synonym_map: HashMap<String, String>,

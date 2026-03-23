@@ -1,45 +1,39 @@
-use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::column_filter::{ColumnFilter, ColumnFilterConfig};
 use crate::transform::error::CollectorError;
 use polars::datatypes::{DataType, StringChunked};
 
 /// Extracts a uniquely-defined value from matching contexts given a collection of CDFs.
 ///
-/// Hunts through the CDFs for all values matching the specified data and header contexts,
+/// Hunts through the CDFs for all values matching the specified filters
 /// then enforces cardinality constraints: zero matches returns `None`, exactly one match
 /// returns that value, but multiple distinct values trigger an error.
 ///
 /// # Examples
 ///
+/// Extract a patient's date of birth from CDFs of info about them:
+///
 /// ```ignore
-/// // Extract a patient's date of birth from CDFs of info about them
-/// let dob = get_single_multiplicity_element(
+///   let date_of_birth = get_single_multiplicity_element(
 ///     patient_cdfs,
-///     Context::DateOfBirth,
-///     Context::None
-/// )?;
+///     SeriesContextFilterConfig::new().where_data_context(Filter::Is(&Context::DateOfBirth)),
+///     ColumnFilterConfig::new(),
+///   )?;
 /// ```
 ///
 /// # Errors
 ///
-/// Returns `CollectorError::ExpectedSingleValue` when multiple distinct values are found
+/// Returns [`CollectorError::ExpectedSingleValue`] when multiple distinct values are found
 /// for the given context pair.
 pub(crate) fn get_single_multiplicity_element(
     patient_cdfs: &[ContextualizedDataFrame],
-    data_context: &Context,
-    header_context: &Context,
+    column_filters: ColumnFilterConfig,
 ) -> Result<Option<String>, CollectorError> {
     let mut cols_of_element_type = vec![];
 
     for patient_cdf in patient_cdfs {
-        cols_of_element_type.extend(
-            patient_cdf
-                .filter_columns()
-                .where_data_context(Filter::Is(data_context))
-                .where_header_context(Filter::Is(header_context))
-                .collect(),
-        );
+        let filter = ColumnFilter::from_config(patient_cdf, column_filters.clone());
+        cols_of_element_type.extend(filter.collect());
     }
 
     if cols_of_element_type.is_empty() {
@@ -70,8 +64,7 @@ pub(crate) fn get_single_multiplicity_element(
                 .get(0)?
                 .str_value()
                 .to_string(),
-            data_context: ContextKind::from(data_context),
-            header_context: ContextKind::from(header_context),
+            filter_info: column_filters.to_string(),
         }),
     }
 }
@@ -84,30 +77,29 @@ pub(crate) fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -
 mod tests {
     use super::*;
     use crate::config::TableContext;
-    use crate::config::context::TimeElementType;
-    use crate::config::table_context::{Identifier, SeriesContext};
+    use crate::config::context::Context;
+    use crate::config::table_context::SeriesContext;
     use crate::config::traits::SeriesContextBuilding;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf_components;
     use polars::datatypes::AnyValue;
     use polars::prelude::{Column, DataFrame};
-    use rstest::{fixture, rstest};
+    use rstest::rstest;
 
-    #[fixture]
-    fn sex_cdf() -> ContextualizedDataFrame {
-        let bb_id = "bb1";
+    fn sex_cdf(bb_id: Option<String>, val1: AnyValue, val2: AnyValue) -> ContextualizedDataFrame {
         let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
         let df = DataFrame::new(
             subject_col.len(),
             vec![
                 subject_col.clone(),
-                Column::new("sex".into(), &["FEMALE", "MALE"]),
+                Column::new("sex".into(), &[val1, val2]),
             ],
         )
         .unwrap();
         let tc = TableContext::new(
             "sex_cdf".to_string(),
             vec![
-                subject_sc.with_building_block_id(bb_id),
+                subject_sc,
                 SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
                     .with_building_block_id(bb_id),
@@ -117,60 +109,49 @@ mod tests {
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element_multiple() {
-        let (subject_col, subject_tc) = generate_minimal_cdf_components(1, 2);
-
-        let df = DataFrame::new(
-            subject_col.len(),
-            vec![
-                subject_col.clone(),
-                Column::new(
-                    "sex".into(),
-                    &[AnyValue::String("MALE"), AnyValue::String("MALE")],
-                ),
-            ],
+    fn test_collect_single_multiplicity_element() {
+        let sme = get_single_multiplicity_element(
+            &[sex_cdf(None, AnyValue::String("MALE"), AnyValue::Null)],
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
         )
+        .unwrap()
         .unwrap();
-
-        let context = TableContext::new(
-            "test_collect_single_multiplicity_element_err".to_string(),
-            vec![
-                subject_tc,
-                SeriesContext::default()
-                    .with_identifier(Identifier::from("sex"))
-                    .with_data_context(Context::SubjectSex),
-            ],
-        );
-        let cdf = ContextualizedDataFrame::new(context, df).unwrap();
-
-        let sme = get_single_multiplicity_element(&[cdf], &Context::SubjectSex, &Context::None)
-            .unwrap()
-            .unwrap();
         assert_eq!(sme, "MALE");
     }
 
     #[rstest]
-    fn test_collect_single_multiplicity_element_err() {
-        let (subject_col, subject_sc) = generate_minimal_cdf_components(1, 2);
-        let context = Context::TimeAtLastEncounter(TimeElementType::Age);
+    fn test_collect_single_multiplicity_element_multiple() {
+        let sme = get_single_multiplicity_element(
+            &[sex_cdf(
+                None,
+                AnyValue::String("FEMALE"),
+                AnyValue::String("FEMALE"),
+            )],
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(sme, "FEMALE");
+    }
 
-        let df = DataFrame::new(
-            subject_col.len(),
-            vec![subject_col.clone(), Column::new("age".into(), &[46, 22])],
+    #[rstest]
+    fn test_collect_single_multiplicity_bb_id_filter() {
+        let sme = get_single_multiplicity_element(
+            &[sex_cdf(None, AnyValue::String("FEMALE"), AnyValue::Null)],
+            ColumnFilterConfig::default()
+                .where_data_context(Filter::Is(&Context::SubjectSex))
+                .where_building_block(Filter::Is("B")),
         )
         .unwrap();
-        let tc = TableContext::new(
-            "test_collect_single_multiplicity_element_err".to_string(),
-            vec![
-                subject_sc,
-                SeriesContext::default()
-                    .with_identifier(Identifier::from("age"))
-                    .with_data_context(context.clone()),
-            ],
-        );
-        let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
+        assert_eq!(sme, None);
+    }
 
-        let sme = get_single_multiplicity_element(&[cdf], &context, &Context::None);
-        assert!(sme.is_err());
+    #[rstest]
+    fn test_collect_single_multiplicity_element_err() {
+        let result = get_single_multiplicity_element(
+            &[sex_cdf(None, AnyValue::Int64(24), AnyValue::Int64(56))],
+            ColumnFilterConfig::default().where_data_context(Filter::Is(&Context::SubjectSex)),
+        );
+        assert!(result.is_err());
     }
 }

@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
 use crate::transform::collecting::medical_actions::procedure_data::ProcedureData;

@@ -121,7 +121,7 @@ impl PartialEq for CdfCollectorBroker {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::mocks::MockCollector;

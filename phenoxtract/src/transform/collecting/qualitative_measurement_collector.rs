@@ -1,7 +1,7 @@
 use crate::config::context::{Context, ContextKind};
 use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;

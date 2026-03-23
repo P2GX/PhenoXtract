@@ -86,12 +86,12 @@ impl HpoColMaker {
 }
 
 pub(crate) fn chromosomal_sex_from_str(
-    subject_sex: Option<String>,
+    subject_sex: Option<&str>,
 ) -> Result<ChromosomalSex, PhenopacketBuilderError> {
     match subject_sex {
         None => Ok(ChromosomalSex::Unknown),
         Some(sex) => {
-            if let Some(pp_sex) = Sex::from_str_name(&sex) {
+            if let Some(pp_sex) = Sex::from_str_name(sex) {
                 match pp_sex {
                     Sex::Male => Ok(ChromosomalSex::XY),
                     Sex::Female => Ok(ChromosomalSex::XX),
@@ -100,7 +100,7 @@ pub(crate) fn chromosomal_sex_from_str(
             } else {
                 Err(PhenopacketBuilderError::ParsingError {
                     what: "Subject Sex".to_string(),
-                    value: sex,
+                    value: sex.to_string(),
                 })
             }
         }
@@ -200,19 +200,19 @@ mod tests {
     #[rstest]
     fn test_chromosomal_sex_from_str() {
         assert_eq!(
-            chromosomal_sex_from_str(Some("MALE".to_string())).unwrap(),
+            chromosomal_sex_from_str(Some("MALE")).unwrap(),
             ChromosomalSex::XY
         );
         assert_eq!(
-            chromosomal_sex_from_str(Some("FEMALE".to_string())).unwrap(),
+            chromosomal_sex_from_str(Some("FEMALE")).unwrap(),
             ChromosomalSex::XX
         );
         assert_eq!(
-            chromosomal_sex_from_str(Some("UNKNOWN_SEX".to_string())).unwrap(),
+            chromosomal_sex_from_str(Some("UNKNOWN_SEX")).unwrap(),
             ChromosomalSex::Unknown
         );
         assert_eq!(
-            chromosomal_sex_from_str(Some("OTHER_SEX".to_string())).unwrap(),
+            chromosomal_sex_from_str(Some("OTHER_SEX")).unwrap(),
             ChromosomalSex::Unknown
         );
         assert_eq!(
@@ -223,7 +223,7 @@ mod tests {
 
     #[rstest]
     fn test_chromosomal_sex_from_str_err() {
-        assert!(chromosomal_sex_from_str(Some("blah".to_string())).is_err());
+        assert!(chromosomal_sex_from_str(Some("blah")).is_err());
     }
 
     #[rstest]

@@ -62,7 +62,7 @@ pub trait PhenopacketBuilding {
         patient_id: &str,
         disease: &str,
         gene_variant_data: &PathogenicGeneVariantData,
-        subject_sex: Option<String>,
+        subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
 
     fn insert_disease(

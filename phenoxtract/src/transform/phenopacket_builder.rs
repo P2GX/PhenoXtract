@@ -284,7 +284,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         patient_id: &str,
         disease: &str,
         gene_variant_data: &PathogenicGeneVariantData,
-        subject_sex: Option<String>,
+        subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
         let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
         let phenopacket_id = self.generate_phenopacket_id(patient_id);
@@ -1208,7 +1208,7 @@ mod tests {
                 &default_patient_id(),
                 &disease_id,
                 &PathogenicGeneVariantData::None,
-                Some("MALE".to_string()),
+                Some("MALE"),
             )
             .unwrap();
 
@@ -1233,7 +1233,7 @@ mod tests {
                 &default_patient_id(),
                 &disease_id,
                 &homozygous_variant,
-                Some("FEMALE".to_string()),
+                Some("FEMALE"),
             )
             .unwrap();
 
@@ -1295,7 +1295,7 @@ mod tests {
                 &default_patient_id(),
                 &disease_id,
                 &compound_heterozygous_pair,
-                Some("FEMALE".to_string()),
+                Some("FEMALE"),
             )
             .unwrap();
 
@@ -1416,7 +1416,7 @@ mod tests {
                 &default_patient_id(),
                 &disease_id,
                 &single_variant,
-                Some("MALE".to_string()),
+                Some("MALE"),
             )
             .unwrap();
 
@@ -1476,7 +1476,7 @@ mod tests {
                 &default_patient_id(),
                 &disease_id,
                 &single_variant,
-                Some("FEMALE".to_string()),
+                Some("FEMALE"),
             )
             .unwrap();
 
