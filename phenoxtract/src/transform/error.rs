@@ -318,6 +318,15 @@ pub enum CollectorError {
         n_expected: usize,
     },
     #[error(
+        "Expected linked required contexts {expected_contexts:?} in building block '{bb_id}', but found {found_contexts:?}."
+    )]
+    ExpectedLinkedContexts {
+        bb_id: String,
+        expected_contexts: Vec<Context>,
+        found_contexts: Vec<Context>,
+    },
+
+    #[error(
         "Found multiple values for '{patient_id}' when there should only be one. Series context filters: {series_context_filter_info}, Data type filter info: {data_type_filter_info}."
     )]
     ExpectedSingleValue {

@@ -31,16 +31,22 @@ impl QuantityData {
         let unit = patient_cdf
             .get_single_linked_column_as_str(Some(building_block), &[Context::QuantityUnit])?;
 
-        let (values, unit) = match (values, unit) {
-            (Some(v), Some(u)) => (v, u),
+        let (values, unit) = match (&values, &unit) {
+            (Some(_), Some(_)) => (values.unwrap(), unit.unwrap()),
             (None, None) => return Ok(None),
             _ => {
-                return Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
-                    table_name: patient_cdf.context().name().to_string(),
+                let found_contexts = [
+                    values.as_ref().map(|_| Context::QuantityValue),
+                    unit.as_ref().map(|_| Context::QuantityUnit),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+
+                return Err(CollectorError::ExpectedLinkedContexts {
                     bb_id: building_block.to_string(),
-                    contexts: vec![Context::QuantityValue, Context::QuantityUnit],
-                    n_found: 1,
-                    n_expected: 2,
+                    expected_contexts: vec![Context::QuantityValue, Context::QuantityUnit],
+                    found_contexts,
                 });
             }
         };
@@ -67,18 +73,28 @@ impl QuantityData {
             &[Context::ReferenceRange(Boundary::End)],
         )?;
 
-        match (low, high) {
-            (Some(low), Some(high)) => Ok(Some((low, high))),
+        match (&low, &high) {
+            (Some(_), Some(_)) => Ok(Some((low.unwrap(), high.unwrap()))),
             (None, None) => Ok(None),
-            _ => Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
-                table_name: patient_cdf.context().name().to_string(),
-                bb_id: building_block.to_string(),
-                contexts: vec![
-                    Context::ReferenceRange(Boundary::Start),
-                    Context::ReferenceRange(Boundary::End),
-                ],
-                n_found: 1,
-                n_expected: 2,
+            _ => Err({
+                let found_contexts = [
+                    low.as_ref()
+                        .map(|_| Context::ReferenceRange(Boundary::Start)),
+                    high.as_ref()
+                        .map(|_| Context::ReferenceRange(Boundary::End)),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+
+                CollectorError::ExpectedLinkedContexts {
+                    bb_id: building_block.to_string(),
+                    expected_contexts: vec![
+                        Context::ReferenceRange(Boundary::Start),
+                        Context::ReferenceRange(Boundary::End),
+                    ],
+                    found_contexts,
+                }
             }),
         }
     }
