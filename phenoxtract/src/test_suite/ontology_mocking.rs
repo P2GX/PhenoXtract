@@ -7,6 +7,7 @@ use crate::test_suite::phenopacket_component_generation::{
 use crate::test_suite::resource_references::{
     HPO_REF, MAXO_REF, MONDO_REF, NCIT_REF, PATO_REF, UBERON_REF, UO_REF,
 };
+use fastobo::ast::OboDoc;
 use once_cell::sync::Lazy;
 use ontolius::ontology::csr::FullCsrOntology;
 use std::collections::HashMap;
@@ -153,6 +154,15 @@ pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
         .lock()
         .unwrap()
         .build_bidict(&UO_REF.clone(), None);
+
+    result.unwrap_or_else(|err| panic!("{}", err))
+});
+
+pub(crate) static PATO_OBODOC: Lazy<OboDoc> = Lazy::new(|| {
+    let result = ONTOLOGY_FACTORY
+        .lock()
+        .unwrap()
+        .build_obodoc_ontology(&PATO_REF, None);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });

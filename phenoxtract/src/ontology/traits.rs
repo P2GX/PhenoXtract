@@ -37,9 +37,12 @@ pub trait SynonymLike {
 
 #[enum_dispatch]
 pub trait OntologyLike {
+    /// The amount of CURRENT terms with the specified prefix.
     fn ontology_len(&self, ontology_prefix: String) -> usize {
         self.iter_ontology_terms(ontology_prefix).count()
     }
+
+    /// Should iterate over the CURRENT terms of the ontology, and only those with the specified prefix.
     fn iter_ontology_terms<'a>(
         &'a self,
         ontology_prefix: String,

@@ -114,20 +114,17 @@ impl OntologyBiDict {
         let mut id_to_label: HashMap<String, String> = HashMap::with_capacity(map_size);
 
         for term in ontology.iter_ontology_terms(ontology_prefix) {
-            let prefix = term.prefix();
-            if term.current() && prefix == ontology_ref.prefix_id().to_lowercase() {
-                label_to_id.insert(term.label().to_lowercase(), term.ontology_id().to_string());
-                term.iter_synonyms().for_each(|syn| {
-                    synonym_to_id.insert(
-                        syn.syn_name().to_lowercase(),
-                        term.ontology_id().to_string(),
-                    );
-                });
-                id_to_label.insert(
-                    term.ontology_id().to_string().to_lowercase(),
-                    term.label().to_string(),
+            label_to_id.insert(term.label().to_lowercase(), term.ontology_id().to_string());
+            term.iter_synonyms().for_each(|syn| {
+                synonym_to_id.insert(
+                    syn.syn_name().to_lowercase(),
+                    term.ontology_id().to_string(),
                 );
-            }
+            });
+            id_to_label.insert(
+                term.ontology_id().to_string().to_lowercase(),
+                term.label().to_string(),
+            );
         }
 
         OntologyBiDict::new(
@@ -142,18 +139,10 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::CachedOntologyFactory;
-    use crate::ontology::error::RegistryError;
-    use crate::test_suite::ontology_mocking::HPO;
-    use crate::test_suite::resource_references::{HPO_REF, NCIT_REF};
-    use directories::ProjectDirs;
-    use ontology_registry::{
-        BioRegistryMetadataProvider, FileSystemOntologyRegistry, OboLibraryProvider,
-    };
+    use crate::test_suite::ontology_mocking::{HPO, PATO_OBODOC};
+    use crate::test_suite::phenopacket_component_generation::default_pato_qual_measurement;
+    use crate::test_suite::resource_references::{HPO_REF, NCIT_REF, PATO_REF};
     use rstest::rstest;
-    use std::env::home_dir;
-    use std::fs;
-    use std::path::PathBuf;
 
     #[rstest]
     fn test_hpo_bidict_get() {
@@ -162,42 +151,14 @@ mod tests {
         assert_eq!(hpo_dict.get("HP:0000639").unwrap(), "Nystagmus".to_string());
     }
 
-    pub fn ontology_registry_dir() -> Result<PathBuf, RegistryError> {
-        let pkg_name = env!("CARGO_PKG_NAME");
-
-        let phenox_cache_dir = if let Some(project_dir) = ProjectDirs::from("", "", pkg_name) {
-            project_dir.cache_dir().to_path_buf()
-        } else if let Some(home_dir) = home_dir() {
-            home_dir.join(pkg_name)
-        } else {
-            return Err(RegistryError::CantEstablishRegistryDir);
-        };
-
-        if !phenox_cache_dir.exists() {
-            fs::create_dir_all(&phenox_cache_dir)?;
-        }
-
-        let ontology_registry_dir = phenox_cache_dir.join("ontology_registry");
-
-        if !ontology_registry_dir.exists() {
-            fs::create_dir_all(&ontology_registry_dir)?;
-        }
-        Ok(ontology_registry_dir.to_owned())
-    }
-
     #[rstest]
-    fn test_ncit_bidict_get() {
-        let mut onto_factory = CachedOntologyFactory::new(FileSystemOntologyRegistry::new(
-            ontology_registry_dir().expect("ontology_registry_dir could not be created"),
-            BioRegistryMetadataProvider::default(),
-            OboLibraryProvider::default(),
-        ));
+    fn test_pato_obodoc_bidict_get() {
+        let pato_dict = OntologyBiDict::from_ontology(&PATO_OBODOC.clone(), &PATO_REF);
 
-        let ncit_dict = Box::new(onto_factory.build_bidict(&NCIT_REF, None).unwrap());
-
-        dbg!(&ncit_dict.id_to_label.len());
-
-        dbg!(ncit_dict.get("NCIT:C14187"));
+        assert_eq!(
+            pato_dict.get(&default_pato_qual_measurement().id).unwrap(),
+            default_pato_qual_measurement().label
+        );
     }
 
     #[rstest]
