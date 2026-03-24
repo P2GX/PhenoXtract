@@ -822,12 +822,12 @@ mod tests {
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_anatomy_region, default_cohort_id, default_datetime,
-        default_disease, default_disease_oc, default_iso_age, default_phenopacket_id,
-        default_phenotype_oc, default_procedure, default_procedure_oc, default_qual_loinc,
-        default_qual_measurement, default_quant_loinc, default_quant_measurement,
-        default_reference_range, default_timestamp, default_timestamp_element,
-        default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
-        default_unit_oc, generate_phenotype,
+        default_disease, default_disease_oc, default_iso_age, default_pato_qual_measurement,
+        default_phenopacket_id, default_phenotype_oc, default_procedure, default_procedure_oc,
+        default_qual_loinc, default_qual_measurement, default_quant_loinc,
+        default_quant_measurement, default_reference_range, default_timestamp,
+        default_timestamp_element, default_treatment_intent, default_treatment_response,
+        default_treatment_termination_reason, default_unit_oc, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
