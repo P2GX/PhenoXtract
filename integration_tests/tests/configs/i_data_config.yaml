@@ -34,7 +34,7 @@ data_sources:
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/disease_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/disease_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "ALIAS"
               output_data_type: String
@@ -51,7 +51,7 @@ data_sources:
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/gene_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/gene_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "LABEL"
               output_data_type: String
@@ -113,7 +113,7 @@ data_sources:
             building_block_id: "I"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/infection_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/infection_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -122,7 +122,7 @@ data_sources:
             building_block_id: "I"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/organism_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/organism_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -137,7 +137,7 @@ data_sources:
             data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/condition_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/condition_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -152,7 +152,7 @@ data_sources:
             data_context: procedure
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/solid_organ_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/solid_organ_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -161,7 +161,7 @@ data_sources:
             data_context: treatment_target
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/reason_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/reason_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -170,7 +170,7 @@ data_sources:
           #  data_context: response_to_treatment
           #  alias_map:
           #    mappings:
-          #      path: "$HOME/data/usidnet/mappings/outcome_matchings.csv"
+          #      path: "$HOME/data/usidnet/matchings/outcome_matchings.csv"
           #      key_column_name: "FREE_TEXT"
           #      alias_column_name: "CURIE_ID"
           #    output_data_type: String
@@ -191,7 +191,7 @@ data_sources:
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/gene_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/gene_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "LABEL"
               output_data_type: String
