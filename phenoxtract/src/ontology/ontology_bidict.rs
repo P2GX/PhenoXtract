@@ -160,7 +160,7 @@ mod tests {
         let registry = MockOntologyRegistry::default();
         let ontology_path = registry
             .register(
-                UO_REF.prefix_id().to_string(),
+                UO_REF.prefix_id().to_lowercase(),
                 Version::Declared(UO_REF.version().to_string()),
                 FileType::Obo,
             )
