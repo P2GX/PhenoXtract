@@ -14,7 +14,7 @@ pub(crate) static MAXO_REF: Lazy<ResourceRef> =
 pub(crate) static NCIT_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::ncit().with_version("2026-01-15"));
 pub(crate) static UO_REF: Lazy<ResourceRef> =
-    Lazy::new(|| ResourceRef::uo().with_version("2026-01-09"));
+    Lazy::new(|| ResourceRef::uo().with_version("2026-01-16"));
 pub(crate) static PATO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::pato().with_version("2025-05-14"));
 pub(crate) static LOINC_REF: Lazy<ResourceRef> = Lazy::new(ResourceRef::loinc);

@@ -817,9 +817,9 @@ mod tests {
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_cohort_id, default_datetime, default_disease,
-        default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc,
-        default_procedure, default_procedure_body_side_oc, default_procedure_oc,
-        default_qual_loinc, default_qual_measurement, default_quant_loinc,
+        default_disease_oc, default_iso_age, default_pato_qual_measurement, default_phenopacket_id,
+        default_phenotype_oc, default_procedure, default_procedure_body_side_oc,
+        default_procedure_oc, default_qual_loinc, default_qual_measurement, default_quant_loinc,
         default_quant_measurement, default_reference_range, default_timestamp,
         default_timestamp_element, default_treatment_intent, default_treatment_response,
         default_treatment_termination_reason, default_unit_oc, generate_phenotype,
@@ -1772,12 +1772,12 @@ mod tests {
         let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
-        let measurement_val = "Present";
+        let measurement_val = default_pato_qual_measurement().label;
 
         builder
             .insert_qualitative_measurement(
                 patient_id.as_str(),
-                measurement_val,
+                &measurement_val,
                 Some(default_iso_age().as_str()),
                 default_qual_loinc().id.as_str(),
             )

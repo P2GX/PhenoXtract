@@ -1,4 +1,5 @@
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::traits::OntologyLike;
 use crate::test_suite::mocks::ONTOLOGY_FACTORY;
 use crate::test_suite::phenopacket_component_generation::{
     default_disease_oc, default_procedure_body_side_oc, default_procedure_oc,
@@ -8,7 +9,6 @@ use crate::test_suite::resource_references::{
     HPO_REF, MAXO_REF, MONDO_REF, NCIT_REF, PATO_REF, UBERON_REF, UO_REF,
 };
 use once_cell::sync::Lazy;
-use ontolius::ontology::csr::FullCsrOntology;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -131,11 +131,8 @@ pub(crate) static NCIT_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     ))
 });
 
-pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
-    let result = ONTOLOGY_FACTORY
-        .lock()
-        .unwrap()
-        .build_ontology(&HPO_REF, None);
+pub(crate) static HPO: Lazy<Arc<dyn OntologyLike>> = Lazy::new(|| {
+    let result = ONTOLOGY_FACTORY.lock().unwrap().build_ontology(&HPO_REF);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -143,7 +140,7 @@ pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&HPO_REF.clone(), None);
+        .build_bidict(&HPO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -152,7 +149,7 @@ pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&UO_REF.clone(), None);
+        .build_bidict(&UO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
@@ -161,7 +158,7 @@ pub(crate) static PATO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&PATO_REF.clone(), None);
+        .build_bidict(&PATO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });

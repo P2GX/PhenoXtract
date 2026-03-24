@@ -36,10 +36,10 @@ impl ResourceConfigFactory {
         {
             Self::build_bioportal_client(config)
         } else {
-            match self.ontology_factory.build_bidict(
-                &ResourceRef::new(config.id.clone(), config.version.clone()),
-                None,
-            ) {
+            match self
+                .ontology_factory
+                .build_bidict(&ResourceRef::new(config.id.clone(), config.version.clone()))
+            {
                 Ok(bi_dict) => Ok(Box::new(bi_dict)),
                 Err(err) => {
                     let non_creatable_strs: Vec<&str> = Self::NON_CONFIGURABLE
