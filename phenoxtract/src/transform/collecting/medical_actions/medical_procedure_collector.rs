@@ -53,9 +53,10 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 }
             };
 
-            let medical_action_data = self.medical_action_data.get(self.current_index).expect(
-                "This can never error, because all values of MedicalActionRow are optional.",
-            );
+            let medical_action_data = match self.medical_action_data.get(self.current_index) {
+                Ok(mad) => mad,
+                Err(err) => return Some(Err(CollectorError::from(err))),
+            };
 
             self.current_index += 1;
 
