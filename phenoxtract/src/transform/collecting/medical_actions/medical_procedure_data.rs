@@ -3,6 +3,7 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
+use std::collections::HashSet;
 
 pub(super) struct ProcedureRow<'a> {
     pub(super) procedure: &'a str,
@@ -20,28 +21,41 @@ impl ProcedureData {
     pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
-    ) -> Result<Self, CollectorError> {
-        match patient_cdf.get_single_linked_column_as_str(building_block, &[Context::Procedure])? {
-            None => Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
-                table_name: patient_cdf.context().name().to_string(),
-                bb_id: building_block
-                    .unwrap_or("Missing Building Block")
-                    .to_string(),
-                contexts: vec![Context::Procedure],
-                n_found: 0,
-                n_expected: 1,
-            }),
-            Some(procedure_col) => Ok(Self {
-                procedure_col,
-                body_part_col: patient_cdf.get_single_linked_column_as_str(
-                    building_block,
-                    &[Context::ProcedureBodySite],
-                )?,
-                time_element_col: patient_cdf.get_single_linked_column_as_str(
-                    building_block,
-                    Context::TIME_OF_PROCEDURE_VARIANTS,
-                )?,
-            }),
+    ) -> Result<Option<Self>, CollectorError> {
+        let procedure =
+            patient_cdf.get_single_linked_column_as_str(building_block, &[Context::Procedure])?;
+        let body_part_col = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::ProcedureBodySite])?;
+        let time_element_col = patient_cdf
+            .get_single_linked_column_as_str(building_block, Context::TIME_OF_PROCEDURE_VARIANTS)?;
+
+        match procedure {
+            Some(procedure) => Ok(Some(Self {
+                procedure_col: procedure,
+                body_part_col,
+                time_element_col,
+            })),
+            None if body_part_col.is_some() || time_element_col.is_some() => {
+                let found_contexts = [
+                    body_part_col
+                        .as_ref()
+                        .map(|_| vec![Context::ProcedureBodySite]),
+                    time_element_col
+                        .as_ref()
+                        .map(|_| Context::TIME_OF_PROCEDURE_VARIANTS.to_vec()),
+                ]
+                .into_iter()
+                .flatten()
+                .flatten()
+                .collect::<Vec<_>>();
+
+                Err(CollectorError::ExpectedLinkedContexts {
+                    bb_id: building_block.unwrap_or("No Building Block").to_string(),
+                    expected_contexts: vec![Context::Procedure],
+                    found_contexts,
+                })
+            }
+            None => Ok(None),
         }
     }
 }

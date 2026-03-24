@@ -102,7 +102,10 @@ impl Collect for MedicalProcedureCollector {
 
             for procedure_sc in procedures {
                 let procedure_data =
-                    ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())?;
+                    match ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())? {
+                        None => continue,
+                        Some(pd) => pd,
+                    };
                 let medical_action_data =
                     MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
 
