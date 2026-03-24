@@ -155,7 +155,7 @@ mod tests {
     use crate::config::context::Context;
     use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
-    use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT};
+    use crate::test_suite::ontology_mocking::{HPO_BIDICT, MONDO_BIDICT};
     use crate::transform::bidict_library::BiDictLibrary;
     use crate::transform::strategies::hpo_disease_splitter::HpoDiseaseSplitterStrategy;
     use crate::transform::strategies::traits::Strategy;
@@ -200,7 +200,10 @@ mod tests {
             .unwrap();
 
         let strategy = HpoDiseaseSplitterStrategy {
-            hpo_bidict_lib: Arc::new(BiDictLibrary::new("hpo", vec![Box::new(HPO_DICT.clone())])),
+            hpo_bidict_lib: Arc::new(BiDictLibrary::new(
+                "hpo",
+                vec![Box::new(HPO_BIDICT.clone())],
+            )),
             disease_bidict_lib: Arc::new(BiDictLibrary::new(
                 "disease",
                 vec![Box::new(MONDO_BIDICT.clone())],

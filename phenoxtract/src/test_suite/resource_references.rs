@@ -14,7 +14,7 @@ pub(crate) static MAXO_REF: Lazy<ResourceRef> =
 pub(crate) static NCIT_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::ncit().with_version("2026-01-15"));
 pub(crate) static UO_REF: Lazy<ResourceRef> =
-    Lazy::new(|| ResourceRef::uo().with_version("2026-01-09"));
+    Lazy::new(|| ResourceRef::uo().with_version("2026-01-16"));
 pub(crate) static PATO_REF: Lazy<ResourceRef> =
     Lazy::new(|| ResourceRef::pato().with_version("2025-05-14"));
 pub(crate) static LOINC_REF: Lazy<ResourceRef> = Lazy::new(ResourceRef::loinc);
@@ -93,5 +93,16 @@ pub(crate) fn pato_meta_data_resource() -> Resource {
         version: PATO_REF.version().to_string(),
         namespace_prefix: PATO_REF.prefix_id().to_string(),
         iri_prefix: "http://purl.obolibrary.org/obo/PATO_$1".to_string(),
+    }
+}
+
+pub(crate) fn uberon_meta_data_resource() -> Resource {
+    Resource {
+        id: UBERON_REF.prefix_id().to_lowercase(),
+        name: "Uber Anatomy Ontology".to_string(),
+        url: "http://purl.obolibrary.org/obo/uberon.json".to_string(),
+        version: UBERON_REF.version().to_string(),
+        namespace_prefix: UBERON_REF.prefix_id().to_string(),
+        iri_prefix: "http://purl.obolibrary.org/obo/UBERON_$1".to_string(),
     }
 }

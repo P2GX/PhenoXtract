@@ -383,14 +383,12 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         if clinical_tnm_finding.is_some() {
             warn!("clinical_tnm_finding disease not implemented yet");
         }
-        if primary_site.is_some() {
-            warn!("primary_site disease not implemented yet");
-        }
         if laterality.is_some() {
             warn!("laterality disease not implemented yet");
         }
 
-        let (disease_term, res_ref) = Self::resolve_term(self.ctx.disease_bidict_lib(), disease)?;
+        let (disease_term, disease_ref) =
+            Self::resolve_term(self.ctx.disease_bidict_lib(), disease)?;
 
         let mut disease_element = Disease {
             term: Some(disease_term),
@@ -417,11 +415,18 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             disease_element.resolution = Some(resolution_te);
         }
 
+        if let Some(primary_site) = primary_site {
+            let (primary_site_term, primary_site_ref) =
+                Self::resolve_term(self.ctx.anatomy_bi_dict_lib(), primary_site)?;
+            disease_element.primary_site = Some(primary_site_term);
+            self.ensure_resource(patient_id, &primary_site_ref);
+        }
+
         let pp = self.get_or_create_phenopacket(patient_id);
 
         pp.push_disease(disease_element);
 
-        self.ensure_resource(patient_id, &res_ref);
+        self.ensure_resource(patient_id, &disease_ref);
 
         Ok(())
     }
@@ -837,9 +842,9 @@ mod tests {
     use crate::test_suite::cdf_generation::{default_patient_id, generate_patient_ids};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
-        default_age_element, default_cohort_id, default_datetime, default_disease,
-        default_disease_oc, default_iso_age, default_phenopacket_id, default_phenotype_oc,
-        default_procedure, default_procedure_body_side_oc, default_procedure_oc,
+        default_age_element, default_anatomy_region, default_cohort_id, default_datetime,
+        default_disease, default_disease_oc, default_iso_age, default_pato_qual_measurement,
+        default_phenopacket_id, default_phenotype_oc, default_procedure, default_procedure_oc,
         default_qual_loinc, default_qual_measurement, default_quant_loinc,
         default_quant_measurement, default_reference_range, default_timestamp,
         default_timestamp_element, default_treatment_intent, default_treatment_response,
@@ -1793,12 +1798,12 @@ mod tests {
         let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
-        let measurement_val = "Present";
+        let measurement_val = default_pato_qual_measurement().label;
 
         builder
             .insert_qualitative_measurement(
                 patient_id.as_str(),
-                measurement_val,
+                &measurement_val,
                 Some(default_iso_age().as_str()),
                 default_qual_loinc().id.as_str(),
             )
@@ -1868,7 +1873,7 @@ mod tests {
         let patient_id = default_patient_id();
 
         let procedure_code = default_procedure_oc();
-        let body_part = default_procedure_body_side_oc();
+        let body_part = default_anatomy_region();
         let time_str = default_iso_age();
 
         let result = builder.parse_procedure(
@@ -1961,7 +1966,7 @@ mod tests {
         let patient_id = default_patient_id();
 
         let procedure_code = default_procedure_oc();
-        let body_part = default_procedure_body_side_oc();
+        let body_part = default_anatomy_region();
         let intent = default_treatment_intent();
 
         let result = builder.insert_medical_procedure(

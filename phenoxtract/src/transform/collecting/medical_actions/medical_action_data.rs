@@ -4,18 +4,18 @@ use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
+pub(super) struct MedicalActionRow<'a> {
+    pub(super) treatment_target: Option<&'a str>,
+    pub(super) treatment_intent: Option<&'a str>,
+    pub(super) response_to_treatment: Option<&'a str>,
+    pub(super) treatment_termination_reason: Option<&'a str>,
+}
+
 pub(super) struct MedicalActionData {
     pub(super) treatment_target_col: Option<StringChunked>,
     pub(super) treatment_intent_col: Option<StringChunked>,
     pub(super) response_to_treatment_col: Option<StringChunked>,
     pub(super) treatment_termination_reason_col: Option<StringChunked>,
-}
-
-pub(super) struct MedicalAction<'a> {
-    pub(super) treatment_target: Option<&'a str>,
-    pub(super) treatment_intent: Option<&'a str>,
-    pub(super) response_to_treatment: Option<&'a str>,
-    pub(super) treatment_termination_reason: Option<&'a str>,
 }
 
 impl MedicalActionData {
@@ -39,7 +39,7 @@ impl MedicalActionData {
 }
 
 impl GetRows for MedicalActionData {
-    type Item<'a> = MedicalAction<'a>;
+    type Item<'a> = MedicalActionRow<'a>;
 
     fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         if self.treatment_target_col.is_none()
@@ -50,7 +50,7 @@ impl GetRows for MedicalActionData {
             return Ok(None);
         }
 
-        Ok(Some(MedicalAction {
+        Ok(Some(MedicalActionRow {
             treatment_target: self
                 .treatment_target_col
                 .as_ref()

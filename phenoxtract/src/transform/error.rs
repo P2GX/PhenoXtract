@@ -389,6 +389,20 @@ pub enum CollectorError {
     ContextError(String),
     #[error(transparent)]
     GetterError(#[from] GetterError),
+    #[error(transparent)]
+    DataProcessing(Box<DataProcessingError>),
+    #[error("Polars error: {0}")]
+    PolarsError(#[from] PolarsError),
+    #[error("ParseFloatError error: {0}")]
+    ParseFloatError(#[from] ParseIntError),
+    #[error(transparent)]
+    PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationErrors),
+    #[error(transparent)]
+    GetterError(#[from] GetterError),
 }
 
 impl From<DataProcessingError> for CollectorError {

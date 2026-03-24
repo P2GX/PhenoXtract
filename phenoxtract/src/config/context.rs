@@ -65,6 +65,7 @@ pub enum Context {
     TimeOfResolution(TimeElementType),
     Severity,
     ObservationStatus,
+    PrimarySite,
 
     // Genetic Data
     Hgvs,
@@ -157,6 +158,7 @@ impl Context {
                 | ContextKind::SurvivalTimeDays
                 | ContextKind::Hpo
                 | ContextKind::Disease
+                | ContextKind::PrimarySite
                 | ContextKind::Hgnc
                 | ContextKind::HpoOrDisease
                 | ContextKind::Hgvs
