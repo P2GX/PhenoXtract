@@ -1,4 +1,4 @@
-use crate::config::context::Context;
+use crate::config::context::{Context, ContextKind};
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use pivotal::hgnc::HGNCError;
@@ -318,6 +318,15 @@ pub enum CollectorError {
         n_expected: usize,
     },
     #[error(
+        "Expected linked required contexts {expected_contexts:?} in building block '{bb_id}', but found {found_contexts:?}."
+    )]
+    ExpectedLinkedContexts {
+        bb_id: String,
+        expected_contexts: Vec<Context>,
+        found_contexts: Vec<Context>,
+    },
+
+    #[error(
         "Found multiple values for '{patient_id}' when there should only be one. Filter info: {filter_info}."
     )]
     ExpectedSingleValue {
@@ -332,18 +341,6 @@ pub enum CollectorError {
         patient_id: String,
         phenotype: String,
     },
-    #[error(transparent)]
-    DataProcessing(Box<DataProcessingError>),
-    #[error("Polars error: {0}")]
-    PolarsError(#[from] PolarsError),
-    #[error("ParseFloatError error: {0}")]
-    ParseFloatError(#[from] ParseIntError),
-    #[error(transparent)]
-    PhenopacketBuilderError(#[from] PhenopacketBuilderError),
-    #[error(transparent)]
-    CdfBuilderError(#[from] CdfBuilderError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
     #[error("Context Error: {0}")]
@@ -360,6 +357,20 @@ pub enum CollectorError {
         found_datatype: DataType,
         allowed_datatypes: Vec<DataType>,
     },
+    #[error(transparent)]
+    DataProcessing(Box<DataProcessingError>),
+    #[error("Polars error: {0}")]
+    PolarsError(#[from] PolarsError),
+    #[error("ParseFloatError error: {0}")]
+    ParseFloatError(#[from] ParseIntError),
+    #[error(transparent)]
+    PhenopacketBuilderError(#[from] PhenopacketBuilderError),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationErrors),
+    #[error(transparent)]
+    GetterError(#[from] GetterError),
 }
 
 impl From<DataProcessingError> for CollectorError {
@@ -384,4 +395,12 @@ pub enum PhenopacketBuilderError {
     HgncError(#[from] HGNCError),
     #[error(transparent)]
     BidictError(#[from] BiDictError),
+}
+
+#[derive(Debug, Error)]
+pub enum GetterError {
+    #[error("Missing value of context '{context}' in row {idx}")]
+    RequiredValueMissingError { idx: usize, context: ContextKind },
+    #[error("OutOfBounds")]
+    OutOfBounds,
 }

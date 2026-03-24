@@ -90,6 +90,9 @@ pub enum Context {
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
 
+    QuantityValue,
+    QuantityUnit,
+
     #[default]
     None,
     //...
@@ -159,6 +162,8 @@ impl Context {
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
                 | ContextKind::Severity
+                | ContextKind::QuantityValue
+                | ContextKind::QuantityUnit
                 | ContextKind::None => None,
             })
             .collect()
