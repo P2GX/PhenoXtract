@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 
@@ -34,30 +35,53 @@ impl TreatmentData {
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
     ) -> Result<Option<Self>, CollectorError> {
-        match patient_cdf
-            .get_single_linked_column_as_str(building_block, &[Context::TreatmentAgent])?
-        {
-            None => Ok(None),
-            Some(agent) => {
-                let route_of_administration = patient_cdf.get_single_linked_column_as_str(
-                    building_block,
-                    &[Context::RouteOfAdministration],
-                )?;
+        let agent = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::TreatmentAgent])?;
 
-                let drug_type = patient_cdf
-                    .get_single_linked_column_as_str(building_block, &[Context::DrugType])?;
+        let route_of_administration = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::RouteOfAdministration])?;
 
-                Ok(Some(Self {
-                    agent,
-                    route_of_administration,
-                    dose_intervals: vec![],
-                    drug_type,
-                    cumulative_dose: building_block
-                        .map(|bb| QuantityData::new(patient_cdf, bb))
-                        .transpose()?
-                        .flatten(),
-                }))
+        let drug_type =
+            patient_cdf.get_single_linked_column_as_str(building_block, &[Context::DrugType])?;
+
+        let cumulative_dose = building_block
+            .map(|bb| QuantityData::new(patient_cdf, bb))
+            .transpose()?
+            .flatten();
+
+        match agent {
+            None => {
+                if route_of_administration.is_some()
+                    || drug_type.is_some()
+                    || cumulative_dose.is_some()
+                {
+                    let found_contexts = [
+                        route_of_administration
+                            .as_ref()
+                            .map(|_| Context::RouteOfAdministration),
+                        drug_type.as_ref().map(|_| Context::DrugType),
+                        cumulative_dose.as_ref().map(|_| Context::QuantityUnit),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>();
+
+                    Err(CollectorError::ExpectedLinkedContexts {
+                        bb_id: building_block.unwrap_or("No Building Block").to_string(),
+                        expected_contexts: vec![Context::TreatmentAgent],
+                        found_contexts,
+                    })
+                } else {
+                    Ok(None)
+                }
             }
+            Some(agent) => Ok(Some(Self {
+                agent,
+                route_of_administration,
+                dose_intervals: vec![],
+                drug_type,
+                cumulative_dose,
+            })),
         }
     }
 }
