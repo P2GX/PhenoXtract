@@ -3,7 +3,6 @@ use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
-use std::collections::HashSet;
 
 pub(super) struct ProcedureRow<'a> {
     pub(super) procedure: &'a str,
