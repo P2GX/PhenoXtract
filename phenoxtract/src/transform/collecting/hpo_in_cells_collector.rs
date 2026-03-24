@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::collecting::utils::get_str_at_index;
 use crate::transform::error::CollectorError;

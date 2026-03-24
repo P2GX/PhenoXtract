@@ -1,19 +1,10 @@
 use crate::config::context::{Context, ContextKind};
 use crate::config::table_context::{CellValue, Identifier, SeriesContext};
-use crate::extract::ContextualizedDataFrame;
-use polars::prelude::{Column, DataType};
-use serde::Deserialize;
+use crate::extract::enums::Filter;
+use crate::extract::utils::fmt_vec;
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-pub enum Filter<T> {
-    Is(T),
-    IsNot(T),
-    IsSome,
-    IsNone,
-}
-
-pub struct SeriesContextFilter<'a> {
-    items: Vec<&'a SeriesContext>,
+#[derive(Clone, Debug, Default)]
+pub struct SeriesContextFilterConfig<'a> {
     identifier: Vec<Filter<&'a Identifier>>,
     building_block: Vec<Filter<&'a str>>,
     header_context: Vec<Filter<&'a Context>>,
@@ -23,17 +14,24 @@ pub struct SeriesContextFilter<'a> {
     fill_missing: Vec<Filter<&'a CellValue>>,
 }
 
-impl<'a> SeriesContextFilter<'a> {
-    pub(crate) fn new(items: &'a [SeriesContext]) -> Self {
+impl<'a> SeriesContextFilterConfig<'a> {
+    pub(crate) fn new(
+        identifier: Vec<Filter<&'a Identifier>>,
+        building_block: Vec<Filter<&'a str>>,
+        header_context: Vec<Filter<&'a Context>>,
+        data_context: Vec<Filter<&'a Context>>,
+        header_context_kind: Vec<Filter<&'a ContextKind>>,
+        data_context_kind: Vec<Filter<&'a ContextKind>>,
+        fill_missing: Vec<Filter<&'a CellValue>>,
+    ) -> Self {
         Self {
-            items: items.iter().collect(),
-            identifier: Vec::new(),
-            building_block: Vec::new(),
-            header_context: Vec::new(),
-            data_context: Vec::new(),
-            header_context_kind: Vec::new(),
-            data_context_kind: Vec::new(),
-            fill_missing: Vec::new(),
+            identifier,
+            building_block,
+            header_context,
+            data_context,
+            header_context_kind,
+            data_context_kind,
+            fill_missing,
         }
     }
 
@@ -46,7 +44,6 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_building_blocks_are(mut self, building_blocks: &'a [&str]) -> Self {
         for building_block in building_blocks.iter() {
             self.building_block.push(Filter::Is(building_block));
@@ -54,13 +51,11 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
         self.header_context.push(header_context);
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
         for context in contexts.iter() {
             self.header_context.push(Filter::Is(context));
@@ -68,13 +63,11 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
         self.data_context.push(data_context);
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
         for context in contexts.iter() {
             self.data_context.push(Filter::Is(context));
@@ -82,7 +75,6 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_header_context_kind(
         mut self,
         header_context_kind: Filter<&'a ContextKind>,
@@ -91,7 +83,6 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_header_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
         for context_kind in context_kinds.iter() {
             self.header_context_kind.push(Filter::Is(context_kind));
@@ -99,13 +90,11 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_data_context_kind(mut self, data_context_kind: Filter<&'a ContextKind>) -> Self {
         self.data_context_kind.push(data_context_kind);
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_data_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
         for context_kind in context_kinds.iter() {
             self.data_context_kind.push(Filter::Is(context_kind));
@@ -118,10 +107,133 @@ impl<'a> SeriesContextFilter<'a> {
         self
     }
 
-    #[allow(dead_code)]
     pub fn where_fill_missings_are(mut self, fill_missings: &'a [CellValue]) -> Self {
         for fill_missing in fill_missings.iter() {
             self.fill_missing.push(Filter::Is(fill_missing));
+        }
+        self
+    }
+}
+
+impl<'a> std::fmt::Display for SeriesContextFilterConfig<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SeriesContextFilterConfig{{ ")?;
+
+        fmt_vec(f, "identifier", &self.identifier)?;
+        fmt_vec(f, "building_block", &self.building_block)?;
+        fmt_vec(f, "header_context", &self.header_context)?;
+        fmt_vec(f, "data_context", &self.data_context)?;
+        fmt_vec(f, "header_context_kind", &self.header_context_kind)?;
+        fmt_vec(f, "data_context_kind", &self.data_context_kind)?;
+        fmt_vec(f, "fill_missing", &self.fill_missing)?;
+
+        write!(f, "}}")
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SeriesContextFilter<'a> {
+    items: Vec<&'a SeriesContext>,
+    filters: SeriesContextFilterConfig<'a>,
+}
+
+impl<'a> SeriesContextFilter<'a> {
+    pub(crate) fn new(items: &'a [SeriesContext]) -> Self {
+        Self {
+            items: items.iter().collect(),
+            filters: SeriesContextFilterConfig::default(),
+        }
+    }
+
+    pub(crate) fn from_config(
+        items: &'a [SeriesContext],
+        filters: SeriesContextFilterConfig<'a>,
+    ) -> Self {
+        Self {
+            items: items.iter().collect(),
+            filters,
+        }
+    }
+
+    pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
+        self.filters.identifier.push(identifier);
+        self
+    }
+    pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
+        self.filters.building_block.push(building_block);
+        self
+    }
+
+    pub fn where_building_blocks_are(mut self, building_blocks: &'a [&str]) -> Self {
+        for building_block in building_blocks.iter() {
+            self.filters.building_block.push(Filter::Is(building_block));
+        }
+        self
+    }
+
+    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
+        self.filters.header_context.push(header_context);
+        self
+    }
+
+    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.filters.header_context.push(Filter::Is(context));
+        }
+        self
+    }
+
+    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
+        self.filters.data_context.push(data_context);
+        self
+    }
+
+    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
+        for context in contexts.iter() {
+            self.filters.data_context.push(Filter::Is(context));
+        }
+        self
+    }
+
+    pub fn where_header_context_kind(
+        mut self,
+        header_context_kind: Filter<&'a ContextKind>,
+    ) -> Self {
+        self.filters.header_context_kind.push(header_context_kind);
+        self
+    }
+
+    pub fn where_header_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.filters
+                .header_context_kind
+                .push(Filter::Is(context_kind));
+        }
+        self
+    }
+
+    pub fn where_data_context_kind(mut self, data_context_kind: Filter<&'a ContextKind>) -> Self {
+        self.filters.data_context_kind.push(data_context_kind);
+        self
+    }
+
+    pub fn where_data_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
+        for context_kind in context_kinds.iter() {
+            self.filters
+                .data_context_kind
+                .push(Filter::Is(context_kind));
+        }
+        self
+    }
+
+    pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
+        self.filters.fill_missing.push(fill_missing);
+        self
+    }
+
+    pub fn where_fill_missings_are(mut self, fill_missings: &'a [CellValue]) -> Self {
+        for fill_missing in fill_missings.iter() {
+            self.filters.fill_missing.push(Filter::Is(fill_missing));
         }
         self
     }
@@ -130,40 +242,40 @@ impl<'a> SeriesContextFilter<'a> {
         self.items
             .into_iter()
             .filter(|sc| {
-                let identifier_match = self.identifier.is_empty()
-                    || self.identifier.iter().any(|f| match f {
+                let identifier_match = self.filters.identifier.is_empty()
+                    || self.filters.identifier.iter().any(|f| match f {
                         Filter::Is(val) => sc.get_identifier() == *val,
                         Filter::IsNot(val) => sc.get_identifier() != *val,
                         Filter::IsSome => true,
                         Filter::IsNone => false,
                     });
 
-                let building_block_match = self.building_block.is_empty()
-                    || self.building_block.iter().any(|f| match f {
+                let building_block_match = self.filters.building_block.is_empty()
+                    || self.filters.building_block.iter().any(|f| match f {
                         Filter::Is(bb_id) => sc.get_building_block_id() == Some(*bb_id),
                         Filter::IsNot(bb_id) => sc.get_building_block_id() != Some(*bb_id),
                         Filter::IsSome => sc.get_building_block_id().is_some(),
                         Filter::IsNone => sc.get_building_block_id().is_none(),
                     });
 
-                let header_context_match = self.header_context.is_empty()
-                    || self.header_context.iter().any(|f| match f {
+                let header_context_match = self.filters.header_context.is_empty()
+                    || self.filters.header_context.iter().any(|f| match f {
                         Filter::Is(c) => sc.get_header_context() == *c,
                         Filter::IsNot(c) => sc.get_header_context() != *c,
                         Filter::IsSome => sc.get_header_context() != &Context::None,
                         Filter::IsNone => sc.get_header_context() == &Context::None,
                     });
 
-                let data_context_match = self.data_context.is_empty()
-                    || self.data_context.iter().any(|f| match f {
+                let data_context_match = self.filters.data_context.is_empty()
+                    || self.filters.data_context.iter().any(|f| match f {
                         Filter::Is(c) => sc.get_data_context() == *c,
                         Filter::IsNot(c) => sc.get_data_context() != *c,
                         Filter::IsSome => sc.get_data_context() != &Context::None,
                         Filter::IsNone => sc.get_data_context() == &Context::None,
                     });
 
-                let header_context_kind_match = self.header_context_kind.is_empty()
-                    || self.header_context_kind.iter().any(|f| match f {
+                let header_context_kind_match = self.filters.header_context_kind.is_empty()
+                    || self.filters.header_context_kind.iter().any(|f| match f {
                         Filter::Is(c) => ContextKind::from(sc.get_header_context()) == **c,
                         Filter::IsNot(c) => ContextKind::from(sc.get_header_context()) != **c,
                         Filter::IsSome => {
@@ -174,8 +286,8 @@ impl<'a> SeriesContextFilter<'a> {
                         }
                     });
 
-                let data_context_kind_match = self.data_context_kind.is_empty()
-                    || self.data_context_kind.iter().any(|f| match f {
+                let data_context_kind_match = self.filters.data_context_kind.is_empty()
+                    || self.filters.data_context_kind.iter().any(|f| match f {
                         Filter::Is(c) => ContextKind::from(sc.get_data_context()) == **c,
                         Filter::IsNot(c) => ContextKind::from(sc.get_data_context()) != **c,
                         Filter::IsSome => {
@@ -186,8 +298,8 @@ impl<'a> SeriesContextFilter<'a> {
                         }
                     });
 
-                let fill_missing_match = self.fill_missing.is_empty()
-                    || self.fill_missing.iter().any(|f| match f {
+                let fill_missing_match = self.filters.fill_missing.is_empty()
+                    || self.filters.fill_missing.iter().any(|f| match f {
                         Filter::Is(fill) => sc.get_fill_missing() == Some(*fill),
                         Filter::IsNot(fill) => sc.get_fill_missing() != Some(*fill),
                         Filter::IsSome => sc.get_fill_missing().is_some(),
@@ -207,180 +319,14 @@ impl<'a> SeriesContextFilter<'a> {
     }
 }
 
-pub struct ColumnFilter<'a> {
-    items: &'a ContextualizedDataFrame,
-    series_filter: SeriesContextFilter<'a>,
-    data_type: Vec<Filter<&'a DataType>>,
-}
-
-impl<'a> ColumnFilter<'a> {
-    pub(crate) fn new(items: &'a ContextualizedDataFrame) -> Self {
-        Self {
-            items,
-            series_filter: SeriesContextFilter::new(items.series_contexts()),
-            data_type: Vec::new(),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn where_identifier(mut self, identifier: Filter<&'a Identifier>) -> Self {
-        self.series_filter.identifier.push(identifier);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_identifiers_are(mut self, identifiers: &'a [&Identifier]) -> Self {
-        for identifier in identifiers.iter() {
-            self.series_filter.identifier.push(Filter::Is(identifier));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_building_block(mut self, building_block: Filter<&'a str>) -> Self {
-        self.series_filter.building_block.push(building_block);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_building_blocks_are(mut self, building_blocks: &'a [&str]) -> Self {
-        for building_block in building_blocks.iter() {
-            self.series_filter
-                .building_block
-                .push(Filter::Is(building_block));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_header_context(mut self, header_context: Filter<&'a Context>) -> Self {
-        self.series_filter.header_context.push(header_context);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_header_contexts_are(mut self, contexts: &'a [Context]) -> Self {
-        for context in contexts.iter() {
-            self.series_filter.header_context.push(Filter::Is(context));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_context(mut self, data_context: Filter<&'a Context>) -> Self {
-        self.series_filter.data_context.push(data_context);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_contexts_are(mut self, contexts: &'a [Context]) -> Self {
-        for context in contexts.iter() {
-            self.series_filter.data_context.push(Filter::Is(context));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_header_context_kind(
-        mut self,
-        header_context_kind: Filter<&'a ContextKind>,
-    ) -> Self {
-        self.series_filter
-            .header_context_kind
-            .push(header_context_kind);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_header_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
-        for context_kind in context_kinds.iter() {
-            self.series_filter
-                .header_context_kind
-                .push(Filter::Is(context_kind));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_context_kind(mut self, data_context_kind: Filter<&'a ContextKind>) -> Self {
-        self.series_filter.data_context_kind.push(data_context_kind);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_context_kinds_are(mut self, context_kinds: &'a [ContextKind]) -> Self {
-        for context_kind in context_kinds.iter() {
-            self.series_filter
-                .data_context_kind
-                .push(Filter::Is(context_kind));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_fill_missing(mut self, fill_missing: Filter<&'a CellValue>) -> Self {
-        self.series_filter.fill_missing.push(fill_missing);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_fill_missings_are(mut self, fill_missings: &'a [CellValue]) -> Self {
-        for fill_missing in fill_missings.iter() {
-            self.series_filter
-                .fill_missing
-                .push(Filter::Is(fill_missing));
-        }
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_type(mut self, data_type: Filter<&'a DataType>) -> Self {
-        self.data_type.push(data_type);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn where_data_types_are(mut self, data_types: &'a [DataType]) -> Self {
-        for data_type in data_types.iter() {
-            self.data_type.push(Filter::Is(data_type));
-        }
-        self
-    }
-
-    pub fn collect(self) -> Vec<&'a Column> {
-        let scs = self.series_filter.collect();
-        scs.iter()
-            .flat_map(|sc| {
-                self.items
-                    .identify_columns(sc.get_identifier())
-                    .into_iter()
-                    .filter(|col| {
-                        self.data_type.is_empty()
-                            || self.data_type.iter().any(|f| match f {
-                                Filter::Is(dtype) => *dtype == col.dtype(),
-                                Filter::IsNot(dtype) => *dtype != col.dtype(),
-                                Filter::IsSome => true, // Assuming col.dtype() is not an Option
-                                Filter::IsNone => false, // Assuming col.dtype() is not an Option
-                            })
-                    })
-            })
-            .collect()
-    }
-
-    pub fn collect_owned_names(self) -> Vec<String> {
-        self.collect()
-            .iter()
-            .map(|col| col.name().to_string())
-            .collect()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::context::{ContextKind, TimeElementType};
     use crate::config::table_context::{CellValue, Identifier, SeriesContext};
     use crate::config::traits::SeriesContextBuilding;
+    use crate::extract::enums::Filter;
+    use crate::extract::series_context_filter::SeriesContextFilter;
     use rstest::rstest;
 
     #[rstest]

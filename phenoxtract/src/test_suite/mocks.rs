@@ -96,7 +96,7 @@ mock! {
             patient_id: &'a str,
             disease: &'a str,
             gene_variant_data: &'a PathogenicGeneVariantData,
-            subject_sex: Option<String>,
+            subject_sex: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 
         fn insert_disease<'a>(
