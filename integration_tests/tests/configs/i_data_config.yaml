@@ -34,7 +34,7 @@ data_sources:
             building_block_id: "D"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
+                path: "$HOME/data/usidnet/mappings/disease_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "ALIAS"
               output_data_type: String
@@ -46,15 +46,15 @@ data_sources:
               mappings:
                 "less than 1 year": "0"
               output_data_type: Int64
-          #- identifier: "Gene Mutation"
-          #  data_context: hgnc
-          #  building_block_id: "D"
-          #  alias_map:
-          #    mappings:
-          #      path: "/Users/rouvenreuter/data/usidnet/mappings/hgnc_matchings.csv"
-          #      key_column_name: "FREE_TEXT"
-          #      alias_column_name: "LABEL"
-          #    output_data_type: String
+          - identifier: "Gene Mutation"
+            data_context: hgnc
+            building_block_id: "D"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/gene_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "LABEL"
+              output_data_type: String
 
       - sheet_name: "Vitals"
         has_headers: true
@@ -109,37 +109,22 @@ data_sources:
           - identifier: "patientid"
             data_context: subject_id
           - identifier: "Infection"
-            data_context: hpo_or_disease
+            data_context: disease
+            building_block_id: "I"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/infections_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/infection_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
-
-      - sheet_name: "Molecular Info"
-        has_headers: true
-        patients_are_rows: true
-        series_contexts:
-          - identifier: "patientid"
-            data_context: subject_id
-          - identifier: "Gene Mutation"
-            data_context: hgnc
-            building_block_id: "Gene"
+          - identifier: "Organism"
+            data_context: primary_site
+            building_block_id: "I"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/hgnc_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/organism_matchings.csv"
                 key_column_name: "FREE_TEXT"
-                alias_column_name: "LABEL"
-              output_data_type: String
-          - identifier: "Diagnosis"
-            data_context: disease
-            building_block_id: "Gene"
-            alias_map:
-              mappings:
-                path: "$HOME/data/usidnet/mappings/disease_aliases.csv"
-                key_column_name: "FREE_TEXT"
-                alias_column_name: "ALIAS"
+                alias_column_name: "CURIE_ID"
               output_data_type: String
 
       - sheet_name: "Condition"
@@ -152,7 +137,7 @@ data_sources:
             data_context: hpo_or_disease
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/mappings/conditions_matchings.csv"
+                path: "$HOME/data/usidnet/mappings/condition_matchings.csv"
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
@@ -195,6 +180,22 @@ data_sources:
               time_of_procedure: date
             building_block_id: "organ_transplant"
 
+      - sheet_name: "Molecular Info"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Gene Mutation"
+            data_context: hgnc
+            building_block_id: "D"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/mappings/gene_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "LABEL"
+              output_data_type: String
+
 pipeline:
   cache_dir: "$HOME/data/usidnet/pxt_cache"
   strategies:
@@ -230,7 +231,3 @@ pipeline:
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
-    #treatment_attributes_resources:
-    #  - id: "NCIT"
-    #    secrets:
-    #      token: ${BIOPORTAL}
