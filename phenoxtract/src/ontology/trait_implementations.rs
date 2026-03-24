@@ -160,7 +160,7 @@ mod tests {
             .register(
                 UO_REF.prefix_id().to_lowercase(),
                 Version::Declared(UO_REF.version().to_string()),
-                FileType::Obo,
+                FileType::Json,
             )
             .unwrap();
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
