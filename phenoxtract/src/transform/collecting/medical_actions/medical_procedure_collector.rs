@@ -123,11 +123,11 @@ mod tests {
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_procedure, default_procedure_oc, default_treatment_intent,
-        default_treatment_response, default_treatment_termination_reason,
+        default_anatomy_region, default_timestamp,
     };
     use crate::test_suite::phenopacket_component_generation::{
-        default_procedure_body_side_oc, default_timestamp,
+        default_disease_oc, default_procedure, default_procedure_oc, default_treatment_intent,
+        default_treatment_response, default_treatment_termination_reason,
     };
 
     use crate::config::context::TimeElementType;
@@ -151,8 +151,8 @@ mod tests {
         let body_site = Series::new(
             "body_site".into(),
             &[
-                AnyValue::String(&default_procedure_body_side_oc().label),
-                AnyValue::String(&default_procedure_body_side_oc().label),
+                AnyValue::String(&default_anatomy_region().label),
+                AnyValue::String(&default_anatomy_region().label),
             ],
         );
 
@@ -283,7 +283,7 @@ mod tests {
                  termination_reason| {
                     id == default_patient_id()
                         && name == default_procedure_oc().label
-                        && *body_site == Some(&default_procedure_body_side_oc().label)
+                        && *body_site == Some(&default_anatomy_region().label)
                         && *date == Some("1970-01-01 00:00:00.000000000")
                         && *treatment_target == Some(&default_disease_oc().label)
                         && *treatment_intent == Some(&default_treatment_intent().label)

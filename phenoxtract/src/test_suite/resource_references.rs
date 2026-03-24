@@ -95,3 +95,14 @@ pub(crate) fn pato_meta_data_resource() -> Resource {
         iri_prefix: "http://purl.obolibrary.org/obo/PATO_$1".to_string(),
     }
 }
+
+pub(crate) fn uberon_meta_data_resource() -> Resource {
+    Resource {
+        id: UBERON_REF.prefix_id().to_lowercase(),
+        name: "Uber Anatomy Ontology".to_string(),
+        url: "http://purl.obolibrary.org/obo/uberon.json".to_string(),
+        version: UBERON_REF.version().to_string(),
+        namespace_prefix: UBERON_REF.prefix_id().to_string(),
+        iri_prefix: "http://purl.obolibrary.org/obo/UBERON_$1".to_string(),
+    }
+}

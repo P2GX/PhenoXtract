@@ -30,13 +30,16 @@ impl Collect for DiseaseCollector {
 
                 let disease_cols = patient_cdf.identify_columns(sc_id);
 
-                let stringified_linked_onset_col =
+                let onset_col =
                     patient_cdf.get_single_linked_column_as_str(bb_id, Context::ONSET_VARIANTS)?;
 
-                let resolution_column = patient_cdf.get_single_linked_column_as_str(
+                let resolution_col = patient_cdf.get_single_linked_column_as_str(
                     disease_sc.get_building_block_id(),
                     Context::TIME_OF_RESOLUTION_VARIANTS,
                 )?;
+
+                let primary_site_col =
+                    patient_cdf.get_single_linked_column_as_str(bb_id, &[Context::PrimarySite])?;
 
                 for row_idx in 0..patient_cdf.data().height() {
                     for disease_col in disease_cols.iter() {
@@ -44,11 +47,14 @@ impl Collect for DiseaseCollector {
 
                         let disease = stringified_disease_col.get(row_idx);
                         if let Some(disease) = disease {
-                            let disease_onset =
-                                get_str_at_index(stringified_linked_onset_col.as_ref(), row_idx);
+                            let disease_onset = get_str_at_index(onset_col.as_ref(), row_idx);
 
                             let disease_resolution =
-                                get_str_at_index(resolution_column.as_ref(), row_idx);
+                                get_str_at_index(resolution_col.as_ref(), row_idx);
+
+                            let disease_primary_site =
+                                get_str_at_index(primary_site_col.as_ref(), row_idx);
+
                             builder.insert_disease(
                                 patient_id,
                                 disease,
@@ -57,7 +63,7 @@ impl Collect for DiseaseCollector {
                                 disease_resolution,
                                 None,
                                 None,
-                                None,
+                                disease_primary_site,
                                 None,
                             )?;
                         }
@@ -82,11 +88,15 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::component_building::build_test_phenopacket_builder;
-    use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_with_age_onset, default_iso_age, default_phenopacket_id, generate_disease,
+        default_anatomy_region, default_meta_data,
     };
-    use crate::test_suite::resource_references::mondo_meta_data_resource;
+    use crate::test_suite::phenopacket_component_generation::{
+        default_disease_with_extra_data, default_iso_age, default_phenopacket_id, generate_disease,
+    };
+    use crate::test_suite::resource_references::{
+        mondo_meta_data_resource, uberon_meta_data_resource,
+    };
     use crate::test_suite::utils::assert_phenopackets;
     use crate::utils::phenopacket_schema_version;
     use phenopackets::schema::v2::Phenopacket;
@@ -101,7 +111,7 @@ mod tests {
 
         let mut cdf = generate_minimal_cdf(1, 2);
         let diseases = vec![
-            default_disease_with_age_onset(),
+            default_disease_with_extra_data(),
             generate_disease("MONDO:0008258", None),
         ];
 
@@ -121,6 +131,14 @@ mod tests {
         let resolution_col = Column::new(
             "resolution".into(),
             [AnyValue::String(&default_iso_age()), AnyValue::Null],
+        );
+
+        let primary_site_col = Column::new(
+            "primary_site".into(),
+            [
+                AnyValue::String(&default_anatomy_region().label),
+                AnyValue::Null,
+            ],
         );
 
         cdf.builder()
@@ -145,6 +163,13 @@ mod tests {
                 vec![resolution_col].as_ref(),
             )
             .unwrap()
+            .insert_sc_alongside_cols(
+                SeriesContext::from_identifier("primary_site")
+                    .with_data_context(Context::PrimarySite)
+                    .with_building_block_id("disease_1"),
+                vec![primary_site_col].as_ref(),
+            )
+            .unwrap()
             .build()
             .unwrap();
 
@@ -159,7 +184,7 @@ mod tests {
             diseases,
             meta_data: Some(MetaData {
                 phenopacket_schema_version: phenopacket_schema_version(),
-                resources: vec![mondo_meta_data_resource()],
+                resources: vec![uberon_meta_data_resource(), mondo_meta_data_resource()],
                 created_by: default_meta_data().created_by.clone(),
                 submitted_by: default_meta_data().submitted_by.clone(),
                 ..Default::default()

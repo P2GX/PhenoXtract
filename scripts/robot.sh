@@ -64,3 +64,4 @@ sh ./scripts/robot/robot.sh
 
 sh ./scripts/mini_mondo.sh
 sh ./scripts/mini_hp.sh
+sh ./scripts/mini_ncit.sh
