@@ -158,7 +158,7 @@ mod tests {
         let registry = MockOntologyRegistry::default();
         let ontology_path = registry
             .register(
-                UO_REF.prefix_id().to_string(),
+                UO_REF.prefix_id().to_lowercase(),
                 Version::Declared(UO_REF.version().to_string()),
                 FileType::Obo,
             )
@@ -289,12 +289,12 @@ mod tests {
 
     #[rstest]
     fn test_obodoc_current() {
-        assert_current(&centimeter_ontolius(), true);
+        assert_current(&centimeter_obodoc(), true);
     }
 
     #[rstest]
     fn test_ontolius_current() {
-        assert_current(&centimeter_obodoc(), true);
+        assert_current(&centimeter_ontolius(), true);
     }
 
     #[rstest]
