@@ -31,7 +31,7 @@ for obofile in *.out.hp.obo; do
   INPUTS="--input ${obofile} ${INPUTS}"
 done
 echo input argument "$INPUTS"
-java -jar ./scripts/robot/robot.jar merge ${INPUTS} --output tests/assets/ontologies/2025-09-01_hp.json 2>&1 | grep -v "WARNING:"
+java -jar ./scripts/robot/robot.jar merge ${INPUTS} --output phenoxtract/src/test_suite/test_cache/ontology_registry/hp_2025-09-01.json 2>&1 | grep -v "WARNING:"
 
 rm *.obo
 
@@ -39,4 +39,4 @@ version_url="http://purl.obolibrary.org/obo/hp/releases/2025-09-01/hp.json"
 
 jq --arg version "$version_url" '
   .graphs[0].meta.version = $version
-' tests/assets/ontologies/2025-09-01_hp.json > tmp.$$.json && mv tmp.$$.json tests/assets/ontologies/2025-09-01_hp.json
+' phenoxtract/src/test_suite/test_cache/ontology_registry/hp_2025-09-01.json > tmp.$$.json && mv tmp.$$.json phenoxtract/src/test_suite/test_cache/ontology_registry/hp_2025-09-01.json
