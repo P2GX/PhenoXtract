@@ -139,7 +139,6 @@ impl OntologyBiDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::CachedOntologyFactory;
     use crate::ontology::traits::HasVersion;
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::ontology_mocking::HPO;
