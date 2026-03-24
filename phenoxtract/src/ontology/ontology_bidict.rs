@@ -140,11 +140,12 @@ impl OntologyBiDict {
 mod tests {
     use super::*;
     use crate::ontology::CachedOntologyFactory;
+    use crate::ontology::traits::HasVersion;
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::ontology_mocking::HPO;
     use crate::test_suite::phenopacket_component_generation::default_unit_oc;
     use crate::test_suite::resource_references::{HPO_REF, UO_REF};
-    use ontology_registry::FileType;
+    use ontology_registry::{FileType, OntologyRegistration, Version};
     use rstest::rstest;
     use std::io::BufReader;
 
@@ -157,8 +158,14 @@ mod tests {
 
     #[rstest]
     fn test_uo_obodoc_bidict_get() {
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let ontology_path = factory.register(&UO_REF, FileType::Obo).unwrap();
+        let registry = MockOntologyRegistry::default();
+        let ontology_path = registry
+            .register(
+                UO_REF.prefix_id().to_string(),
+                Version::Declared(UO_REF.version().to_string()),
+                FileType::Obo,
+            )
+            .unwrap();
         let mut reader = BufReader::new(ontology_path);
         let uo_obodoc = Arc::new(fastobo::from_reader(&mut reader).unwrap());
         let pato_dict = OntologyBiDict::from_ontology(uo_obodoc, &UO_REF);

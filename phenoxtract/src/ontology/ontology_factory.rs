@@ -89,7 +89,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         }
     }
 
-    pub(crate) fn register(
+    fn register(
         &mut self,
         ontology_ref: &ResourceRef,
         file_type: FileType,

@@ -125,7 +125,7 @@ impl SynonymLike for FastOboSynonym {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ontology::CachedOntologyFactory;
+    use crate::ontology::traits::{HasPrefixId, HasVersion};
     use crate::test_suite::mocks::MockOntologyRegistry;
     use crate::test_suite::phenopacket_component_generation::default_unit_oc;
     use crate::test_suite::resource_references::UO_REF;
@@ -133,7 +133,7 @@ mod tests {
     use ontolius::TermId;
     use ontolius::io::OntologyLoaderBuilder;
     use ontolius::term::Definition;
-    use ontology_registry::FileType;
+    use ontology_registry::{FileType, OntologyRegistration, Version};
     use rstest::{fixture, rstest};
     use std::io::BufReader;
 
@@ -142,16 +142,28 @@ mod tests {
     }
 
     fn uo_obodoc() -> Arc<OboDoc> {
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
-        let ontology_path = factory.register(&UO_REF, FileType::Obo).unwrap();
+        let registry = MockOntologyRegistry::default();
+        let ontology_path = registry
+            .register(
+                UO_REF.prefix_id().to_string(),
+                Version::Declared(UO_REF.version().to_string()),
+                FileType::Obo,
+            )
+            .unwrap();
         let mut reader = BufReader::new(ontology_path);
         Arc::new(fastobo::from_reader(&mut reader).unwrap())
     }
 
     fn uo_ontolius() -> Arc<FullCsrOntology> {
-        let mut factory = CachedOntologyFactory::new(MockOntologyRegistry::default());
+        let registry = MockOntologyRegistry::default();
+        let ontology_path = registry
+            .register(
+                UO_REF.prefix_id().to_string(),
+                Version::Declared(UO_REF.version().to_string()),
+                FileType::Obo,
+            )
+            .unwrap();
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
-        let ontology_path = factory.register(&UO_REF, FileType::Json).unwrap();
         let ontolius = loader.load_from_read(ontology_path).unwrap();
         Arc::new(ontolius)
     }
