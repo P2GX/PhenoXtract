@@ -53,10 +53,9 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 }
             };
 
-            let medical_action_data = self
-                .medical_action_data
-                .get(self.current_index)
-                .expect("Can never be an error");
+            let medical_action_data = self.medical_action_data.get(self.current_index).expect(
+                "This can never error, because all values of MedicalActionRow are optional.",
+            );
 
             self.current_index += 1;
 
@@ -64,11 +63,11 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 procedure: procedure.procedure,
                 body_part: procedure.body_part,
                 time_element: procedure.time_element,
-                treatment_target: medical_action_data.pluck(|d| d.treatment_target),
-                treatment_intent: medical_action_data.pluck(|d| d.treatment_intent),
-                response_to_treatment: medical_action_data.pluck(|d| d.response_to_treatment),
+                treatment_target: medical_action_data.pluck(|mad| mad.treatment_target),
+                treatment_intent: medical_action_data.pluck(|mad| mad.treatment_intent),
+                response_to_treatment: medical_action_data.pluck(|mad| mad.response_to_treatment),
                 treatment_termination_reason: medical_action_data
-                    .pluck(|d| d.treatment_termination_reason),
+                    .pluck(|mad| mad.treatment_termination_reason),
             }));
         }
         None
