@@ -38,3 +38,23 @@ pub(crate) trait GetRows {
         self.construct_data_unchecked(idx)
     }
 }
+
+/// A trait for conditionally extracting a value from an optional reference.
+///
+/// `Pluck` allows you to apply a function to the inner value of an `Option<T>`
+/// by reference, returning a new `Option<U>`. This is useful when you want to
+/// extract a sub-value from a type without consuming or cloning the outer `Option`.
+pub(crate) trait Pluck<T> {
+    /// Applies `f` to a reference of the inner value, returning the result.
+    ///
+    /// - Returns `None` if `self` is `None`.
+    /// - Returns `None` if `f` returns `None`.
+    /// - Returns `Some(U)` if both `self` is `Some` and `f` returns `Some`.
+    fn pluck<U, F: FnOnce(&T) -> Option<U>>(&self, f: F) -> Option<U>;
+}
+
+impl<T> Pluck<T> for Option<T> {
+    fn pluck<U, F: FnOnce(&T) -> Option<U>>(&self, f: F) -> Option<U> {
+        self.as_ref().and_then(f)
+    }
+}

@@ -1777,12 +1777,12 @@ mod tests {
         let mut builder = build_test_phenopacket_builder();
 
         let patient_id = default_patient_id();
-        let measurement_val = "Present";
+        let measurement_val = default_pato_qual_measurement().label;
 
         builder
             .insert_qualitative_measurement(
                 patient_id.as_str(),
-                measurement_val,
+                &measurement_val,
                 Some(default_iso_age().as_str()),
                 default_qual_loinc().id.as_str(),
             )
