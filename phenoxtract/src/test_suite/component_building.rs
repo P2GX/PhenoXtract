@@ -1,6 +1,6 @@
 use crate::ontology::loinc_client::LoincClient;
 use crate::test_suite::ontology_mocking::{
-    HPO_DICT, MAXO_BIDICT, MONDO_BIDICT, NCIT_BIDICT, PATO_DICT, UBERON_BIDICT, UO_DICT,
+    HPO_BIDICT, MAXO_BIDICT, MONDO_BIDICT, NCIT_BIDICT, PATO_BIDICT, UBERON_BIDICT, UO_BIDICT,
 };
 use crate::test_suite::phenopacket_component_generation::default_meta_data;
 use crate::transform::PhenopacketBuilder;
@@ -12,7 +12,7 @@ use pivotal::hgvs::MockHGVSClient;
 use std::sync::Arc;
 
 pub(crate) fn build_test_hpo_bidict_library() -> BiDictLibrary {
-    BiDictLibrary::new("HPO", vec![Box::new(HPO_DICT.clone())])
+    BiDictLibrary::new("HPO", vec![Box::new(HPO_BIDICT.clone())])
 }
 
 pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
@@ -26,13 +26,13 @@ pub(crate) fn default_builder_context() -> TransformContext {
         Arc::new(MockHGVSClient::default()),
     );
 
-    builder.add_hpo_bidict(Box::new(HPO_DICT.clone()));
+    builder.add_hpo_bidict(Box::new(HPO_BIDICT.clone()));
     builder.add_disease_bidict(Box::new(MONDO_BIDICT.clone()));
-    builder.add_unit_bidict(Box::new(UO_DICT.clone()));
+    builder.add_unit_bidict(Box::new(UO_BIDICT.clone()));
     builder.add_assay_bidict(Box::new(LoincClient::default()));
     builder.add_anatomy_bidict(Box::new(UBERON_BIDICT.clone()));
     builder.add_treatment_attributes_bidict(Box::new(NCIT_BIDICT.clone()));
-    builder.add_qualitative_measurement_bidict(Box::new(PATO_DICT.clone()));
+    builder.add_qualitative_measurement_bidict(Box::new(PATO_BIDICT.clone()));
     builder.add_procedure_bidict(Box::new(MAXO_BIDICT.clone()));
 
     builder.build()

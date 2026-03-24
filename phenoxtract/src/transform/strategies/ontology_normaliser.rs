@@ -140,7 +140,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_suite::ontology_mocking::HPO_DICT;
+    use crate::test_suite::ontology_mocking::HPO_BIDICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
     use crate::transform::strategies::traits::Strategy;
@@ -187,7 +187,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
@@ -229,7 +229,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
@@ -304,7 +304,7 @@ mod tests {
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
