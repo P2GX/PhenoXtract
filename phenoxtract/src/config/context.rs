@@ -83,6 +83,10 @@ pub enum Context {
     ReferenceRange(Boundary),
 
     // Medical Actions
+    TreatmentAgent,
+    RouteOfAdministration,
+    DrugType,
+
     TreatmentTarget,
     TreatmentIntent,
     ResponseToTreatment,
@@ -166,6 +170,9 @@ impl Context {
                 | ContextKind::Severity
                 | ContextKind::QuantityValue
                 | ContextKind::QuantityUnit
+                | ContextKind::TreatmentAgent
+                | ContextKind::RouteOfAdministration
+                | ContextKind::DrugType
                 | ContextKind::None => None,
             })
             .collect()
