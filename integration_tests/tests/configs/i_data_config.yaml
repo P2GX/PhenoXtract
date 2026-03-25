@@ -142,30 +142,30 @@ data_sources:
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 
-      - sheet_name: "Organ Transp"
-        has_headers: true
-        patients_are_rows: true
-        series_contexts:
-          - identifier: "patientid"
-            data_context: subject_id
-          - identifier: "Solid Organ"
-            data_context: procedure
-            alias_map:
-              mappings:
-                path: "$HOME/data/usidnet/matchings/solid_organ_matchings.csv"
-                key_column_name: "FREE_TEXT"
-                alias_column_name: "CURIE_ID"
-              output_data_type: String
-            building_block_id: "organ_transplant"
-          - identifier: "Reason"
-            data_context: treatment_target
-            alias_map:
-              mappings:
-                path: "$HOME/data/usidnet/matchings/reason_matchings.csv"
-                key_column_name: "FREE_TEXT"
-                alias_column_name: "CURIE_ID"
-              output_data_type: String
-            building_block_id: "organ_transplant"
+      #- sheet_name: "Organ Transp"
+      #  has_headers: true
+      #  patients_are_rows: true
+      #  series_contexts:
+      #    - identifier: "patientid"
+      #      data_context: subject_id
+      #    - identifier: "Solid Organ"
+      #      data_context: procedure
+      #      alias_map:
+      #        mappings:
+      #          path: "$HOME/data/usidnet/matchings/solid_organ_matchings.csv"
+      #          key_column_name: "FREE_TEXT"
+      #          alias_column_name: "CURIE_ID"
+      #        output_data_type: String
+      #      building_block_id: "organ_transplant"
+      #    - identifier: "Reason"
+      #      data_context: treatment_target
+      #      alias_map:
+      #        mappings:
+      #          path: "$HOME/data/usidnet/matchings/reason_matchings.csv"
+      #          key_column_name: "FREE_TEXT"
+      #          alias_column_name: "CURIE_ID"
+      #        output_data_type: String
+      #      building_block_id: "organ_transplant"
           #- identifier: "Outcome"
           #  data_context: response_to_treatment
           #  alias_map:
@@ -175,10 +175,10 @@ data_sources:
           #      alias_column_name: "CURIE_ID"
           #    output_data_type: String
           #  building_block_id: "organ_transplant"
-          - identifier: "Year"
-            data_context:
-              time_of_procedure: date
-            building_block_id: "organ_transplant"
+      #    - identifier: "Year"
+      #      data_context:
+      #        time_of_procedure: date
+      #      building_block_id: "organ_transplant"
 
       - sheet_name: "Molecular Info"
         has_headers: true
@@ -208,7 +208,7 @@ pipeline:
 
   loader:
     file_system:
-      output_dir: "$HOME/data/usidnet/phenopackets"
+      output_dir: "$HOME/data/usidnet/more_phenopackets"
       create_dir: true
   meta_data:
     created_by: Robinson Lab
