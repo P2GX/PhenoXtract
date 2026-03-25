@@ -154,9 +154,9 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(AliasMap::new(
                 HashMap::from([
-                    ("P001".to_string(), Some("patient_1".to_string())),
-                    ("P002".to_string(), Some("patient_2".to_string())),
-                    ("P003".to_string(), Some("patient_3".to_string())),
+                    ("  P001".to_string(), Some("patient_1".to_string())),
+                    ("P002".to_string(), Some("patient_2  ".to_string())),
+                    ("P003  ".to_string(), Some("  patient_3".to_string())),
                     ("P004".to_string(), Some("patient_4".to_string())),
                 ]),
                 OutputDataType::String,
