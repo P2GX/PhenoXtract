@@ -242,8 +242,17 @@ pub struct AliasMap {
 
 impl AliasMap {
     pub fn new(hash_map: HashMap<String, Option<String>>, output_dtype: OutputDataType) -> Self {
-        AliasMap {
-            hash_map,
+        let normalised_hm = hash_map
+            .into_iter()
+            .map(|(k, v)| {
+                let key = k.trim().to_string();
+                let value = v.map(|s| s.trim().to_string());
+                (key, value)
+            })
+            .collect();
+
+        Self {
+            hash_map: normalised_hm,
             output_dtype,
         }
     }
@@ -363,8 +372,8 @@ impl SeriesContextBuilding<Identifier, AliasMap> for SeriesContext {
         self
     }
 
-    fn with_alias_map(mut self, alias_map_config: AliasMap) -> Self {
-        self.alias_map = Some(alias_map_config);
+    fn with_alias_map(mut self, alias_map: AliasMap) -> Self {
+        self.alias_map = Some(alias_map);
         self
     }
 
