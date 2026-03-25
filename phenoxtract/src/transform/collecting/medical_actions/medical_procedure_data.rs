@@ -1,3 +1,4 @@
+use crate::collect_contexts;
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::traits::GetRows;
@@ -35,18 +36,10 @@ impl ProcedureData {
                 time_element_col,
             })),
             None if body_part_col.is_some() || time_element_col.is_some() => {
-                let found_contexts = [
-                    body_part_col
-                        .as_ref()
-                        .map(|_| vec![Context::ProcedureBodySite]),
-                    time_element_col
-                        .as_ref()
-                        .map(|_| Context::TIME_OF_PROCEDURE_VARIANTS.to_vec()),
-                ]
-                .into_iter()
-                .flatten()
-                .flatten()
-                .collect::<Vec<_>>();
+                let found_contexts = collect_contexts![
+                    body_part_col => vec![Context::ProcedureBodySite],
+                    time_element_col => Context::TIME_OF_PROCEDURE_VARIANTS.to_vec(),
+                ];
 
                 Err(CollectorError::ExpectedLinkedContexts {
                     bb_id: building_block.unwrap_or("No Building Block").to_string(),

@@ -3,6 +3,7 @@
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 
+use crate::collect_contexts;
 use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
@@ -35,13 +36,10 @@ impl QuantityData {
             (Some(_), Some(_)) => (values.unwrap(), unit.unwrap()),
             (None, None) => return Ok(None),
             _ => {
-                let found_contexts = [
-                    values.as_ref().map(|_| Context::QuantityValue),
-                    unit.as_ref().map(|_| Context::QuantityUnit),
-                ]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
+                let found_contexts = collect_contexts![
+                    values => vec![Context::QuantityValue],
+                    unit => vec![Context::QuantityValue],
+                ];
 
                 return Err(CollectorError::ExpectedLinkedContexts {
                     bb_id: building_block.to_string(),
@@ -77,15 +75,10 @@ impl QuantityData {
             (Some(_), Some(_)) => Ok(Some((low.unwrap(), high.unwrap()))),
             (None, None) => Ok(None),
             _ => Err({
-                let found_contexts = [
-                    low.as_ref()
-                        .map(|_| Context::ReferenceRange(Boundary::Start)),
-                    high.as_ref()
-                        .map(|_| Context::ReferenceRange(Boundary::End)),
-                ]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
+                let found_contexts = collect_contexts![
+                    low => vec![Context::ReferenceRange(Boundary::Start)],
+                    high => vec![Context::ReferenceRange(Boundary::End)],
+                ];
 
                 CollectorError::ExpectedLinkedContexts {
                     bb_id: building_block.to_string(),

@@ -6,6 +6,7 @@ use crate::transform::collecting::medical_actions::quantity_data::{QuantityData,
 use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 
+use crate::collect_contexts;
 use polars::datatypes::StringChunked;
 
 #[derive(Debug)]
@@ -55,16 +56,11 @@ impl TreatmentData {
                     || drug_type.is_some()
                     || cumulative_dose.is_some()
                 {
-                    let found_contexts = [
-                        route_of_administration
-                            .as_ref()
-                            .map(|_| Context::RouteOfAdministration),
-                        drug_type.as_ref().map(|_| Context::DrugType),
-                        cumulative_dose.as_ref().map(|_| Context::QuantityUnit),
-                    ]
-                    .into_iter()
-                    .flatten()
-                    .collect::<Vec<_>>();
+                    let found_contexts = collect_contexts![
+                        route_of_administration => vec![Context::RouteOfAdministration],
+                        drug_type => vec![Context::DrugType],
+                        cumulative_dose => vec![Context::QuantityUnit],
+                    ];
 
                     Err(CollectorError::ExpectedLinkedContexts {
                         bb_id: building_block.unwrap_or("No Building Block").to_string(),
