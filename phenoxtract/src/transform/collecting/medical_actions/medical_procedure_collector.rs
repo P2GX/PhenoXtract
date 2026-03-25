@@ -11,7 +11,7 @@ use std::any::Any;
 
 struct MedicalProcedureIterator<'a> {
     procedure_data: &'a ProcedureData,
-    medical_action_data: &'a MedicalActionData,
+    medical_action_data: Option<&'a MedicalActionData>,
     max_iterations: usize,
     current_index: usize,
 }
@@ -19,7 +19,7 @@ struct MedicalProcedureIterator<'a> {
 impl<'a> MedicalProcedureIterator<'a> {
     pub fn new(
         procedure_data: &'a ProcedureData,
-        medical_action_data: &'a MedicalActionData,
+        medical_action_data: Option<&'a MedicalActionData>,
     ) -> Self {
         Self {
             procedure_data,
@@ -53,9 +53,13 @@ impl<'a> Iterator for MedicalProcedureIterator<'a> {
                 }
             };
 
-            let medical_action_data = match self.medical_action_data.get(self.current_index) {
-                Ok(mad) => mad,
-                Err(err) => return Some(Err(CollectorError::from(err))),
+            let medical_action_data = if let Some(medical_action_data) = self.medical_action_data {
+                match medical_action_data.get(self.current_index) {
+                    Ok(mad) => mad,
+                    Err(err) => return Some(Err(CollectorError::from(err))),
+                }
+            } else {
+                None
             };
 
             self.current_index += 1;
@@ -110,7 +114,7 @@ impl Collect for MedicalProcedureCollector {
                     MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
 
                 let procedure_iterator =
-                    MedicalProcedureIterator::new(&procedure_data, &medical_action_data);
+                    MedicalProcedureIterator::new(&procedure_data, medical_action_data.as_ref());
 
                 for procedure_values in procedure_iterator {
                     let procedure_values = procedure_values?;

@@ -28,10 +28,14 @@ pub(crate) trait GetRows {
 
         Ok(())
     }
+
     /// Not meant to be called directly
     #[doc(hidden)]
     fn construct_data_unchecked(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError>;
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn get(&self, idx: usize) -> Result<Option<Self::Item<'_>>, GetterError> {
         self.check_bounds(idx)?;
 
