@@ -22,19 +22,32 @@ impl MedicalActionData {
     pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
-    ) -> Result<Self, CollectorError> {
-        Ok(Self {
-            treatment_target_col: patient_cdf
-                .get_single_linked_column_as_str(building_block, &[Context::TreatmentTarget])?,
-            treatment_intent_col: patient_cdf
-                .get_single_linked_column_as_str(building_block, &[Context::TreatmentIntent])?,
-            response_to_treatment_col: patient_cdf
-                .get_single_linked_column_as_str(building_block, &[Context::ResponseToTreatment])?,
-            treatment_termination_reason_col: patient_cdf.get_single_linked_column_as_str(
-                building_block,
-                &[Context::TreatmentTerminationReason],
-            )?,
-        })
+    ) -> Result<Option<Self>, CollectorError> {
+        let treatment_target_col = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::TreatmentTarget])?;
+        let treatment_intent_col = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::TreatmentIntent])?;
+        let response_to_treatment_col = patient_cdf
+            .get_single_linked_column_as_str(building_block, &[Context::ResponseToTreatment])?;
+        let treatment_termination_reason_col = patient_cdf.get_single_linked_column_as_str(
+            building_block,
+            &[Context::TreatmentTerminationReason],
+        )?;
+
+        if treatment_target_col.is_none()
+            && treatment_intent_col.is_none()
+            && response_to_treatment_col.is_none()
+            && treatment_termination_reason_col.is_none()
+        {
+            Ok(None)
+        } else {
+            Ok(Some(Self {
+                treatment_target_col,
+                treatment_intent_col,
+                response_to_treatment_col,
+                treatment_termination_reason_col,
+            }))
+        }
     }
 }
 
