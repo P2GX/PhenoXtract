@@ -142,43 +142,90 @@ data_sources:
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 
-      #- sheet_name: "Organ Transp"
-      #  has_headers: true
-      #  patients_are_rows: true
-      #  series_contexts:
-      #    - identifier: "patientid"
-      #      data_context: subject_id
-      #    - identifier: "Solid Organ"
-      #      data_context: procedure
-      #      alias_map:
-      #        mappings:
-      #          path: "$HOME/data/usidnet/matchings/solid_organ_matchings.csv"
-      #          key_column_name: "FREE_TEXT"
-      #          alias_column_name: "CURIE_ID"
-      #        output_data_type: String
-      #      building_block_id: "organ_transplant"
-      #    - identifier: "Reason"
-      #      data_context: treatment_target
-      #      alias_map:
-      #        mappings:
-      #          path: "$HOME/data/usidnet/matchings/reason_matchings.csv"
-      #          key_column_name: "FREE_TEXT"
-      #          alias_column_name: "CURIE_ID"
-      #        output_data_type: String
-      #      building_block_id: "organ_transplant"
-          #- identifier: "Outcome"
-          #  data_context: response_to_treatment
-          #  alias_map:
-          #    mappings:
-          #      path: "$HOME/data/usidnet/matchings/outcome_matchings.csv"
-          #      key_column_name: "FREE_TEXT"
-          #      alias_column_name: "CURIE_ID"
-          #    output_data_type: String
-          #  building_block_id: "organ_transplant"
-      #    - identifier: "Year"
-      #      data_context:
-      #        time_of_procedure: date
-      #      building_block_id: "organ_transplant"
+      - sheet_name: "Organ Transp"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Solid Organ"
+            data_context: procedure
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/solid_organ_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+            building_block_id: "organ_transplant"
+          - identifier: "Reason"
+            data_context: treatment_target
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/reason_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+            building_block_id: "organ_transplant"
+          - identifier: "Outcome"
+            data_context: response_to_treatment
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/outcome_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+            building_block_id: "organ_transplant"
+          - identifier: "Year"
+            data_context:
+              time_of_procedure: date
+            building_block_id: "organ_transplant"
+
+      - sheet_name: "Transfusions"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Leukocyte"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15773" # TODO(Rouven): This is a placeholder. I could not really find anything. OMIT:0018013 Would work, but OMIT only supports OWL.
+                "": null
+            building_block_id: "leukocyte_transfusion"
+          - identifier: "Platelet"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15366"
+                "": null
+            building_block_id: "platelet_transfusion"
+          - identifier: "Red Cell"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15409"
+                "": null
+            building_block_id: "red_cell_transfusion"
+          - identifier: "Fresh Frozen Plasma"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C140042" # TODO(Rouven): This is just Plasma Transfusion, no frozen nor fresh.
+                "": null
+            building_block_id: "plasma_transfusion"
+          - identifier: "Whole Blood"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C62749"
+                "": null
+            building_block_id: "blood_transfusion"
 
       - sheet_name: "Molecular Info"
         has_headers: true
@@ -208,7 +255,7 @@ pipeline:
 
   loader:
     file_system:
-      output_dir: "$HOME/data/usidnet/more_phenopackets"
+      output_dir: "$HOME/data/usidnet/phenopackets"
       create_dir: true
   meta_data:
     created_by: Robinson Lab
@@ -231,6 +278,11 @@ pipeline:
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
+      - id: "NCIT"
+        version: "2026-03-19"
     anatomy_resources:
+      - id: "NCIT"
+        version: "2026-03-19"
+    treatment_attributes_resources:
       - id: "NCIT"
         version: "2026-03-19"
