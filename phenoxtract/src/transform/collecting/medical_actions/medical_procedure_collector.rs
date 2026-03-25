@@ -106,8 +106,11 @@ impl Collect for MedicalProcedureCollector {
                         None => continue,
                         Some(pd) => pd,
                     };
-                let medical_action_data =
-                    MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
+                let medical_action_data = MedicalActionData::new(
+                    patient_cdf,
+                    procedure_sc.get_building_block_id(),
+                    Some(procedure_data.len()),
+                )?;
 
                 let procedure_iterator =
                     MedicalProcedureIterator::new(&procedure_data, &medical_action_data);

@@ -16,12 +16,14 @@ pub(super) struct MedicalActionData {
     pub(super) treatment_intent_col: Option<StringChunked>,
     pub(super) response_to_treatment_col: Option<StringChunked>,
     pub(super) treatment_termination_reason_col: Option<StringChunked>,
+    expected_len: Option<usize>,
 }
 
 impl MedicalActionData {
     pub(super) fn new(
         patient_cdf: &ContextualizedDataFrame,
         building_block: Option<&str>,
+        expected_len: Option<usize>,
     ) -> Result<Self, CollectorError> {
         Ok(Self {
             treatment_target_col: patient_cdf
@@ -34,6 +36,7 @@ impl MedicalActionData {
                 building_block,
                 &[Context::TreatmentTerminationReason],
             )?,
+            expected_len,
         })
     }
 }
@@ -80,7 +83,7 @@ impl GetRows for MedicalActionData {
         } else if let Some(response_col) = &self.response_to_treatment_col {
             response_col.len()
         } else {
-            0
+            self.expected_len.unwrap_or_default()
         }
     }
 }
