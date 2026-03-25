@@ -6,8 +6,7 @@ pub(crate) mod cached_resource_resolver;
 pub mod bidict_library;
 pub mod collecting;
 pub(crate) mod data_processing;
-#[macro_use]
-pub mod marcos;
+
 pub mod pathogenic_gene_variant_info;
 mod phenopacket_access;
 pub mod strategies;

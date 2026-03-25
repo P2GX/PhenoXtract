@@ -1,7 +1,7 @@
-use crate::collect_contexts;
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::transform::collecting::traits::GetRows;
+use crate::transform::collecting::utils::validate_no_unexpected_contexts;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
@@ -35,19 +35,17 @@ impl ProcedureData {
                 body_part_col,
                 time_element_col,
             })),
-            None if body_part_col.is_some() || time_element_col.is_some() => {
-                let found_contexts = collect_contexts![
-                    body_part_col => vec![Context::ProcedureBodySite],
-                    time_element_col => Context::TIME_OF_PROCEDURE_VARIANTS.to_vec(),
-                ];
-
-                Err(CollectorError::ExpectedLinkedContexts {
-                    bb_id: building_block.unwrap_or("No Building Block").to_string(),
-                    expected_contexts: vec![Context::Procedure],
-                    found_contexts,
-                })
-            }
-            None => Ok(None),
+            None => validate_no_unexpected_contexts(
+                vec![
+                    (body_part_col.is_some(), vec![Context::ProcedureBodySite]),
+                    (
+                        time_element_col.is_some(),
+                        Context::TIME_OF_PROCEDURE_VARIANTS.to_vec(),
+                    ),
+                ],
+                vec![Context::Procedure],
+                building_block,
+            ),
         }
     }
 }

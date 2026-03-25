@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use crate::config::context::{Context, ContextKind};
 use crate::extract::ContextualizedDataFrame;
 
@@ -6,7 +7,7 @@ use crate::transform::collecting::medical_actions::quantity_data::{QuantityData,
 use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 
-use crate::collect_contexts;
+use crate::transform::collecting::utils::validate_no_unexpected_contexts;
 use polars::datatypes::StringChunked;
 
 #[derive(Debug)]
@@ -51,26 +52,18 @@ impl TreatmentData {
             .flatten();
 
         match agent {
-            None => {
-                if route_of_administration.is_some()
-                    || drug_type.is_some()
-                    || cumulative_dose.is_some()
-                {
-                    let found_contexts = collect_contexts![
-                        route_of_administration => vec![Context::RouteOfAdministration],
-                        drug_type => vec![Context::DrugType],
-                        cumulative_dose => vec![Context::QuantityUnit],
-                    ];
-
-                    Err(CollectorError::ExpectedLinkedContexts {
-                        bb_id: building_block.unwrap_or("No Building Block").to_string(),
-                        expected_contexts: vec![Context::TreatmentAgent],
-                        found_contexts,
-                    })
-                } else {
-                    Ok(None)
-                }
-            }
+            None => validate_no_unexpected_contexts(
+                vec![
+                    (
+                        route_of_administration.is_some(),
+                        vec![Context::RouteOfAdministration],
+                    ),
+                    (drug_type.is_some(), vec![Context::DrugType]),
+                    (cumulative_dose.is_some(), vec![Context::QuantityUnit]),
+                ],
+                vec![Context::TreatmentAgent],
+                building_block,
+            ),
             Some(agent) => Ok(Some(Self {
                 agent,
                 route_of_administration,
