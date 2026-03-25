@@ -208,13 +208,13 @@ mod tests {
             )
             .unwrap();
 
-        for sub_block in [sub_block_1, sub_block_2].iter() {
+        for (idx, sub_block) in [sub_block_1, sub_block_2].iter().enumerate() {
             let values_col_name = format!("values_{}", sub_block);
             let unit_col_name = format!("unit_{}", sub_block);
 
             let values = Series::new(
                 values_col_name.clone().into(),
-                &[AnyValue::Float64(0.5), AnyValue::Float64(0.5)],
+                &[AnyValue::Float64(idx as f64), AnyValue::Float64(idx as f64)],
             );
 
             let units = Series::new(
