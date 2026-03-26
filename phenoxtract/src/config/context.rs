@@ -83,15 +83,21 @@ pub enum Context {
     ReferenceRange(Boundary),
 
     // Medical Actions
-    TreatmentAgent,
-    RouteOfAdministration,
-    DrugType,
-
     TreatmentTarget,
     TreatmentIntent,
     ResponseToTreatment,
     TreatmentTerminationReason,
     Procedure,
+
+    TreatmentAgent,
+    RouteOfAdministration,
+
+    // Dose Interval
+    DoseInterval(Boundary),
+    DoseScheduleFrequency,
+
+    DrugType,
+
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
 
@@ -159,6 +165,9 @@ impl Context {
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement
                 | ContextKind::ReferenceRange
+                | ContextKind::TreatmentAgent
+                | ContextKind::RouteOfAdministration
+                | ContextKind::DrugType
                 | ContextKind::TreatmentTarget
                 | ContextKind::TreatmentIntent
                 | ContextKind::ResponseToTreatment
@@ -167,6 +176,10 @@ impl Context {
                 | ContextKind::ProcedureBodySite
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
+                | ContextKind::DoseInterval
+                | ContextKind::DoseScheduleFrequency
+                | ContextKind::QuantityUnit
+                | ContextKind::QuantityValue
                 | ContextKind::Severity
                 | ContextKind::QuantityValue
                 | ContextKind::QuantityUnit

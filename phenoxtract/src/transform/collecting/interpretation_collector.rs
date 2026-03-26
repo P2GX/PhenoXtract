@@ -176,7 +176,7 @@ impl InterpretationCollector {
 
             let gene_variant_data =
                 PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
-                    .map_err(CollectorError::GeneVariantData)?;
+                    .map_err(CollectorError::GeneVariantDataError)?;
 
             if matches!(gene_variant_data, PathogenicGeneVariantData::None) {
                 continue;

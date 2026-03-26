@@ -1,11 +1,11 @@
 #![allow(clippy::too_many_arguments)]
+use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{
     Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
 };
-
 pub trait PhenopacketBuilding {
     fn build(&self) -> Vec<Phenopacket>;
 
@@ -101,6 +101,23 @@ pub trait PhenopacketBuilding {
         procedure_code: &str,
         body_part: Option<&str>,
         procedure_time_element: Option<&str>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError>;
+
+    #[allow(dead_code)]
+    fn insert_medical_treatment(
+        &mut self,
+        patient_id: &str,
+        agent: &str,
+        route_of_administration: Option<&str>,
+        dose_intervals: Vec<DoseIntervalRow>, // TODO
+        drug_type: Option<&str>,
+        unit: Option<&str>,
+        value: Option<f64>,
+        reference_range: Option<(f64, f64)>,
         treatment_target: Option<&str>,
         treatment_intent: Option<&str>,
         response_to_treatment: Option<&str>,

@@ -1,4 +1,5 @@
-use crate::config::context::{Context, ContextKind};
+use crate::config::context::{Context, ContextError, ContextKind};
+use crate::config::table_context::Identifier;
 use crate::extract::contextualized_data_frame::CdfBuilderError;
 use crate::ontology::error::BiDictError;
 use pivotal::hgnc::HGNCError;
@@ -341,14 +342,14 @@ pub enum CollectorError {
         patient_id: String,
         phenotype: String,
     },
-    #[error("Error collecting gene variant data: {0}")]
-    GeneVariantData(String),
-    #[error("Context Error: {0}")]
-    ContextError(String),
     #[error(
-        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+        "Expected context '{context}' to be part of a building block in table '{table_name}' for patient '{patient_id}'."
     )]
-    InterpretationBlockFormat { patient_id: String, bb_id: String },
+    ExpectedBuildingBlock {
+        table_name: String,
+        patient_id: String,
+        context: ContextKind,
+    },
     #[error(
         "The column {column_name} had datatype {found_datatype} during collection. This was not accepted. Allowed datatypes: {allowed_datatypes:?},"
     )]
@@ -357,6 +358,25 @@ pub enum CollectorError {
         found_datatype: DataType,
         allowed_datatypes: Vec<DataType>,
     },
+    //TODO
+    #[error("TODO")]
+    RequiredValueMissingError,
+    #[error(
+        "The disease/interpretation building block {bb_id} was invalid for subject {patient_id}. Such a building block can NOT be simultaneously: 1. spread across multiple sheets, 2. contain multiple diseases for a patient."
+    )]
+    InterpretationBlockFormat { patient_id: String, bb_id: String },
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantDataError(String),
+    #[error("Found unexpected context '{0}' on column with identifier '{1}'")]
+    UnexpectedContextError(ContextKind, Identifier),
+    #[error(transparent)]
+    TryIntoContextError(#[from] ContextError),
+    #[error("Error collecting gene variant data: {0}")]
+    GeneVariantData(String),
+    #[error("Context Error: {0}")]
+    ContextError(String),
+    #[error(transparent)]
+    GetterError(#[from] GetterError),
     #[error(transparent)]
     DataProcessing(Box<DataProcessingError>),
     #[error("Polars error: {0}")]
@@ -369,8 +389,6 @@ pub enum CollectorError {
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
-    #[error(transparent)]
-    GetterError(#[from] GetterError),
 }
 
 impl From<DataProcessingError> for CollectorError {
