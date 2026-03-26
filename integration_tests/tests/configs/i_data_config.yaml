@@ -127,7 +127,7 @@ data_sources:
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 
-      - sheet_name: "Condition"
+      - sheet_name: "Conditions"
         has_headers: true
         patients_are_rows: true
         series_contexts:
