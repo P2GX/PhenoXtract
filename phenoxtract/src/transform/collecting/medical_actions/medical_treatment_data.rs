@@ -10,9 +10,9 @@ use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::collecting::utils::validate_no_unexpected_contexts;
 use polars::datatypes::StringChunked;
 
-#[derive(Debug)]
-pub(super) struct DoseIntervalRow;
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub struct DoseIntervalRow;
+#[derive(Debug, PartialEq)]
 pub(super) struct DoseIntervalData;
 
 #[derive(Debug)]

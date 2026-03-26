@@ -263,7 +263,9 @@ pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
         label: "Oral Route of Administration".to_string(),
     }
 }
-
+pub(crate) fn default_drug_type() -> &'static str {
+    "PRESCRIPTION"
+}
 pub(crate) fn default_anatomy_region() -> OntologyClass {
     OntologyClass {
         id: "UBERON:0003403".to_string(),
