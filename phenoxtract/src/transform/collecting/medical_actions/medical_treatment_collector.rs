@@ -74,11 +74,11 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
                 unit: treatment.cumulative_dose.pluck(|cd| Some(cd.unit)),
                 value: treatment.cumulative_dose.pluck(|cd| Some(cd.value)),
                 reference_range: treatment.cumulative_dose.pluck(|cd| cd.reference_range),
-                treatment_target: medical_action_data.pluck(|d| d.treatment_target),
-                treatment_intent: medical_action_data.pluck(|d| d.treatment_intent),
-                response_to_treatment: medical_action_data.pluck(|d| d.response_to_treatment),
+                treatment_target: medical_action_data.pluck(|mad| mad.treatment_target),
+                treatment_intent: medical_action_data.pluck(|mad| mad.treatment_intent),
+                response_to_treatment: medical_action_data.pluck(|mad| mad.response_to_treatment),
                 treatment_termination_reason: medical_action_data
-                    .pluck(|d| d.treatment_termination_reason),
+                    .pluck(|mad| mad.treatment_termination_reason),
             }));
         }
 
