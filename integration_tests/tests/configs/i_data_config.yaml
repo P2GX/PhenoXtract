@@ -113,7 +113,7 @@ data_sources:
             building_block_id: "I"
             alias_map:
               mappings:
-                path: "$HOME/data/usidnet/matchings/infection_matchings.csv"
+                path: "$HOME/data/usidnet/matchings/infection_matchings.csv" # should just be MONDO terms
                 key_column_name: "FREE_TEXT"
                 alias_column_name: "CURIE_ID"
               output_data_type: String
