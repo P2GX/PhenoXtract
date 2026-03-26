@@ -5,7 +5,7 @@ use crate::transform::collecting::traits::GetRows;
 use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DoseInterval<'a> {
     // TODO: For now dead code, but will not be dead code anymore, when the PhenopacketBuilder builds MedicalTreatments
     #[allow(dead_code)]

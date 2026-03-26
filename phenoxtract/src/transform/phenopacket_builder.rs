@@ -3,7 +3,7 @@ use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
-use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
+use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::{PhenopacketAccessors, PhenopacketBuilding};
@@ -566,7 +566,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         patient_id: &str,
         agent: &str,
         route_of_administration: Option<&str>,
-        dose_intervals: Vec<DoseInterval>,
+        dose_intervals: Vec<DoseIntervalRow>,
         drug_type: Option<&str>,
         unit: Option<&str>,
         value: Option<f64>,

@@ -9,7 +9,7 @@ use crate::transform::error::{CollectorError, GetterError};
 use polars::datatypes::StringChunked;
 use polars::prelude::Float64Chunked;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(super) struct QuantityRow<'a> {
     pub(super) unit: &'a str,
     pub(super) value: f64,

@@ -371,18 +371,6 @@ pub enum CollectorError {
     UnexpectedContextError(ContextKind, Identifier),
     #[error(transparent)]
     TryIntoContextError(#[from] ContextError),
-    #[error(transparent)]
-    DataProcessing(Box<DataProcessingError>),
-    #[error("Polars error: {0}")]
-    PolarsError(#[from] PolarsError),
-    #[error("ParseFloatError error: {0}")]
-    ParseFloatError(#[from] ParseIntError),
-    #[error(transparent)]
-    PhenopacketBuilderError(#[from] PhenopacketBuilderError),
-    #[error(transparent)]
-    CdfBuilderError(#[from] CdfBuilderError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationErrors),
     #[error("Error collecting gene variant data: {0}")]
     GeneVariantData(String),
     #[error("Context Error: {0}")]
@@ -401,8 +389,6 @@ pub enum CollectorError {
     CdfBuilderError(#[from] CdfBuilderError),
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
-    #[error(transparent)]
-    GetterError(#[from] GetterError),
 }
 
 impl From<DataProcessingError> for CollectorError {

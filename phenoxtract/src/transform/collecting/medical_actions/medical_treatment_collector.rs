@@ -2,9 +2,10 @@ use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 
 use crate::extract::enums::Filter;
-use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
 use crate::transform::collecting::medical_actions::medical_action_data::MedicalActionData;
-use crate::transform::collecting::medical_actions::treatment_data::TreatmentData;
+use crate::transform::collecting::medical_actions::medical_treatment_data::{
+    DoseIntervalRow, TreatmentData,
+};
 use crate::transform::collecting::traits::{Collect, GetRows, Pluck};
 use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
@@ -12,7 +13,7 @@ use std::any::Any;
 
 struct MedicalTreatmentIterator<'a> {
     treatment_data: &'a TreatmentData,
-    medical_action_data: &'a MedicalActionData,
+    medical_action_data: Option<&'a MedicalActionData>,
     max_iterations: usize,
     current_index: usize,
 }
@@ -20,7 +21,7 @@ struct MedicalTreatmentIterator<'a> {
 impl<'a> MedicalTreatmentIterator<'a> {
     pub fn new(
         treatment_data: &'a TreatmentData,
-        medical_action_data: &'a MedicalActionData,
+        medical_action_data: Option<&'a MedicalActionData>,
     ) -> Self {
         Self {
             treatment_data,
@@ -54,10 +55,14 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
                 }
             };
 
-            let general_medical_action_data = &self
-                .medical_action_data
-                .get(self.current_index)
-                .expect("Cant throw error.");
+            let medical_action_data = if let Some(medical_action_data) = self.medical_action_data {
+                match medical_action_data.get(self.current_index) {
+                    Ok(mad) => mad,
+                    Err(err) => return Some(Err(CollectorError::from(err))),
+                }
+            } else {
+                None
+            };
 
             self.current_index += 1;
 
@@ -69,11 +74,10 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
                 unit: treatment.cumulative_dose.pluck(|cd| Some(cd.unit)),
                 value: treatment.cumulative_dose.pluck(|cd| Some(cd.value)),
                 reference_range: treatment.cumulative_dose.pluck(|cd| cd.reference_range),
-                treatment_target: general_medical_action_data.pluck(|d| d.treatment_target),
-                treatment_intent: general_medical_action_data.pluck(|d| d.treatment_intent),
-                response_to_treatment: general_medical_action_data
-                    .pluck(|d| d.response_to_treatment),
-                treatment_termination_reason: general_medical_action_data
+                treatment_target: medical_action_data.pluck(|d| d.treatment_target),
+                treatment_intent: medical_action_data.pluck(|d| d.treatment_intent),
+                response_to_treatment: medical_action_data.pluck(|d| d.response_to_treatment),
+                treatment_termination_reason: medical_action_data
                     .pluck(|d| d.treatment_termination_reason),
             }));
         }
@@ -85,7 +89,7 @@ impl<'a> Iterator for MedicalTreatmentIterator<'a> {
 struct MedicalTreatmentIterElement<'a> {
     agent: &'a str,
     route_of_administration: Option<&'a str>,
-    dose_intervals: Vec<DoseInterval<'a>>,
+    dose_intervals: Vec<DoseIntervalRow>,
     drug_type: Option<&'a str>,
     unit: Option<&'a str>,
     value: Option<f64>,
@@ -121,7 +125,7 @@ impl Collect for MedicalTreatmentCollector {
                 )?;
                 if let Some(treatment_data) = treatment_data {
                     for treatment_values in
-                        MedicalTreatmentIterator::new(&treatment_data, &medical_action_data)
+                        MedicalTreatmentIterator::new(&treatment_data, medical_action_data.as_ref())
                     {
                         let treatment_values = treatment_values?;
                         builder.insert_medical_treatment(
@@ -157,18 +161,18 @@ mod tests {
     use crate::config::table_context::SeriesContext;
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
-    use crate::test_suite::phenopacket_component_generation::default_timestamp;
     use crate::test_suite::phenopacket_component_generation::{
-        default_anatomy_region, default_disease_oc, default_procedure_oc,
-        default_treatment_agent_oc, default_treatment_intent, default_treatment_response,
-        default_treatment_termination_reason,
+        default_disease_oc, default_drug_type, default_treatment_agent_oc,
+        default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
+    };
+    use crate::test_suite::phenopacket_component_generation::{
+        default_route_of_administration_oc, default_unit_oc,
     };
 
-    use crate::config::context::TimeElementType;
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::mocks::MockPhenopacketBuilding;
     use polars::datatypes::AnyValue;
-    use polars::prelude::{IntoColumn, NamedFrom, Series, TimeUnit};
+    use polars::prelude::{IntoColumn, NamedFrom, Series};
     use rstest::{fixture, rstest};
 
     #[fixture]
@@ -182,24 +186,25 @@ mod tests {
             ],
         );
 
-        let body_site = Series::new(
-            "body_site".into(),
+        let route_of_administration = Series::new(
+            "route_of_administration".into(),
             &[
-                AnyValue::String(&default_anatomy_region().label),
-                AnyValue::String(&default_anatomy_region().label),
+                AnyValue::Null,
+                AnyValue::String(&default_route_of_administration_oc().id),
             ],
         );
 
-        let time_element = Series::new(
-            "at".into(),
-            &[
-                AnyValue::Null,
-                AnyValue::Datetime(
-                    default_timestamp().nanos as i64,
-                    TimeUnit::Nanoseconds,
-                    None,
-                ),
-            ],
+        let drug_type = Series::new(
+            "drug_type".into(),
+            &[AnyValue::Null, AnyValue::String(default_drug_type())],
+        );
+
+        let quantity_values =
+            Series::new("values".into(), &[AnyValue::Null, AnyValue::Float64(0.5)]);
+
+        let units = Series::new(
+            "unit".into(),
+            &[AnyValue::Null, AnyValue::String(&default_unit_oc().label)],
         );
 
         let treatment_target = Series::new(
@@ -234,54 +239,69 @@ mod tests {
             ],
         );
 
+        let building_block = "treatment_1";
         patient_cdf
             .builder()
             .insert_sc_alongside_cols(
-                SeriesContext::from_identifier("procedure")
-                    .with_data_context(Context::Procedure)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                SeriesContext::from_identifier("agent")
+                    .with_data_context(Context::TreatmentAgent)
+                    .with_building_block_id(Some(building_block)),
                 vec![procedure.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::from_identifier("body_site")
-                    .with_data_context(Context::ProcedureBodySite)
-                    .with_building_block_id(Some("procedure_1".to_string())),
-                vec![body_site.into_column()].as_ref(),
+                SeriesContext::from_identifier("route_of_administration")
+                    .with_data_context(Context::RouteOfAdministration)
+                    .with_building_block_id(building_block),
+                vec![route_of_administration.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
-                SeriesContext::from_identifier("at")
-                    .with_data_context(Context::TimeOfProcedure(TimeElementType::Date))
-                    .with_building_block_id(Some("procedure_1".to_string())),
-                vec![time_element.into_column()].as_ref(),
+                SeriesContext::from_identifier("drug_type")
+                    .with_data_context(Context::DrugType)
+                    .with_building_block_id(building_block),
+                vec![drug_type.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_sc_alongside_cols(
+                SeriesContext::from_identifier("values")
+                    .with_data_context(Context::QuantityValue)
+                    .with_building_block_id(building_block),
+                vec![quantity_values.into_column()].as_ref(),
+            )
+            .unwrap()
+            .insert_sc_alongside_cols(
+                SeriesContext::from_identifier("unit")
+                    .with_data_context(Context::QuantityUnit)
+                    .with_building_block_id(building_block),
+                vec![units.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("treatment_target")
                     .with_data_context(Context::TreatmentTarget)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id(building_block),
                 vec![treatment_target.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("treatment_intent")
                     .with_data_context(Context::TreatmentIntent)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id(building_block),
                 vec![treatment_intent.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("treatment_response")
                     .with_data_context(Context::ResponseToTreatment)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id(building_block),
                 vec![treatment_response.into_column()].as_ref(),
             )
             .unwrap()
             .insert_sc_alongside_cols(
                 SeriesContext::from_identifier("treatment_termination_reason")
                     .with_data_context(Context::TreatmentTerminationReason)
-                    .with_building_block_id(Some("procedure_1".to_string())),
+                    .with_building_block_id(building_block),
                 vec![treatment_termination_reason.into_column()].as_ref(),
             )
             .unwrap()
@@ -298,20 +318,28 @@ mod tests {
         let patient_id = default_patient_id();
 
         builder
-            .expect_insert_medical_procedure()
+            .expect_insert_medical_treatment()
             .withf(
                 |id,
-                 name,
-                 body_site,
-                 date,
+                 agent,
+                 route_of_admin,
+                 dose_intervals,
+                 drug_type,
+                 unit,
+                 quant_value,
+                 ref_range,
                  treatment_target,
                  treatment_intent,
                  response_to_treatment,
                  termination_reason| {
                     id == default_patient_id()
-                        && name == default_procedure_oc().label
-                        && *body_site == Some(&default_anatomy_region().label)
-                        && *date == Some("1970-01-01 00:00:00.000000000")
+                        && agent == default_treatment_agent_oc().label
+                        && *route_of_admin == Some(&default_route_of_administration_oc().id)
+                        && *dose_intervals == vec![]
+                        && *drug_type == Some(default_drug_type())
+                        && *unit == Some(&default_unit_oc().label)
+                        && *quant_value == Some(0.5)
+                        && *ref_range == None
                         && *treatment_target == Some(&default_disease_oc().label)
                         && *treatment_intent == Some(&default_treatment_intent().label)
                         && *response_to_treatment == Some(&default_treatment_response().id)
@@ -319,7 +347,7 @@ mod tests {
                 },
             )
             .times(1)
-            .returning(|_, _, _, _, _, _, _, _| Ok(()));
+            .returning(|_, _, _, _, _, _, _, _, _, _, _, _| Ok(()));
 
         collector
             .collect(&mut builder, &[medical_treatment_cdf], &patient_id)

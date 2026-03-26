@@ -1,7 +1,7 @@
 use crate::extract::ContextualizedDataFrame;
 use crate::ontology::CachedOntologyFactory;
 use crate::test_suite::utils::test_ontology_path;
-use crate::transform::collecting::medical_actions::dose_interval_data::DoseInterval;
+use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::error::PhenopacketBuilderError;
@@ -146,7 +146,7 @@ impl PhenopacketBuilding for PhenopacketBuilding {
     patient_id: &str,
     agent: &str,
     route_of_administration: Option<&'a str>,
-    dose_intervals: Vec<DoseInterval<'a>>, // TODO
+    dose_intervals: Vec<DoseIntervalRow>, // TODO
     drug_type: Option<&'a str>,
     unit: Option<&'a str>,
     value: Option<f64>,

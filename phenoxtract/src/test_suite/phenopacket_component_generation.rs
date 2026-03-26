@@ -264,24 +264,14 @@ pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
     }
 }
 
+pub(crate) fn default_drug_type() -> &'static str {
+    "PRESCRIPTION"
+}
+
 pub(crate) fn default_anatomy_region() -> OntologyClass {
     OntologyClass {
         id: "UBERON:0003403".to_string(),
         label: "skin of forearm".to_string(),
-    }
-}
-
-pub(crate) fn default_treatment_agent_oc() -> OntologyClass {
-    OntologyClass {
-        id: "NCIT:C62045".to_string(),
-        label: "Methylphenidate".to_string(),
-    }
-}
-
-pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
-    OntologyClass {
-        id: "NCIT:C38288".to_string(),
-        label: "Oral Route of Administration".to_string(),
     }
 }
 

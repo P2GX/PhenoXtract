@@ -83,10 +83,6 @@ pub enum Context {
     ReferenceRange(Boundary),
 
     // Medical Actions
-    TreatmentAgent,
-    RouteOfAdministration,
-    DrugType,
-
     TreatmentTarget,
     TreatmentIntent,
     ResponseToTreatment,

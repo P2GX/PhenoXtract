@@ -10,8 +10,8 @@ use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::collecting::utils::validate_no_unexpected_contexts;
 use polars::datatypes::StringChunked;
 
-#[derive(Debug)]
-pub(super) struct DoseIntervalRow;
+#[derive(Debug, PartialEq)]
+pub struct DoseIntervalRow;
 #[derive(Debug)]
 pub(super) struct DoseIntervalData;
 
@@ -130,7 +130,8 @@ mod tests {
     use crate::config::traits::SeriesContextBuilding;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::phenopacket_component_generation::{
-        default_route_of_administration_oc, default_treatment_agent_oc, default_unit_oc,
+        default_drug_type, default_route_of_administration_oc, default_treatment_agent_oc,
+        default_unit_oc,
     };
     use polars::datatypes::AnyValue;
     use polars::prelude::{IntoColumn, NamedFrom, Series};
@@ -172,8 +173,8 @@ mod tests {
         let drug_type = Series::new(
             "drug_type".into(),
             &[
-                AnyValue::String("PRESCRIPTION"),
-                AnyValue::String("PRESCRIPTION"),
+                AnyValue::String(default_drug_type()),
+                AnyValue::String(default_drug_type()),
             ],
         );
 
