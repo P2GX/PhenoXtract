@@ -129,9 +129,10 @@ impl InterpretationCollector {
         })?;
 
         if let Some(disease) = disease {
-            let disease_col = StringChunked::from_iter(vec![disease.as_str(); patient_cdfs.len()]);
-
             for patient_cdf in patient_cdfs {
+                let disease_col =
+                    StringChunked::from_iter(vec![disease.as_str(); patient_cdf.data().height()]);
+
                 Self::collect_genes_and_variants_in_bb(
                     builder,
                     patient_cdf,

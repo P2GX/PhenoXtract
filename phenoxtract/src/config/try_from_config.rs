@@ -458,12 +458,12 @@ mod tests {
     }
     #[fixture]
     fn keys() -> [&'static str; 3] {
-        ["k1", "k2", "k3"]
+        ["  k1", "k2", "k3"]
     }
 
     #[fixture]
     fn aliases() -> [&'static str; 3] {
-        ["a1", "", "a3"]
+        ["a1", "", "a3  "]
     }
 
     #[fixture]

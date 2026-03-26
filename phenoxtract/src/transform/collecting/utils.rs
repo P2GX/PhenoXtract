@@ -1,3 +1,4 @@
+use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
 use crate::extract::column_filter::{ColumnFilter, ColumnFilterConfig};
 use crate::transform::error::CollectorError;
@@ -67,6 +68,28 @@ pub(crate) fn get_single_multiplicity_element(
             filter_info: column_filters.to_string(),
         }),
     }
+}
+
+pub(crate) fn validate_no_unexpected_contexts<T>(
+    col_to_context: Vec<(bool, Vec<Context>)>,
+    expected_contexts: Vec<Context>,
+    building_block: Option<&str>,
+) -> Result<Option<T>, CollectorError> {
+    if col_to_context.iter().any(|(c, _)| *c) {
+        let found_contexts: Vec<Context> = col_to_context
+            .iter()
+            .filter(|(flag, _)| *flag)
+            .flat_map(|(_, ctx)| ctx.iter().cloned())
+            .collect();
+
+        return Err(CollectorError::ExpectedLinkedContexts {
+            bb_id: building_block.unwrap_or("No Building Block").to_string(),
+            expected_contexts,
+            found_contexts,
+        });
+    };
+
+    Ok(None)
 }
 
 pub(crate) fn get_str_at_index(column_opt: Option<&StringChunked>, idx: usize) -> Option<&str> {
