@@ -3,6 +3,7 @@ use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
+use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::error::PhenopacketBuilderError;
 use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::{PhenopacketAccessors, PhenopacketBuilding};
@@ -556,6 +557,26 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         let phenopacket = self.get_or_create_phenopacket(patient_id);
         phenopacket.push_medical_action(medical_action);
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(unused)]
+    fn insert_medical_treatment(
+        &mut self,
+        patient_id: &str,
+        agent: &str,
+        route_of_administration: Option<&str>,
+        dose_intervals: Vec<DoseIntervalRow>,
+        drug_type: Option<&str>,
+        unit: Option<&str>,
+        value: Option<f64>,
+        reference_range: Option<(f64, f64)>,
+        treatment_target: Option<&str>,
+        treatment_intent: Option<&str>,
+        response_to_treatment: Option<&str>,
+        treatment_termination_reason: Option<&str>,
+    ) -> Result<(), PhenopacketBuilderError> {
+        todo!()
     }
 }
 
