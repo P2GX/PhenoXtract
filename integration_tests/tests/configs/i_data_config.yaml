@@ -180,6 +180,25 @@ data_sources:
               time_of_procedure: date
             building_block_id: "organ_transplant"
 
+      - sheet_name: "SCT"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Transplant?"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "MAXO:0000747"
+            building_block_id: "sct"
+          #- identifier: "Transplant Date" # TODO: Has negative ages
+          #  data_context:
+          #    time_of_procedure: date
+          #  building_block_id: "sct"
+
+
       - sheet_name: "Transfusions"
         has_headers: true
         patients_are_rows: true
