@@ -192,6 +192,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "MAXO:0000747"
+                "No": null
             building_block_id: "sct"
           #- identifier: "Transplant Date" # TODO: Has negative ages
           #  data_context:
@@ -211,7 +212,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "NCIT:C15773" # TODO(Rouven): This is a placeholder. I could not really find anything. OMIT:0018013 Would work, but OMIT only supports OWL.
-                "": null
+                "No": null
             building_block_id: "leukocyte_transfusion"
           - identifier: "Platelet"
             data_context: procedure
@@ -219,7 +220,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "NCIT:C15366"
-                "": null
+                "No": null
             building_block_id: "platelet_transfusion"
           - identifier: "Red Cell"
             data_context: procedure
@@ -227,7 +228,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "NCIT:C15409"
-                "": null
+                "No": null
             building_block_id: "red_cell_transfusion"
           - identifier: "Fresh Frozen Plasma"
             data_context: procedure
@@ -235,7 +236,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "NCIT:C140042" # TODO(Rouven): This is just Plasma Transfusion, no frozen nor fresh.
-                "": null
+                "No": null
             building_block_id: "plasma_transfusion"
           - identifier: "Whole Blood"
             data_context: procedure
@@ -243,7 +244,7 @@ data_sources:
               output_data_type: String
               mappings:
                 "Yes": "NCIT:C62749"
-                "": null
+                "No": null
             building_block_id: "blood_transfusion"
 
       - sheet_name: "Molecular Info"
@@ -276,6 +277,7 @@ pipeline:
     file_system:
       output_dir: "$HOME/data/usidnet/phenopackets"
       create_dir: true
+
   meta_data:
     created_by: Robinson Lab
     submitted_by: Robinson Lab
