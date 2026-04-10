@@ -228,8 +228,17 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
         if ontology_metadata.json_file_location.is_some()
             || ontology_metadata.obo_file_location.is_some()
         {
-            self.build_obodoc_ontology(ontology_ref)
-                .or_else(|_| self.build_ontolius_ontology(ontology_ref))
+            if let Ok(ontology) = self.build_obodoc_ontology(ontology_ref) {
+                Ok(ontology)
+            } else {
+                let reg_key = RegistryKey::new(
+                    ontology_ref.prefix_id(),
+                    ontology_ref.as_version(),
+                    FileType::Json,
+                );
+                self.registry.unregister(reg_key)?;
+                self.build_ontolius_ontology(ontology_ref)
+            }
         } else {
             Err(FactoryError::NoValidOntologyFilesAvailable {
                 ontology_prefix: ontology_ref.prefix_id().to_string(),
