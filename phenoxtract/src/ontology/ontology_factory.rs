@@ -206,7 +206,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
         for r in self.registry.list()? {
             if r.version().to_string() == ontology_ref.version()
-                && r.ontology_id() == ontology_ref.prefix_id()
+                && r.ontology_id().to_lowercase() == ontology_ref.prefix_id().to_lowercase()
             {
                 return match r.file_type() {
                     FileType::Json => self.build_ontolius_ontology(ontology_ref),
