@@ -6,12 +6,12 @@ use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
-use ontology_registry::OntologyMetadataProviding;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use ontology_registry::enums::FileType;
 use ontology_registry::traits::OntologyRegistration;
+use ontology_registry::{OntologyMetadataProviding, RegistryKey};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{BufReader, Read};
@@ -90,16 +90,18 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     }
 
     fn register(
-        &mut self,
+        &self,
         ontology_ref: &ResourceRef,
         file_type: FileType,
     ) -> Result<impl Read, FactoryError> {
+        let reg_key = RegistryKey::new(
+            ontology_ref.prefix_id().to_lowercase(),
+            ontology_ref.clone().as_version(),
+            file_type,
+        );
+
         self.registry
-            .register(
-                ontology_ref.prefix_id().to_lowercase(),
-                ontology_ref.clone().as_version(),
-                file_type,
-            )
+            .register(reg_key)
             .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))
     }
 

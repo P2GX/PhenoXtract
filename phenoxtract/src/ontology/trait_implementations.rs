@@ -133,7 +133,7 @@ mod tests {
     use ontolius::TermId;
     use ontolius::io::OntologyLoaderBuilder;
     use ontolius::term::Definition;
-    use ontology_registry::{FileType, OntologyRegistration, Version};
+    use ontology_registry::{FileType, OntologyRegistration, RegistryKey, Version};
     use rstest::{fixture, rstest};
     use std::io::BufReader;
 
@@ -143,26 +143,24 @@ mod tests {
 
     fn uo_obodoc() -> Arc<OboDoc> {
         let registry = MockOntologyRegistry::default();
-        let ontology_path = registry
-            .register(
-                UO_REF.prefix_id().to_lowercase(),
-                Version::Declared(UO_REF.version().to_string()),
-                FileType::Obo,
-            )
-            .unwrap();
+        let reg_key = RegistryKey::new(
+            UO_REF.prefix_id().to_lowercase(),
+            Version::Declared(UO_REF.version().to_string()),
+            FileType::Obo,
+        );
+        let ontology_path = registry.register(reg_key).unwrap();
         let mut reader = BufReader::new(ontology_path);
         Arc::new(fastobo::from_reader(&mut reader).unwrap())
     }
 
     fn uo_ontolius() -> Arc<FullCsrOntology> {
         let registry = MockOntologyRegistry::default();
-        let ontology_path = registry
-            .register(
-                UO_REF.prefix_id().to_lowercase(),
-                Version::Declared(UO_REF.version().to_string()),
-                FileType::Json,
-            )
-            .unwrap();
+        let reg_key = RegistryKey::new(
+            UO_REF.prefix_id().to_lowercase(),
+            Version::Declared(UO_REF.version().to_string()),
+            FileType::Json,
+        );
+        let ontology_path = registry.register(reg_key).unwrap();
         let loader = OntologyLoaderBuilder::new().obographs_parser().build();
         let ontolius = loader.load_from_read(ontology_path).unwrap();
         Arc::new(ontolius)
