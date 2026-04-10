@@ -1,7 +1,7 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
-use crate::ontology::traits::{HasPrefixId, OntologyLike};
+use crate::ontology::traits::{HasPrefixId, HasVersion, OntologyLike};
 use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
@@ -204,14 +204,32 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             return Ok(onto.ontology.clone());
         }
 
+        for r in self.registry.list()? {
+            if r.version().to_string() == ontology_ref.version()
+                && r.ontology_id() == ontology_ref.prefix_id()
+            {
+                return match r.file_type() {
+                    FileType::Json => self.build_ontolius_ontology(ontology_ref),
+                    FileType::Obo => self.build_obodoc_ontology(ontology_ref),
+                    FileType::Owl => Err(FactoryError::CantBuild {
+                        reason: format!(
+                            "OWL files are not supported. Got a configuration for {}",
+                            r
+                        ),
+                    }),
+                };
+            }
+        }
+
         let ontology_metadata = self
             .metadata_provider
             .provide_metadata(ontology_ref.prefix_id())?;
 
-        if ontology_metadata.json_file_location.is_some() {
-            self.build_ontolius_ontology(ontology_ref)
-        } else if ontology_metadata.obo_file_location.is_some() {
+        if ontology_metadata.json_file_location.is_some()
+            || ontology_metadata.obo_file_location.is_some()
+        {
             self.build_obodoc_ontology(ontology_ref)
+                .or_else(|_| self.build_ontolius_ontology(ontology_ref))
         } else {
             Err(FactoryError::NoValidOntologyFilesAvailable {
                 ontology_prefix: ontology_ref.prefix_id().to_string(),
