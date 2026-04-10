@@ -31,7 +31,7 @@ pub enum FactoryError {
     #[error("Failed to build ontology '{reason}'")]
     CantBuild { reason: String },
     #[error(
-        "Currently PhenoXtract only accepts ontologies which have .json or .obo ontology files on BioFoundry. Ontology {ontology_prefix} had neither."
+        "Currently PhenoXtract only accepts ontologies which have .json or .obo ontology files on BioRegistry. Ontology {ontology_prefix} had neither."
     )]
     NoValidOntologyFilesAvailable { ontology_prefix: String },
     #[error(transparent)]
