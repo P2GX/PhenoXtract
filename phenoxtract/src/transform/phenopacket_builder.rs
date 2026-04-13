@@ -2022,8 +2022,8 @@ mod tests {
                 assert_eq!(t.route_of_administration, Some(roa));
 
                 assert_eq!(
-                    DrugType::from_i32(t.drug_type).unwrap(),
-                    DrugType::from_str_name(default_drug_type()).unwrap()
+                    t.drug_type,
+                    DrugType::from_str_name(default_drug_type()).unwrap() as i32
                 );
                 assert_eq!(
                     t.cumulative_dose.unwrap(),
