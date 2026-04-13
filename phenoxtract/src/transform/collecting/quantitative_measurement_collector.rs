@@ -223,7 +223,7 @@ mod tests {
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
                 phenopacket_schema_version: phenopacket_schema_version(),
-                resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
+                resources: vec![uo_meta_data_resource(), loinc_meta_data_resource()],
                 submitted_by: default_meta_data().submitted_by,
                 created_by: default_meta_data().created_by,
                 ..Default::default()

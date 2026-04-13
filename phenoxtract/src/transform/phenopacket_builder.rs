@@ -15,6 +15,7 @@ use chrono::Utc;
 use log::warn;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
+use phenopackets::schema::v2::core::DrugType as PhenopacketDrugType;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
@@ -23,7 +24,7 @@ use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
     Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
-    OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex,
+    OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex, Treatment,
     Value as ValueStruct, VitalStatus,
 };
 use pivotal::hgnc::GeneQuery;
@@ -440,22 +441,9 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         unit_id: &str,
         reference_range: Option<(f64, f64)>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let (unit_term, unit_ref) = Self::resolve_term(self.ctx.unit_bidict_lib(), unit_id)?;
+        let quantity =
+            self.parse_quantity(patient_id, unit_id, quant_measurement, reference_range)?;
         let (assay_term, assay_ref) = Self::resolve_term(self.ctx.assay_bidict_lib(), assay_id)?;
-
-        let mut quantity = Quantity {
-            unit: Some(unit_term.clone()),
-            value: quant_measurement,
-            ..Default::default()
-        };
-
-        if let Some(reference_range) = reference_range {
-            quantity.reference_range = Some(ReferenceRange {
-                unit: Some(unit_term),
-                low: reference_range.0,
-                high: reference_range.1,
-            });
-        }
 
         let mut measurement_element = Measurement {
             assay: Some(assay_term),
@@ -480,7 +468,6 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         pp.push_measurement(measurement_element);
 
         self.ensure_resource(patient_id, &assay_ref);
-        self.ensure_resource(patient_id, &unit_ref);
 
         Ok(())
     }
@@ -576,7 +563,48 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         response_to_treatment: Option<&str>,
         treatment_termination_reason: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
-        todo!()
+        let mut treatment = Treatment::default();
+
+        let (agent_oc, agent_ref) = Self::resolve_term(self.ctx.medicine_bi_dict_lib(), agent)?;
+        treatment.agent = Some(agent_oc);
+        self.ensure_resource(patient_id, &agent_ref);
+
+        if let Some(roa) = route_of_administration {
+            let (route_of_administration, roa_ref) =
+                Self::resolve_term(self.ctx.treatment_attributes_bi_dict(), roa)?;
+            treatment.route_of_administration = Some(route_of_administration);
+            self.ensure_resource(patient_id, &roa_ref);
+        }
+
+        if let Some(drug_type) = drug_type {
+            treatment.drug_type = PhenopacketDrugType::from_str_name(drug_type)
+                .ok_or_else(|| PhenopacketBuilderError::ParsingError {
+                    what: "DrugType".to_string(),
+                    value: drug_type.to_string(),
+                })?
+                .into();
+        }
+
+        if let (Some(unit), Some(value)) = (unit, value) {
+            treatment.cumulative_dose =
+                Some(self.parse_quantity(patient_id, unit, value, reference_range)?);
+        }
+
+        let treatment = Action::Treatment(treatment);
+
+        let medical_action = self.parse_medical_action(
+            patient_id,
+            treatment,
+            treatment_target,
+            treatment_intent,
+            response_to_treatment,
+            treatment_termination_reason,
+        )?;
+
+        let phenopacket = self.get_or_create_phenopacket(patient_id);
+        phenopacket.medical_actions.push(medical_action);
+
+        Ok(())
     }
 }
 
@@ -809,6 +837,38 @@ impl PhenopacketBuilder {
         Ok(Action::Procedure(procedure))
     }
 
+    fn parse_quantity(
+        &mut self,
+        patient_id: &str,
+        unit: &str,
+        value: f64,
+        reference_range: Option<(f64, f64)>,
+    ) -> Result<Quantity, PhenopacketBuilderError> {
+        if unit.is_empty() {
+            return Err(PhenopacketBuilderError::MissingValueError {
+                value_name: "unit".to_string(),
+                struct_name: "Quantity".to_string(),
+            });
+        }
+
+        let mut quantity = Quantity::default();
+
+        let (unit_term, unit_ref) = Self::resolve_term(self.ctx.unit_bidict_lib(), unit)?;
+        quantity.unit = Some(unit_term.clone());
+        self.ensure_resource(patient_id, &unit_ref);
+
+        quantity.value = value;
+
+        if let Some(reference_range) = reference_range {
+            quantity.reference_range = Some(ReferenceRange {
+                unit: Some(unit_term),
+                low: reference_range.0,
+                high: reference_range.1,
+            });
+        }
+
+        Ok(quantity)
+    }
     fn resolve_term(
         bi_dict_lib: &Arc<BiDictLibrary>,
         label_or_id: &str,
@@ -843,17 +903,18 @@ mod tests {
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::phenopacket_component_generation::{
         default_age_element, default_anatomy_region, default_cohort_id, default_datetime,
-        default_disease, default_disease_oc, default_iso_age, default_pato_qual_measurement,
-        default_phenopacket_id, default_phenotype_oc, default_procedure, default_procedure_oc,
-        default_qual_loinc, default_qual_measurement, default_quant_loinc,
-        default_quant_measurement, default_reference_range, default_timestamp,
-        default_timestamp_element, default_treatment_intent, default_treatment_response,
+        default_disease, default_disease_oc, default_drug_type, default_iso_age,
+        default_pato_qual_measurement, default_phenopacket_id, default_phenotype_oc,
+        default_procedure, default_procedure_oc, default_qual_loinc, default_qual_measurement,
+        default_quant_loinc, default_quant_measurement, default_reference_range,
+        default_route_of_administration_oc, default_timestamp, default_timestamp_element,
+        default_treatment_agent_oc, default_treatment_intent, default_treatment_response,
         default_treatment_termination_reason, default_unit_oc, generate_phenotype,
     };
     use crate::test_suite::resource_references::mondo_meta_data_resource;
     use crate::test_suite::utils::assert_phenopackets;
     use phenopackets::ga4gh::vrsatile::v1::Expression;
-    use phenopackets::schema::v2::core::{Individual, MetaData, Resource};
+    use phenopackets::schema::v2::core::{DrugType, Individual, MetaData, Resource};
     use pretty_assertions::assert_eq;
     use rstest::*;
 
@@ -1914,6 +1975,108 @@ mod tests {
             resource_ids.contains(&"maxo".to_string())
                 && resource_ids.contains(&"uberon".to_string())
         );
+    }
+
+    #[rstest]
+    fn test_insert_medical_treatment() {
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+
+        let agent_oc = default_treatment_agent_oc();
+        let roa = default_route_of_administration_oc();
+        let drug_type = default_drug_type();
+        let unit = default_unit_oc();
+        let value = 4.0;
+        let ref_range = default_reference_range();
+        let treatment_target = default_disease_oc();
+        let treatment_intent = default_treatment_intent();
+        let treatment_response = default_treatment_response();
+        let treatment_termination_reason = default_treatment_termination_reason();
+
+        builder
+            .insert_medical_treatment(
+                &patient_id,
+                &agent_oc.id,
+                Some(&roa.id),
+                vec![],
+                Some(drug_type),
+                Some(&unit.id),
+                Some(value),
+                Some(ref_range),
+                Some(&treatment_target.id),
+                Some(&treatment_intent.id),
+                Some(&treatment_response.id),
+                Some(&treatment_termination_reason.id),
+            )
+            .unwrap();
+
+        let pp = builder.build().first().unwrap().clone();
+
+        assert_eq!(pp.medical_actions.len(), 1);
+
+        let medical_treatment = pp.medical_actions.first().unwrap();
+
+        match medical_treatment.action.clone().unwrap() {
+            Action::Treatment(t) => {
+                assert_eq!(t.agent, Some(agent_oc));
+                assert_eq!(t.route_of_administration, Some(roa));
+
+                assert_eq!(
+                    DrugType::from_i32(t.drug_type).unwrap(),
+                    DrugType::from_str_name(default_drug_type()).unwrap()
+                );
+                assert_eq!(
+                    t.cumulative_dose.unwrap(),
+                    Quantity {
+                        unit: Some(unit.clone()),
+                        value,
+                        reference_range: Some(ReferenceRange {
+                            unit: Some(unit),
+                            low: ref_range.0,
+                            high: ref_range.1,
+                        }),
+                    }
+                );
+            }
+            _ => panic!("Inserted false action {:?}", medical_treatment),
+        }
+
+        assert_eq!(
+            medical_treatment.response_to_treatment,
+            Some(treatment_response)
+        );
+        assert_eq!(medical_treatment.treatment_target, Some(treatment_target));
+        assert_eq!(medical_treatment.treatment_intent, Some(treatment_intent));
+        assert_eq!(
+            medical_treatment.treatment_termination_reason,
+            Some(treatment_termination_reason)
+        );
+    }
+
+    #[rstest]
+    fn test_parse_quantity() {
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+        let unit = default_unit_oc();
+        let reference_range = default_reference_range();
+        let value = 4.0;
+
+        let quantity = builder
+            .parse_quantity(&patient_id, &unit.id, value, Some(reference_range))
+            .unwrap();
+
+        assert_eq!(quantity.value, value);
+        assert_eq!(quantity.unit, Some(unit.clone()));
+
+        let res_ref_range = quantity.reference_range.unwrap();
+
+        assert_eq!(res_ref_range.low, reference_range.0);
+        assert_eq!(res_ref_range.high, reference_range.1);
+        assert_eq!(res_ref_range.unit, Some(unit));
+        let pp = builder.build().first().unwrap().clone();
+        let resource_ids: Vec<String> = pp.resources().iter().map(|r| r.id.clone()).collect();
+
+        assert!(resource_ids.contains(&"uo".to_string()));
     }
 
     #[rstest]
