@@ -5,6 +5,7 @@ use crate::ontology::error::FactoryError;
 use crate::ontology::loinc_client::LoincClient;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::BiDict;
+use ontology_registry::OntologyRegistration;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
@@ -12,15 +13,17 @@ use strum::VariantNames;
 
 type OntologyRegistry = FileSystemOntologyRegistry<BioRegistryMetadataProvider, OboLibraryProvider>;
 
-#[derive(Default)]
-pub(crate) struct ResourceConfigFactory {
-    ontology_factory: CachedOntologyFactory<OntologyRegistry>,
+pub(crate) struct ResourceConfigFactory<OR: OntologyRegistration> {
+    ontology_factory: CachedOntologyFactory<OR>,
 }
 
-impl ResourceConfigFactory {
+impl<OR> ResourceConfigFactory<OR>
+where
+    OR: OntologyRegistration,
+{
     const NON_CONFIGURABLE: [KnownResourcePrefixes; 1] = [KnownResourcePrefixes::HGNC];
 
-    pub fn new(ontology_factory: CachedOntologyFactory<OntologyRegistry>) -> Self {
+    pub fn new(ontology_factory: CachedOntologyFactory<OR>) -> Self {
         Self { ontology_factory }
     }
 
@@ -144,8 +147,14 @@ impl ResourceConfigFactory {
         Ok(Box::new(client))
     }
 
-    pub fn into_ontology_factory(self) -> CachedOntologyFactory<OntologyRegistry> {
+    pub fn into_ontology_factory(self) -> CachedOntologyFactory<OR> {
         self.ontology_factory
+    }
+}
+
+impl Default for ResourceConfigFactory<OntologyRegistry> {
+    fn default() -> Self {
+        ResourceConfigFactory::new(CachedOntologyFactory::default())
     }
 }
 
@@ -154,9 +163,12 @@ mod tests {
     use super::*;
     use crate::ontology::error::FactoryError;
     use crate::ontology::resource_references::KnownResourcePrefixes;
+    use crate::test_suite::mocks::MockOntologyRegistry;
 
-    fn get_factory() -> ResourceConfigFactory {
-        ResourceConfigFactory::default()
+    fn get_factory() -> ResourceConfigFactory<MockOntologyRegistry> {
+        ResourceConfigFactory {
+            ontology_factory: CachedOntologyFactory::new(MockOntologyRegistry::default()),
+        }
     }
 
     #[test]
@@ -255,9 +267,10 @@ mod tests {
             secrets: None,
         };
 
-        let result = factory.build(&config);
+        let result = factory.build(&config).unwrap();
 
-        assert!(result.is_ok());
+        let id = result.get_id("sequence bearer").unwrap();
+        assert_eq!(id, "RO:0002534");
     }
 
     #[test]
@@ -274,10 +287,11 @@ mod tests {
 
         let err = result.err().unwrap();
 
-        let non_configurable_strs: Vec<&str> = ResourceConfigFactory::NON_CONFIGURABLE
-            .iter()
-            .map(|id| id.as_ref())
-            .collect();
+        let non_configurable_strs: Vec<&str> =
+            ResourceConfigFactory::<MockOntologyRegistry>::NON_CONFIGURABLE
+                .iter()
+                .map(|id| id.as_ref())
+                .collect();
 
         for not_supported in non_configurable_strs {
             assert!(!err.to_string().contains(not_supported));

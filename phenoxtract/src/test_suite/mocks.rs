@@ -200,9 +200,9 @@ impl OntologyRegistration for MockOntologyRegistry {
                     .to_str()
                     .expect("Conversion error");
 
-                let found_ontology_id = file_name.split("_").next().unwrap().to_string();
+                let found_ontology_id = file_name.split("@").next().unwrap().to_string();
                 if found_ontology_id == registry_key.ontology_id() {
-                    return Ok(fs::File::open(&path).unwrap_or_else(|_| {
+                    return Ok(File::open(&path).unwrap_or_else(|_| {
                         panic!("Failed to open file {}", path.to_str().unwrap())
                     }));
                 }
@@ -210,7 +210,7 @@ impl OntologyRegistration for MockOntologyRegistry {
         }
 
         let file_name = format!(
-            "{}_{}{}",
+            "{}@{}{}",
             registry_key.ontology_id(),
             registry_key.version(),
             registry_key.file_type().as_file_ending()
@@ -232,7 +232,7 @@ impl OntologyRegistration for MockOntologyRegistry {
 
     #[allow(unused)]
     fn unregister(&self, registry_key: RegistryKey) -> Result<(), OntologyRegistryError> {
-        todo!()
+        Ok(())
     }
 
     #[allow(unused)]
@@ -242,6 +242,23 @@ impl OntologyRegistration for MockOntologyRegistry {
     }
     #[allow(unused)]
     fn list(&self) -> Result<Vec<RegistryKey>, OntologyRegistryError> {
-        todo!()
+        let mut files = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(self.registry_path.clone()) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+
+                if path.is_file()
+                    && let Some(file_name) = path.file_name()
+                    && let Some(file_name_str) = file_name.to_str()
+                    // Ignoring hidden files
+                    && !file_name_str.starts_with('.')
+                {
+                    files.push(RegistryKey::from_file_name(file_name_str)?);
+                }
+            }
+        }
+
+        Ok(files)
     }
 }
