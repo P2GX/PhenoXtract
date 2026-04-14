@@ -844,13 +844,6 @@ impl PhenopacketBuilder {
         value: f64,
         reference_range: Option<(f64, f64)>,
     ) -> Result<Quantity, PhenopacketBuilderError> {
-        if unit.is_empty() {
-            return Err(PhenopacketBuilderError::MissingValueError {
-                value_name: "unit".to_string(),
-                struct_name: "Quantity".to_string(),
-            });
-        }
-
         let mut quantity = Quantity::default();
 
         let (unit_term, unit_ref) = Self::resolve_term(self.ctx.unit_bidict_lib(), unit)?;
