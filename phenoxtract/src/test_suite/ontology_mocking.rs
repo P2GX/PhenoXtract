@@ -2,7 +2,8 @@ use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::traits::OntologyLike;
 use crate::test_suite::mocks::ONTOLOGY_FACTORY;
 use crate::test_suite::phenopacket_component_generation::{
-    default_anatomy_region, default_disease_oc, default_procedure_oc, default_treatment_intent,
+    default_anatomy_region, default_disease_oc, default_procedure_oc,
+    default_route_of_administration_oc, default_treatment_agent_oc, default_treatment_intent,
     default_treatment_response, default_treatment_termination_reason,
 };
 use crate::test_suite::resource_references::{
@@ -112,6 +113,14 @@ pub(crate) static NCIT_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
         (
             default_treatment_response().label,
             default_treatment_response().id,
+        ),
+        (
+            default_treatment_agent_oc().label,
+            default_treatment_agent_oc().id,
+        ),
+        (
+            default_route_of_administration_oc().label,
+            default_route_of_administration_oc().id,
         ),
     ]);
 

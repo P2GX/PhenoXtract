@@ -34,6 +34,7 @@ pub(crate) fn default_builder_context() -> TransformContext {
     builder.add_treatment_attributes_bidict(Box::new(NCIT_BIDICT.clone()));
     builder.add_qualitative_measurement_bidict(Box::new(PATO_BIDICT.clone()));
     builder.add_procedure_bidict(Box::new(MAXO_BIDICT.clone()));
+    builder.add_drug_bidict(Box::new(NCIT_BIDICT.clone()));
 
     builder.build()
 }
