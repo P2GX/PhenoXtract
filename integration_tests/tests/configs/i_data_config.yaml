@@ -247,6 +247,26 @@ data_sources:
                 "No": null
             building_block_id: "blood_transfusion"
 
+      - sheet_name: "Nonsurg Procedure"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Treatment Name"
+            data_context: procedure
+            building_block_id: "nonsurg"
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/nonsurg_treatment_name_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
+              output_data_type: String
+          #- identifier: "Start Date" TODO: Negative dates again
+          #  data_context:
+          #    time_of_procedure: date
+          #  building_block_id: "nonsurg"
+
       - sheet_name: "Molecular Info"
         has_headers: true
         patients_are_rows: true
