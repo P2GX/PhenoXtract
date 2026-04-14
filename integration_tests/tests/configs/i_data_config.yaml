@@ -142,6 +142,70 @@ data_sources:
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 
+      - sheet_name: "Anti Infectives"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Type" # We extract the type, not the specific drug, as the treatment_agent. This is easier to analyse but much less specific.
+            data_context: treatment_agent
+            alias_map:
+              mappings:
+                "Antibiotic": "antibacterial agent"
+                "Antifungal": "antifungal agent"
+                "Antivirals": "antiviral agent"
+                "Antiparasitic": "antiparasitic agent"
+                "Other": null
+              output_data_type: String
+
+      - sheet_name: "Transfusions"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Leukocyte"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15773" # TODO(Rouven): This is a placeholder. I could not really find anything. OMIT:0018013 Would work, but OMIT only supports OWL.
+                "No": null
+            building_block_id: "leukocyte_transfusion"
+          - identifier: "Platelet"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15366"
+                "No": null
+            building_block_id: "platelet_transfusion"
+          - identifier: "Red Cell"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C15409"
+                "No": null
+            building_block_id: "red_cell_transfusion"
+          - identifier: "Fresh Frozen Plasma"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C140042" # TODO(Rouven): This is just Plasma Transfusion, no frozen nor fresh.
+                "No": null
+            building_block_id: "plasma_transfusion"
+          - identifier: "Whole Blood"
+            data_context: procedure
+            alias_map:
+              output_data_type: String
+              mappings:
+                "Yes": "NCIT:C62749"
+                "No": null
+            building_block_id: "blood_transfusion"
+
       - sheet_name: "Organ Transp"
         has_headers: true
         patients_are_rows: true
@@ -199,53 +263,6 @@ data_sources:
           #    time_of_procedure: date
           #  building_block_id: "sct"
 
-
-      - sheet_name: "Transfusions"
-        has_headers: true
-        patients_are_rows: true
-        series_contexts:
-          - identifier: "patientid"
-            data_context: subject_id
-          - identifier: "Leukocyte"
-            data_context: procedure
-            alias_map:
-              output_data_type: String
-              mappings:
-                "Yes": "NCIT:C15773" # TODO(Rouven): This is a placeholder. I could not really find anything. OMIT:0018013 Would work, but OMIT only supports OWL.
-                "No": null
-            building_block_id: "leukocyte_transfusion"
-          - identifier: "Platelet"
-            data_context: procedure
-            alias_map:
-              output_data_type: String
-              mappings:
-                "Yes": "NCIT:C15366"
-                "No": null
-            building_block_id: "platelet_transfusion"
-          - identifier: "Red Cell"
-            data_context: procedure
-            alias_map:
-              output_data_type: String
-              mappings:
-                "Yes": "NCIT:C15409"
-                "No": null
-            building_block_id: "red_cell_transfusion"
-          - identifier: "Fresh Frozen Plasma"
-            data_context: procedure
-            alias_map:
-              output_data_type: String
-              mappings:
-                "Yes": "NCIT:C140042" # TODO(Rouven): This is just Plasma Transfusion, no frozen nor fresh.
-                "No": null
-            building_block_id: "plasma_transfusion"
-          - identifier: "Whole Blood"
-            data_context: procedure
-            alias_map:
-              output_data_type: String
-              mappings:
-                "Yes": "NCIT:C62749"
-                "No": null
-            building_block_id: "blood_transfusion"
 
       - sheet_name: "Nonsurg Procedure"
         has_headers: true
@@ -327,3 +344,6 @@ pipeline:
     treatment_attributes_resources:
       - id: "NCIT"
         version: "2026-03-19"
+    drug_resources:
+      - id: "CHEBI"
+        version: "251"
