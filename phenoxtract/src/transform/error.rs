@@ -382,6 +382,11 @@ impl From<DataProcessingError> for CollectorError {
 pub enum PhenopacketBuilderError {
     #[error("Could not parse {what} from value {value}.")]
     ParsingError { what: String, value: String },
+    #[error("Value {value_name} was missing, when building {struct_name}.")]
+    MissingValueError {
+        value_name: String,
+        struct_name: String,
+    },
     #[error("No {bidict_type} BiDict was found, despite being called.")]
     MissingBiDict { bidict_type: String },
     #[error("Cannot set {required_for}: prerequisite {missing} is missing.")]
