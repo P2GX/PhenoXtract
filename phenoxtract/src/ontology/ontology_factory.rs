@@ -230,7 +230,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
                     ontology_ref.as_version(),
                     FileType::Json,
                 );
-                self.registry.unregister(reg_key)?;
+                let _ = self.registry.unregister(reg_key);
                 self.build_ontolius_ontology(ontology_ref)
             }
         } else {
