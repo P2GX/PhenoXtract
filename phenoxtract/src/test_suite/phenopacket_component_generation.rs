@@ -6,7 +6,6 @@ use crate::test_suite::ontology_mocking::{HPO_BIDICT, MONDO_BIDICT, UO_BIDICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
 use dotenvy::dotenv;
-use phenopackets::schema::v2::core::Procedure;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -14,6 +13,7 @@ use phenopackets::schema::v2::core::{
     Age, Disease, Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange,
     TimeElement, Value as ValueStruct,
 };
+use phenopackets::schema::v2::core::{DrugType, Procedure};
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
@@ -263,7 +263,9 @@ pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
         label: "Oral Route of Administration".to_string(),
     }
 }
-
+pub(crate) fn default_drug_type() -> &'static str {
+    DrugType::Prescription.as_str_name()
+}
 pub(crate) fn default_anatomy_region() -> OntologyClass {
     OntologyClass {
         id: "UBERON:0003403".to_string(),

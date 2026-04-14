@@ -1,17 +1,17 @@
 use crate::ontology::error::FactoryError;
 use crate::ontology::ontology_bidict::OntologyBiDict;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
-use crate::ontology::traits::{HasPrefixId, OntologyLike};
+use crate::ontology::traits::{HasPrefixId, HasVersion, OntologyLike};
 use crate::ontology::types::OntologyRegistry;
 use crate::utils::default_cache_dir;
 use ontolius::io::OntologyLoaderBuilder;
 use ontolius::ontology::csr::FullCsrOntology;
-use ontology_registry::OntologyMetadataProviding;
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use ontology_registry::enums::FileType;
 use ontology_registry::traits::OntologyRegistration;
+use ontology_registry::{OntologyMetadataProviding, RegistryKey};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{BufReader, Read};
@@ -90,16 +90,18 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
     }
 
     fn register(
-        &mut self,
+        &self,
         ontology_ref: &ResourceRef,
         file_type: FileType,
     ) -> Result<impl Read, FactoryError> {
+        let reg_key = RegistryKey::new(
+            ontology_ref.prefix_id().to_lowercase(),
+            ontology_ref.clone().as_version(),
+            file_type,
+        );
+
         self.registry
-            .register(
-                ontology_ref.prefix_id().to_lowercase(),
-                ontology_ref.clone().as_version(),
-                file_type,
-            )
+            .register(reg_key)
             .map_err(|err| Self::cant_build_err_wrap(err, ontology_ref))
     }
 
@@ -169,28 +171,22 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
     /// Builds or retrieves a cached ontology instance.
     ///
-    /// This is the core method for loading ontologies. It first checks the cache for an
-    /// existing instance matching the given `ontology` reference and the `file_name`. If found,
-    /// it returns the cached instance. Otherwise, it loads the ontology from disk, caches
-    /// it, and returns the newly created instance.
+    /// It first checks the cache for an existing instance matching the given `ontology` reference and the `file_name`.
+    /// Otherwise, if not found in the registry on disk it downloads the ontology, caches it, and returns the newly created instance.
     ///
-    /// When retrieving a cached file, and when deciding what sort of ontology to build,
-    /// JSON/Ontolius is prioritised over OBO/OboDoc.
+    /// Prioritises OBO over JSON
     ///
     /// # Arguments
     ///
-    /// * `ontology` - Reference specifying which ontology to load (HPO, MONDO, GENO, etc.)
-    /// * `file_name` - Optional specific file name to load. If `None`, uses the default
-    ///   file for the ontology type.
+    /// * `ontology_ref` - Reference specifying which ontology to load (HPO, MONDO, GENO, etc.)
     ///
     /// # Returns
     ///
-    /// Returns an `Ontology` (which may contain an `Arc<FullCsrOntology>` or an `Arc<OboDoc>) on success.
-    /// The `Arc` allows the ontology to be shared efficiently across multiple consumers.
+    /// Returns an `Arc<dyn OntologyLike>` on success.
     ///
     /// # Errors
     ///
-    /// Returns `OntologyFactoryError` if:
+    /// Returns `FactoryError` if:
     /// - The registry path cannot be determined
     /// - The ontology file cannot be registered or located
     /// - The ontology file cannot be parsed or initialized
@@ -202,14 +198,41 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
             return Ok(onto.ontology.clone());
         }
 
+        for r in self.registry.list()? {
+            if r.version().to_string() == ontology_ref.version()
+                && r.ontology_id().to_lowercase() == ontology_ref.prefix_id().to_lowercase()
+            {
+                return match r.file_type() {
+                    FileType::Json => self.build_ontolius_ontology(ontology_ref),
+                    FileType::Obo => self.build_obodoc_ontology(ontology_ref),
+                    FileType::Owl => Err(FactoryError::CantBuild {
+                        reason: format!(
+                            "OWL files are not supported. Got a configuration for {}",
+                            r
+                        ),
+                    }),
+                };
+            }
+        }
+
         let ontology_metadata = self
             .metadata_provider
             .provide_metadata(ontology_ref.prefix_id())?;
 
-        if ontology_metadata.json_file_location.is_some() {
-            self.build_ontolius_ontology(ontology_ref)
-        } else if ontology_metadata.obo_file_location.is_some() {
-            self.build_obodoc_ontology(ontology_ref)
+        if ontology_metadata.json_file_location.is_some()
+            || ontology_metadata.obo_file_location.is_some()
+        {
+            if let Ok(ontology) = self.build_obodoc_ontology(ontology_ref) {
+                Ok(ontology)
+            } else {
+                let reg_key = RegistryKey::new(
+                    ontology_ref.prefix_id(),
+                    ontology_ref.as_version(),
+                    FileType::Json,
+                );
+                let _ = self.registry.unregister(reg_key);
+                self.build_ontolius_ontology(ontology_ref)
+            }
         } else {
             Err(FactoryError::NoValidOntologyFilesAvailable {
                 ontology_prefix: ontology_ref.prefix_id().to_string(),
