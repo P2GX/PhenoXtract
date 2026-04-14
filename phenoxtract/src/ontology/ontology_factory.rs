@@ -171,28 +171,22 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
 
     /// Builds or retrieves a cached ontology instance.
     ///
-    /// This is the core method for loading ontologies. It first checks the cache for an
-    /// existing instance matching the given `ontology` reference and the `file_name`. If found,
-    /// it returns the cached instance. Otherwise, it loads the ontology from disk, caches
-    /// it, and returns the newly created instance.
+    /// It first checks the cache for an existing instance matching the given `ontology` reference and the `file_name`.
+    /// Otherwise, if not found in the registry on disk it downloads the ontology, caches it, and returns the newly created instance.
     ///
-    /// When retrieving a cached file, and when deciding what sort of ontology to build,
-    /// JSON/Ontolius is prioritised over OBO/OboDoc.
+    /// Prioritises OBO over JSON
     ///
     /// # Arguments
     ///
-    /// * `ontology` - Reference specifying which ontology to load (HPO, MONDO, GENO, etc.)
-    /// * `file_name` - Optional specific file name to load. If `None`, uses the default
-    ///   file for the ontology type.
+    /// * `ontology_ref` - Reference specifying which ontology to load (HPO, MONDO, GENO, etc.)
     ///
     /// # Returns
     ///
-    /// Returns an `Ontology` (which may contain an `Arc<FullCsrOntology>` or an `Arc<OboDoc>) on success.
-    /// The `Arc` allows the ontology to be shared efficiently across multiple consumers.
+    /// Returns an `Arc<dyn OntologyLike>` on success.
     ///
     /// # Errors
     ///
-    /// Returns `OntologyFactoryError` if:
+    /// Returns `FactoryError` if:
     /// - The registry path cannot be determined
     /// - The ontology file cannot be registered or located
     /// - The ontology file cannot be parsed or initialized
@@ -236,7 +230,7 @@ impl<OR: OntologyRegistration> CachedOntologyFactory<OR> {
                     ontology_ref.as_version(),
                     FileType::Json,
                 );
-                self.registry.unregister(reg_key)?;
+                let _ = self.registry.unregister(reg_key);
                 self.build_ontolius_ontology(ontology_ref)
             }
         } else {
