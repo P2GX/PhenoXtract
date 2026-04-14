@@ -11,8 +11,6 @@ use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntolo
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use strum::VariantNames;
 
-type OntologyRegistry = FileSystemOntologyRegistry<BioRegistryMetadataProvider, OboLibraryProvider>;
-
 pub(crate) struct ResourceConfigFactory<OR: OntologyRegistration> {
     ontology_factory: CachedOntologyFactory<OR>,
 }
@@ -152,7 +150,11 @@ where
     }
 }
 
-impl Default for ResourceConfigFactory<OntologyRegistry> {
+impl Default
+    for ResourceConfigFactory<
+        FileSystemOntologyRegistry<BioRegistryMetadataProvider, OboLibraryProvider>,
+    >
+{
     fn default() -> Self {
         ResourceConfigFactory::new(CachedOntologyFactory::default())
     }
