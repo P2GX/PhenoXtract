@@ -565,7 +565,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
     ) -> Result<(), PhenopacketBuilderError> {
         let mut treatment = Treatment::default();
 
-        let (agent_oc, agent_ref) = Self::resolve_term(self.ctx.medicine_bi_dict_lib(), agent)?;
+        let (agent_oc, agent_ref) = Self::resolve_term(self.ctx.drug_bi_dict_lib(), agent)?;
         treatment.agent = Some(agent_oc);
         self.ensure_resource(patient_id, &agent_ref);
 

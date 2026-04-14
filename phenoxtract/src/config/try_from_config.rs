@@ -110,7 +110,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         load_and_add!(&config.meta_data.anatomy_resources, add_anatomy_bidict);
 
-        load_and_add!(&config.meta_data.medicine_resources, add_medicine_bidict);
+        load_and_add!(&config.meta_data.drug_resources, add_drug_bidict);
 
         load_and_add!(
             &config.meta_data.treatment_attributes_resources,

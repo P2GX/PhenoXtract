@@ -25,7 +25,7 @@ pub struct MetaData {
     #[serde(default)]
     pub anatomy_resources: Vec<ResourceConfig>,
     #[serde(default)]
-    pub medicine_resources: Vec<ResourceConfig>,
+    pub drug_resources: Vec<ResourceConfig>,
     #[serde(default)]
     pub treatment_attributes_resources: Vec<ResourceConfig>,
 }
@@ -42,7 +42,7 @@ impl MetaData {
         qualitative_measurement_resources: Vec<ResourceConfig>,
         procedure_resources: Vec<ResourceConfig>,
         anatomy_resources: Vec<ResourceConfig>,
-        medicine_resources: Vec<ResourceConfig>,
+        drug_resources: Vec<ResourceConfig>,
         treatment_attributes_resources: Vec<ResourceConfig>,
     ) -> Self {
         Self {
@@ -62,7 +62,7 @@ impl MetaData {
             qualitative_measurement_resources,
             procedure_resources,
             anatomy_resources,
-            medicine_resources,
+            drug_resources,
             treatment_attributes_resources,
         }
     }
@@ -81,7 +81,7 @@ impl Default for MetaData {
             qualitative_measurement_resources: vec![],
             procedure_resources: vec![],
             anatomy_resources: vec![],
-            medicine_resources: vec![],
+            drug_resources: vec![],
             treatment_attributes_resources: vec![],
         }
     }
@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(metadata.unit_resources, vec![]);
         assert_eq!(metadata.procedure_resources, vec![]);
         assert_eq!(metadata.anatomy_resources, vec![]);
-        assert_eq!(metadata.medicine_resources, vec![]);
+        assert_eq!(metadata.drug_resources, vec![]);
         assert_eq!(metadata.treatment_attributes_resources, vec![]);
     }
 
@@ -161,7 +161,7 @@ mod tests {
         assert_eq!(default_meta_data.unit_resources, vec![]);
         assert_eq!(default_meta_data.procedure_resources, vec![]);
         assert_eq!(default_meta_data.anatomy_resources, vec![]);
-        assert_eq!(default_meta_data.medicine_resources, vec![]);
+        assert_eq!(default_meta_data.drug_resources, vec![]);
         assert_eq!(default_meta_data.treatment_attributes_resources, vec![]);
     }
 }
