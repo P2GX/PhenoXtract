@@ -167,7 +167,7 @@ impl TransformContextBuilder {
             qualitative_measurement_bidict_lib: BiDictLibrary::empty_with_name("QUANTITY"),
             procedure_bi_dict_lib: BiDictLibrary::empty_with_name("PROCEDURE"),
             anatomy_bi_dict_lib: BiDictLibrary::empty_with_name("ANATOMY"),
-            drug_bi_dict_lib: BiDictLibrary::empty_with_name("MEDICIN"),
+            drug_bi_dict_lib: BiDictLibrary::empty_with_name("DRUG"),
             treatment_attributes_bi_dict: BiDictLibrary::empty_with_name("TREATMENT"),
         }
     }
