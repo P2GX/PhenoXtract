@@ -150,7 +150,6 @@ data_sources:
             data_context: subject_id
           - identifier: "Type" # We extract the type, not the specific drug, as the treatment_agent. This is easier to analyse but much less specific.
             data_context: treatment_agent
-
             alias_map:
               mappings:
                 "Antibiotic": "antibacterial agent"
@@ -302,6 +301,23 @@ data_sources:
                 alias_column_name: "LABEL"
               output_data_type: String
 
+      - sheet_name: "Karnofsky Lansky"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "KARN SCORE"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:89243-0"
+                unit_ontology_id: "NCIT:C192525"
+          #- identifier: "LANSK SCORE" #TODO: If you uncomment this, then pxt will run very loong
+          #  data_context:
+          #    quantitative_measurement:
+          #      assay_id: "NCIT:C138364" # TODO: Could not find in LOINC
+          #      unit_ontology_id: "NCIT:C38144"
+
 pipeline:
   cache_dir: "$HOME/data/usidnet/pxt_cache"
   strategies:
@@ -327,6 +343,8 @@ pipeline:
     unit_resources:
       - id: "UO"
         version: "2026-01-09"
+      - id: "NCIT"
+        version: "2026-03-19"
     disease_resources:
       - id: "MONDO"
         version: "2026-02-03"
@@ -335,6 +353,8 @@ pipeline:
         secrets:
           user: ${LOINC_USERNAME}
           password: ${LOINC_PASSWORD}
+      - id: "NCIT"
+        version: "2026-03-19"
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
