@@ -158,6 +158,7 @@ data_sources:
                 "Antiparasitic": "antiparasitic agent"
                 "Other": null
               output_data_type: String
+            building_block_id: anti-infect
 
       - sheet_name: "Transfusions"
         has_headers: true
