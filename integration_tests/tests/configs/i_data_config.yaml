@@ -150,7 +150,6 @@ data_sources:
             data_context: subject_id
           - identifier: "Type" # We extract the type, not the specific drug, as the treatment_agent. This is easier to analyse but much less specific.
             data_context: treatment_agent
-
             alias_map:
               mappings:
                 "Antibiotic": "antibacterial agent"
@@ -158,6 +157,15 @@ data_sources:
                 "Antivirals": "antiviral agent"
                 "Antiparasitic": "antiparasitic agent"
                 "Other": null
+              output_data_type: String
+            building_block_id: "anti_infective_drug"
+          - identifier: "Indication"
+            data_context: treatment_intent
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/anti_infective_indication_matchings.csv" # I have just matched them to Intent for Prophylaxis VS Intent to Treat
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "CURIE_ID"
               output_data_type: String
             building_block_id: "anti_infective_drug"
 
