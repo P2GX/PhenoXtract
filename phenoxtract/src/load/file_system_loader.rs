@@ -81,13 +81,12 @@ impl Loadable for FileSystemLoader {
                 })?;
 
             debug!("Storing file to: {:?}", file);
-            let mut pp_value =
-                serde_json::to_value(pp).map_err(|_| LoadError::ConversionError {
-                    pp_id: pp.id.clone(),
-                    format: "json".to_string(),
-                })?;
+            let pp_value = serde_json::to_value(pp).map_err(|_| LoadError::ConversionError {
+                pp_id: pp.id.clone(),
+                format: "json".to_string(),
+            })?;
 
-            Self::remove_default_survival_time(&mut pp_value)?;
+            //Self::remove_default_survival_time(&mut pp_value)?;
             serde_json::to_writer_pretty(file, &pp_value).map_err(|err| LoadError::CantStore {
                 pp_id: pp.id.clone(),
                 reason: err.to_string(),
