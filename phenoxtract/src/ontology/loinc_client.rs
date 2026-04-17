@@ -187,7 +187,7 @@ impl BiDict for LoincClient {
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
         if !self.curie_validator.validate(id) {
-            return Err(BiDictError::NotFound(id.to_string()));
+            return Err(BiDictError::InvalidId(id.to_string()));
         }
 
         if let Some(label) = self.cache.get(id) {
@@ -211,9 +211,9 @@ impl BiDict for LoincClient {
             .cache
             .insert(id.to_string(), Box::from(result.long_common_name));
 
-        self.cache
-            .get(id)
-            .ok_or_else(|| BiDictError::NotFound(id.to_string()))
+        self.cache.get(id).ok_or_else(|| BiDictError::Caching {
+            reason: format!("Expected to find {} in cache", id),
+        })
     }
 
     fn get_id(&self, label: &str) -> Result<&str, BiDictError> {
@@ -247,7 +247,9 @@ impl BiDict for LoincClient {
         }
 
         match self.cache.get(label) {
-            None => Err(BiDictError::NotFound(label.to_string())),
+            None => Err(BiDictError::Caching {
+                reason: format!("Expected to find {} in cache", label),
+            }),
             Some(id) => Ok(id),
         }
     }
@@ -325,6 +327,16 @@ mod tests {
         let label_res = loinc_client.get_label(id_input);
 
         assert!(label_res.is_err());
+
+        match label_res.unwrap_err() {
+            BiDictError::InvalidId(_) => {}
+            _ => {
+                panic!(
+                    "Error should have been  {}",
+                    BiDictError::InvalidId("HP:97062-4".into())
+                );
+            }
+        }
 
         assert_eq!(loinc_client.cache.len(), 0)
     }
