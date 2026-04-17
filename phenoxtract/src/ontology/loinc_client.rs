@@ -102,6 +102,8 @@ pub struct LoincResult {
     pub version_first_released: Option<String>,
 }
 
+static NOT_FOUND: &str = "NotFound";
+
 pub struct LoincClient {
     client: Client,
     base_url: String,
@@ -184,27 +186,42 @@ impl BiDict for LoincClient {
     }
 
     fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+        if !self.curie_validator.validate(id) {
+            return Err(BiDictError::InvalidId(id.to_string()));
+        }
+
         if let Some(label) = self.cache.get(id) {
+            if label == NOT_FOUND {
+                return Err(BiDictError::NotFound(id.to_string()));
+            }
             return Ok(label);
         }
+
         let loinc_search_results = self.query(id)?;
 
         let result = loinc_search_results
             .into_iter()
             .find(|r| Self::format_loinc_curie(&r.loinc_num) == id || r.loinc_num == id)
-            .ok_or_else(|| BiDictError::NotFound(id.into()))?;
+            .ok_or_else(|| {
+                self.cache.insert(id.to_string(), Box::from(NOT_FOUND));
+                BiDictError::NotFound(id.into())
+            })?;
 
         let label_ref = self
             .cache
             .insert(id.to_string(), Box::from(result.long_common_name));
 
-        self.cache
-            .get(id)
-            .ok_or_else(|| BiDictError::NotFound(id.to_string()))
+        self.cache.get(id).ok_or_else(|| BiDictError::Caching {
+            reason: format!("Expected to find {} in cache", id),
+        })
     }
 
     fn get_id(&self, label: &str) -> Result<&str, BiDictError> {
         if let Some(loinc_number) = self.cache.get(label) {
+            if loinc_number == NOT_FOUND {
+                return Err(BiDictError::NotFound(label.to_string()));
+            }
+
             return Ok(loinc_number);
         }
 
@@ -215,6 +232,11 @@ impl BiDict for LoincClient {
 
         let loinc_search_results = self.query(&cleaned)?;
 
+        if loinc_search_results.is_empty() {
+            self.cache.insert(label.to_string(), Box::from(NOT_FOUND));
+            return Err(BiDictError::NotFound(cleaned));
+        }
+
         for loinc_result in loinc_search_results {
             if loinc_result.long_common_name.to_lowercase() == label.to_lowercase() {
                 self.cache.insert(
@@ -223,8 +245,11 @@ impl BiDict for LoincClient {
                 );
             }
         }
+
         match self.cache.get(label) {
-            None => Err(BiDictError::NotFound(label.to_string())),
+            None => Err(BiDictError::Caching {
+                reason: format!("Expected to find {} in cache", label),
+            }),
             Some(id) => Ok(id),
         }
     }
@@ -293,5 +318,51 @@ mod tests {
             .unwrap_or_else(|_| panic!("Should find an ID for label: {}", found_label));
 
         assert_eq!(id_res, id_input);
+    }
+
+    #[rstest]
+    fn test_get_label_empty_cache(loinc_client: LoincClient) {
+        let id_input = "HP:97062-4";
+
+        let label_res = loinc_client.get_label(id_input);
+
+        assert!(label_res.is_err());
+
+        match label_res.unwrap_err() {
+            BiDictError::InvalidId(_) => {}
+            _ => {
+                panic!(
+                    "Error should have been  {}",
+                    BiDictError::InvalidId("HP:97062-4".into())
+                );
+            }
+        }
+
+        assert_eq!(loinc_client.cache.len(), 0)
+    }
+
+    #[rstest]
+    fn test_get_label_cached_but_error(loinc_client: LoincClient) {
+        let id_input = "LOINC:99999999999-1";
+
+        let label_res = loinc_client.get_label(id_input);
+
+        assert!(label_res.is_err());
+
+        assert_eq!(loinc_client.cache.len(), 1);
+        assert_eq!(loinc_client.cache.get(id_input).unwrap(), NOT_FOUND);
+    }
+
+    #[rstest]
+    fn test_get_id_cached_but_error(loinc_client: LoincClient) {
+        let label_input = "Some-measurement-that-does-not-exist!";
+
+        let label_res = loinc_client.get_id(label_input);
+
+        assert!(label_res.is_err());
+
+        assert_eq!(loinc_client.cache.len(), 1);
+
+        assert_eq!(loinc_client.cache.get(label_input).unwrap(), NOT_FOUND);
     }
 }
