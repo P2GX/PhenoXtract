@@ -294,6 +294,21 @@ data_sources:
           #    time_of_procedure: date
           #  building_block_id: "nonsurg"
 
+      - sheet_name: "Disabilities"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Disability"
+            data_context: hpo
+            alias_map:
+              mappings:
+                path: "$HOME/data/usidnet/matchings/disability_matchings.csv"
+                key_column_name: "FREE_TEXT"
+                alias_column_name: "LABEL"
+              output_data_type: String
+
       - sheet_name: "Molecular Info"
         has_headers: true
         patients_are_rows: true
@@ -310,22 +325,29 @@ data_sources:
                 alias_column_name: "LABEL"
               output_data_type: String
 
+
       - sheet_name: "Karnofsky Lansky"
         has_headers: true
         patients_are_rows: true
         series_contexts:
           - identifier: "patientid"
             data_context: subject_id
+          - identifier: "Visit Date"
+            data_context:
+              time_of_measurement: date
+            building_block_id: "KARN/LAN"
           - identifier: "KARN SCORE"
             data_context:
               quantitative_measurement:
                 assay_id: "LOINC:89243-0"
                 unit_ontology_id: "NCIT:C192525"
-          #- identifier: "LANSK SCORE" #TODO: If you uncomment this, then pxt will run very loong
-          #  data_context:
-          #    quantitative_measurement:
-          #      assay_id: "NCIT:C138364" # TODO: Could not find in LOINC
-          #      unit_ontology_id: "NCIT:C38144"
+            building_block_id: "KARN/LAN"
+          - identifier: "LANSK SCORE"
+            data_context:
+              quantitative_measurement:
+                assay_id: "LOINC:89243-0" # TODO: This is Karnofsky score again because Lansky score is not in LOINC
+                unit_ontology_id: "NCIT:C192525"
+            building_block_id: "KARN/LAN"
 
 pipeline:
   cache_dir: "$HOME/data/usidnet/pxt_cache"
@@ -362,8 +384,6 @@ pipeline:
         secrets:
           user: ${LOINC_USERNAME}
           password: ${LOINC_PASSWORD}
-      - id: "NCIT"
-        version: "2026-03-19"
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
