@@ -345,7 +345,7 @@ data_sources:
           - identifier: "LANSK SCORE"
             data_context:
               quantitative_measurement:
-                assay_id: "LOINC:89243-0" # TODO: This is Karnofsky score again because Lansky score is not in LOINC
+                assay_id: "NCIT:C38144" # TODO: This is Karnofsky score again because Lansky score is not in LOINC
                 unit_ontology_id: "NCIT:C192525"
             building_block_id: "KARN/LAN"
 
