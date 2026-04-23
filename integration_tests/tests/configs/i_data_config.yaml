@@ -384,6 +384,8 @@ pipeline:
         secrets:
           user: ${LOINC_USERNAME}
           password: ${LOINC_PASSWORD}
+      - id: "NCIT"
+        version: "2026-03-19"
     procedure_resources:
       - id: "MAXO"
         version: "2026-01-15"
