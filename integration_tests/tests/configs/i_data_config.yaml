@@ -142,6 +142,24 @@ data_sources:
                 alias_column_name: "CURIE_ID"
               output_data_type: String
 
+      - sheet_name: "Allergic Reactions"
+        has_headers: true
+        patients_are_rows: true
+        series_contexts:
+          - identifier: "patientid"
+            data_context: subject_id
+          - identifier: "Agent" # We extract the allergy type. It's too hard to extract the specific allergens or the reactions.
+            data_context: hpo
+            alias_map:
+              mappings:
+                "Drug": "Drug allergy"
+                "Environmental": "Allergy"
+                "Food": "Food allergy"
+                "Other": "Allergy"
+                "Unknown": "Allergy"
+                "Unknown Agent": "Allergy"
+              output_data_type: String
+
       - sheet_name: "Anti Infectives"
         has_headers: true
         patients_are_rows: true
@@ -345,7 +363,7 @@ data_sources:
           - identifier: "LANSK SCORE"
             data_context:
               quantitative_measurement:
-                assay_id: "NCIT:C38144" # TODO: This is Karnofsky score again because Lansky score is not in LOINC
+                assay_id: "LOINC:89243-0" # TODO: This is Karnofsky score again because Lansky score is not in LOINC
                 unit_ontology_id: "NCIT:C192525"
             building_block_id: "KARN/LAN"
 
