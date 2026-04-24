@@ -273,7 +273,7 @@ mod tests {
             patient_id_col
                 .1
                 .iter()
-                .map(|s| AnyValue::String(*s))
+                .map(|s| AnyValue::String(s))
                 .collect(),
             age_col
                 .1
@@ -286,7 +286,7 @@ mod tests {
                 .1
                 .iter()
                 .map(|s| {
-                    if *s == "" {
+                    if s.is_empty() {
                         AnyValue::Null
                     } else {
                         AnyValue::String(s)
