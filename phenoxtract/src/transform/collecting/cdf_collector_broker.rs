@@ -43,13 +43,8 @@ impl CdfCollectorBroker {
                 .partition_by(vec![subject_id_col.name().as_str()], true)?;
 
             for patient_df in patient_dfs.iter() {
-                let mut patient_cdf =
+                let patient_cdf =
                     ContextualizedDataFrame::new(cdf.context().clone(), patient_df.clone())?;
-
-                patient_cdf
-                    .builder()
-                    .drop_null_cols_alongside_scs()?
-                    .build()?;
 
                 let patient_id = patient_cdf.get_subject_id_col().get(0)?.str_value();
 
