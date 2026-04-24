@@ -39,6 +39,10 @@ impl TransformerModule {
             strategy.transform(tables_refs.as_mut_slice())?;
         }
 
+        for table in tables_refs {
+            table.builder().drop_unidentified_cols()?.build()?;
+        }
+
         Ok(self.broker.process(data)?)
     }
 }

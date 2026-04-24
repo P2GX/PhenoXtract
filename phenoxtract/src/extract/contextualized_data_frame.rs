@@ -771,6 +771,30 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
+    pub fn drop_unidentified_cols(mut self) -> Result<Self, CdfBuilderError> {
+        let all_col_names: Vec<&str> = self
+            .cdf
+            .data
+            .get_column_names()
+            .iter()
+            .map(|col_name| col_name.as_str())
+            .collect();
+        let identified_col_names: Vec<&str> = self
+            .cdf
+            .context
+            .context()
+            .iter()
+            .flat_map(|sc| sc.get_identifier().identify(all_col_names.as_slice()))
+            .collect();
+        let unidentified_col_names: Vec<String> = all_col_names
+            .iter()
+            .filter(|col_name| !identified_col_names.contains(col_name))
+            .map(|col_name| col_name.to_string())
+            .collect();
+        self = self.drop_cols(&unidentified_col_names)?;
+        Ok(self.mark_dirty())
+    }
+
     pub fn replace_header_contexts(self, header_context_hm: HashMap<Context, Context>) -> Self {
         let scs = self.cdf.context.context_mut();
         for sc in scs {
@@ -871,6 +895,7 @@ mod builder_tests {
     use polars::prelude::{AnyValue, Column, DataType, NamedFrom, Series};
     use pretty_assertions::assert_eq;
     use rstest::{fixture, rstest};
+    use std::collections::HashSet;
 
     #[fixture]
     fn sample_df() -> DataFrame {
@@ -881,7 +906,7 @@ mod builder_tests {
         "location (some stuff)" => &["NY", "SF", "LA"],
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
-                        "null" => &[AnyValue::Null, AnyValue::Null, AnyValue::Null],
+            "null" => &[AnyValue::Null, AnyValue::Null, AnyValue::Null],
         )
         .unwrap()
     }
@@ -1403,5 +1428,32 @@ mod builder_tests {
 
         let col = cdf.data().column("score").unwrap();
         assert_eq!(col, &Column::new("score".into(), &[100, 200, 300]));
+    }
+
+    #[rstest]
+    fn test_drop_unidentified_cols() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let mut cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        cdf.builder()
+            .drop_unidentified_cols()
+            .unwrap()
+            .build_dirty();
+        let col_names: HashSet<String> = cdf
+            .data
+            .get_column_names()
+            .iter()
+            .map(|col_name| col_name.to_string())
+            .collect();
+
+        let mut expected_col_names: HashSet<String> = HashSet::new();
+        expected_col_names.insert("subject_id".to_string());
+        expected_col_names.insert("age".to_string());
+        expected_col_names.insert("bronchitis".to_string());
+        expected_col_names.insert("overweight".to_string());
+        expected_col_names.insert("null".to_string());
+
+        assert_eq!(col_names, expected_col_names);
     }
 }

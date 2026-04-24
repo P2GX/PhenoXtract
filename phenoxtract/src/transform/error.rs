@@ -166,6 +166,8 @@ pub enum TransformError {
     DataProcessingError(#[from] Box<DataProcessingError>),
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
+    #[error(transparent)]
+    CdfBuilderError(#[from] CdfBuilderError),
 }
 
 impl From<CollectorError> for TransformError {
