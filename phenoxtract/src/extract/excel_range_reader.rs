@@ -107,7 +107,11 @@ impl ExcelRangeReader {
                         vector_to_load.push(time_val);
                     }
                     Data::String(ref s) | Data::DateTimeIso(ref s) | Data::DurationIso(ref s) => {
-                        vector_to_load.push(AnyValue::String(s))
+                        if s.is_empty() {
+                            vector_to_load.push(AnyValue::Null)
+                        } else {
+                            vector_to_load.push(AnyValue::String(s))
+                        }
                     }
                 }
             }
@@ -133,7 +137,7 @@ impl ExcelRangeReader {
                     header = h.get_str().ok_or(ExtractionError::NoStringInHeader)?.to_string();
                     data = vec.get(1..).ok_or(ExtractionError::EmptyVector)?;
                 } else {
-                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(i,default_column_names.len()))?.to_string();
+                    header = default_column_names.get(i).ok_or(ExtractionError::VectorIndexing(i, default_column_names.len()))?.to_string();
                     data = vec;
                 }
 
@@ -188,6 +192,11 @@ mod tests {
     }
 
     #[fixture]
+    fn null_col() -> (&'static str, [&'static str; 4]) {
+        ("null", ["", "", "", "blah"])
+    }
+
+    #[fixture]
     fn temp_dir() -> TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
     }
@@ -198,6 +207,7 @@ mod tests {
         age_col: (&'static str, [i64; 4]),
         weight_col: (&'static str, [f64; 4]),
         smoker_col: (&'static str, [bool; 4]),
+        null_col: (&'static str, [&'static str; 4]),
         temp_dir: TempDir,
     ) -> ExcelRangeReader {
         let mut workbook = Workbook::new();
@@ -207,11 +217,13 @@ mod tests {
         worksheet.write(0, 1, age_col.0).unwrap();
         worksheet.write(0, 2, weight_col.0).unwrap();
         worksheet.write(0, 3, smoker_col.0).unwrap();
+        worksheet.write(0, 4, null_col.0).unwrap();
 
         worksheet.write_column(1, 0, patient_id_col.1).unwrap();
         worksheet.write_column(1, 1, age_col.1).unwrap();
         worksheet.write_column(1, 2, weight_col.1).unwrap();
         worksheet.write_column(1, 3, smoker_col.1).unwrap();
+        worksheet.write_column(1, 4, null_col.1).unwrap();
 
         let file_path = temp_dir.path().join("test_excel.xlsx");
         workbook.save(file_path.clone()).unwrap();
@@ -228,6 +240,7 @@ mod tests {
         age_col: (&'static str, [i64; 4]),
         weight_col: (&'static str, [f64; 4]),
         smoker_col: (&'static str, [bool; 4]),
+        null_col: (&'static str, [&'static str; 4]),
         temp_dir: TempDir,
     ) -> ExcelRangeReader {
         let mut workbook = Workbook::new();
@@ -237,6 +250,7 @@ mod tests {
         worksheet.write_column(0, 1, age_col.1).unwrap();
         worksheet.write_column(0, 2, weight_col.1).unwrap();
         worksheet.write_column(0, 3, smoker_col.1).unwrap();
+        worksheet.write_column(0, 4, null_col.1).unwrap();
 
         let file_path = temp_dir.path().join("test_excel.xlsx");
         workbook.save(file_path.clone()).unwrap();
@@ -248,53 +262,117 @@ mod tests {
     }
 
     #[fixture]
-    fn full_vecs_no_headers(
+    fn expected_vecs_no_headers(
         patient_id_col: (&'static str, [&'static str; 4]),
         age_col: (&'static str, [i64; 4]),
         weight_col: (&'static str, [f64; 4]),
         smoker_col: (&'static str, [bool; 4]),
+        null_col: (&'static str, [&'static str; 4]),
     ) -> Vec<Vec<AnyValue<'static>>> {
-        let vec1 = patient_id_col
-            .1
-            .iter()
-            .map(|s| AnyValue::String(s))
-            .collect();
-        let vec2 = age_col
-            .1
-            .iter()
-            .map(|i| AnyValue::Float64(*i as f64))
-            .collect();
-        let vec3 = weight_col.1.iter().map(|f| AnyValue::Float64(*f)).collect();
-        let vec4 = smoker_col.1.iter().map(|b| AnyValue::Boolean(*b)).collect();
-        vec![vec1, vec2, vec3, vec4]
+        vec![
+            patient_id_col
+                .1
+                .iter()
+                .map(|s| AnyValue::String(*s))
+                .collect(),
+            age_col
+                .1
+                .iter()
+                .map(|i| AnyValue::Float64(*i as f64))
+                .collect(),
+            weight_col.1.iter().map(|f| AnyValue::Float64(*f)).collect(),
+            smoker_col.1.iter().map(|b| AnyValue::Boolean(*b)).collect(),
+            null_col
+                .1
+                .iter()
+                .map(|s| {
+                    if *s == "" {
+                        AnyValue::Null
+                    } else {
+                        AnyValue::String(s)
+                    }
+                })
+                .collect(),
+        ]
     }
 
     #[fixture]
-    fn full_vecs_with_headers(
-        full_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
+    fn expected_vecs_with_headers(
+        expected_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
         patient_id_col: (&'static str, [&'static str; 4]),
         age_col: (&'static str, [i64; 4]),
         weight_col: (&'static str, [f64; 4]),
         smoker_col: (&'static str, [bool; 4]),
+        null_col: (&'static str, [&'static str; 4]),
     ) -> Vec<Vec<AnyValue<'static>>> {
         let mut vec1 = vec![AnyValue::String(patient_id_col.0)];
-        vec1.extend(full_vecs_no_headers[0].clone());
+        vec1.extend(expected_vecs_no_headers[0].clone());
 
         let mut vec2 = vec![AnyValue::String(age_col.0)];
-        vec2.extend(full_vecs_no_headers[1].clone());
+        vec2.extend(expected_vecs_no_headers[1].clone());
 
         let mut vec3 = vec![AnyValue::String(weight_col.0)];
-        vec3.extend(full_vecs_no_headers[2].clone());
+        vec3.extend(expected_vecs_no_headers[2].clone());
 
         let mut vec4 = vec![AnyValue::String(smoker_col.0)];
-        vec4.extend(full_vecs_no_headers[3].clone());
-        vec![vec1, vec2, vec3, vec4]
+        vec4.extend(expected_vecs_no_headers[3].clone());
+
+        let mut vec5 = vec![AnyValue::String(null_col.0)];
+        vec5.extend(expected_vecs_no_headers[4].clone());
+
+        vec![vec1, vec2, vec3, vec4, vec5]
+    }
+
+    #[fixture]
+    fn expected_cols_no_headers(
+        expected_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
+    ) -> Vec<Column> {
+        vec![
+            Column::new("0".into(), expected_vecs_no_headers[0].clone()),
+            Column::new("1".into(), expected_vecs_no_headers[1].clone()),
+            Column::new("2".into(), expected_vecs_no_headers[2].clone()),
+            Column::new("3".into(), expected_vecs_no_headers[3].clone()),
+            Column::new("4".into(), expected_vecs_no_headers[4].clone()),
+        ]
+    }
+
+    #[fixture]
+    fn expected_cols_with_headers(
+        expected_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
+    ) -> Vec<Column> {
+        vec![
+            Column::new("patient_id".into(), expected_vecs_no_headers[0].clone()),
+            Column::new("age".into(), expected_vecs_no_headers[1].clone()),
+            Column::new("weight".into(), expected_vecs_no_headers[2].clone()),
+            Column::new("smoker".into(), expected_vecs_no_headers[3].clone()),
+            Column::new("null".into(), expected_vecs_no_headers[4].clone()),
+        ]
+    }
+
+    #[fixture]
+    fn expected_df_no_headers(expected_cols_no_headers: Vec<Column>) -> DataFrame {
+        let height = match expected_cols_no_headers.first() {
+            None => 0,
+            Some(col) => col.len(),
+        };
+
+        DataFrame::new(height, expected_cols_no_headers).unwrap()
+    }
+
+    #[fixture]
+    fn expected_df_with_headers(expected_cols_with_headers: Vec<Column>) -> DataFrame {
+        let height = match expected_cols_with_headers.first() {
+            None => 0,
+            Some(col) => col.len(),
+        };
+
+        DataFrame::new(height, expected_cols_with_headers).unwrap()
     }
 
     #[rstest]
     fn test_create_loading_vectors_with_headers(excel_range_reader_with_headers: ExcelRangeReader) {
         let empty_vecs = excel_range_reader_with_headers.create_loading_vectors();
-        assert_eq!(empty_vecs.len(), 4);
+        assert_eq!(empty_vecs.len(), 5);
         for vec in empty_vecs {
             assert_eq!(vec.capacity(), 5);
             assert_eq!(vec, vec![]);
@@ -304,7 +382,7 @@ mod tests {
     #[rstest]
     fn test_create_loading_vectors_no_headers(excel_range_reader_no_headers: ExcelRangeReader) {
         let empty_vecs = excel_range_reader_no_headers.create_loading_vectors();
-        assert_eq!(empty_vecs.len(), 4);
+        assert_eq!(empty_vecs.len(), 5);
         for vec in empty_vecs {
             assert_eq!(vec.capacity(), 4);
             assert_eq!(vec, vec![]);
@@ -314,149 +392,82 @@ mod tests {
     #[rstest]
     fn test_load_data_to_vectors_with_headers(
         excel_range_reader_with_headers: ExcelRangeReader,
-        full_vecs_with_headers: Vec<Vec<AnyValue<'static>>>,
+        expected_vecs_with_headers: Vec<Vec<AnyValue<'static>>>,
     ) {
-        let empty_vecs: Vec<Vec<AnyValue>> = (0..4).map(|_| Vec::with_capacity(5)).collect();
+        let empty_vecs: Vec<Vec<AnyValue>> = (0..5).map(|_| Vec::with_capacity(5)).collect();
 
         let vecs_ref = &mut empty_vecs.clone();
         excel_range_reader_with_headers
             .load_data_to_vectors(vecs_ref)
             .unwrap();
-        assert_eq!(vecs_ref[0], full_vecs_with_headers[0]);
-        assert_eq!(vecs_ref[1], full_vecs_with_headers[1]);
-        assert_eq!(vecs_ref[2], full_vecs_with_headers[2]);
-        assert_eq!(vecs_ref[3], full_vecs_with_headers[3]);
+        assert_eq!(vecs_ref[0], expected_vecs_with_headers[0]);
+        assert_eq!(vecs_ref[1], expected_vecs_with_headers[1]);
+        assert_eq!(vecs_ref[2], expected_vecs_with_headers[2]);
+        assert_eq!(vecs_ref[3], expected_vecs_with_headers[3]);
+        assert_eq!(vecs_ref[4], expected_vecs_with_headers[4]);
     }
 
     #[rstest]
     fn test_load_data_to_vectors_no_headers(
         excel_range_reader_no_headers: ExcelRangeReader,
-        full_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
+        expected_vecs_no_headers: Vec<Vec<AnyValue<'static>>>,
     ) {
-        let empty_vecs: Vec<Vec<AnyValue>> = (0..4).map(|_| Vec::with_capacity(4)).collect();
+        let empty_vecs: Vec<Vec<AnyValue>> = (0..5).map(|_| Vec::with_capacity(4)).collect();
 
         let vecs_ref = &mut empty_vecs.clone();
         excel_range_reader_no_headers
             .load_data_to_vectors(vecs_ref)
             .unwrap();
-        assert_eq!(vecs_ref[0], full_vecs_no_headers[0]);
-        assert_eq!(vecs_ref[1], full_vecs_no_headers[1]);
-        assert_eq!(vecs_ref[2], full_vecs_no_headers[2]);
-        assert_eq!(vecs_ref[3], full_vecs_no_headers[3]);
+        assert_eq!(vecs_ref[0], expected_vecs_no_headers[0]);
+        assert_eq!(vecs_ref[1], expected_vecs_no_headers[1]);
+        assert_eq!(vecs_ref[2], expected_vecs_no_headers[2]);
+        assert_eq!(vecs_ref[3], expected_vecs_no_headers[3]);
+        assert_eq!(vecs_ref[4], expected_vecs_no_headers[4]);
     }
 
     #[rstest]
     fn test_convert_vectors_to_columns_with_headers(
         excel_range_reader_with_headers: ExcelRangeReader,
-        full_vecs_with_headers: Vec<Vec<AnyValue>>,
-        patient_id_col: (&'static str, [&'static str; 4]),
-        age_col: (&'static str, [i64; 4]),
-        weight_col: (&'static str, [f64; 4]),
-        smoker_col: (&'static str, [bool; 4]),
+        expected_vecs_with_headers: Vec<Vec<AnyValue>>,
+        expected_cols_with_headers: Vec<Column>,
     ) {
         let cols = excel_range_reader_with_headers
-            .convert_vectors_to_columns(full_vecs_with_headers)
+            .convert_vectors_to_columns(expected_vecs_with_headers)
             .unwrap();
-        assert_eq!(cols[0].name().to_string(), "patient_id");
-        assert_eq!(cols[1].name().to_string(), "age");
-        assert_eq!(cols[2].name().to_string(), "weight");
-        assert_eq!(cols[3].name().to_string(), "smokes");
-
-        let extracted_patient_ids: Vec<_> = cols[0].str().unwrap().into_no_null_iter().collect();
-        let extracted_ages: Vec<_> = cols[1].f64().unwrap().into_no_null_iter().collect();
-        let extracted_weights: Vec<_> = cols[2].f64().unwrap().into_no_null_iter().collect();
-        let extracted_smoker_bools: Vec<_> = cols[3].bool().unwrap().into_no_null_iter().collect();
-        assert_eq!(extracted_patient_ids, patient_id_col.1);
-        assert_eq!(
-            extracted_ages,
-            age_col.1.iter().map(|&v| v as f64).collect::<Vec<f64>>()
-        );
-        assert_eq!(extracted_weights, weight_col.1);
-        assert_eq!(extracted_smoker_bools, smoker_col.1);
+        assert_eq!(expected_cols_with_headers, cols);
     }
 
     #[rstest]
     fn test_convert_vectors_to_columns_no_headers(
         excel_range_reader_no_headers: ExcelRangeReader,
-        full_vecs_no_headers: Vec<Vec<AnyValue>>,
-        patient_id_col: (&'static str, [&'static str; 4]),
-        age_col: (&'static str, [i64; 4]),
-        weight_col: (&'static str, [f64; 4]),
-        smoker_col: (&'static str, [bool; 4]),
+        expected_vecs_no_headers: Vec<Vec<AnyValue>>,
+        expected_cols_no_headers: Vec<Column>,
     ) {
         let cols = excel_range_reader_no_headers
-            .convert_vectors_to_columns(full_vecs_no_headers)
+            .convert_vectors_to_columns(expected_vecs_no_headers)
             .unwrap();
-        assert_eq!(cols[0].name().to_string(), "0");
-        assert_eq!(cols[1].name().to_string(), "1");
-        assert_eq!(cols[2].name().to_string(), "2");
-        assert_eq!(cols[3].name().to_string(), "3");
-
-        let extracted_patient_ids: Vec<_> = cols[0].str().unwrap().into_no_null_iter().collect();
-        let extracted_ages: Vec<_> = cols[1].f64().unwrap().into_no_null_iter().collect();
-        let extracted_weights: Vec<_> = cols[2].f64().unwrap().into_no_null_iter().collect();
-        let extracted_smoker_bools: Vec<_> = cols[3].bool().unwrap().into_no_null_iter().collect();
-        assert_eq!(extracted_patient_ids, patient_id_col.1);
-        assert_eq!(
-            extracted_ages,
-            age_col.1.iter().map(|&v| v as f64).collect::<Vec<f64>>()
-        );
-        assert_eq!(extracted_weights, weight_col.1);
-        assert_eq!(extracted_smoker_bools, smoker_col.1);
+        assert_eq!(expected_cols_no_headers, cols);
     }
 
     #[rstest]
     fn test_extract_to_df_with_headers(
         excel_range_reader_with_headers: ExcelRangeReader,
-        patient_id_col: (&'static str, [&'static str; 4]),
-        age_col: (&'static str, [i64; 4]),
-        weight_col: (&'static str, [f64; 4]),
-        smoker_col: (&'static str, [bool; 4]),
+        expected_df_with_headers: DataFrame,
     ) {
-        let df = excel_range_reader_with_headers.extract_to_df().unwrap();
         assert_eq!(
-            df.get_column_names(),
-            ["patient_id", "age", "weight", "smokes"]
+            excel_range_reader_with_headers.extract_to_df().unwrap(),
+            expected_df_with_headers
         );
-        let extracted_patient_ids: &Vec<_> = &df["patient_id"]
-            .str()
-            .unwrap()
-            .into_no_null_iter()
-            .collect();
-        let extracted_ages: &Vec<_> = &df["age"].f64().unwrap().into_no_null_iter().collect();
-        let extracted_weights: &Vec<_> = &df["weight"].f64().unwrap().into_no_null_iter().collect();
-        let extracted_smoker_bools: &Vec<_> =
-            &df["smokes"].bool().unwrap().into_no_null_iter().collect();
-        assert_eq!(extracted_patient_ids, &patient_id_col.1);
-        assert_eq!(
-            extracted_ages,
-            &age_col.1.iter().map(|&v| v as f64).collect::<Vec<f64>>()
-        );
-        assert_eq!(extracted_weights, &weight_col.1);
-        assert_eq!(extracted_smoker_bools, &smoker_col.1);
     }
 
     #[rstest]
     fn test_extract_to_df_no_headers(
         excel_range_reader_no_headers: ExcelRangeReader,
-        patient_id_col: (&'static str, [&'static str; 4]),
-        age_col: (&'static str, [i64; 4]),
-        weight_col: (&'static str, [f64; 4]),
-        smoker_col: (&'static str, [bool; 4]),
+        expected_df_no_headers: DataFrame,
     ) {
-        let df = excel_range_reader_no_headers.extract_to_df().unwrap();
-        assert_eq!(df.get_column_names(), ["0", "1", "2", "3"]);
-        let extracted_patient_ids: &Vec<_> = &df["0"].str().unwrap().into_no_null_iter().collect();
-        let extracted_ages: &Vec<_> = &df["1"].f64().unwrap().into_no_null_iter().collect();
-        let extracted_weights: &Vec<_> = &df["2"].f64().unwrap().into_no_null_iter().collect();
-        let extracted_smoker_bools: &Vec<_> =
-            &df["3"].bool().unwrap().into_no_null_iter().collect();
-        assert_eq!(extracted_patient_ids, &patient_id_col.1);
         assert_eq!(
-            extracted_ages,
-            &age_col.1.iter().map(|&v| v as f64).collect::<Vec<f64>>()
+            excel_range_reader_no_headers.extract_to_df().unwrap(),
+            expected_df_no_headers
         );
-        assert_eq!(extracted_weights, &weight_col.1);
-        assert_eq!(extracted_smoker_bools, &smoker_col.1);
     }
 }
