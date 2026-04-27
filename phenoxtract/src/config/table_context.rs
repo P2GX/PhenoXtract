@@ -90,7 +90,7 @@ pub enum Identifier {
 impl From<&Identifier> for IdentifierConfig {
     fn from(value: &Identifier) -> Self {
         match value {
-            Identifier::Single(single) => IdentifierConfig::Regex(single.to_string()),
+            Identifier::Single(single) => IdentifierConfig::Single(single.to_string()),
             Identifier::Regex(regex) => IdentifierConfig::Regex(regex.to_string()),
             Identifier::Multi(multi) => IdentifierConfig::Multi(multi.clone()),
         }
@@ -145,7 +145,7 @@ impl From<&Regex> for Identifier {
 }
 
 impl Identifier {
-    fn regex_from_str(value: &str) -> Identifier {
+    pub fn regex_from_str(value: &str) -> Identifier {
         Identifier::Regex(Regex::new(value).expect("invalid regular expression"))
     }
 }
