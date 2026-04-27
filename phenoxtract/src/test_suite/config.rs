@@ -39,7 +39,7 @@ sheets:
     patients_are_rows: true
     series_contexts:
       - identifier:
-          single: "lab_result_.*"
+          regex: "lab_result_.*"
         header_context: subject_id
         data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"

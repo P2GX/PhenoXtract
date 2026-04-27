@@ -176,7 +176,7 @@ blah: "blahblah"
                     has_headers: true,
                     patients_are_rows: true,
                     series_contexts: vec![
-                        SeriesContextConfig::new(IdentifierConfig::Regex("patient_id".to_string()))
+                        SeriesContextConfig::new(IdentifierConfig::Single("patient_id".to_string()))
                             .header_context(Context::SubjectId)
                             .data_context(Context::Hpo)
                             .fill_missing(CellValue::String(
