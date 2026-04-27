@@ -5,7 +5,8 @@ separator: ","
 has_headers: true
 patients_are_rows: true
 series_contexts:
-  - identifier: "patient_id"
+  - identifier:
+      single: "patient_id"
     header_context: subject_id
     data_context: hpo
     fill_missing: "Zollinger-Ellison syndrome"
@@ -18,12 +19,14 @@ series_contexts:
         "102": "High quantity"
         "169.5": "Very high quantity"
         "true": "smoker"
-  - identifier: "quantitative_measurement"
+  - identifier:
+      single: "quantitative_measurement"
     data_context:
       quantitative_measurement:
         assay_id: "LOINC:9843-4"
         unit_ontology_id: "UO:0000015"
-  - identifier: "procedure_time"
+  - identifier:
+      single: "procedure_time"
     data_context:
       time_of_procedure: age
 "#;
@@ -35,7 +38,8 @@ sheets:
     has_headers: true
     patients_are_rows: true
     series_contexts:
-      - identifier: "lab_result_.*"
+      - identifier:
+          single: "lab_result_.*"
         header_context: subject_id
         data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
@@ -50,9 +54,10 @@ sheets:
     patients_are_rows: true
     series_contexts:
       - identifier:
-          - "Col_1"
-          - "Col_2"
-          - "Col_3"
+          multi:
+            - "Col_1"
+            - "Col_2"
+            - "Col_3"
         header_context: subject_id
         data_context: hpo
         fill_missing: "Zollinger-Ellison syndrome"
