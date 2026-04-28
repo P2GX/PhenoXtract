@@ -234,6 +234,7 @@ impl TryFrom<IdentifierConfig> for Identifier {
 
     fn try_from(value: IdentifierConfig) -> Result<Self, Self::Error> {
         match value {
+            IdentifierConfig::Single(single) => Ok(Identifier::Single(single)),
             IdentifierConfig::Regex(regex_str) => {
                 let regex =
                     Regex::new(&regex_str).map_err(|err| ConstructionError::Identifier {

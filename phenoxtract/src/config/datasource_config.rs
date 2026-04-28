@@ -67,20 +67,21 @@ impl SeriesContextConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
-#[serde(untagged)]
+#[serde(rename_all = "lowercase")]
 pub enum IdentifierConfig {
+    Single(String),
     Regex(String),
     Multi(Vec<String>),
 }
 
 impl From<&str> for IdentifierConfig {
     fn from(value: &str) -> Self {
-        IdentifierConfig::Regex(value.to_string())
+        IdentifierConfig::Single(value.to_string())
     }
 }
 impl From<String> for IdentifierConfig {
     fn from(value: String) -> Self {
-        IdentifierConfig::Regex(value)
+        IdentifierConfig::Single(value)
     }
 }
 

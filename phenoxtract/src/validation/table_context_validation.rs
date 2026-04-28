@@ -14,12 +14,15 @@ pub(crate) fn validate_unique_identifiers(
     series_contexts
         .iter()
         .for_each(|sc| match sc.get_identifier() {
+            Identifier::Single(s) => {
+                identifiers.push(s.clone());
+            }
             Identifier::Regex(regex) => {
                 identifiers.push(regex.to_string());
             }
             Identifier::Multi(multi_ids) => {
                 multi_ids.iter().for_each(|id| {
-                    identifiers.push(id.to_string());
+                    identifiers.push(id.clone());
                 });
             }
         });

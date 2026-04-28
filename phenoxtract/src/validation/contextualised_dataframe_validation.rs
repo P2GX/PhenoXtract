@@ -101,6 +101,7 @@ mod tests {
     use polars::df;
     use polars::prelude::{AnyValue, Column, DataFrame};
     use pretty_assertions::assert_eq;
+    use regex::Regex;
     use rstest::{fixture, rstest};
     use serde_json::from_value;
     use validator::ValidationErrorsKind;
@@ -116,8 +117,12 @@ mod tests {
         DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5, col6]).unwrap()
     }
 
-    fn regex(regex: &str) -> SeriesContext {
-        SeriesContext::from_identifier(regex.to_string())
+    fn single(s: &str) -> SeriesContext {
+        SeriesContext::from_identifier(s.to_string())
+    }
+
+    fn regex(r: &str) -> SeriesContext {
+        SeriesContext::from_identifier(Regex::new(r).unwrap())
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
@@ -126,10 +131,10 @@ mod tests {
 
     #[rstest]
     fn test_at_most_one_context_per_col(df: DataFrame) {
-        let sc1 = regex("column_1"); //identifies just col1
+        let sc1 = single("column_1"); //identifies just col1
         let sc2 = multi_ids(vec!["column_2", "column_3"]); //identifies col2 and col3
         let sc3 = regex("abc"); //identifies col4 and col5
-        let subject_col = regex("column_6").with_data_context(Context::SubjectId);
+        let subject_col = single("column_6").with_data_context(Context::SubjectId);
         let tc = TableContext::new("patient_data".to_string(), vec![sc1, sc2, sc3, subject_col]);
 
         let cdf = ContextualizedDataFrame::new(tc, df).unwrap();
@@ -141,9 +146,9 @@ mod tests {
     fn test_more_than_one_context_per_col(df: DataFrame) {
         let sc1 = regex("column_[0-57-9]\\d*"); //identifies col1, col2, col3
         let sc2 = multi_ids(vec!["column_2", "abcabc"]); //identifies col2 and col4
-        let sc3 = regex("abcabcabc"); //identifies col5
-        let sc4 = regex("abcabcabc"); //identifies col5
-        let subject_col = regex("column_6").with_data_context(Context::SubjectId);
+        let sc3 = single("abcabcabc"); //identifies col5
+        let sc4 = single("abcabcabc"); //identifies col5
+        let subject_col = single("column_6").with_data_context(Context::SubjectId);
 
         let tc = TableContext::new(
             "patient_data".to_string(),
@@ -216,7 +221,10 @@ mod tests {
         let result = ContextualizedDataFrame::new(
             TableContext::new(
                 "test_table".to_string(),
-                vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
+                vec![
+                    SeriesContext::default()
+                        .with_identifier(Identifier::regex_from_str("sub_col*")),
+                ],
             ),
             DataFrame::new(
                 1,

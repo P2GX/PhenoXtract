@@ -176,23 +176,23 @@ blah: "blahblah"
                     has_headers: true,
                     patients_are_rows: true,
                     series_contexts: vec![
-                        SeriesContextConfig::new(IdentifierConfig::Regex("patient_id".to_string()))
-                            .header_context(Context::SubjectId)
-                            .data_context(Context::Hpo)
-                            .fill_missing(CellValue::String(
-                                "Zollinger-Ellison syndrome".to_string(),
-                            ))
-                            .alias_map_config(AliasMapConfig {
-                                mappings: MappingsConfig::HashMap(HashMap::from([
-                                    ("null".to_string(), None),
-                                    ("M".to_string(), Some("Male".to_string())),
-                                    ("102".to_string(), Some("High quantity".to_string())),
-                                    ("169.5".to_string(), Some("Very high quantity".to_string())),
-                                    ("true".to_string(), Some("smoker".to_string())),
-                                ])),
-                                output_data_type: OutputDataType::String,
-                            })
-                            .building_block_id("block_1".to_string()),
+                        SeriesContextConfig::new(IdentifierConfig::Single(
+                            "patient_id".to_string(),
+                        ))
+                        .header_context(Context::SubjectId)
+                        .data_context(Context::Hpo)
+                        .fill_missing(CellValue::String("Zollinger-Ellison syndrome".to_string()))
+                        .alias_map_config(AliasMapConfig {
+                            mappings: MappingsConfig::HashMap(HashMap::from([
+                                ("null".to_string(), None),
+                                ("M".to_string(), Some("Male".to_string())),
+                                ("102".to_string(), Some("High quantity".to_string())),
+                                ("169.5".to_string(), Some("Very high quantity".to_string())),
+                                ("true".to_string(), Some("smoker".to_string())),
+                            ])),
+                            output_data_type: OutputDataType::String,
+                        })
+                        .building_block_id("block_1".to_string()),
                         SeriesContextConfig::new("quantitative_measurement").data_context(
                             Context::QuantitativeMeasurement {
                                 assay_id: "LOINC:9843-4".to_string(),
