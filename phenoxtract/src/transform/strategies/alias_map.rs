@@ -137,7 +137,9 @@ impl Strategy for AliasMapStrategy {
 #[cfg(test)]
 mod tests {
     use crate::config::context::{Context, TimeElementType};
-    use crate::config::table_context::{AliasMap, OutputDataType, SeriesContext, TableContext};
+    use crate::config::table_context::{
+        AliasMap, Identifier, OutputDataType, SeriesContext, TableContext,
+    };
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
     use crate::transform::strategies::alias_map::AliasMapStrategy;
@@ -190,10 +192,12 @@ mod tests {
 
     #[fixture]
     fn sc_bool_alias_to_none() -> SeriesContext {
-        SeriesContext::from_identifier("smokes").with_alias_map(AliasMap::new(
-            HashMap::from([("false".to_string(), None)]),
-            OutputDataType::Boolean,
-        ))
+        SeriesContext::from_identifier(Identifier::regex_from_str("smokes")).with_alias_map(
+            AliasMap::new(
+                HashMap::from([("false".to_string(), None)]),
+                OutputDataType::Boolean,
+            ),
+        )
     }
 
     #[fixture]

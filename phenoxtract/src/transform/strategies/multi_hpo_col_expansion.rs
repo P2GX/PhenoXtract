@@ -274,7 +274,7 @@ mod tests {
                     .with_data_context(Context::SubjectId),
                 SeriesContext::from_identifier("age".to_string())
                     .with_data_context(Context::TimeAtLastEncounter(TimeElementType::Age)),
-                SeriesContext::from_identifier("Multi_HPOs_Block_A".to_string())
+                SeriesContext::from_identifier(Identifier::regex_from_str("Multi_HPOs_Block_A"))
                     .with_data_context(Context::MultiHpoId)
                     .with_building_block_id("A"),
                 SeriesContext::from_identifier("Multi_HPOs_No_Block_1".to_string())
