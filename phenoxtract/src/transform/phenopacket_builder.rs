@@ -172,10 +172,10 @@ impl PhenopacketBuilding for PhenopacketBuilder {
 
     /// Upserts a phenotypic feature within a specific phenopacket.
     ///
-    /// This function adds or updates a `PhenotypicFeature` for a given phenopacket,
+    /// This function adds or overwrites a `PhenotypicFeature` for a given phenopacket,
     /// identified by `phenopacket_id`. If the phenopacket does not exist, it will be
     /// created. If a feature with the same `phenotype` ID already exists within the
-    /// phenopacket, this function will update it (upsert).
+    /// phenopacket, this function will overwrite it (upsert).
     ///
     /// # Arguments
     ///
