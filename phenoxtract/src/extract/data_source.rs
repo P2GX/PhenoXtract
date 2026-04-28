@@ -773,8 +773,8 @@ AGE,18,27,89"#;
             "typo",
             vec![SeriesContext::from_identifier("0").with_data_context(Context::SubjectId)],
         );
-        let ec1 = ExtractionConfig::new("first_sheet".to_string(), true, true);
-        let ec2 = ExtractionConfig::new("typo".to_string(), true, true);
+        let ec1 = ExtractionConfig::new("first_sheet".to_string(), false, true);
+        let ec2 = ExtractionConfig::new("typo".to_string(), false, true);
 
         let mut workbook = Workbook::new();
 
