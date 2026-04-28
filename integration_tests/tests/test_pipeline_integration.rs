@@ -314,6 +314,6 @@ fn test_pipeline_integration(
     compare_expected_and_extracted_phenopackets(
         assets_dir,
         output_dir_name,
-        "extracted_phenopackets",
+        "expected_phenopackets",
     );
 }
