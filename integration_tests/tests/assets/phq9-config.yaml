@@ -192,9 +192,8 @@ pipeline:
   strategies:
     - alias_map
     - default_mapping: sex_mapping
-    - date_to_age
-    - age_to_iso8601
-    - hpo_disease_splitter
+    #- date_to_age
+    #- age_to_iso8601
 
   loader:
     file_system:

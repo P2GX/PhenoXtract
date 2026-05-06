@@ -7,9 +7,17 @@ use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct HpoInCellsCollector {
     allow_duplicate_phenotypes: bool,
+}
+
+impl Default for HpoInCellsCollector {
+    fn default() -> Self {
+        HpoInCellsCollector {
+            allow_duplicate_phenotypes: true,
+        }
+    }
 }
 
 impl Collect for HpoInCellsCollector {
