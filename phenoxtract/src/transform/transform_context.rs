@@ -58,6 +58,7 @@ pub struct TransformContext {
     qualitative_measurement_bidict_lib: Arc<BiDictLibrary>,
     procedure_bi_dict_lib: Arc<BiDictLibrary>,
     anatomy_bi_dict_lib: Arc<BiDictLibrary>,
+    drug_bi_dict_lib: Arc<BiDictLibrary>,
     treatment_attributes_bi_dict: Arc<BiDictLibrary>,
 }
 
@@ -71,6 +72,7 @@ impl PartialEq for TransformContext {
             && self.qualitative_measurement_bidict_lib == other.qualitative_measurement_bidict_lib
             && self.procedure_bi_dict_lib == other.procedure_bi_dict_lib
             && self.anatomy_bi_dict_lib == other.anatomy_bi_dict_lib
+            && self.drug_bi_dict_lib == other.drug_bi_dict_lib
             && self.treatment_attributes_bi_dict == other.treatment_attributes_bi_dict
     }
 }
@@ -124,6 +126,10 @@ impl TransformContext {
         &self.anatomy_bi_dict_lib
     }
 
+    pub fn drug_bi_dict_lib(&self) -> &Arc<BiDictLibrary> {
+        &self.drug_bi_dict_lib
+    }
+
     pub fn treatment_attributes_bi_dict(&self) -> &Arc<BiDictLibrary> {
         &self.treatment_attributes_bi_dict
     }
@@ -140,6 +146,7 @@ pub struct TransformContextBuilder {
     qualitative_measurement_bidict_lib: BiDictLibrary,
     procedure_bi_dict_lib: BiDictLibrary,
     anatomy_bi_dict_lib: BiDictLibrary,
+    drug_bi_dict_lib: BiDictLibrary,
     treatment_attributes_bi_dict: BiDictLibrary,
 }
 
@@ -160,6 +167,7 @@ impl TransformContextBuilder {
             qualitative_measurement_bidict_lib: BiDictLibrary::empty_with_name("QUANTITY"),
             procedure_bi_dict_lib: BiDictLibrary::empty_with_name("PROCEDURE"),
             anatomy_bi_dict_lib: BiDictLibrary::empty_with_name("ANATOMY"),
+            drug_bi_dict_lib: BiDictLibrary::empty_with_name("DRUG"),
             treatment_attributes_bi_dict: BiDictLibrary::empty_with_name("TREATMENT"),
         }
     }
@@ -202,6 +210,9 @@ impl TransformContextBuilder {
         self.anatomy_bi_dict_lib.add_bidict(bidict);
     }
 
+    pub fn add_drug_bidict(&mut self, bidict: Box<dyn BiDict>) {
+        self.drug_bi_dict_lib.add_bidict(bidict);
+    }
     pub fn add_treatment_attributes_bidict(&mut self, bidict: Box<dyn BiDict>) {
         self.treatment_attributes_bi_dict.add_bidict(bidict);
     }
@@ -218,6 +229,7 @@ impl TransformContextBuilder {
             qualitative_measurement_bidict_lib: Arc::new(self.qualitative_measurement_bidict_lib),
             procedure_bi_dict_lib: Arc::new(self.procedure_bi_dict_lib),
             anatomy_bi_dict_lib: Arc::new(self.anatomy_bi_dict_lib),
+            drug_bi_dict_lib: Arc::new(self.drug_bi_dict_lib),
             treatment_attributes_bi_dict: Arc::new(self.treatment_attributes_bi_dict),
         }
     }

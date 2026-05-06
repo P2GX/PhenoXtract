@@ -2,7 +2,7 @@ use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext};
 use crate::config::traits::SeriesContextBuilding;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::error::{DataProcessingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::utils::HpoColMaker;
@@ -11,18 +11,40 @@ use ordermap::{OrderMap, OrderSet};
 use polars::prelude::{AnyValue, Column, DataType, StringChunked};
 use regex::Regex;
 
-/// A strategy for converting columns whose cells contain HPO IDs
+/// Converts [`Context::MultiHpoId`] columns into many columns with HPO IDs in the header.
+///
+/// A strategy for converting columns whose cells contain multiple HPO IDs
 /// into several columns whose headers are exactly those HPO IDs
 /// and whose cells contain the ObservationStatus for each patient.
 ///
 /// The columns are created on a "block by block" basis
 /// so that building blocks are preserved after the transformation.
 ///
-/// A new SeriesContext will be added for each block of new columns.
+/// A new [`SeriesContext`] will be added for each block of new columns.
 ///
-/// The old columns and contexts will be removed.
+/// The old columns and [`Context::MultiHpoId`] context will be removed.
+///
+/// # Example
+///
+/// Data of the format
+///
+/// ```csv
+/// PatientId, MultiHpo
+/// P001,HP:1111111 and HP:2222222
+/// P002,HP:2222222
+/// ```
+/// will be mapped to
+/// ```csv
+/// PatientId,HP:1111111,HP:2222222
+/// P001,true,true
+/// P002,,true
+/// ```
+/// # Errors
+///
+/// An error will occur if there are [`Context::MultiHpoId`] columns which do not have [`DataType::String`].
 #[derive(Debug)]
 pub struct MultiHPOColExpansionStrategy;
+
 impl Strategy for MultiHPOColExpansionStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {
@@ -367,7 +389,7 @@ mod tests {
         let hpo_col_indexes = vec![2, 3, 4, 5];
         let stringified_multi_hpo_cols = hpo_col_indexes
             .into_iter()
-            .map(|idx| cdf.data().get_columns()[idx].str().unwrap())
+            .map(|idx| cdf.data().columns()[idx].str().unwrap())
             .collect::<Vec<&StringChunked>>();
         let patient_to_hpo = MultiHPOColExpansionStrategy::get_patient_to_hpo_data(
             stringified_subject_id_col,

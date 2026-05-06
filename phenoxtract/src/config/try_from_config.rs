@@ -110,6 +110,8 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         load_and_add!(&config.meta_data.anatomy_resources, add_anatomy_bidict);
 
+        load_and_add!(&config.meta_data.drug_resources, add_drug_bidict);
+
         load_and_add!(
             &config.meta_data.treatment_attributes_resources,
             add_treatment_attributes_bidict
@@ -457,12 +459,12 @@ mod tests {
     }
     #[fixture]
     fn keys() -> [&'static str; 3] {
-        ["k1", "k2", "k3"]
+        ["  k1", "k2", "k3"]
     }
 
     #[fixture]
     fn aliases() -> [&'static str; 3] {
-        ["a1", "", "a3"]
+        ["a1", "", "a3  "]
     }
 
     #[fixture]

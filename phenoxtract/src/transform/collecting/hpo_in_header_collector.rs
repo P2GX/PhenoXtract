@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
@@ -195,7 +195,11 @@ mod tests {
 
         let cdf = ContextualizedDataFrame::new(
             TableContext::new("TestTable", context),
-            DataFrame::new(vec![patient_col, pneumonia_col, pneumonia_onset_col]).unwrap(),
+            DataFrame::new(
+                patient_col.len(),
+                vec![patient_col, pneumonia_col, pneumonia_onset_col],
+            )
+            .unwrap(),
         )
         .unwrap();
 

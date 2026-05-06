@@ -79,7 +79,7 @@ meta_data:
       version: "2025-09-01"
     unit_resources:
       - id: "UO"
-        version: "2026-01-09"
+        version: "2026-01-16"
     assay_resources:
       - id: "LOINC"
         version: "2.80"

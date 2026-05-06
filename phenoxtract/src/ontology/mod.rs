@@ -9,5 +9,6 @@ pub mod resource_references;
 pub use ontology_factory::CachedOntologyFactory;
 pub mod bioportal_client;
 pub mod loinc_client;
+mod trait_implementations;
 pub mod traits;
 pub mod types;

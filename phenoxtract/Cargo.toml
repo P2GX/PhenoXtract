@@ -8,45 +8,44 @@ name = "phenoxtract"
 version = "0.1.0"
 
 [dependencies]
-config = "0.15.19"
-polars = { version = "0.51.0", features = ["lazy"] }
+config = "0.15.21"
+polars = { version = "0.53.0", features = ["lazy"] }
 serde = "1.0.228"
-anyhow = "1.0.100"
+anyhow = "1.0.102"
 phenopackets = { version = "0.2.2-post2", features = ["serde"] }
 validator = { version = "0.20.0", features = ["derive"] }
-calamine = { version = "0.32.0", features = ["dates"] }
+calamine = { version = "0.34.0", features = ["dates"] }
 regex = "1.12.2"
 log = "0.4.28"
-reqwest = { version = "0.13.1", features = ["blocking", "json", "query"] }
+reqwest = { version = "0.13.2", features = ["blocking", "json", "query"] }
 either = "1.15.0"
-chrono = "0.4.41"
+chrono = "0.4.41"# Version locked because of polars
 ontolius = "0.7.2"
-serde_json = { version = "1.0.145", features = ["preserve_order"] }
+serde_json = { version = "1.0.149", features = ["preserve_order"] }
 prost-types = "0.14.1" # Version depends on Phenopackets crate. uses >= 14.0 as of https://github.com/P2GX/phenopackets-rust/commit/f17dad1be0c5eed099d9696bd2c8e0a6dd2d97fc
 ordermap = "1.0.0"
-redb = "3.1.0"
-thiserror = "2.0.17"
-date-differencer = "0.1.3"
+thiserror = "2.0.18"
+date-differencer = "0.1.4"
 iso8601-duration = "0.2.0"
-strum = "0.27.2"
-strum_macros = "0.27.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
 enum-try-as-inner = "0.1.1"
 pivotal = "0.1.9"
-ontology-registry = "0.3.7"
+ontology-registry = "0.4.2"
 directories = "6.0.0"
-shellexpand = "3.1.1"
+shellexpand = "3.1.2"
 num-traits = "0.2.19"
 ratelimit = "0.10.0"
-securiety = "0.2.6"
+securiety = "0.2.9"
 elsa = "1.11.2"
+fastobo = "0.15.5"
 
 [dev-dependencies]
 rstest = "0.26.1"
 tempfile = "3.23.0"
 rust_xlsxwriter = "0.93.0"
-native-tls = "=0.2.14"
-mockito = "1.7.0"
-once_cell = "1.21.3"
+mockito = "1.7.2"
+once_cell = "1.21.4"
 pretty_assertions = "1.4.1"
 dotenvy = "0.15"
 mockall = "0.14"

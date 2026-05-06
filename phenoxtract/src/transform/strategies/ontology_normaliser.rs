@@ -1,12 +1,11 @@
 use crate::config::context::ContextKind;
 use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
 use crate::ontology::ontology_bidict::OntologyBiDict;
-use crate::transform::error::StrategyError::MappingError;
 use crate::transform::error::{MappingErrorInfo, PushMappingError, StrategyError};
 use crate::transform::strategies::traits::Strategy;
 use log::info;
 
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 
 use crate::ontology::traits::BiDict;
 use polars::prelude::{DataType, IntoSeries};
@@ -16,27 +15,47 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 /// A strategy that converts ontology labels in cells (or synonyms of them) to the corresponding IDs.
+///
 /// It is case-insensitive.
 ///
 /// This strategy processes string columns in data tables by looking up values in an ontology
 /// bidirectional dictionary and replacing labels with their corresponding IDs.
 /// It only operates on columns that have no header context and match the specified data context.
 ///
-/// # Fields
-///
-/// * `ontology_dict` - A thread-safe reference to a bidirectional ontology dictionary that
-///   maps between HPO labels and their primary identifiers. E.g. the HPO bidirectional dictionary
-/// * `data_context` - The specific data context that columns must match to be processed
-///   by this strategy. E.g. HpoLabelOrId
-///
-/// # Behavior
-///
 /// When applied to tables, the strategy:
 /// 1. Identifies string columns with no header context that match the data context
 /// 2. For each cell value, attempts to maps it via the ontology dictionary to its ID.
 /// 3. Replaces the original value with the ID
-/// 4. Collects mapping errors for any values that couldn't be resolved
+/// 4. Collects [`MappingErrorInfo`] for any values that couldn't be resolved
 /// 5. Returns an error if any labels failed to map (except for null values)
+///
+/// # Fields
+///
+/// * `ontology_dict` - A thread-safe reference to a bidirectional ontology dictionary that
+///   maps between HPO labels and their primary identifiers. E.g. the HPO bidirectional dictionary
+/// * `data_context` - The specific [`crate::config::context::Context`] that columns must match to be processed
+///   by this strategy. E.g. [`crate::config::context::Context::Hpo`]
+///
+/// # Example
+///
+/// If `OntologyNormaliser` is applied with [`ContextKind`] = [`ContextKind::Hpo`]`, then
+///
+/// ```csv
+/// PatientId, Hpo
+/// P001, Pneumonia
+/// P002, HP:1234567
+/// ```
+/// is mapped to
+/// ```csv
+/// PatientId, Hpo
+/// P001, HP:0002090
+/// P002, HP:1234567
+/// ```
+///
+/// # Errors
+///
+/// Returns [`StrategyError::MappingError`] if any cell values do not match an ontology ID or label.
+///
 pub struct OntologyNormaliserStrategy {
     ontology_dict: Arc<OntologyBiDict>,
     data_context_kind: ContextKind,
@@ -104,7 +123,7 @@ impl Strategy for OntologyNormaliserStrategy {
         }
 
         if !error_info.is_empty() {
-            Err(MappingError {
+            Err(StrategyError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),
                 message: "Could not find ontology terms for these strings.".to_string(),
                 info: error_info.into_iter().collect(),
@@ -121,7 +140,7 @@ mod tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::contextualized_data_frame::ContextualizedDataFrame;
-    use crate::test_suite::ontology_mocking::HPO_DICT;
+    use crate::test_suite::ontology_mocking::HPO_BIDICT;
     use crate::transform::error::{MappingErrorInfo, StrategyError};
     use crate::transform::strategies::ontology_normaliser::OntologyNormaliserStrategy;
     use crate::transform::strategies::traits::Strategy;
@@ -164,11 +183,11 @@ mod tests {
             ],
         );
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
-        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         get_hpo_labels_strat.transform(&mut [&mut cdf]).unwrap();
@@ -181,8 +200,11 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let expected_df =
-            DataFrame::new(vec![expected_col1, expected_col2, col_pid.clone()]).unwrap();
+        let expected_df = DataFrame::new(
+            expected_col1.len(),
+            vec![expected_col1, expected_col2, col_pid.clone()],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), expected_df);
     }
 
@@ -203,11 +225,11 @@ mod tests {
         );
         let col_pid = Column::new("subject_ids".into(), ["1", "2", "3", "4"]);
 
-        let df = DataFrame::new(vec![col1, col2, col_pid.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col2, col_pid.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         let strat_result = get_hpo_labels_strat.transform(&mut [&mut cdf]);
@@ -254,8 +276,11 @@ mod tests {
             "more_phenotypic_features".into(),
             ["HP:0041249", "HP:0005105", "HP:0000366", "HP:0000271"],
         );
-        let df_after_strat =
-            DataFrame::new(vec![col1_after_strat, col2_after_strat, col_pid]).unwrap();
+        let df_after_strat = DataFrame::new(
+            col1_after_strat.len(),
+            vec![col1_after_strat, col2_after_strat, col_pid],
+        )
+        .unwrap();
         assert_eq!(cdf.into_data(), df_after_strat);
     }
 
@@ -275,11 +300,11 @@ mod tests {
 
         let col_subject_id = Column::new("subject_ids".into(), ["1", "2", "3", "4", "5", "6"]);
 
-        let df = DataFrame::new(vec![col1, col_subject_id.clone()]).unwrap();
+        let df = DataFrame::new(col1.len(), vec![col1, col_subject_id.clone()]).unwrap();
         let mut cdf = ContextualizedDataFrame::new(tc, df).unwrap();
 
         let get_hpo_labels_strat = OntologyNormaliserStrategy {
-            ontology_dict: HPO_DICT.clone(),
+            ontology_dict: HPO_BIDICT.clone(),
             data_context_kind: ContextKind::Hpo,
         };
         let res = get_hpo_labels_strat.transform(&mut [&mut cdf]);
@@ -299,7 +324,8 @@ mod tests {
                 AnyValue::Null,
             ],
         );
-        let expected_df = DataFrame::new(vec![expected_col1, col_subject_id]).unwrap();
+        let expected_df =
+            DataFrame::new(expected_col1.len(), vec![expected_col1, col_subject_id]).unwrap();
         assert_eq!(cdf.data(), &expected_df);
     }
 }

@@ -1,18 +1,17 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
 
-use crate::transform::collecting::medical_actions::medical_action::{
-    MedicalActionData, ProcedureData,
-};
-use crate::transform::collecting::traits::Collect;
-use crate::transform::error::CollectorError;
+use crate::extract::enums::Filter;
+use crate::transform::collecting::medical_actions::medical_action::MedicalActionData;
+use crate::transform::collecting::medical_actions::medical_procedure_data::ProcedureData;
+use crate::transform::collecting::traits::{Collect, GetRows, Pluck};
+use crate::transform::error::{CollectorError, GetterError};
 use crate::transform::traits::PhenopacketBuilding;
 use std::any::Any;
 
 struct MedicalProcedureIterator<'a> {
     procedure_data: &'a ProcedureData,
-    medical_action_data: &'a MedicalActionData,
+    medical_action_data: Option<&'a MedicalActionData>,
     max_iterations: usize,
     current_index: usize,
 }
@@ -20,7 +19,7 @@ struct MedicalProcedureIterator<'a> {
 impl<'a> MedicalProcedureIterator<'a> {
     pub fn new(
         procedure_data: &'a ProcedureData,
-        medical_action_data: &'a MedicalActionData,
+        medical_action_data: Option<&'a MedicalActionData>,
     ) -> Self {
         Self {
             procedure_data,
@@ -32,32 +31,55 @@ impl<'a> MedicalProcedureIterator<'a> {
 }
 
 impl<'a> Iterator for MedicalProcedureIterator<'a> {
-    type Item = MedicalProcedureIterElement<'a>;
+    type Item = Result<MedicalProcedureIterElement<'a>, CollectorError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index >= self.max_iterations {
-            return None;
+        for _ in 0..self.max_iterations {
+            let procedure = match self.procedure_data.get(self.current_index) {
+                Ok(procedure_opt) => match procedure_opt {
+                    Some(procedure) => procedure,
+                    None => {
+                        self.current_index += 1;
+                        continue;
+                    }
+                },
+                Err(err) => {
+                    return match err {
+                        GetterError::RequiredValueMissingError { .. } => {
+                            Some(Err(CollectorError::from(err)))
+                        }
+                        GetterError::OutOfBounds => None,
+                    };
+                }
+            };
+
+            let medical_action_data = if let Some(medical_action_data) = self.medical_action_data {
+                match medical_action_data.get(self.current_index) {
+                    Ok(mad) => mad,
+                    Err(err) => return Some(Err(CollectorError::from(err))),
+                }
+            } else {
+                None
+            };
+
+            self.current_index += 1;
+
+            return Some(Ok(MedicalProcedureIterElement {
+                procedure: procedure.procedure,
+                body_part: procedure.body_part,
+                time_element: procedure.time_element,
+                treatment_target: medical_action_data.pluck(|mad| mad.treatment_target),
+                treatment_intent: medical_action_data.pluck(|mad| mad.treatment_intent),
+                response_to_treatment: medical_action_data.pluck(|mad| mad.response_to_treatment),
+                treatment_termination_reason: medical_action_data
+                    .pluck(|mad| mad.treatment_termination_reason),
+            }));
         }
-
-        let procedure_data = self.procedure_data.get(self.current_index);
-
-        let general_medical_action_data = self.medical_action_data.get(self.current_index);
-
-        self.current_index += 1;
-
-        Some(MedicalProcedureIterElement {
-            procedure: procedure_data.procedure,
-            body_part: procedure_data.body_part,
-            time_element: procedure_data.time_element,
-            treatment_target: general_medical_action_data.treatment_target,
-            treatment_intent: general_medical_action_data.treatment_intent,
-            response_to_treatment: general_medical_action_data.response_to_treatment,
-            treatment_termination_reason: general_medical_action_data.treatment_termination_reason,
-        })
+        None
     }
 }
 struct MedicalProcedureIterElement<'a> {
-    procedure: Option<&'a str>,
+    procedure: &'a str,
     body_part: Option<&'a str>,
     time_element: Option<&'a str>,
     treatment_target: Option<&'a str>,
@@ -84,26 +106,29 @@ impl Collect for MedicalProcedureCollector {
 
             for procedure_sc in procedures {
                 let procedure_data =
-                    ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())?;
+                    match ProcedureData::new(patient_cdf, procedure_sc.get_building_block_id())? {
+                        None => continue,
+                        Some(pd) => pd,
+                    };
                 let medical_action_data =
                     MedicalActionData::new(patient_cdf, procedure_sc.get_building_block_id())?;
 
                 let procedure_iterator =
-                    MedicalProcedureIterator::new(&procedure_data, &medical_action_data);
+                    MedicalProcedureIterator::new(&procedure_data, medical_action_data.as_ref());
 
                 for procedure_values in procedure_iterator {
-                    if let Some(procedure) = procedure_values.procedure {
-                        builder.insert_medical_procedure(
-                            patient_id,
-                            procedure,
-                            procedure_values.body_part,
-                            procedure_values.time_element,
-                            procedure_values.treatment_target,
-                            procedure_values.treatment_intent,
-                            procedure_values.response_to_treatment,
-                            procedure_values.treatment_termination_reason,
-                        )?
-                    }
+                    let procedure_values = procedure_values?;
+
+                    builder.insert_medical_procedure(
+                        patient_id,
+                        procedure_values.procedure,
+                        procedure_values.body_part,
+                        procedure_values.time_element,
+                        procedure_values.treatment_target,
+                        procedure_values.treatment_intent,
+                        procedure_values.response_to_treatment,
+                        procedure_values.treatment_termination_reason,
+                    )?
                 }
             }
         }
@@ -123,11 +148,11 @@ mod tests {
     use crate::extract::ContextualizedDataFrame;
     use crate::test_suite::cdf_generation::{default_patient_id, generate_minimal_cdf};
     use crate::test_suite::phenopacket_component_generation::{
-        default_disease_oc, default_procedure, default_procedure_oc, default_treatment_intent,
-        default_treatment_response, default_treatment_termination_reason,
+        default_anatomy_region, default_timestamp,
     };
     use crate::test_suite::phenopacket_component_generation::{
-        default_procedure_body_side_oc, default_timestamp,
+        default_disease_oc, default_procedure, default_procedure_oc, default_treatment_intent,
+        default_treatment_response, default_treatment_termination_reason,
     };
 
     use crate::config::context::TimeElementType;
@@ -151,8 +176,8 @@ mod tests {
         let body_site = Series::new(
             "body_site".into(),
             &[
-                AnyValue::String(&default_procedure_body_side_oc().label),
-                AnyValue::String(&default_procedure_body_side_oc().label),
+                AnyValue::String(&default_anatomy_region().label),
+                AnyValue::String(&default_anatomy_region().label),
             ],
         );
 
@@ -283,7 +308,7 @@ mod tests {
                  termination_reason| {
                     id == default_patient_id()
                         && name == default_procedure_oc().label
-                        && *body_site == Some(&default_procedure_body_side_oc().label)
+                        && *body_site == Some(&default_anatomy_region().label)
                         && *date == Some("1970-01-01 00:00:00.000000000")
                         && *treatment_target == Some(&default_disease_oc().label)
                         && *treatment_intent == Some(&default_treatment_intent().label)

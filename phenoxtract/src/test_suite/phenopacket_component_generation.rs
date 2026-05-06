@@ -2,11 +2,10 @@ use crate::config::MetaData;
 use crate::ontology::traits::BiDict;
 use crate::test_suite::cdf_generation::default_patient_id;
 use crate::test_suite::config::PIPELINE_CONFIG_FILE;
-use crate::test_suite::ontology_mocking::{HPO_DICT, MONDO_BIDICT, UO_DICT};
+use crate::test_suite::ontology_mocking::{HPO_BIDICT, MONDO_BIDICT, UO_BIDICT};
 use chrono::{NaiveDate, NaiveDateTime};
 use config::{Config, File, FileFormat};
 use dotenvy::dotenv;
-use phenopackets::schema::v2::core::Procedure;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::time_element::Element;
 use phenopackets::schema::v2::core::value::Value;
@@ -14,6 +13,7 @@ use phenopackets::schema::v2::core::{
     Age, Disease, Measurement, OntologyClass, PhenotypicFeature, Quantity, ReferenceRange,
     TimeElement, Value as ValueStruct,
 };
+use phenopackets::schema::v2::core::{DrugType, Procedure};
 use prost_types::Timestamp;
 
 pub(crate) fn default_cohort_id() -> String {
@@ -55,10 +55,11 @@ pub(crate) fn default_disease() -> Disease {
         ..Default::default()
     }
 }
-pub(crate) fn default_disease_with_age_onset() -> Disease {
+pub(crate) fn default_disease_with_extra_data() -> Disease {
     let mut default_disease = default_disease();
     default_disease.onset = Some(default_age_element());
     default_disease.resolution = Some(default_age_element());
+    default_disease.primary_site = Some(default_anatomy_region());
 
     default_disease
 }
@@ -100,7 +101,7 @@ pub(crate) fn default_timestamp_element() -> TimeElement {
 }
 
 pub(crate) fn generate_phenotype(id: &str, onset: Option<TimeElement>) -> PhenotypicFeature {
-    let label = HPO_DICT
+    let label = HPO_BIDICT
         .get(id)
         .expect("No HP label found for id in bidict");
 
@@ -128,7 +129,7 @@ pub(crate) fn default_qual_loinc() -> OntologyClass {
     }
 }
 
-pub(crate) fn default_uo_term() -> OntologyClass {
+pub(crate) fn default_unit_oc() -> OntologyClass {
     OntologyClass {
         id: "UO:0000015".to_string(),
         label: "centimeter".to_string(),
@@ -146,7 +147,7 @@ pub(crate) fn default_quant_value() -> f64 {
 pub(crate) fn default_pato_qual_measurement() -> OntologyClass {
     OntologyClass {
         id: "PATO:0000467".to_string(),
-        label: "Present".to_string(),
+        label: "present".to_string(),
     }
 }
 
@@ -155,7 +156,7 @@ pub(crate) fn default_quant_measurement() -> Measurement {
         default_quant_loinc(),
         default_quant_value(),
         Some(default_age_element()),
-        default_uo_term().id.as_str(),
+        default_unit_oc().id.as_str(),
         Some(default_reference_range()),
     )
 }
@@ -175,7 +176,7 @@ pub(crate) fn generate_quant_measurement(
     unit_id: &str,
     reference_range: Option<(f64, f64)>,
 ) -> Measurement {
-    let unit_label = UO_DICT
+    let unit_label = UO_BIDICT
         .get(unit_id)
         .expect("No UO label found for id in bidict");
 
@@ -225,7 +226,7 @@ pub(crate) fn generate_qual_measurement(
 
 #[allow(dead_code)]
 pub(crate) fn generate_phenotype_oc(id: &str) -> OntologyClass {
-    let label = HPO_DICT
+    let label = HPO_BIDICT
         .get(id)
         .expect("Not HP label found for id in bidict");
 
@@ -249,7 +250,23 @@ pub(crate) fn default_procedure_oc() -> OntologyClass {
     }
 }
 
-pub(crate) fn default_procedure_body_side_oc() -> OntologyClass {
+pub(crate) fn default_treatment_agent_oc() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C62045".to_string(),
+        label: "Methylphenidate".to_string(),
+    }
+}
+
+pub(crate) fn default_route_of_administration_oc() -> OntologyClass {
+    OntologyClass {
+        id: "NCIT:C38288".to_string(),
+        label: "Oral Route of Administration".to_string(),
+    }
+}
+pub(crate) fn default_drug_type() -> &'static str {
+    DrugType::Prescription.as_str_name()
+}
+pub(crate) fn default_anatomy_region() -> OntologyClass {
     OntologyClass {
         id: "UBERON:0003403".to_string(),
         label: "skin of forearm".to_string(),
@@ -280,7 +297,7 @@ pub(crate) fn default_treatment_termination_reason() -> OntologyClass {
 pub(crate) fn default_procedure() -> Procedure {
     Procedure {
         code: Some(default_procedure_oc()),
-        body_site: Some(default_procedure_body_side_oc()),
+        body_site: Some(default_anatomy_region()),
         performed: Some(default_timestamp_element()),
     }
 }

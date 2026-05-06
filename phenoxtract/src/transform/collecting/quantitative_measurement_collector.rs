@@ -1,7 +1,7 @@
 use crate::config::context::{Boundary, Context, ContextKind};
 use crate::constants::PolarsNumericTypes;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::traits::PhenopacketBuilding;
@@ -114,7 +114,7 @@ mod tests {
     use crate::test_suite::phenopacket_component_generation::default_meta_data;
     use crate::test_suite::phenopacket_component_generation::{
         default_iso_age, default_phenopacket_id, default_quant_loinc, default_quant_measurement,
-        default_quant_value, default_reference_range, default_uo_term, generate_quant_measurement,
+        default_quant_value, default_reference_range, default_unit_oc, generate_quant_measurement,
     };
     use crate::test_suite::resource_references::{loinc_meta_data_resource, uo_meta_data_resource};
     use crate::test_suite::utils::assert_phenopackets;
@@ -163,7 +163,7 @@ mod tests {
                     .with_identifier("height")
                     .with_data_context(Context::QuantitativeMeasurement {
                         assay_id: default_quant_loinc().id,
-                        unit_ontology_id: default_uo_term().id,
+                        unit_ontology_id: default_unit_oc().id,
                     })
                     .with_building_block_id("height_measurement"),
                 vec![measurements.into_column()].as_ref(),
@@ -214,7 +214,7 @@ mod tests {
             default_quant_loinc(),
             measurements()[1],
             None,
-            default_uo_term().id.as_str(),
+            default_unit_oc().id.as_str(),
             None,
         );
 
@@ -223,7 +223,7 @@ mod tests {
             measurements: vec![measurement1, measurement2],
             meta_data: Some(MetaData {
                 phenopacket_schema_version: phenopacket_schema_version(),
-                resources: vec![loinc_meta_data_resource(), uo_meta_data_resource()],
+                resources: vec![uo_meta_data_resource(), loinc_meta_data_resource()],
                 submitted_by: default_meta_data().submitted_by,
                 created_by: default_meta_data().created_by,
                 ..Default::default()

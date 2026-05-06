@@ -4,7 +4,7 @@ use crate::transform::error::{
 };
 
 use crate::config::context::Context;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::transform::strategies::traits::Strategy;
 use log::{debug, info};
 use phenopackets::schema::v2::core::Sex;
@@ -32,23 +32,32 @@ pub enum DefaultMapping {
 /// # Fields
 ///
 /// * `synonym_map` - A mapping from input values (lowercase, trimmed) to their standardized output values
-/// * `data_context` - The context type of the data being transformed (e.g., `Context::SubjectSex`)
+/// * `data_context` - The context type of the data being transformed (e.g., [`Context::SubjectSex`])
 /// * `header_context` - The context type of the column headers to match
 /// * `column_dtype` - The expected data type of the input columns
 /// * `out_dtype` - The desired data type of the output columns after mapping
 ///
 /// # Example
 ///
-/// ```ignore
-/// let sex_mapping = MappingStrategy::default_sex_mapping_strategy();
-/// // Maps variations like "m", "male", "man" → "MALE"
-/// // and "f", "female", "woman" → "FEMALE"
+/// If we apply [`MappingStrategy::default_sex_mapping_strategy`] then
+///
+/// ```csv
+/// PatientId, sex
+/// P001, m
+/// P002, woman
+/// P003, male
 /// ```
+/// is mapped to
+///
+/// PatientId, sex
+/// P001, MALE
+/// P002, WOMAN
+/// P003, MALE
 ///
 /// # Errors
 ///
-/// Returns `TransformError::MappingError` if any values in the data cannot be found
-/// in the synonym map, providing details about unmapped values and suggestions.
+/// Returns [`StrategyError::MappingError`] if any values in the data cannot be found
+/// in the synonym map. The error will provide details about unmapped values and make suggestions.
 #[derive(Debug)]
 pub struct MappingStrategy {
     synonym_map: HashMap<String, String>,
@@ -190,7 +199,6 @@ impl Strategy for MappingStrategy {
             "Applying Mapping strategy to data. Applying synonyms to columns with header_context {} and data_context {}.",
             self.header_context, self.data_context
         );
-
         let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
         for table in tables.iter_mut() {
@@ -281,8 +289,8 @@ mod tests {
 
     fn make_test_dataframe() -> ContextualizedDataFrame {
         let df = df![
-            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null],
-            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::String("9")],
+            "sex" => &[AnyValue::String("m"), AnyValue::String("f"), AnyValue::String("male"), AnyValue::String("female"), AnyValue::String("man"), AnyValue::String("woman"), AnyValue::String("intersex"), AnyValue::String("mole"), AnyValue::Null, AnyValue::String("OTHER_SEX")],
+            "sub_id" => &[AnyValue::String("1"), AnyValue::String("2"), AnyValue::String("3"), AnyValue::String("4"), AnyValue::String("5"), AnyValue::String("6"), AnyValue::String("7"), AnyValue::String("8"), AnyValue::String("9"), AnyValue::String("10")],
         ]
         .unwrap();
 
@@ -336,6 +344,7 @@ mod tests {
                 "FEMALE",
                 "MALE",
                 "FEMALE",
+                "OTHER_SEX",
                 "OTHER_SEX"
             ]
         );
@@ -425,6 +434,7 @@ mod tests {
                 "OTHER_SEX",
                 "mole",
                 "",
+                "OTHER_SEX"
             ]
         );
     }

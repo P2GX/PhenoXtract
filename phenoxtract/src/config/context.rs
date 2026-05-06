@@ -65,6 +65,7 @@ pub enum Context {
     TimeOfResolution(TimeElementType),
     Severity,
     ObservationStatus,
+    PrimarySite,
 
     // Genetic Data
     Hgvs,
@@ -82,6 +83,10 @@ pub enum Context {
     ReferenceRange(Boundary),
 
     // Medical Actions
+    TreatmentAgent,
+    RouteOfAdministration,
+    DrugType,
+
     TreatmentTarget,
     TreatmentIntent,
     ResponseToTreatment,
@@ -89,6 +94,9 @@ pub enum Context {
     Procedure,
     ProcedureBodySite,
     TimeOfProcedure(TimeElementType),
+
+    QuantityValue,
+    QuantityUnit,
 
     #[default]
     None,
@@ -144,6 +152,7 @@ impl Context {
                 | ContextKind::SurvivalTimeDays
                 | ContextKind::Hpo
                 | ContextKind::Disease
+                | ContextKind::PrimarySite
                 | ContextKind::Hgnc
                 | ContextKind::HpoOrDisease
                 | ContextKind::Hgvs
@@ -159,6 +168,11 @@ impl Context {
                 | ContextKind::ObservationStatus
                 | ContextKind::MultiHpoId
                 | ContextKind::Severity
+                | ContextKind::QuantityValue
+                | ContextKind::QuantityUnit
+                | ContextKind::TreatmentAgent
+                | ContextKind::RouteOfAdministration
+                | ContextKind::DrugType
                 | ContextKind::None => None,
             })
             .collect()

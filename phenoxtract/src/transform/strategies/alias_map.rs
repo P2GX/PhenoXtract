@@ -8,15 +8,47 @@ use polars::datatypes::{DataType, PlSmallStr};
 use polars::prelude::{ChunkApply, Column};
 use std::borrow::Cow;
 
-/// Given a collection of contextualised dataframes, this strategy will apply all the aliases
-/// found in the SeriesContexts.
-/// For example if a Contextualised Dataframe has a SeriesContext consisting of a SubjectSex column
-/// and a ToString AliasMap which converts "M" to "Male" and "F" to "Female"
+/// Applies all aliases found in all the [`crate::config::table_context::SeriesContext`].
+///
+/// Given a collection of [`ContextualizedDataFrame`], this strategy will apply all the aliases
+/// found in the  [`crate::config::table_context::SeriesContext`].
+///
+/// For example if a [`ContextualizedDataFrame`] has a [`crate::config::table_context::SeriesContext`] consisting of a [`crate::config::context::Context::SubjectSex`] column
+/// and an [`AliasMap`] of [`OutputDataType::String`] type, which converts "M" to "Male" and "F" to "Female",
 /// then the strategy will apply those aliases to each cell.
+///
 /// # NOTE
 /// - This does not transform the headers of the Dataframe.
 /// - Only non-null cells may be aliased.
 /// - Non-null cells may be aliased to null.
+///
+/// # Example
+///
+/// If the [`crate::config::table_context::SeriesContext`] for the [`crate::config::context::Context::TimeAtLastEncounter`] column
+/// has an [`AliasMap`] of [`OutputDataType::Int64`] type with a single alias `Less than 1 year` -> `0` then the table:
+///
+/// ```csv
+/// PatientId, age_at_last_encounter
+/// P001, 4
+/// P002, Less than 1 year
+/// ```
+///
+/// is mapped to
+/// ```csv
+/// PatientId, age_at_last_encounter
+/// P001, 4
+/// P002, 0
+/// ```
+///
+/// # Errors
+///
+/// Errors will be thrown if:
+/// - Any columns to be aliased cannot be cast to [`DataType::String`] datatype.
+/// - Once the aliases have been applied,
+///   the column cannot be cast to the desired [`OutputDataType`] of the [`AliasMap`].
+///   For example if it is an [`AliasMap`] of [`OutputDataType::Int64`] type, yet there remain strings in the column after
+///   the aliases have been applied.
+///
 #[derive(Debug)]
 pub struct AliasMapStrategy;
 
@@ -122,9 +154,9 @@ mod tests {
             .with_data_context(Context::SubjectId)
             .with_alias_map(AliasMap::new(
                 HashMap::from([
-                    ("P001".to_string(), Some("patient_1".to_string())),
-                    ("P002".to_string(), Some("patient_2".to_string())),
-                    ("P003".to_string(), Some("patient_3".to_string())),
+                    ("  P001".to_string(), Some("patient_1".to_string())),
+                    ("P002".to_string(), Some("patient_2  ".to_string())),
+                    ("P003  ".to_string(), Some("  patient_3".to_string())),
                     ("P004".to_string(), Some("patient_4".to_string())),
                 ]),
                 OutputDataType::String,
@@ -214,7 +246,7 @@ mod tests {
         let col3 = Column::new("survival_time_days".into(), [10.1, 20.2, 30.3, 40.4]);
         let col4 = Column::new("smokes1".into(), [true, true, false, false]);
         let col5 = Column::new("smokes2".into(), [true, true, false, false]);
-        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5]).unwrap()
     }
 
     #[fixture]
@@ -228,7 +260,7 @@ mod tests {
         let col2 = Column::new("age".into(), [10, 20, 30, 40]);
         let col3 = Column::new("survival_time_days".into(), [10.2, 20.3, 30.4, 40.5]);
         let col4 = Column::new("smokes".into(), [true, true, true, true]);
-        DataFrame::new(vec![col1, col2, col3, col4]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4]).unwrap()
     }
 
     #[fixture]
@@ -301,7 +333,7 @@ mod tests {
                 AnyValue::Boolean(false),
             ],
         );
-        DataFrame::new(vec![col1, col2, col3, col4, col5]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5]).unwrap()
     }
 
     #[fixture]

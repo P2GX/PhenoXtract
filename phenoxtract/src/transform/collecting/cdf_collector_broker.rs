@@ -6,6 +6,7 @@ use crate::transform::collecting::hpo_in_header_collector::HpoInHeaderCollector;
 use crate::transform::collecting::individual_collector::IndividualCollector;
 use crate::transform::collecting::interpretation_collector::InterpretationCollector;
 use crate::transform::collecting::medical_actions::medical_procedure_collector::MedicalProcedureCollector;
+use crate::transform::collecting::medical_actions::medical_treatment_collector::MedicalTreatmentCollector;
 use crate::transform::collecting::qualitative_measurement_collector::QualitativeMeasurementCollector;
 use crate::transform::collecting::quantitative_measurement_collector::QuantitativeMeasurementCollector;
 use crate::transform::collecting::traits::Collect;
@@ -84,6 +85,7 @@ impl CdfCollectorBroker {
                 Box::new(QuantitativeMeasurementCollector),
                 Box::new(QualitativeMeasurementCollector),
                 Box::new(MedicalProcedureCollector),
+                Box::new(MedicalTreatmentCollector),
             ],
         )
     }
@@ -119,7 +121,7 @@ impl PartialEq for CdfCollectorBroker {
 mod tests {
     use super::*;
     use crate::config::context::Context;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use crate::test_suite::component_building::build_test_phenopacket_builder;
     use crate::test_suite::mocks::MockCollector;

@@ -1,4 +1,5 @@
-use redb::{CommitError, DatabaseError, StorageError, TableError, TransactionError};
+use fastobo::error::Error as FastOboError;
+use ontology_registry::OntologyRegistryError;
 use std::fmt::Debug;
 use thiserror::Error;
 #[derive(Debug, Error)]
@@ -21,16 +22,6 @@ pub enum RegistryError {
 
 #[derive(Debug, Error)]
 pub enum ClientError {
-    #[error("Cache commit error: {0}")]
-    CacheCommit(#[from] CommitError),
-    #[error("Cache storage error: {0}")]
-    CacheStorage(#[from] StorageError),
-    #[error("Cache transaction error: {0}")]
-    CacheTransaction(#[from] TransactionError),
-    #[error("Cache database error: {0}")]
-    CacheDatabase(#[from] DatabaseError),
-    #[error("Cache table error: {0}")]
-    CacheTable(#[from] TableError),
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
 }
@@ -39,6 +30,14 @@ pub enum ClientError {
 pub enum FactoryError {
     #[error("Failed to build ontology '{reason}'")]
     CantBuild { reason: String },
+    #[error(
+        "Currently PhenoXtract only accepts ontologies which have .json or .obo ontology files on OboFoundry. Ontology {ontology_prefix} had neither."
+    )]
+    NoValidOntologyFilesAvailable { ontology_prefix: String },
+    #[error(transparent)]
+    FastOboError(#[from] FastOboError),
+    #[error(transparent)]
+    OntologyRegistryError(#[from] OntologyRegistryError),
 }
 
 #[derive(Debug, Error)]

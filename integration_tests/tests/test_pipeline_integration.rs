@@ -202,10 +202,10 @@ fn test_pipeline_integration(
         OboLibraryProvider::default(),
     ));
 
-    let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref, None).unwrap());
-    let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref, None).unwrap());
-    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref, None).unwrap());
-    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
+    let hpo_dict = Box::new(onto_factory.build_bidict(&hp_ref).unwrap());
+    let mondo_dict = Box::new(onto_factory.build_bidict(&mondo_ref).unwrap());
+    let uo_dict = Box::new(onto_factory.build_bidict(&uo_ref).unwrap());
+    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref).unwrap());
 
     let assets_dir = tests_assets.join("integration_test");
 
@@ -263,14 +263,14 @@ fn test_pipeline_integration(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            onto_factory.build_bidict(&hp_ref, None).unwrap(),
+            onto_factory.build_bidict(&hp_ref).unwrap(),
             ContextKind::Hpo,
         )),
         Box::new(OntologyNormaliserStrategy::new(
-            onto_factory.build_bidict(&pato_ref, None).unwrap(),
+            onto_factory.build_bidict(&pato_ref).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
-        Box::new(DateToAgeStrategy),
+        Box::new(DateToAgeStrategy::new(true)),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),

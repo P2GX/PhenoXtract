@@ -127,7 +127,7 @@ fn big_null_test(
         BioRegistryMetadataProvider::default(),
         OboLibraryProvider::default(),
     ));
-    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref, None).unwrap());
+    let pato_dict = Box::new(onto_factory.build_bidict(&pato_ref).unwrap());
     let assets_dir = tests_assets.join("big_null_test");
 
     //Configure data sources and contexts
@@ -144,10 +144,10 @@ fn big_null_test(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(AliasMapStrategy),
         Box::new(OntologyNormaliserStrategy::new(
-            onto_factory.build_bidict(&pato_ref, None).unwrap(),
+            onto_factory.build_bidict(&pato_ref).unwrap(),
             ContextKind::QualitativeMeasurement,
         )),
-        Box::new(DateToAgeStrategy),
+        Box::new(DateToAgeStrategy::new(true)),
         Box::new(MappingStrategy::default_sex_mapping_strategy()),
         Box::new(AgeToIso8601Strategy::default()),
         Box::new(MultiHPOColExpansionStrategy),

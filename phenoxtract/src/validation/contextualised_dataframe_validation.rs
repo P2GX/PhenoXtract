@@ -1,6 +1,6 @@
 use crate::config::context::Context;
 use crate::extract::ContextualizedDataFrame;
-use crate::extract::contextualized_dataframe_filters::Filter;
+use crate::extract::enums::Filter;
 use crate::validation::validation_utils::fail_validation_on_duplicates;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -98,7 +98,6 @@ mod tests {
     use crate::validation::contextualised_dataframe_validation::{
         validate_one_context_per_column, validate_subject_id_col_no_nulls,
     };
-    use crate::validation::error::ValidationError;
     use polars::df;
     use polars::prelude::{AnyValue, Column, DataFrame};
     use pretty_assertions::assert_eq;
@@ -114,7 +113,7 @@ mod tests {
         let col4 = Column::new("abcabc".into(), ["P001"]);
         let col5 = Column::new("abcabcabc".into(), ["P001"]);
         let col6 = Column::new("column_6".into(), ["P001"]);
-        DataFrame::new(vec![col1, col2, col3, col4, col5, col6]).unwrap()
+        DataFrame::new(col1.len(), vec![col1, col2, col3, col4, col5, col6]).unwrap()
     }
 
     fn regex(regex: &str) -> SeriesContext {
@@ -151,34 +150,31 @@ mod tests {
             vec![sc1, sc2, sc3, sc4, subject_col],
         );
 
-        match ContextualizedDataFrame::new(tc, df).err().unwrap() {
-            ValidationError::ValidationCrateError(val_error) => {
-                let kind = val_error.0.values().next().unwrap();
-                match kind {
-                    ValidationErrorsKind::Field(err) => {
-                        let f = err.first().unwrap();
-                        let cols_with_multiple_scs = f
-                            .params
-                            .get("duplicates")
-                            .unwrap()
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|s| s.as_str().unwrap().to_string())
-                            .collect::<Vec<String>>();
+        let result = ContextualizedDataFrame::new(tc, df);
+        assert!(result.is_err());
+        let val_error = result.unwrap_err();
 
-                        assert!(
-                            cols_with_multiple_scs
-                                == vec!["column_2".to_string(), "abcabcabc".to_string()]
-                                || cols_with_multiple_scs
-                                    == vec!["abcabcabc".to_string(), "column_2".to_string()]
-                        );
-                    }
-                    _ => panic!("unexpected field error"),
-                }
+        let kind = val_error.0.values().next().unwrap();
+        match kind {
+            ValidationErrorsKind::Field(err) => {
+                let f = err.first().unwrap();
+                let cols_with_multiple_scs = f
+                    .params
+                    .get("duplicates")
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|s| s.as_str().unwrap().to_string())
+                    .collect::<Vec<String>>();
+
+                assert!(
+                    cols_with_multiple_scs == vec!["column_2".to_string(), "abcabcabc".to_string()]
+                        || cols_with_multiple_scs
+                            == vec!["abcabcabc".to_string(), "column_2".to_string()]
+                );
             }
-
-            _ => panic!("Expected an error"),
+            _ => panic!("unexpected field error"),
         }
     }
 
@@ -186,39 +182,32 @@ mod tests {
     fn test_validate_single_subject_id_column_no_subject_id() {
         let result = ContextualizedDataFrame::new(
             TableContext::default().with_name("test_table"),
-            DataFrame::new(vec![]).unwrap(),
+            DataFrame::new(0, vec![]).unwrap(),
         );
 
         assert!(result.is_err());
-        let error = result.unwrap_err();
-        match error {
-            ValidationError::ValidationCrateError(err) => {
-                let kind = err.0.values().next().unwrap();
-                match kind {
-                    ValidationErrorsKind::Field(field) => {
-                        let f = field.first().unwrap();
-                        assert_eq!(f.code, "subject_id_column");
-                        assert!(
-                            f.message
-                                .clone()
-                                .unwrap()
-                                .to_string()
-                                .contains("test_table")
-                        );
-                        assert!(
-                            f.message
-                                .clone()
-                                .unwrap()
-                                .to_string()
-                                .contains("more than one or no column")
-                        );
-                    }
-                    _ => panic!("Expected ValidationCrateError"),
-                }
+        let val_error = result.unwrap_err();
+        let kind = val_error.0.values().next().unwrap();
+        match kind {
+            ValidationErrorsKind::Field(field) => {
+                let f = field.first().unwrap();
+                assert_eq!(f.code, "subject_id_column");
+                assert!(
+                    f.message
+                        .clone()
+                        .unwrap()
+                        .to_string()
+                        .contains("test_table")
+                );
+                assert!(
+                    f.message
+                        .clone()
+                        .unwrap()
+                        .to_string()
+                        .contains("more than one or no column")
+                );
             }
-            _ => {
-                panic!("Expected ValidationCrateError")
-            }
+            _ => panic!("Expected ValidationCrateError"),
         }
     }
 
@@ -229,33 +218,29 @@ mod tests {
                 "test_table".to_string(),
                 vec![SeriesContext::default().with_identifier(Identifier::from("sub_col*"))],
             ),
-            DataFrame::new(vec![
-                Column::new("sub_col_1".into(), ["P001"]),
-                Column::new("sub_col_2".into(), ["P001"]),
-            ])
+            DataFrame::new(
+                1,
+                vec![
+                    Column::new("sub_col_1".into(), ["P001"]),
+                    Column::new("sub_col_2".into(), ["P001"]),
+                ],
+            )
             .unwrap(),
         );
 
         assert!(result.is_err());
-        let error = result.unwrap_err();
+        let val_error = result.unwrap_err();
 
-        match error {
-            ValidationError::ValidationCrateError(err) => {
-                let kind = err.0.values().next().unwrap();
-                match kind {
-                    ValidationErrorsKind::Field(field) => {
-                        let f = field.first().unwrap();
-                        assert_eq!(f.code, "subject_id_column");
-                        let message = f.message.clone().unwrap().to_string();
-                        assert!(message.contains("test_table"));
-                        assert!(message.contains("more than one or no column"));
-                    }
-                    _ => panic!("Expected ValidationCrateError"),
-                }
+        let kind = val_error.0.values().next().unwrap();
+        match kind {
+            ValidationErrorsKind::Field(field) => {
+                let f = field.first().unwrap();
+                assert_eq!(f.code, "subject_id_column");
+                let message = f.message.clone().unwrap().to_string();
+                assert!(message.contains("test_table"));
+                assert!(message.contains("more than one or no column"));
             }
-            _ => {
-                panic!("Expected ValidationCrateError")
-            }
+            _ => panic!("Expected ValidationCrateError"),
         }
     }
 
@@ -277,27 +262,20 @@ mod tests {
         );
 
         assert!(result.is_err());
-        let error = result.unwrap_err();
+        let val_error = result.unwrap_err();
 
-        match error {
-            ValidationError::ValidationCrateError(err) => {
-                let kind = err.0.values().next().unwrap();
-                match kind {
-                    ValidationErrorsKind::Field(field) => {
-                        let f = field.first().unwrap();
-                        assert_eq!(f.code, "dangling_series_context");
-                        assert!(f.message.clone().unwrap().to_string().contains("no-column"));
-                        let extracted_sc_ids: Vec<Identifier> =
-                            from_value(f.params.get("series_contexts").unwrap().clone()).unwrap();
+        let kind = val_error.0.values().next().unwrap();
+        match kind {
+            ValidationErrorsKind::Field(field) => {
+                let f = field.first().unwrap();
+                assert_eq!(f.code, "dangling_series_context");
+                assert!(f.message.clone().unwrap().to_string().contains("no-column"));
+                let extracted_sc_ids: Vec<Identifier> =
+                    from_value(f.params.get("series_contexts").unwrap().clone()).unwrap();
 
-                        assert_eq!(vec![sc_id], extracted_sc_ids);
-                    }
-                    _ => panic!("Expected ValidationCrateError"),
-                }
+                assert_eq!(vec![sc_id], extracted_sc_ids);
             }
-            _ => {
-                panic!("Expected ValidationCrateError")
-            }
+            _ => panic!("Expected ValidationCrateError"),
         }
     }
 

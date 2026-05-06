@@ -1,13 +1,14 @@
 use crate::config::context::Context;
 use crate::config::table_context::{Identifier, SeriesContext, TableContext};
 use crate::config::traits::SeriesContextBuilding;
-use crate::extract::contextualized_dataframe_filters::{ColumnFilter, Filter, SeriesContextFilter};
+use crate::extract::column_filter::ColumnFilter;
+use crate::extract::enums::Filter;
+use crate::extract::series_context_filter::SeriesContextFilter;
 use crate::transform::error::{CollectorError, DataProcessingError};
 use crate::validation::cdf_checks::check_orphaned_columns;
 use crate::validation::contextualised_dataframe_validation::validate_dangling_sc;
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
-use crate::validation::error::ValidationError;
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
@@ -15,7 +16,7 @@ use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
 use thiserror::Error;
-use validator::Validate;
+use validator::{Validate, ValidationError, ValidationErrors};
 
 /// A structure that combines a `DataFrame` with its corresponding `TableContext`.
 ///
@@ -31,7 +32,7 @@ pub struct ContextualizedDataFrame {
 }
 
 impl ContextualizedDataFrame {
-    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationError> {
+    pub fn new(context: TableContext, data: DataFrame) -> Result<Self, ValidationErrors> {
         let cdf = ContextualizedDataFrame { context, data };
         cdf.validate()?;
         Ok(cdf)
@@ -78,7 +79,7 @@ impl ContextualizedDataFrame {
     pub fn identify_columns(&self, id: &Identifier) -> Vec<&Column> {
         let cols: Vec<&str> = self
             .data
-            .get_columns()
+            .columns()
             .iter()
             .map(|col| col.name().as_str())
             .collect();
@@ -602,7 +603,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         col_name: &str,
         replacement_data: Series,
     ) -> Result<Self, CdfBuilderError> {
-        self.cdf.data.replace(col_name, replacement_data)?;
+        self.cdf.data.replace(col_name, replacement_data.into())?;
 
         Ok(self.mark_dirty())
     }
@@ -719,7 +720,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         let null_col_names = self
             .cdf
             .data
-            .get_columns()
+            .columns()
             .iter()
             .filter_map(|col| {
                 if col.null_count() == col.len() {
@@ -809,12 +810,12 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
             let cast_col = col.cast(&output_data_type)?;
             self.cdf
                 .data
-                .replace(col_name, cast_col.take_materialized_series())?;
+                .replace(col_name, cast_col.take_materialized_series().into())?;
         }
         Ok(self.mark_dirty())
     }
 
-    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationError> {
+    pub fn build(self) -> Result<&'a mut ContextualizedDataFrame, ValidationErrors> {
         let builder = ManuallyDrop::new(self.mark_clean());
 
         let cdf_ref = unsafe { ptr::read(&builder.cdf) };
@@ -863,7 +864,7 @@ mod builder_tests {
     use crate::config::table_context::{Identifier, SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::ContextualizedDataFrame;
-    use crate::extract::contextualized_dataframe_filters::Filter;
+    use crate::extract::enums::Filter;
     use crate::test_suite::cdf_generation::generate_minimal_cdf;
     use polars::df;
     use polars::frame::DataFrame;

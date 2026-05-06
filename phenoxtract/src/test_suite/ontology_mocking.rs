@@ -1,14 +1,15 @@
 use crate::ontology::ontology_bidict::OntologyBiDict;
+use crate::ontology::traits::OntologyLike;
 use crate::test_suite::mocks::ONTOLOGY_FACTORY;
 use crate::test_suite::phenopacket_component_generation::{
-    default_disease_oc, default_procedure_body_side_oc, default_procedure_oc,
-    default_treatment_intent, default_treatment_response, default_treatment_termination_reason,
+    default_anatomy_region, default_disease_oc, default_procedure_oc,
+    default_route_of_administration_oc, default_treatment_agent_oc, default_treatment_intent,
+    default_treatment_response, default_treatment_termination_reason,
 };
 use crate::test_suite::resource_references::{
     HPO_REF, MAXO_REF, MONDO_REF, NCIT_REF, PATO_REF, UBERON_REF, UO_REF,
 };
 use once_cell::sync::Lazy;
-use ontolius::ontology::csr::FullCsrOntology;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -48,10 +49,7 @@ pub(crate) static MONDO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
 
 pub(crate) static UBERON_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let mock_uberon_label_to_id: HashMap<String, String> = HashMap::from_iter([
-        (
-            default_procedure_body_side_oc().label,
-            default_procedure_body_side_oc().id,
-        ),
+        (default_anatomy_region().label, default_anatomy_region().id),
         ("head".to_string(), "UBERON:0000033".to_string()),
         ("bone spine".to_string(), "UBERON:0013706".to_string()),
         ("fascia lata".to_string(), "UBERON:0003669".to_string()),
@@ -103,7 +101,7 @@ pub(crate) static MAXO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
 });
 
 pub(crate) static NCIT_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
-    let mock_uberon_label_to_id: HashMap<String, String> = HashMap::from_iter([
+    let mock_ncit_label_to_id: HashMap<String, String> = HashMap::from_iter([
         (
             default_treatment_intent().label,
             default_treatment_intent().id,
@@ -116,52 +114,57 @@ pub(crate) static NCIT_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
             default_treatment_response().label,
             default_treatment_response().id,
         ),
+        (
+            default_treatment_agent_oc().label,
+            default_treatment_agent_oc().id,
+        ),
+        (
+            default_route_of_administration_oc().label,
+            default_route_of_administration_oc().id,
+        ),
     ]);
 
-    let mock_uberon_id_to_label: HashMap<String, String> = mock_uberon_label_to_id
+    let mock_ncit_id_to_label: HashMap<String, String> = mock_ncit_label_to_id
         .iter()
         .map(|(label, id)| (id.to_string(), label.to_string()))
         .collect();
 
     Arc::new(OntologyBiDict::new(
         NCIT_REF.clone(),
-        mock_uberon_label_to_id,
+        mock_ncit_label_to_id,
         HashMap::new(),
-        mock_uberon_id_to_label,
+        mock_ncit_id_to_label,
     ))
 });
 
-pub(crate) static HPO: Lazy<Arc<FullCsrOntology>> = Lazy::new(|| {
-    let result = ONTOLOGY_FACTORY
-        .lock()
-        .unwrap()
-        .build_ontology(&HPO_REF, None);
+pub(crate) static HPO: Lazy<Arc<dyn OntologyLike>> = Lazy::new(|| {
+    let result = ONTOLOGY_FACTORY.lock().unwrap().build_ontology(&HPO_REF);
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
-pub(crate) static HPO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+pub(crate) static HPO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&HPO_REF.clone(), None);
+        .build_bidict(&HPO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
 
-pub(crate) static UO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+pub(crate) static UO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&UO_REF.clone(), None);
+        .build_bidict(&UO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
 
-pub(crate) static PATO_DICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
+pub(crate) static PATO_BIDICT: Lazy<Arc<OntologyBiDict>> = Lazy::new(|| {
     let result = ONTOLOGY_FACTORY
         .lock()
         .unwrap()
-        .build_bidict(&PATO_REF.clone(), None);
+        .build_bidict(&PATO_REF.clone());
 
     result.unwrap_or_else(|err| panic!("{}", err))
 });
