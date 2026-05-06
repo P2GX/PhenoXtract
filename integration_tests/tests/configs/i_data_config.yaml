@@ -152,12 +152,12 @@ data_sources:
             data_context: hpo
             alias_map:
               mappings:
-                "Drug": "Drug allergy"
-                "Environmental": "Allergy"
+                "Drug": null
+                "Environmental": null
                 "Food": "Food allergy"
-                "Other": "Allergy"
-                "Unknown": "Allergy"
-                "Unknown Agent": "Allergy"
+                "Other": null
+                "Unknown": null
+                "Unknown Agent": null
               output_data_type: String
 
       - sheet_name: "Anti Infectives"
