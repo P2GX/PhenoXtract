@@ -192,12 +192,11 @@ mod tests {
 
     #[fixture]
     fn sc_bool_alias_to_none() -> SeriesContext {
-        SeriesContext::from_identifier(Identifier::regex_from_str("smokes")).with_alias_map(
-            AliasMap::new(
+        SeriesContext::from_identifier(Identifier::regex_from_str("smokes").unwrap())
+            .with_alias_map(AliasMap::new(
                 HashMap::from([("false".to_string(), None)]),
                 OutputDataType::Boolean,
-            ),
-        )
+            ))
     }
 
     #[fixture]

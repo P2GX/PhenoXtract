@@ -223,7 +223,7 @@ mod tests {
                 "test_table".to_string(),
                 vec![
                     SeriesContext::default()
-                        .with_identifier(Identifier::regex_from_str("sub_col*")),
+                        .with_identifier(Identifier::regex_from_str("sub_col*").unwrap()),
                 ],
             ),
             DataFrame::new(

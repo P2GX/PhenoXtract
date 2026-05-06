@@ -172,9 +172,9 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
             "more conditions".to_string(),
             vec![
                 SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
-                SeriesContext::from_identifier(Identifier::regex_from_str(
-                    r"Phenotypic Features \d+",
-                ))
+                SeriesContext::from_identifier(
+                    Identifier::regex_from_str(r"Phenotypic Features \d+").unwrap(),
+                )
                 .with_data_context(Context::Hpo),
             ],
         ),
