@@ -348,17 +348,15 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             }
         }
 
-        let interpretation_id = format!("{}-{}", phenopacket_id, disease_term.id);
-
         let interpretation =
-            self.get_or_create_interpretation(patient_id, interpretation_id.as_str());
+            self.get_or_create_interpretation(patient_id, phenopacket_id.as_str(), disease_term);
 
-        interpretation.progress_status = ProgressStatus::UnknownProgress.into();
-
-        interpretation.diagnosis = Some(Diagnosis {
-            disease: Some(disease_term),
-            genomic_interpretations,
-        });
+        interpretation
+            .diagnosis
+            .as_mut()
+            .expect("Diagnosis was just created")
+            .genomic_interpretations
+            .extend(genomic_interpretations);
 
         Ok(())
     }
@@ -655,23 +653,30 @@ impl PhenopacketBuilder {
     fn get_or_create_interpretation(
         &mut self,
         patient_id: &str,
-        interpretation_id: &str,
+        phenopacket_id: &str,
+        disease_term: OntologyClass,
     ) -> &mut Interpretation {
         let phenopacket = self.get_or_create_phenopacket(patient_id);
 
+        let interpretation_id = format!("{}-{}", phenopacket_id, disease_term.id);
+
         if phenopacket
-            .find_interpretation_mut(interpretation_id)
+            .find_interpretation_mut(interpretation_id.as_str())
             .is_none()
         {
             phenopacket.push_interpretation(Interpretation {
                 id: interpretation_id.to_string(),
-                progress_status: ProgressStatus::InProgress.into(),
+                progress_status: ProgressStatus::UnknownProgress.into(),
+                diagnosis: Some(Diagnosis {
+                    disease: Some(disease_term),
+                    genomic_interpretations: vec![],
+                }),
                 ..Default::default()
             });
         }
 
         phenopacket
-            .find_interpretation_mut(interpretation_id)
+            .find_interpretation_mut(interpretation_id.as_str())
             .expect("Interpretation was just created or already existed")
     }
 
@@ -1616,6 +1621,59 @@ mod tests {
                 .genomic_interpretations
                 .len(),
             1
+        );
+    }
+
+    #[rstest]
+    fn test_upsert_interpretation_double_update(basic_pp_with_disease_info: Phenopacket) {
+        let mut builder = build_test_phenopacket_builder();
+        let patient_id = default_patient_id();
+
+        let existing_pp = basic_pp_with_disease_info;
+        builder
+            .subject_to_phenopacket
+            .insert(default_phenopacket_id(), existing_pp.clone());
+
+        let heterozygous_variant = PathogenicGeneVariantData::SingleVariant {
+            gene: Some("KIF21A".to_string()),
+            var: "NM_001173464.1:c.2860C>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation(
+                &patient_id,
+                &default_disease_oc().label,
+                &heterozygous_variant,
+                None,
+            )
+            .unwrap();
+
+        let homozygous_variant = PathogenicGeneVariantData::HomozygousVariant {
+            gene: Some("H19".to_string()),
+            var: "NR_002196.1:n.601G>T".to_string(),
+        };
+
+        builder
+            .upsert_interpretation(
+                &patient_id,
+                &default_disease_oc().label,
+                &homozygous_variant,
+                None,
+            )
+            .unwrap();
+
+        let pp = builder.subject_to_phenopacket.values().next().unwrap();
+
+        assert_eq!(pp.interpretations.len(), 1);
+
+        assert_eq!(
+            pp.interpretations[0]
+                .clone()
+                .diagnosis
+                .unwrap()
+                .genomic_interpretations
+                .len(),
+            2
         );
     }
 
