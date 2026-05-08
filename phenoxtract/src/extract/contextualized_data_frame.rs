@@ -11,7 +11,9 @@ use crate::validation::contextualised_dataframe_validation::validate_one_context
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use ordermap::OrderSet;
 use polars::datatypes::StringChunked;
-use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
+use polars::prelude::{
+    BooleanChunked, Column, DataFrame, DataType, Float64Chunked, PolarsError, Series,
+};
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ptr;
@@ -220,6 +222,26 @@ impl ContextualizedDataFrame {
                 }
             })?;
             Ok(Some(cast_linked_col.str()?.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_single_linked_bool_column(
+        &self,
+        bb_id: Option<&str>,
+        data_contexts: &[Context],
+    ) -> Result<Option<BooleanChunked>, CollectorError> {
+        let possible_linked_col = self.get_single_linked_column(bb_id, data_contexts)?;
+        if let Some(linked_col) = possible_linked_col {
+            let cast_linked_col = linked_col.cast(&DataType::Boolean).map_err(|_| {
+                DataProcessingError::CastingError {
+                    col_name: linked_col.name().to_string(),
+                    from: linked_col.dtype().clone(),
+                    to: DataType::String,
+                }
+            })?;
+            Ok(Some(cast_linked_col.bool()?.clone()))
         } else {
             Ok(None)
         }

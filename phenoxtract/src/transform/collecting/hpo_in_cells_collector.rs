@@ -53,6 +53,11 @@ impl Collect for HpoInCellsCollector {
                     &[Context::Severity],
                 )?;
 
+                let observation_status_column = patient_cdf.get_single_linked_bool_column(
+                    hpo_sc.get_building_block_id(),
+                    &[Context::ObservationStatus],
+                )?;
+
                 for hpo_col in hpo_cols {
                     let stringified_hpo_col = hpo_col.str()?;
 
@@ -63,13 +68,16 @@ impl Collect for HpoInCellsCollector {
                             let hpo_resolution =
                                 get_str_at_index(resolution_column.as_ref(), row_idx);
                             let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
+                            let ob_status = observation_status_column
+                                .as_ref()
+                                .and_then(|col| col.get(row_idx));
 
                             if self.allow_duplicate_phenotypes {
                                 builder.insert_phenotypic_feature(
                                     patient_id,
                                     hpo,
                                     None,
-                                    None,
+                                    ob_status,
                                     hpo_severity,
                                     None,
                                     hpo_onset,
@@ -81,7 +89,7 @@ impl Collect for HpoInCellsCollector {
                                     patient_id,
                                     hpo,
                                     None,
-                                    None,
+                                    ob_status,
                                     hpo_severity,
                                     None,
                                     hpo_onset,
