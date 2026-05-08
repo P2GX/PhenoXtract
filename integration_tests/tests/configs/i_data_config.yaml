@@ -367,6 +367,21 @@ data_sources:
                 unit_ontology_id: "NCIT:C192525"
             building_block_id: "KARN/LAN"
 
+  - type: "csv"
+    source: "$HOME/data/usidnet/i_data_variants_patrick_edits.csv"
+    separator: ";"
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "patientid"
+        data_context: subject_id
+      - identifier: "hgvs1"
+        data_context: hgvs
+        building_block_id: "D"
+      - identifier: "hgvs2"
+        data_context: hgvs
+        building_block_id: "D"
+
 pipeline:
   cache_dir: "$HOME/data/usidnet/pxt_cache"
   strategies:
