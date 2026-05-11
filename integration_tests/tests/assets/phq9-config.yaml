@@ -21,6 +21,10 @@ data_sources:
         data_context:
           time_of_resolution: date
         building_block_id: "hpo_1"
+      - identifier: "excluded"
+        data_context: observation_status
+        building_block_id: "hpo_1"
+
 
 pipeline:
   cache_dir: "$HOME/data/bogus/pxt_cache"
