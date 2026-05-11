@@ -9,32 +9,31 @@ use validator::ValidationError;
 pub(crate) fn validate_unique_identifiers(
     series_contexts: &[SeriesContext],
 ) -> Result<(), ValidationError> {
-    let mut identifiers: Vec<String> = Vec::new();
+    let mut seen_single: HashSet<&str> = HashSet::new();
+    let mut seen_regex: HashSet<&str> = HashSet::new();
+    let mut duplicates: Vec<&str> = Vec::new();
 
-    series_contexts
-        .iter()
-        .for_each(|sc| match sc.get_identifier() {
-            Identifier::Regex(regex) => {
-                identifiers.push(regex.to_string());
+    for sc in series_contexts {
+        match sc.get_identifier() {
+            Identifier::Single(s) => {
+                if !seen_single.insert(s.as_str()) {
+                    duplicates.push(s.as_str());
+                }
             }
-            Identifier::Multi(multi_ids) => {
-                multi_ids.iter().for_each(|id| {
-                    identifiers.push(id.to_string());
-                });
+            Identifier::Multi(ids) => {
+                for id in ids {
+                    if !seen_single.insert(id.as_str()) {
+                        duplicates.push(id.as_str());
+                    }
+                }
             }
-        });
-
-    let mut unique_identifiers: HashSet<String> = HashSet::new();
-    let duplicates = identifiers
-        .iter()
-        .filter_map(|id| {
-            if !unique_identifiers.insert(id.clone()) {
-                Some(id.clone())
-            } else {
-                None
+            Identifier::Regex(r) => {
+                if !seen_regex.insert(r.as_str()) {
+                    duplicates.push(r.as_str());
+                }
             }
-        })
-        .collect::<Vec<String>>();
+        }
+    }
 
     fail_validation_on_duplicates(
         &duplicates,
@@ -74,8 +73,9 @@ mod tests {
     use rstest::rstest;
 
     // TODO: Clean this up. These constructor functions are not needed
-    fn regex(regex: &str) -> SeriesContext {
-        SeriesContext::from_identifier(regex)
+
+    fn single(id: &str) -> SeriesContext {
+        SeriesContext::from_identifier(id)
     }
 
     fn multi_ids(ids: Vec<&str>) -> SeriesContext {
@@ -85,21 +85,25 @@ mod tests {
         ))
     }
 
+    fn regex(regex_str: &str) -> SeriesContext {
+        SeriesContext::from_identifier(Identifier::regex_from_str(regex_str).unwrap())
+    }
+
     #[rstest]
     #[case::empty_list(vec![], Ok(()))]
-    #[case::single_name_ok(vec![regex("a")], Ok(()))]
+    #[case::single_name_ok(vec![single("a")], Ok(()))]
     #[case::multi_ids_ok(vec![multi_ids(vec!["a", "b"])], Ok(()))]
     #[case::regex_ok(vec![regex("a.*")], Ok(()))]
     #[case::multiple_unique_contexts(
         vec![
-            regex("name1"),
+            single("name1"),
             multi_ids(vec!["id1", "id2"]),
-            regex("regex1")
+            single("regex1")
         ],
         Ok(())
     )]
     #[case::duplicate_name(
-        vec![regex("dup"), regex("dup")],
+        vec![single("dup"), single("dup")],
         Err("".to_string())
     )]
     #[case::duplicate_regex(
@@ -107,7 +111,7 @@ mod tests {
         Err("".to_string())
     )]
     #[case::duplicate_in_multi_list(
-        vec![multi_ids(vec!["a", "b"]), regex("a")],
+        vec![multi_ids(vec!["a", "b"]), single("a")],
         Err("".to_string())
     )]
     #[case::internal_duplicate_in_multi(
@@ -137,7 +141,7 @@ mod tests {
     fn test_validate_subject_ids_context() {
         let result = validate_subject_ids_context(&TableContext::new(
             "test".to_string(),
-            vec![regex("test").with_data_context(Context::SubjectId)],
+            vec![single("test").with_data_context(Context::SubjectId)],
         ));
         assert!(result.is_ok());
     }
@@ -147,8 +151,8 @@ mod tests {
         let table_context = TableContext::new(
             "test".to_string(),
             vec![
-                regex("test").with_data_context(Context::SubjectId),
-                regex("test_2").with_data_context(Context::SubjectId),
+                single("test").with_data_context(Context::SubjectId),
+                single("test_2").with_data_context(Context::SubjectId),
             ],
         );
         let result = validate_subject_ids_context(&table_context);
@@ -162,8 +166,8 @@ mod tests {
         let table_context = TableContext::new(
             "table_without_subject_id".to_string(),
             vec![
-                regex("test").with_header_context(Context::Hpo),
-                regex("test").with_data_context(Context::None),
+                single("test").with_header_context(Context::Hpo),
+                single("test").with_data_context(Context::None),
             ],
         );
 

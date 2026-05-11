@@ -1,6 +1,7 @@
 use crate::config::context::Context;
 use crate::config::datasource_config::IdentifierConfig;
 use crate::config::traits::{IntoOptionalString, SeriesContextBuilding};
+use crate::error::ConstructionError;
 use crate::extract::series_context_filter::SeriesContextFilter;
 use crate::validation::multi_series_context_validation::validate_identifier;
 use crate::validation::table_context_validation::validate_subject_ids_context;
@@ -76,12 +77,13 @@ pub enum CellValue {
 
 /// The identifier will correspond to either one or multiple columns in a dataframe.
 ///
-/// If it has Regex type, then the columns will be determined by the regular expression
-/// NOTE: if the regex string corresponds exactly to a column name, then that single column will be identified.
-/// If it has multi type, then the strings within the vector will be the headers of the relevant columns.
+/// If it has Single type, then it will determine a column with exactly that header.
+/// If it has Regex type, then the columns will be determined by the regular expression.
+/// If it has Multi type, then the strings within the vector will be the headers of the relevant columns.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(into = "IdentifierConfig", try_from = "IdentifierConfig")]
 pub enum Identifier {
+    Single(String),
     Regex(Regex),
     Multi(Vec<String>),
 }
@@ -89,6 +91,7 @@ pub enum Identifier {
 impl From<&Identifier> for IdentifierConfig {
     fn from(value: &Identifier) -> Self {
         match value {
+            Identifier::Single(single) => IdentifierConfig::Single(single.to_string()),
             Identifier::Regex(regex) => IdentifierConfig::Regex(regex.to_string()),
             Identifier::Multi(multi) => IdentifierConfig::Multi(multi.clone()),
         }
@@ -104,6 +107,7 @@ impl From<Identifier> for IdentifierConfig {
 impl PartialEq for Identifier {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Identifier::Single(s1), Identifier::Single(s2)) => s1 == s2,
             (Identifier::Regex(r1), Identifier::Regex(r2)) => r1.as_str() == r2.as_str(),
             (Identifier::Multi(v1), Identifier::Multi(v2)) => v1 == v2,
             _ => false,
@@ -116,6 +120,9 @@ impl Hash for Identifier {
         std::mem::discriminant(self).hash(state);
 
         match self {
+            Identifier::Single(s) => {
+                s.hash(state);
+            }
             Identifier::Regex(r) => {
                 r.as_str().hash(state);
             }
@@ -138,14 +145,24 @@ impl From<&Regex> for Identifier {
     }
 }
 
+impl Identifier {
+    pub fn regex_from_str(value: impl Into<String>) -> Result<Identifier, ConstructionError> {
+        let regex =
+            Regex::new(value.into().as_str()).map_err(|err| ConstructionError::Identifier {
+                reason: format!("{}", err),
+            })?;
+        Ok(Identifier::Regex(regex))
+    }
+}
+
 impl From<&str> for Identifier {
     fn from(value: &str) -> Self {
-        Identifier::Regex(Regex::new(value).expect("invalid regular expression"))
+        Identifier::Single(value.to_string())
     }
 }
 impl From<String> for Identifier {
     fn from(value: String) -> Self {
-        Identifier::Regex(Regex::new(&value).expect("invalid regular expression"))
+        Identifier::Single(value)
     }
 }
 
@@ -169,15 +186,16 @@ impl From<&[String]> for Identifier {
 
 impl Default for Identifier {
     fn default() -> Self {
-        Identifier::Regex(Regex::new("").unwrap())
+        Identifier::from("")
     }
 }
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Identifier::Regex(regex) => write!(f, "{}", regex),
-            Identifier::Multi(multi) => write!(f, "{}", multi.join(".")),
+            Identifier::Single(single) => write!(f, "Single({})", single),
+            Identifier::Regex(regex) => write!(f, "Regex({})", regex),
+            Identifier::Multi(multi) => write!(f, "Multi({})", multi.join(".")),
         }
     }
 }
@@ -185,27 +203,20 @@ impl Display for Identifier {
 impl Identifier {
     pub fn identify<'a>(&self, col_names: &[&'a str]) -> Vec<&'a str> {
         match self {
-            Identifier::Regex(id) => {
-                let exact_matches: Vec<&str> = col_names
-                    .iter()
-                    .copied()
-                    .filter(|col| *col == id.as_str())
-                    .collect();
-
-                if !exact_matches.is_empty() {
-                    return exact_matches;
-                }
-
-                col_names
-                    .iter()
-                    .copied()
-                    .filter(|col| id.is_match(col))
-                    .collect()
-            }
+            Identifier::Single(id) => col_names
+                .iter()
+                .filter(|col| col == &&id.as_str())
+                .cloned()
+                .collect(),
+            Identifier::Regex(id) => col_names
+                .iter()
+                .filter(|col| id.is_match(col))
+                .cloned()
+                .collect(),
             Identifier::Multi(ids) => col_names
                 .iter()
-                .copied()
                 .filter(|col| ids.iter().any(|id| id == *col))
+                .cloned()
                 .collect(),
         }
     }
@@ -406,22 +417,29 @@ mod tests {
     }
 
     #[test]
-    fn regex_exact_match_returns_match() {
+    fn single_id_returns_match() {
         let id = Identifier::from("foo");
         let cols = &["foo", "bar", "baz"];
         assert_eq!(id.identify(cols), vec!["foo"]);
     }
 
     #[test]
-    fn regex_exact_match_takes_priority_over_regex() {
+    fn single_does_not_do_regex_match() {
         let id = Identifier::from("foo");
         let cols = &["foo", "foobar"];
         assert_eq!(id.identify(cols), vec!["foo"]);
     }
 
     #[test]
-    fn regex_falls_back_to_pattern_when_no_exact_match() {
-        let id = Identifier::from("^col_\\d+$");
+    fn single_does_not_do_regex_as_backup() {
+        let id = Identifier::Single("foo".to_string());
+        let cols = &["col", "foobar"];
+        assert_eq!(id.identify(cols), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn regex_match() {
+        let id = Identifier::regex_from_str("^col_\\d+$").unwrap();
         let cols = &["col_1", "col_2", "other", "col_abc"];
         let mut result = id.identify(cols);
         result.sort();
@@ -430,19 +448,19 @@ mod tests {
 
     #[test]
     fn regex_returns_empty_when_no_match() {
-        let id = Identifier::from("^xyz$");
+        let id = Identifier::regex_from_str("^xyz$").unwrap();
         let cols = &["foo", "bar"];
         assert!(id.identify(cols).is_empty());
     }
 
     #[test]
     fn regex_empty_col_names_returns_empty() {
-        let id = Identifier::from("foo");
+        let id = Identifier::regex_from_str("foo").unwrap();
         assert!(id.identify(&[]).is_empty());
     }
 
     #[test]
-    fn regex_multiple_exact_matches() {
+    fn single_multiple_exact_matches() {
         let id = Identifier::from("foo");
         let cols = &["foo", "foo", "bar"];
         assert_eq!(id.identify(cols), vec!["foo", "foo"]);
