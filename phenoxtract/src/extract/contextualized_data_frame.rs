@@ -368,7 +368,7 @@ mod tests {
         let ctx = sample_ctx();
         let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
 
-        let id = Identifier::regex_from_str("^[a,s]{1}[a-z.]*");
+        let id = Identifier::regex_from_str("^[a,s]{1}[a-z.]*").unwrap();
         let cols = cdf.identify_columns(&id);
 
         assert_eq!(cols.len(), 3);

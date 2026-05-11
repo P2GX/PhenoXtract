@@ -25,7 +25,6 @@ use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use pivotal::hgnc::CachedHGNCClient;
 use pivotal::hgvs::CachedHGVSClient;
 use polars::prelude::{CsvReadOptions, SerReader};
-use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -235,13 +234,7 @@ impl TryFrom<IdentifierConfig> for Identifier {
     fn try_from(value: IdentifierConfig) -> Result<Self, Self::Error> {
         match value {
             IdentifierConfig::Single(single) => Ok(Identifier::Single(single)),
-            IdentifierConfig::Regex(regex_str) => {
-                let regex =
-                    Regex::new(&regex_str).map_err(|err| ConstructionError::Identifier {
-                        reason: format!("{}", err),
-                    })?;
-                Ok(Identifier::Regex(regex))
-            }
+            IdentifierConfig::Regex(regex_str) => Identifier::regex_from_str(regex_str),
             IdentifierConfig::Multi(multi) => Ok(Identifier::Multi(multi)),
         }
     }
