@@ -132,7 +132,7 @@ fn csv_context_5() -> TableContext {
                 })
                 .with_building_block_id("M"),
             SeriesContext::from_identifier("date_of_observation")
-                .with_data_context(Context::Onset(TimeElementType::Date))
+                .with_data_context(Context::TimeOfMeasurement(TimeElementType::Date))
                 .with_building_block_id("M"),
         ],
     )
@@ -316,6 +316,6 @@ fn test_pipeline_integration(
     compare_expected_and_extracted_phenopackets(
         assets_dir,
         output_dir_name,
-        "extracted_phenopackets",
+        "expected_phenopackets",
     );
 }
