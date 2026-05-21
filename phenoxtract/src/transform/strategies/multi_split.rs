@@ -102,7 +102,12 @@ impl Strategy for MultiSplitterStrategy {
         tables: &mut [&mut ContextualizedDataFrame],
     ) -> Result<(), StrategyError> {
         let needed_context = self.context();
-        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
+
+        let member_to_group: HashMap<&str, &SplitInstruction> = self
+            .groups
+            .iter()
+            .flat_map(|g| g.members.iter().map(move |m| (m.as_str(), g)))
+            .collect();
 
         for table in tables.iter_mut() {
             let multi_col_names = table
@@ -111,38 +116,44 @@ impl Strategy for MultiSplitterStrategy {
                 .collect_owned_names();
 
             for multi_col_name in multi_col_names {
-                let mut groups: HashMap<&SplitInstruction, Vec<AnyValue>> =
-                    self.groups.iter().map(|group| (group, vec![])).collect();
+                let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
 
-                let mut multi_col = table.data().column(&multi_col_name)?.clone();
+                let original_sc = table
+                    .get_sc_by_col_name(&multi_col_name)
+                    .expect("original sc should still be here");
+                let original_sc_building_block =
+                    original_sc.get_building_block_id().map(|s| s.to_string());
+                let original_sc_header_context = original_sc.get_header_context().clone();
+
+                let multi_col = table.data().column(&multi_col_name)?.clone();
+
+                let mut groups: HashMap<&SplitInstruction, Vec<AnyValue>> = self
+                    .groups
+                    .iter()
+                    .map(|g| (g, Vec::with_capacity(multi_col.len())))
+                    .collect();
 
                 for col_entry_opt in multi_col.str()?.iter() {
                     match col_entry_opt {
                         Some(entry) => {
-                            let mut any_match = false;
-                            for g in self.groups.iter() {
-                                if g.members.contains(entry) {
-                                    groups
-                                        .get_mut(g)
-                                        .expect("should be here")
-                                        .push(AnyValue::String(entry));
-                                    any_match = true;
-                                    continue;
-                                } else {
-                                    groups
-                                        .get_mut(g)
-                                        .expect("should be here")
-                                        .push(AnyValue::Null);
-                                }
-                            }
+                            let matched_group = member_to_group.get(entry).copied();
 
-                            if !any_match {
+                            if matched_group.is_none() {
                                 error_info.insert_error(
                                     multi_col.name().to_string(),
                                     table.context().name().to_string(),
                                     entry.to_string(),
                                     vec![],
                                 );
+                            }
+
+                            for g in self.groups.iter() {
+                                let value = if matched_group == Some(g) {
+                                    AnyValue::String(entry)
+                                } else {
+                                    AnyValue::Null
+                                };
+                                groups.get_mut(g).expect("should be here").push(value);
                             }
                         }
                         None => {
@@ -164,27 +175,25 @@ impl Strategy for MultiSplitterStrategy {
                     });
                 }
 
-                let original_sc_building_block = table
-                    .get_sc_by_col_name(&multi_col_name)
-                    .expect("original sc should still be here")
-                    .get_building_block_id()
-                    .map(|s| s.to_string());
-
-                let original_sc_header_context = table
-                    .get_sc_by_col_name(&multi_col_name)
-                    .expect("original sc should still be here")
-                    .get_header_context()
-                    .clone();
-
                 for (g, col_values) in groups {
                     let new_col = Column::new(g.col_name().into(), col_values);
+                    // TODO: Casting is missing
+
+                    match g.output_data_type {
+                        OutputDataType::Boolean => {}
+                        OutputDataType::String => {}
+                        OutputDataType::Float64 => {}
+                        OutputDataType::Int64 => {}
+                        OutputDataType::Date => {}
+                        OutputDataType::Datetime => {}
+                    }
 
                     let mut sc = SeriesContext::from_identifier(new_col.name().as_str())
                         .with_header_context(g.post_split_header_context.clone())
                         .with_data_context(g.post_split_data_context.clone());
 
                     if self.keep_building_block {
-                        sc = sc.with_building_block_id(original_sc_building_block.as_ref()); // TODO
+                        sc = sc.with_building_block_id(original_sc_building_block.as_ref());
                     }
 
                     table
@@ -221,11 +230,8 @@ impl Strategy for MultiSplitterStrategy {
                     .map(|s| s.get_identifier().clone())
                     .collect();
 
-                for multi_col_scs in identifiers {
-                    table
-                        .builder()
-                        .drop_sc_alongside_cols(&multi_col_scs)?
-                        .build()?;
+                for id in identifiers {
+                    table.builder().drop_sc_alongside_cols(&id)?.build()?;
                 }
             }
         }
