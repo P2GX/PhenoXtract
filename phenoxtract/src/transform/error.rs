@@ -291,6 +291,8 @@ pub enum StrategyError {
         found_datatype: String,
         allowed_datatypes: Vec<String>,
     },
+    #[error("Could not find column with name: {column_name}")]
+    ColumnNotFound { column_name: String },
 }
 
 impl From<DataProcessingError> for StrategyError {

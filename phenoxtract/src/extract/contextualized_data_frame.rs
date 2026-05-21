@@ -96,6 +96,20 @@ impl ContextualizedDataFrame {
             .collect()
     }
 
+    pub fn get_sc_by_col_name(&self, col_name: &str) -> Option<&SeriesContext> {
+        for sc in self.series_contexts() {
+            let cols = self.identify_columns(sc.get_identifier());
+
+            for col in cols.iter() {
+                if col.name() == col_name {
+                    return Some(sc);
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn filter_series_context(&'_ self) -> SeriesContextFilter<'_> {
         SeriesContextFilter::new(self.context.context())
     }
@@ -565,6 +579,10 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         }
     }
 
+    pub fn get_inner(&self) -> &ContextualizedDataFrame {
+        self.cdf
+    }
+
     fn mark_dirty(mut self) -> Self {
         self.is_dirty = true;
         self
@@ -604,6 +622,12 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         replacement_data: Series,
     ) -> Result<Self, CdfBuilderError> {
         self.cdf.data.replace(col_name, replacement_data.into())?;
+
+        Ok(self.mark_dirty())
+    }
+
+    pub fn rename_col(self, col_name: &str, new_name: &str) -> Result<Self, CdfBuilderError> {
+        self.cdf.data.rename(col_name, new_name.into())?;
 
         Ok(self.mark_dirty())
     }
@@ -743,7 +767,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
-    fn drop_sc(self, to_remove: &Identifier) -> Self {
+    pub(crate) fn drop_sc(self, to_remove: &Identifier) -> Self {
         self.cdf
             .context
             .context_mut()
