@@ -767,7 +767,7 @@ impl<'a> ContextualizedDataFrameBuilder<'a> {
         self.mark_dirty()
     }
 
-    pub(crate) fn drop_sc(self, to_remove: &Identifier) -> Self {
+    pub fn drop_sc(self, to_remove: &Identifier) -> Self {
         self.cdf
             .context
             .context_mut()
