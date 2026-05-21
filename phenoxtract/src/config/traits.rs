@@ -43,6 +43,12 @@ impl IntoOptionalString for Option<&str> {
     }
 }
 
+impl IntoOptionalString for Option<&String> {
+    fn into_opt_string(self) -> Option<String> {
+        self.map(|s| s.to_string())
+    }
+}
+
 impl IntoOptionalString for &String {
     fn into_opt_string(self) -> Option<String> {
         Some(self.to_string())

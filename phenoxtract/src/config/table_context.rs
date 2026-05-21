@@ -222,7 +222,7 @@ impl Identifier {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash)]
 pub enum OutputDataType {
     Boolean,
     String,

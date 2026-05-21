@@ -121,6 +121,19 @@ impl ContextualizedDataFrame {
             .where_data_context(Filter::Is(&Context::SubjectId))
             .collect()[0]
     }
+    pub fn get_sc_by_col_name(&self, col_name: &str) -> Option<&SeriesContext> {
+        for sc in self.series_contexts() {
+            let cols = self.identify_columns(sc.get_identifier());
+
+            for col in cols.iter() {
+                if col.name() == col_name {
+                    return Some(sc);
+                }
+            }
+        }
+
+        None
+    }
 
     /// Given a column in a ContextualisedDataFrame, this function will create a patient_ID -> string data HashMap,
     /// where the data is whatever is contained in the cells of the string column.

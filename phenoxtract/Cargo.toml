@@ -39,6 +39,7 @@ ratelimit = "0.10.0"
 securiety = "0.2.9"
 elsa = "1.11.2"
 fastobo = "0.15.5"
+uuid = { version = "1.23.0", features = ["v4"] }
 
 [dev-dependencies]
 rstest = "0.26.1"
