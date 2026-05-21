@@ -29,7 +29,8 @@ series_contexts:
       single: "procedure_time"
     data_context:
       time_of_procedure: age
-  - identifier: "multi_column"
+  - identifier:
+      single: "multi_column"
     data_context:
       multi_context:
         - hpo
