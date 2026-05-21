@@ -201,7 +201,7 @@ mod tests {
                 vec![
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::from("subject")),
+                        .with_identifier(Identifier::from("subject_id")),
                     SeriesContext::default().with_identifier(Identifier::from(col_name)),
                 ],
             ),
@@ -236,7 +236,7 @@ mod tests {
                 vec![
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::from("subject")),
+                        .with_identifier(Identifier::from("subject_id")),
                     SeriesContext::default().with_identifier(Identifier::from(col_name)),
                 ],
             ),
@@ -274,7 +274,7 @@ mod tests {
                 vec![
                     SeriesContext::default()
                         .with_data_context(Context::SubjectId)
-                        .with_identifier(Identifier::from("subject")),
+                        .with_identifier(Identifier::from("subject_id")),
                     SeriesContext::default().with_identifier(Identifier::from(col_name_f64)),
                 ],
             ),
