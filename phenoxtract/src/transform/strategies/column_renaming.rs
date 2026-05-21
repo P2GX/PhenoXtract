@@ -50,7 +50,7 @@ impl ColumnRenamingStrategy {
 
 impl Strategy for ColumnRenamingStrategy {
     fn is_valid(&self, _: &[&mut ContextualizedDataFrame]) -> bool {
-        true
+        !self.renaming.is_empty()
     }
 
     fn internal_transform(
