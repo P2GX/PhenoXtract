@@ -11,9 +11,9 @@ use std::any::type_name;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-/// Splits a [`Context::HpoOrDisease`] column into [`Context::Hpo`] and [`Context::Disease`] columns.
+/// Splits a [`Context::MultiContext(Context::Hpo, Context::Disease)`] column into [`Context::Hpo`] and [`Context::Disease`] columns.
 ///
-/// This strategy will find every column whose context is [`Context::HpoOrDisease`]
+/// This strategy will find every column whose context is [`Context::MultiContext(Context::Hpo, Context::Disease)`]
 /// And split it into two separate columns: a [`Context::Hpo`] column and a [`Context::Disease`] column.
 ///
 /// Hpo is prioritised: the strategy will find all Hpo labels and IDs, and then put them into the
@@ -66,11 +66,21 @@ impl HpoDiseaseSplitterStrategy {
 impl Strategy for HpoDiseaseSplitterStrategy {
     fn is_valid(&self, tables: &[&mut ContextualizedDataFrame]) -> bool {
         tables.iter().any(|table| {
-            !table
-                .filter_columns()
-                .where_data_context_kind(Filter::Is(&ContextKind::HpoOrDisease))
-                .collect()
-                .is_empty()
+            let series_contexts = table
+                .filter_series_context()
+                .where_data_context_kind(Filter::Is(&ContextKind::MultiContext))
+                .collect();
+
+            for sc in series_contexts {
+                if let Context::MultiContext(contexts) = sc.get_data_context()
+                    && contexts.len() == 2
+                    && contexts.contains(&Context::Hpo)
+                    && contexts.contains(&Context::Disease)
+                {
+                    return true;
+                }
+            }
+            false
         })
     }
 
@@ -84,7 +94,7 @@ impl Strategy for HpoDiseaseSplitterStrategy {
         for table in tables.iter_mut() {
             let hpo_or_disease_col_names = table
                 .filter_columns()
-                .where_data_context_kind(Filter::Is(&ContextKind::HpoOrDisease))
+                .where_data_context_kind(Filter::Is(&ContextKind::MultiContext))
                 .collect_owned_names();
 
             for hpo_or_disease_col_name in hpo_or_disease_col_names {
@@ -118,8 +128,8 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                     }
                 }
 
-                let new_hpo_col_name = format!("{hpo_or_disease_col_name}_hpo");
-                let new_disease_col_name = format!("{hpo_or_disease_col_name}_disease");
+                let new_hpo_col_name = format!("{}_hpo", hpo_or_disease_col.name());
+                let new_disease_col_name = format!("{}_disease", hpo_or_disease_col.name());
 
                 let new_hpo_col = Column::new(new_hpo_col_name.into(), new_hpo_col_data);
                 let new_disease_col =
@@ -142,7 +152,10 @@ impl Strategy for HpoDiseaseSplitterStrategy {
 
             table
                 .builder()
-                .drop_scs_alongside_cols_with_context(&Context::None, &Context::HpoOrDisease)?
+                .drop_scs_alongside_cols_with_context(
+                    &Context::None,
+                    &Context::MultiContext(vec![Context::Hpo, Context::Disease].into()),
+                )?
                 .build()?;
         }
 
@@ -175,7 +188,7 @@ mod tests {
             "",
         ];
 
-        fn to_anyvalues<'a>(items: &[&'a str]) -> Vec<AnyValue<'a>> {
+        fn to_any_values<'a>(items: &[&'a str]) -> Vec<AnyValue<'a>> {
             items
                 .iter()
                 .map(|&s| {
@@ -188,13 +201,17 @@ mod tests {
                 .collect()
         }
 
-        let mut values = to_anyvalues(&phenotypes);
-        values.extend(to_anyvalues(&diseases));
+        let mut values = to_any_values(&phenotypes);
+        values.extend(to_any_values(&diseases));
 
         let disease_hpo_col = Column::new("HpoAndDisease".into(), values);
 
         cdf.builder()
-            .insert_col_with_context(disease_hpo_col, Context::None, Context::HpoOrDisease)
+            .insert_col_with_context(
+                disease_hpo_col,
+                Context::None,
+                Context::MultiContext(vec![Context::Hpo, Context::Disease].into()),
+            )
             .unwrap()
             .build()
             .unwrap();
