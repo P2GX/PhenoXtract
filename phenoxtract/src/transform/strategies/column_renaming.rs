@@ -32,11 +32,6 @@ use std::collections::HashMap;
 /// P001, HP:1234567, 1990-01-01
 /// P002, Arachnodactyly, 1985-06-15
 /// ```
-///
-/// # Errors
-///
-/// A [`StrategyError::ColumnNotFound`] will be returned if any key in the renaming map does not
-/// correspond to an existing column in one of the supplied tables.
 #[derive(Debug)]
 pub struct ColumnRenamingStrategy {
     renaming: HashMap<String, String>,
