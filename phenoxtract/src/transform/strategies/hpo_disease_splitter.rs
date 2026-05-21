@@ -71,16 +71,15 @@ impl Strategy for HpoDiseaseSplitterStrategy {
                 .where_data_context_kind(Filter::Is(&ContextKind::MultiContext))
                 .collect();
 
-            for sc in series_contexts {
-                if let Context::MultiContext(contexts) = sc.get_data_context()
-                    && contexts.len() == 2
-                    && contexts.contains(&Context::Hpo)
-                    && contexts.contains(&Context::Disease)
-                {
-                    return true;
-                }
-            }
-            false
+            series_contexts.iter().any(|sc| {
+                matches!(
+                    sc.get_data_context(),
+                    Context::MultiContext(contexts)
+                        if contexts.len() == 2
+                        && contexts.contains(&Context::Hpo)
+                        && contexts.contains(&Context::Disease)
+                )
+            })
         })
     }
 
