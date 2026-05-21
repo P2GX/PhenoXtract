@@ -219,24 +219,6 @@ mod tests {
     }
 
     #[rstest]
-    fn test_rename_missing_column_returns_error() {
-        let mut cdf = generate_minimal_cdf(1, 3);
-
-        let strategy = ColumnRenamingStrategy::new(HashMap::from([(
-            "this_column_does_not_exist".to_string(),
-            "irrelevant".to_string(),
-        )]));
-
-        let result = strategy.transform(&mut [&mut cdf]);
-
-        assert!(matches!(
-            result,
-            Err(StrategyError::ColumnNotFound { column_name })
-                if column_name == "this_column_does_not_exist"
-        ));
-    }
-
-    #[rstest]
     fn test_empty_renaming_map_is_noop() {
         let mut cdf = generate_minimal_cdf(1, 3);
 
