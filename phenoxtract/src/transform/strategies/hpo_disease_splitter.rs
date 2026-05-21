@@ -45,7 +45,7 @@ use std::sync::Arc;
 ///
 /// # Errors
 ///
-/// A [`StrategyError::MappingError`] will be thrown if any cells in the [`Context::HpoOrDisease`] column
+/// A [`StrategyError::MappingError`] will be thrown if any cells in the [`Context::MultiContext`] column
 /// are not a label or ID in either the `hpo_bidict_lib` or the `disease_bidict_lib`.
 #[derive(Debug)]
 pub struct HpoDiseaseSplitterStrategy {
