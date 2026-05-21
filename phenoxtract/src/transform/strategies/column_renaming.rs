@@ -59,8 +59,8 @@ impl Strategy for ColumnRenamingStrategy {
     ) -> Result<(), StrategyError> {
         for (old, new) in self.renaming.iter() {
             for table in tables.iter_mut() {
-                let (new_sc, old_id) = match table.get_sc_by_col_name(old) {
-                    Some(old_sc) => Ok((
+                let (new_sc, old_id) = if let Some(old_sc) = table.get_sc_by_col_name(old) {
+                    (
                         SeriesContext::new(
                             Identifier::Single(new.to_string()),
                             old_sc.get_header_context().clone(),
@@ -70,11 +70,10 @@ impl Strategy for ColumnRenamingStrategy {
                             old_sc.get_building_block_id().map(|id| id.to_string()),
                         ),
                         old_sc.get_identifier().clone(),
-                    )),
-                    None => Err(StrategyError::ColumnNotFound {
-                        column_name: old.to_string(),
-                    }),
-                }?;
+                    )
+                } else {
+                    continue;
+                };
 
                 let mut builder = table.builder().rename_col(old, new)?.insert_sc(new_sc)?;
 
