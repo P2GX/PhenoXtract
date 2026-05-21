@@ -201,7 +201,7 @@ blah: "blahblah"
                         ),
                         SeriesContextConfig::new("procedure_time")
                             .data_context(Context::TimeOfProcedure(TimeElementType::Age)),
-                        SeriesContextConfig::new(IdentifierConfig::Regex(
+                        SeriesContextConfig::new(IdentifierConfig::Single(
                             "multi_column".to_string(),
                         ))
                         .data_context(Context::MultiContext(
