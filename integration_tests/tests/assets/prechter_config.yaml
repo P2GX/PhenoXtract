@@ -67,7 +67,7 @@ data_sources:
             3: "MONDO:0000693" # bipolar II disorder
             4: "MONDO:0004985" # bipolar disorder
             5: "MONDO:0002009" # major depressive disorder
-            6: "MONDO:0010648" # major affective disorder
+            6: "MONDO:0010648" # major affective disorder; Actually means Other Affective Diagnosis
             7: "NCIT:C192605"  # Non Affective diagnosis - used Other Diagnosis Code
             8: "NCIT:C94342"   # Healthy Control
           output_data_type: String
