@@ -1,0 +1,128 @@
+data_sources:
+  - type: "csv"
+    source: "$HOME/data/prechter/rorschach_output.csv"
+    separator: ','
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "proband_id"
+        data_context: subject_id
+      - identifier: "term_id"
+        data_context: hpo
+        building_block_id: "hpo_1"
+      - identifier: "severity_id"
+        data_context: severity
+        building_block_id: "hpo_1"
+      - identifier: "observed_start"
+        data_context:
+          onset: date
+        building_block_id: "hpo_1"
+      - identifier: "observed_end"
+        data_context:
+          time_of_resolution: date
+        building_block_id: "hpo_1"
+      - identifier: "excluded"
+        data_context: observation_status
+        building_block_id: "hpo_1"
+
+  - type: "csv"
+    source: "$HOME/data/prechter/out/sf12_item_level.csv"
+    separator: ','
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "record_id"
+        data_context: subject_id
+      - identifier: "sf12_timestamp"
+        data_context:
+          time_of_measurement: date
+        building_block_id: "sf-12"
+      - identifier: "pcs12_tscore"
+        data_context:
+          quantitative_measurement:
+            assay_id: "NCIT:C180457"
+            unit_ontology_id: "NCIT:C180457"
+        building_block_id: "sf-12"
+      - identifier: "mcs12_tscore"
+        data_context:
+          quantitative_measurement:
+            assay_id: "NCIT:C180458"
+            unit_ontology_id: "NCIT:C180458"
+        building_block_id: "sf-12"
+
+  - type: "csv"
+    source: "$HOME/data/prechter/out/best_estimates_raw_data.csv"
+    separator: ','
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "record_id"
+        data_context: subject_id
+      - identifier: "be_current"
+        data_context: disease
+        alias_map:
+          mappings:
+            1: "MONDO:0001866" # bipolar I disorder
+            2: "MONDO:1060151" # schizoaffective bipolar disorder
+            3: "MONDO:0000693" # bipolar II disorder
+            4: "MONDO:0004985" # bipolar disorder
+            5: "MONDO:0002009" # major depressive disorder
+            6: "MONDO:0010648" # major affective disorder
+            7: "NCIT:C192605"  # Non Affective diagnosis - used Other Diagnosis Code
+            8: "NCIT:C94342"   # Healthy Control
+          output_data_type: String
+      - identifier: "be_interviewdate"
+        data_context:
+          onset: date
+
+  - type: "csv"
+    source: "$HOME/data/prechter/refined_tables/demographic_raw_data.csv"
+    separator: ','
+    has_headers: true
+    patients_are_rows: true
+    series_contexts:
+      - identifier: "record_id"
+        data_context: subject_id
+      - identifier: "dg_gender"
+        data_context: "subject_sex"
+        alias_map:
+          mappings:
+            0: "MALE"
+            1: "FEMALE"
+            9: "OTHER_SEX"
+          output_data_type: String
+      - identifier: "dg_age"
+        data_context:
+          time_at_last_encounter: age
+
+
+pipeline:
+  cache_dir: "$HOME/data/prechter/pxt_cache"
+  strategies:
+    - alias_map
+    - default_mapping: sex_mapping
+    #- date_to_age
+    - age_to_iso8601
+
+  loader:
+    file_system:
+      output_dir: "$HOME/data/prechter/phenopackets"
+      create_dir: true
+  meta_data:
+    created_by: Robinson Lab
+    submitted_by: Robinson Lab
+    cohort_name: "Prechter"
+    hpo_resource:
+      id: "HP"
+      version: "2026-02-16"
+    disease_resources:
+      - id: "MONDO"
+        version: "2026-02-03"
+      - id: "NCIT"
+        version: "2026-03-19"
+    assay_resources:
+      - id: "NCIT"
+        version: "2026-03-19"
+    unit_resources:
+      - id: "NCIT"
+        version: "2026-03-19"
