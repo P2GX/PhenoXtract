@@ -4,7 +4,7 @@ use rstest::rstest;
 use std::path::PathBuf;
 
 #[rstest]
-fn test_i_data() -> Result<(), Box<dyn std::error::Error>> {
+fn test_prechter() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let root = env!("CARGO_MANIFEST_DIR");
     let config_path = PathBuf::from(&format!("{}/tests/assets/prechter_config.yaml", root));

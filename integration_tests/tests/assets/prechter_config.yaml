@@ -51,56 +51,47 @@ data_sources:
         building_block_id: "sf-12"
 
   - type: "csv"
-    source: "$HOME/data/prechter/out/best_estimates_raw_data.csv"
+    source: "$HOME/data/prechter/refined_tables/participants.csv"
     separator: ','
     has_headers: true
     patients_are_rows: true
     series_contexts:
       - identifier: "record_id"
         data_context: subject_id
-      - identifier: "be_current"
-        data_context: disease
-        alias_map:
-          mappings:
-            1: "MONDO:0001866" # bipolar I disorder
-            2: "MONDO:1060151" # schizoaffective bipolar disorder
-            3: "MONDO:0000693" # bipolar II disorder
-            4: "MONDO:0004985" # bipolar disorder
-            5: "MONDO:0002009" # major depressive disorder
-            6: "MONDO:0010648" # major affective disorder; Actually means Other Affective Diagnosis
-            7: "NCIT:C192605"  # Non Affective diagnosis - used Other Diagnosis Code
-            8: "NCIT:C94342"   # Healthy Control
-          output_data_type: String
-      - identifier: "be_interviewdate"
-        data_context:
-          onset: date
-
-  - type: "csv"
-    source: "$HOME/data/prechter/refined_tables/demographic_raw_data.csv"
-    separator: ','
-    has_headers: true
-    patients_are_rows: true
-    series_contexts:
-      - identifier: "record_id"
-        data_context: subject_id
-      - identifier: "dg_gender"
+      - identifier: "gender"
         data_context: "subject_sex"
         alias_map:
           mappings:
-            0: "MALE"
-            1: "FEMALE"
-            9: "OTHER_SEX"
+            "Male": "MALE"
+            "Female": "FEMALE"
+            "Non-binary/genderqueer": "OTHER_SEX"
+            "transgender man/trans masculine/masculine of center": "OTHER_SEX"
+            "Other": "OTHER_SEX"
+            "Transgender man/trans masculine/masculine of center": "OTHER_SEX"
           output_data_type: String
-      - identifier: "dg_age"
+      - identifier: "current_age"
         data_context:
           time_at_last_encounter: age
+      - identifier: "current_diagnosis"
+        data_context: disease
+        alias_map:
+          mappings:
+            "Bipolar 1": "MONDO:0001866" # bipolar I disorder
+            "Schizoaffective Bipolar": "MONDO:1060151" # schizoaffective bipolar disorder
+            "Bipolar 2 with Recurrent Depression": "MONDO:0000693" # bipolar II disorder
+            "Bipolar NOS": "MONDO:0004985" # bipolar disorder
+            "Major Depression Recurrent": "MONDO:0002009" # major depressive disorder
+            "Other Affective Diagnosis": "MONDO:0010648" # major affective disorder; Actually means Other Affective Diagnosis
+            "Non-Affective Diagnosis": "NCIT:C192605"  # Non Affective diagnosis - used Other Diagnosis Code
+            "Healthy/Control": "NCIT:C94342"   # Healthy Control
+          output_data_type: String
 
 
 pipeline:
   cache_dir: "$HOME/data/prechter/pxt_cache"
   strategies:
     - alias_map
-    - default_mapping: sex_mapping
+    # - default_mapping: sex_mapping
     #- date_to_age
     - age_to_iso8601
 
