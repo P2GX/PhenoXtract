@@ -1,6 +1,6 @@
 data_sources:
   - type: "csv"
-    source: "$HOME/data/prechter/rorschach_output.csv"
+    source: "$HOME/data/prechter/rorschach_output_asrm.csv"
     separator: ','
     has_headers: true
     patients_are_rows: true
@@ -97,7 +97,7 @@ pipeline:
 
   loader:
     file_system:
-      output_dir: "$HOME/data/prechter/phenopackets"
+      output_dir: "$HOME/data/prechter/phenopackets_asrm"
       create_dir: true
   meta_data:
     created_by: Robinson Lab
