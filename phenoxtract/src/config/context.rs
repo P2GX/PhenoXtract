@@ -7,16 +7,18 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumDiscriminants;
 use strum_macros::{Display, EnumIter};
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq, EnumIter)]
+#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize, Hash, Eq, EnumIter)]
 #[serde(rename_all = "snake_case")]
 pub enum TimeElementType {
     Age,
+    #[default]
     Date,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize, Hash, Eq, EnumIter)]
 #[serde(rename_all = "snake_case")]
 pub enum Boundary {
+    #[default]
     Start,
     End,
 }
@@ -37,6 +39,7 @@ pub enum Boundary {
     Eq,
     EnumDiscriminants,
     EnumTryAsInner,
+    EnumIter,
 )]
 #[derive_err(Debug)]
 #[strum_discriminants(name(ContextKind))]
@@ -45,6 +48,7 @@ pub enum Boundary {
     doc = "ContextKind is the same as Context, but all variants have their fields stripped. This is useful if you want to consider e.g. the QuantitativeMeasurement variant as a whole as opposed to a specific instance of it."
 )]
 #[serde(rename_all = "snake_case")]
+
 pub enum Context {
     // Individual
     SubjectId,
