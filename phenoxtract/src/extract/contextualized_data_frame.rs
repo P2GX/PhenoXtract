@@ -10,7 +10,7 @@ use crate::validation::contextualised_dataframe_validation::validate_dangling_sc
 use crate::validation::contextualised_dataframe_validation::validate_one_context_per_column;
 use crate::validation::contextualised_dataframe_validation::validate_subject_id_col_no_nulls;
 use ordermap::OrderSet;
-use polars::datatypes::StringChunked;
+use polars::datatypes::{BooleanChunked, StringChunked};
 use polars::prelude::{Column, DataFrame, DataType, Float64Chunked, PolarsError, Series};
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -253,6 +253,34 @@ impl ContextualizedDataFrame {
         }
     }
 
+    /// Given a CDF, building block ID and data contexts
+    /// this function will find all columns
+    /// - within that building block
+    /// - and with data context in data_contexts
+    /// * if there are no such columns returns Ok(None)
+    /// * if there are several such columns returns CollectorError
+    /// * if there is exactly one such column,
+    ///   this column is converted to BooleanChunked and Ok(Some(BooleanChunked)) is returned
+    pub fn get_single_linked_bool_column(
+        &self,
+        bb_id: Option<&str>,
+        data_contexts: &[Context],
+    ) -> Result<Option<BooleanChunked>, CollectorError> {
+        let possible_linked_col = self.get_single_linked_column(bb_id, data_contexts)?;
+        if let Some(linked_col) = possible_linked_col {
+            let cast_linked_col = linked_col.cast(&DataType::Boolean).map_err(|_| {
+                DataProcessingError::CastingError {
+                    col_name: linked_col.name().to_string(),
+                    from: linked_col.dtype().clone(),
+                    to: DataType::String,
+                }
+            })?;
+            Ok(Some(cast_linked_col.bool()?.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Looks for columns in the CDF which have
     ///
     /// - Building Block ID = bb_id
@@ -320,6 +348,7 @@ mod tests {
         "bronchitis" => &["Observed", "Not observed", "Observed"],
         "overweight" => &["Not observed", "Not observed", "Observed"],
         "sex" => &["MALE", "FEMALE", "MALE"],
+            "observed" => &[true, false, true],
         )
         .unwrap()
     }
@@ -345,6 +374,9 @@ mod tests {
                 SeriesContext::from_identifier("sex")
                     .with_data_context(Context::SubjectSex)
                     .with_building_block_id("block_1"), // BB is not realistic here, but it tests good with the test_get_single_linked_column
+                SeriesContext::from_identifier("observed")
+                    .with_data_context(Context::ObservationStatus)
+                    .with_building_block_id("block_1"),
             ],
         )
     }
@@ -532,6 +564,28 @@ mod tests {
             .unwrap();
 
         assert_eq!(extracted_col.name().to_string(), "age");
+    }
+
+    #[rstest]
+    fn test_get_single_linked_column_bool() {
+        let df = sample_df();
+        let ctx = sample_ctx();
+        let cdf = ContextualizedDataFrame::new(ctx, df).unwrap();
+
+        let bb = cdf
+            .filter_series_context()
+            .where_data_context(Filter::Is(&Context::ObservationStatus))
+            .collect()
+            .first()
+            .unwrap()
+            .get_building_block_id();
+
+        let extracted_col = cdf
+            .get_single_linked_bool_column(bb, &[Context::ObservationStatus])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(extracted_col.name().to_string(), "observed");
     }
 
     #[rstest]
