@@ -1,5 +1,5 @@
 [package]
-authors = ["Rouven Reuter", "Peter Robinson", "Patrick Simon Nairne", "Varenya Jain", "Adam Graefe"]
+authors = ["Rouven Reuter <Rouven.Reuter@proton.me>", "Patrick Simon Nairne", "Varenya Jain", "Adam Graefe", "Peter Robinson", ]
 description = "A configurable ETL pipeline to convert tables into phenpackets"
 edition = "2024"
 homepage = "https://robinsongroup.github.io/"
