@@ -1,8 +1,8 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
-
-use elsa::sync::FrozenMap;
+use moka::sync::Cache;
+use polars::polars_utils::parma::raw::Key;
 use ratelimit::Ratelimiter;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
@@ -16,7 +16,7 @@ use std::time::Duration;
 
 impl fmt::Debug for BioPortalClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cache_len = self.cache.len();
+        let cache_len = self.cache.size();
 
         f.debug_struct("BioPortalClient")
             .field("base_url", &self.base_url)
@@ -60,7 +60,7 @@ pub struct BioPortalClient {
     curie_parser: CurieParser<CurieRegexValidator>,
     iri_prefix: String,
 
-    cache: FrozenMap<String, Box<str>>,
+    cache: Cache<String, String>,
     rate_limiter: Ratelimiter,
 
     resource_ref: ResourceRef,
@@ -161,7 +161,7 @@ impl BioPortalClient {
             curie_prefix,
             curie_parser,
             iri_prefix,
-            cache: FrozenMap::<String, Box<str>>::new(),
+            cache: Cache::<String, String>::new(1500),
             rate_limiter,
             resource_ref,
         })
@@ -262,7 +262,7 @@ impl BioPortalClient {
 }
 
 impl BiDict for BioPortalClient {
-    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+    fn get(&self, id_or_label: &str) -> Result<String, BiDictError> {
         // Dispatch helper for BiDict lookups.
 
         // Determines whether the input should be treated as an identifier (CURIE or bare local id)
@@ -276,7 +276,7 @@ impl BiDict for BioPortalClient {
         }
     }
 
-    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+    fn get_label(&self, id: &str) -> Result<String, BiDictError> {
         // Resolves a CURIE identifier to its preferred label (id -> label).
         // STRICT: `id` must be a CURIE with a prefix matching `self.prefix`.
         let curie = self.parse_curie(id)?;
@@ -311,7 +311,7 @@ impl BiDict for BioPortalClient {
     /// - term -> label
     ///
     /// Returns the canonical CURIE as `&str` backed by an append-only cache.
-    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+    fn get_id(&self, term: &str) -> Result<String, BiDictError> {
         if let Some(id) = self.cache.get(term) {
             return Ok(id);
         }
@@ -380,7 +380,7 @@ mod tests {
             curie_prefix,
             iri_prefix: "http://purl.bioontology.org/ontology/OMIM/".to_string(),
             curie_parser,
-            cache: FrozenMap::new(),
+            cache: Cache::new(1500),
             rate_limiter,
             resource_ref: ResourceRef::from("OMIM"),
         }
@@ -416,7 +416,7 @@ mod tests {
                 bioportal_acronym
             ),
             curie_parser,
-            cache: FrozenMap::new(),
+            cache: Cache::new(1500),
             rate_limiter,
             resource_ref: ResourceRef::from(curie_prefix.as_str()),
         }

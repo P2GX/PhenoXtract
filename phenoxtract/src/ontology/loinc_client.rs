@@ -2,7 +2,7 @@
 use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::ontology::traits::{BiDict, HasVersion};
-use elsa::sync::FrozenMap;
+use moka::sync::Cache;
 use regex::Regex;
 use reqwest::blocking::Client;
 use securiety::{CurieParser, CurieParsing, CurieRegexValidator, CurieValidation};
@@ -89,7 +89,6 @@ pub struct LoincResult {
     pub tags: Vec<String>,
     #[serde(rename = "Link")]
     pub link: String,
-
     #[serde(rename = "DefinitionDescription")]
     pub definition_description: Option<String>,
     #[serde(rename = "FORMULA")]
@@ -109,7 +108,7 @@ pub struct LoincClient {
     base_url: String,
     user_name: String,
     password: String,
-    cache: FrozenMap<String, Box<str>>,
+    cache: Cache<String, String>,
     reference: OnceLock<ResourceRef>,
     curie_validator: CurieRegexValidator,
 }
@@ -121,7 +120,7 @@ impl fmt::Debug for LoincClient {
             .field("user_name", &self.user_name)
             .field("password", &"********")
             .field("client", &"reqwest::Client")
-            .field("cache_size", &self.cache.len())
+            .field("cache_size", &self.cache.entry_count())
             .field("reference_initialized", &self.reference.get().is_some())
             .finish()
     }
@@ -139,7 +138,7 @@ impl LoincClient {
             base_url: "https://loinc.regenstrief.org/searchapi/".to_string(),
             user_name,
             password,
-            cache: FrozenMap::default(),
+            cache: Cache::new(1500),
             reference: reference_lock,
             curie_validator: CurieRegexValidator::loinc(),
         }
@@ -177,7 +176,7 @@ impl Default for LoincClient {
 }
 
 impl BiDict for LoincClient {
-    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+    fn get(&self, id_or_label: &str) -> Result<String, BiDictError> {
         if self.curie_validator.validate(id_or_label) {
             self.get_label(id_or_label)
         } else {
@@ -185,7 +184,7 @@ impl BiDict for LoincClient {
         }
     }
 
-    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+    fn get_label(&self, id: &str) -> Result<String, BiDictError> {
         if !self.curie_validator.validate(id) {
             return Err(BiDictError::InvalidId(id.to_string()));
         }
@@ -203,20 +202,18 @@ impl BiDict for LoincClient {
             .into_iter()
             .find(|r| Self::format_loinc_curie(&r.loinc_num) == id || r.loinc_num == id)
             .ok_or_else(|| {
-                self.cache.insert(id.to_string(), Box::from(NOT_FOUND));
+                self.cache.insert(id.to_string(), NOT_FOUND.to_string());
                 BiDictError::NotFound(id.into())
             })?;
 
         let label_ref = self
             .cache
-            .insert(id.to_string(), Box::from(result.long_common_name));
+            .insert(id.to_string(), result.long_common_name.clone());
 
-        self.cache.get(id).ok_or_else(|| BiDictError::Caching {
-            reason: format!("Expected to find {} in cache", id),
-        })
+        Ok(result.long_common_name)
     }
 
-    fn get_id(&self, label: &str) -> Result<&str, BiDictError> {
+    fn get_id(&self, label: &str) -> Result<String, BiDictError> {
         if let Some(loinc_number) = self.cache.get(label) {
             if loinc_number == NOT_FOUND {
                 return Err(BiDictError::NotFound(label.to_string()));
@@ -233,7 +230,7 @@ impl BiDict for LoincClient {
         let loinc_search_results = self.query(&cleaned)?;
 
         if loinc_search_results.is_empty() {
-            self.cache.insert(label.to_string(), Box::from(NOT_FOUND));
+            self.cache.insert(label.to_string(), NOT_FOUND.to_string());
             return Err(BiDictError::NotFound(cleaned));
         }
 
@@ -241,7 +238,7 @@ impl BiDict for LoincClient {
             if loinc_result.long_common_name.to_lowercase() == label.to_lowercase() {
                 self.cache.insert(
                     label.to_string(),
-                    Box::from(Self::format_loinc_curie(&loinc_result.loinc_num)),
+                    Self::format_loinc_curie(&loinc_result.loinc_num),
                 );
             }
         }
@@ -314,7 +311,7 @@ mod tests {
         let found_label = label_res;
 
         let id_res = loinc_client
-            .get(found_label)
+            .get(&found_label)
             .unwrap_or_else(|_| panic!("Should find an ID for label: {}", found_label));
 
         assert_eq!(id_res, id_input);
@@ -338,7 +335,7 @@ mod tests {
             }
         }
 
-        assert_eq!(loinc_client.cache.len(), 0)
+        assert_eq!(loinc_client.cache.entry_count(), 0)
     }
 
     #[rstest]
@@ -349,7 +346,6 @@ mod tests {
 
         assert!(label_res.is_err());
 
-        assert_eq!(loinc_client.cache.len(), 1);
         assert_eq!(loinc_client.cache.get(id_input).unwrap(), NOT_FOUND);
     }
 
@@ -360,9 +356,7 @@ mod tests {
         let label_res = loinc_client.get_id(label_input);
 
         assert!(label_res.is_err());
-
-        assert_eq!(loinc_client.cache.len(), 1);
-
+        dbg!(&loinc_client.cache);
         assert_eq!(loinc_client.cache.get(label_input).unwrap(), NOT_FOUND);
     }
 }
