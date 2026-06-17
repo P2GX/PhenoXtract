@@ -63,16 +63,17 @@ impl Collect for HpoInCellsCollector {
 
                             let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
 
-                            let ob_status = observation_status_column
+                            let observation_status = observation_status_column
                                 .as_ref()
-                                .and_then(|col| col.get(row_idx));
+                                .and_then(|col| col.get(row_idx))
+                                .map(|b| !b);
 
                             if self.allow_duplicate_phenotypes {
                                 builder.insert_phenotypic_feature(
                                     patient_id,
                                     hpo,
                                     None,
-                                    ob_status,
+                                    observation_status,
                                     hpo_severity,
                                     None,
                                     hpo_onset,
