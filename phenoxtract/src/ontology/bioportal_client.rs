@@ -16,7 +16,7 @@ use std::time::Duration;
 
 impl fmt::Debug for BioPortalClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cache_len = self.cache.size();
+        let cache_len = self.cache.entry_count();
 
         f.debug_struct("BioPortalClient")
             .field("base_url", &self.base_url)
