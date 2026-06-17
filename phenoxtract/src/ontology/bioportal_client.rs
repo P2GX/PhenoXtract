@@ -2,7 +2,6 @@ use crate::ontology::error::BiDictError;
 use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::BiDict;
 use moka::sync::Cache;
-use polars::polars_utils::parma::raw::Key;
 use ratelimit::Ratelimiter;
 use reqwest::blocking::Client;
 use reqwest::{StatusCode, Url};
@@ -293,9 +292,9 @@ impl BiDict for BioPortalClient {
         }
 
         self.cache
-            .insert(canonical_curie.to_string(), result.label.to_string().into());
+            .insert(canonical_curie.to_string(), result.label.to_string());
         self.cache
-            .insert(result.label.to_string(), canonical_curie.to_string().into());
+            .insert(result.label.to_string(), canonical_curie.to_string());
 
         self.cache
             .get(&canonical_curie)
@@ -326,14 +325,13 @@ impl BiDict for BioPortalClient {
             .ok_or_else(|| BiDictError::NotFound(term.to_string()))?;
         let canonical_curie = self.format_curie(local_id);
         self.cache
-            .insert(term.to_string(), canonical_curie.to_string().into());
+            .insert(term.to_string(), canonical_curie.to_string());
 
         self.cache
-            .insert(canonical_curie.to_string(), result.label.to_string().into());
-        self.cache
-            .insert(result.label, canonical_curie.to_string().into());
+            .insert(canonical_curie.to_string(), result.label.to_string());
+        self.cache.insert(result.label, canonical_curie.to_string());
         for syn in result.synonym {
-            self.cache.insert(syn, canonical_curie.to_string().into());
+            self.cache.insert(syn, canonical_curie.to_string());
         }
 
         self.cache

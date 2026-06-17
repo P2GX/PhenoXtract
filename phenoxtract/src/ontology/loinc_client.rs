@@ -206,8 +206,7 @@ impl BiDict for LoincClient {
                 BiDictError::NotFound(id.into())
             })?;
 
-        let label_ref = self
-            .cache
+        self.cache
             .insert(id.to_string(), result.long_common_name.clone());
 
         Ok(result.long_common_name)
@@ -356,7 +355,6 @@ mod tests {
         let label_res = loinc_client.get_id(label_input);
 
         assert!(label_res.is_err());
-        dbg!(&loinc_client.cache);
         assert_eq!(loinc_client.cache.get(label_input).unwrap(), NOT_FOUND);
     }
 }
