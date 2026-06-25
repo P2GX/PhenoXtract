@@ -1,16 +1,13 @@
-# Tauri + Dioxus
+# Tauri + SvelteKit + TypeScript
 
-This template should help get you started developing with Tauri and Dioxus.
+This template should help get you started developing with Tauri, SvelteKit and TypeScript in Vite.
 
-## Get it running
+## Get started
 
-Within the phenoxtract-ui directory execute:
-
-1. `cargo install tauri-cli --locked`
-2. `cargo install dioxus-cli --locked`
-3. `rustup target add wasm32-unknown-unknown`
-4. `cargo tauri dev`
+- `cd phenoxtract-ui`
+- `npm install -g pnpm`
+- `pnpm tauri dev`
 
 ## Recommended IDE Setup
 
-[VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) + [Dioxus](https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus).
+[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
