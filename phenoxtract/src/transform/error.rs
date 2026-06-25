@@ -12,7 +12,7 @@ use std::num::ParseIntError;
 use thiserror::Error;
 use validator::ValidationErrors;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct MappingSuggestion {
     from: String,
     to: String,
@@ -45,7 +45,7 @@ impl Display for MappingSuggestion {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct MappingErrorInfo {
     pub column: String,
     pub table: String,

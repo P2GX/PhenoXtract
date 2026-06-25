@@ -8,8 +8,10 @@ use log::info;
 use crate::extract::enums::Filter;
 
 use crate::ontology::traits::BiDict;
-use polars::prelude::{DataType, IntoSeries};
+use polars::prelude::{ChunkApply, DataType, IntoSeries};
 use std::any::type_name;
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -88,7 +90,7 @@ impl Strategy for OntologyNormaliserStrategy {
     ) -> Result<(), StrategyError> {
         info!("Applying OntologyNormaliser strategy to data.");
 
-        let mut error_info: HashSet<MappingErrorInfo> = HashSet::new();
+        let error_info: RefCell<HashSet<MappingErrorInfo>> = RefCell::new(HashSet::new());
 
         for table in tables.iter_mut() {
             let column_names = table
@@ -98,21 +100,25 @@ impl Strategy for OntologyNormaliserStrategy {
 
             for col_name in column_names {
                 let col = table.data().column(&col_name)?;
-                let mapped_column = col.str()?.apply_mut(|cell_value| {
-                    if self.ontology_dict.get_label(cell_value).is_ok() {
-                        cell_value
-                    } else if let Ok(curie_id) = self.ontology_dict.get(cell_value) {
-                        curie_id
-                    } else {
-                        if !cell_value.is_empty() {
-                            error_info.insert_error(
-                                col.name().to_string(),
-                                table.context().name().to_string(),
-                                cell_value.to_string(),
-                                vec![],
-                            );
+                let mapped_column = col.str()?.apply(|cell_value| {
+                    if let Some(cell_value) = cell_value {
+                        if self.ontology_dict.get_label(cell_value).is_ok() {
+                            Some(Cow::Borrowed(cell_value))
+                        } else if let Ok(curie_id) = self.ontology_dict.get(cell_value) {
+                            Some(Cow::Owned(curie_id))
+                        } else {
+                            if !cell_value.is_empty() {
+                                error_info.borrow_mut().insert_error(
+                                    col.name().to_string(),
+                                    table.context().name().to_string(),
+                                    cell_value.to_string(),
+                                    vec![],
+                                );
+                            }
+                            Some(Cow::Borrowed(cell_value))
                         }
-                        cell_value
+                    } else {
+                        None
                     }
                 });
                 table
@@ -122,6 +128,7 @@ impl Strategy for OntologyNormaliserStrategy {
             }
         }
 
+        let error_info = error_info.take();
         if !error_info.is_empty() {
             Err(StrategyError::MappingError {
                 strategy_name: type_name::<Self>().split("::").last().unwrap().to_string(),

@@ -13,38 +13,38 @@ pub struct OntologyBiDict {
 }
 
 impl BiDict for OntologyBiDict {
-    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+    fn get(&self, id_or_label: &str) -> Result<String, BiDictError> {
         let normalized_key = Self::normalize_key(id_or_label);
 
         if let Some(identifier) = self.label_to_id.get(&normalized_key) {
-            return Ok(identifier);
+            return Ok(identifier.to_string());
         }
         if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
-            return Ok(identifier);
+            return Ok(identifier.to_string());
         }
         if let Some(label) = self.id_to_label.get(&normalized_key) {
-            return Ok(label);
+            return Ok(label.to_string());
         }
         Err(BiDictError::NotFound(normalized_key))
     }
 
-    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+    fn get_label(&self, id: &str) -> Result<String, BiDictError> {
         let normalized_key = Self::normalize_key(id);
 
         if let Some(label) = self.id_to_label.get(&normalized_key) {
-            return Ok(label);
+            return Ok(label.to_string());
         }
         Err(BiDictError::NotFound(normalized_key.to_string()))
     }
 
-    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+    fn get_id(&self, term: &str) -> Result<String, BiDictError> {
         let normalized_key = Self::normalize_key(term);
 
         if let Some(identifier) = self.label_to_id.get(&normalized_key) {
-            return Ok(identifier);
+            return Ok(identifier.to_string());
         }
         if let Some(identifier) = self.synonym_to_id.get(&normalized_key) {
-            return Ok(identifier);
+            return Ok(identifier.to_string());
         }
         Err(BiDictError::NotFound(normalized_key))
     }
@@ -55,15 +55,15 @@ impl BiDict for OntologyBiDict {
 }
 
 impl BiDict for Arc<OntologyBiDict> {
-    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError> {
+    fn get(&self, id_or_label: &str) -> Result<String, BiDictError> {
         self.as_ref().get(id_or_label)
     }
 
-    fn get_label(&self, id: &str) -> Result<&str, BiDictError> {
+    fn get_label(&self, id: &str) -> Result<String, BiDictError> {
         self.as_ref().get_label(id)
     }
 
-    fn get_id(&self, term: &str) -> Result<&str, BiDictError> {
+    fn get_id(&self, term: &str) -> Result<String, BiDictError> {
         self.as_ref().get_id(term)
     }
 
@@ -196,7 +196,7 @@ mod tests {
         let hpo_dict = OntologyBiDict::from_ontology(HPO.clone(), &HPO_REF);
         let hpo_id = hpo_dict.get("contact with nickel").unwrap();
         assert_eq!(
-            hpo_dict.get(hpo_id).unwrap(),
+            hpo_dict.get(&hpo_id).unwrap(),
             "Triggered by nickel".to_string()
         );
     }

@@ -10,7 +10,7 @@ use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntolo
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
 use phenoxtract::Pipeline;
 use phenoxtract::config::context::{Boundary, Context, ContextKind, TimeElementType};
-use phenoxtract::config::table_context::{AliasMap, SeriesContext, TableContext};
+use phenoxtract::config::table_context::{AliasMap, Identifier, SeriesContext, TableContext};
 use phenoxtract::config::traits::SeriesContextBuilding;
 use phenoxtract::extract::ExcelDataSource;
 use phenoxtract::extract::extraction_config::ExtractionConfig;
@@ -132,7 +132,7 @@ fn csv_context_5() -> TableContext {
                 })
                 .with_building_block_id("M"),
             SeriesContext::from_identifier("date_of_observation")
-                .with_data_context(Context::Onset(TimeElementType::Date))
+                .with_data_context(Context::TimeOfMeasurement(TimeElementType::Date))
                 .with_building_block_id("M"),
         ],
     )
@@ -172,8 +172,10 @@ fn excel_context(vital_status_aliases: AliasMap) -> Vec<TableContext> {
             "more conditions".to_string(),
             vec![
                 SeriesContext::from_identifier("Patient ID").with_data_context(Context::SubjectId),
-                SeriesContext::from_identifier(r"Phenotypic Features \d+")
-                    .with_data_context(Context::Hpo),
+                SeriesContext::from_identifier(
+                    Identifier::regex_from_str(r"Phenotypic Features \d+").unwrap(),
+                )
+                .with_data_context(Context::Hpo),
             ],
         ),
     ]
@@ -314,6 +316,6 @@ fn test_pipeline_integration(
     compare_expected_and_extracted_phenopackets(
         assets_dir,
         output_dir_name,
-        "extracted_phenopackets",
+        "expected_phenopackets",
     );
 }

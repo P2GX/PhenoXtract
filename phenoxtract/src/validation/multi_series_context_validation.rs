@@ -4,6 +4,7 @@ use validator::ValidationError;
 
 pub(crate) fn validate_identifier(series_context: &SeriesContext) -> Result<(), ValidationError> {
     match series_context.get_identifier() {
+        Identifier::Single(_) => Ok(()),
         Identifier::Regex(_) => Ok(()),
         Identifier::Multi(vec) => {
             if vec.is_empty() {

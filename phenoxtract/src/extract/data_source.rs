@@ -8,7 +8,7 @@ use std::io::BufReader;
 use crate::extract::error::ExtractionError;
 use crate::extract::excel_data_source::ExcelDataSource;
 use crate::extract::traits::Extractable;
-use log::{info, warn};
+use log::info;
 
 use crate::extract::excel_range_reader::ExcelRangeReader;
 use crate::extract::utils::generate_default_column_names;
@@ -140,12 +140,6 @@ impl Extractable for DataSource {
 
                 let extraction_configs = &excel_source.extraction_configs;
 
-                if extraction_configs.len() < workbook.sheet_names().len() {
-                    warn!("Warning: fewer ExtractionConfigs than Excel Worksheets.");
-                } else if extraction_configs.len() > workbook.sheet_names().len() {
-                    warn!("Warning: more ExtractionConfigs than Excel Worksheets.");
-                }
-
                 for extraction_config in extraction_configs {
                     let sheet_name = &extraction_config.name;
                     let sheet_context = excel_source
@@ -156,15 +150,7 @@ impl Extractable for DataSource {
                             sheet_name.to_string(),
                         ))?;
 
-                    let range = match workbook.worksheet_range(sheet_name) {
-                        Ok(r) => r,
-                        Err(_) => {
-                            warn!(
-                                "Could not find Excel Worksheet with the name {sheet_name}! No dataframe extracted."
-                            );
-                            continue;
-                        }
-                    };
+                    let range = workbook.worksheet_range(sheet_name)?;
 
                     let excel_range_reader =
                         ExcelRangeReader::new(range, extraction_config.clone());
@@ -195,6 +181,7 @@ mod tests {
     use crate::config::table_context::{SeriesContext, TableContext};
     use crate::config::traits::SeriesContextBuilding;
     use crate::extract::extraction_config::ExtractionConfig;
+    use calamine::XlsxError;
     use polars::df;
     use polars::prelude::DataFrame;
     use rstest::{fixture, rstest};
@@ -773,6 +760,47 @@ AGE,18,27,89"#;
                     extracted_col3.bool().unwrap().into_no_null_iter().collect();
                 assert_eq!(extracted_smoker_bools, smoker_bools);
             }
+        }
+    }
+
+    #[rstest]
+    fn test_excel_sheet_name_crash(temp_dir: TempDir, patient_ids: [&'static str; 4]) {
+        let tc1 = TableContext::new(
+            "first_sheet",
+            vec![SeriesContext::from_identifier("0").with_data_context(Context::SubjectId)],
+        );
+        let tc2 = TableContext::new(
+            "typo",
+            vec![SeriesContext::from_identifier("0").with_data_context(Context::SubjectId)],
+        );
+        let ec1 = ExtractionConfig::new("first_sheet".to_string(), false, true);
+        let ec2 = ExtractionConfig::new("typo".to_string(), false, true);
+
+        let mut workbook = Workbook::new();
+
+        workbook.add_worksheet().set_name("first_sheet").unwrap();
+        workbook.add_worksheet().set_name("second_sheet").unwrap();
+
+        for worksheet in workbook.worksheets_mut() {
+            worksheet.write_column(0, 0, patient_ids).unwrap();
+        }
+
+        let file_path = temp_dir.path().join("test_excel.xlsx");
+        workbook.save(file_path.clone()).unwrap();
+
+        let data_source = DataSource::Excel(ExcelDataSource::new(
+            file_path,
+            vec![tc1, tc2],
+            vec![ec1, ec2],
+        ));
+
+        let extraction_err = data_source.extract().unwrap_err();
+
+        if let ExtractionError::Calamine(XlsxError::WorksheetNotFound(sheet_name)) = extraction_err
+        {
+            assert_eq!(sheet_name, "typo");
+        } else {
+            panic!("Should be a sheet name err!");
         }
     }
 
