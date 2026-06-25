@@ -63,7 +63,7 @@ impl Collect for HpoInCellsCollector {
 
                             let hpo_severity = get_str_at_index(severity_column.as_ref(), row_idx);
 
-                            let observation_status = observation_status_column
+                            let excluded = observation_status_column
                                 .as_ref()
                                 .and_then(|col| col.get(row_idx))
                                 .map(|b| !b);
@@ -73,7 +73,7 @@ impl Collect for HpoInCellsCollector {
                                     patient_id,
                                     hpo,
                                     None,
-                                    observation_status,
+                                    excluded,
                                     hpo_severity,
                                     None,
                                     hpo_onset,
@@ -85,7 +85,7 @@ impl Collect for HpoInCellsCollector {
                                     patient_id,
                                     hpo,
                                     None,
-                                    None,
+                                    excluded,
                                     hpo_severity,
                                     None,
                                     hpo_onset,
