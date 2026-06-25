@@ -14,5 +14,6 @@ pub mod traits;
 pub mod transform_context;
 pub mod transform_module;
 mod utils;
+mod variant_interpretation_builder;
 
 pub use transform_module::TransformerModule;
