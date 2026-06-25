@@ -5,7 +5,6 @@ use crate::transform::collecting::medical_actions::medical_treatment_data::DoseI
 use crate::transform::collecting::traits::Collect;
 use crate::transform::error::CollectorError;
 use crate::transform::error::PhenopacketBuilderError;
-use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::PhenopacketBuilding;
 use mockall::mock;
 use mockall::predicate::*;
@@ -97,7 +96,9 @@ mock! {
             &mut self,
             patient_id: &'a str,
             disease: &'a str,
-            gene_variant_data: &'a PathogenicGeneVariantData,
+            gene: Option<&'a str>,
+            hgvs1: Option<&'a str>,
+            hgvs2: Option<&'a str>,
             subject_sex: Option<&'a str>,
         ) -> Result<(), PhenopacketBuilderError>;
 

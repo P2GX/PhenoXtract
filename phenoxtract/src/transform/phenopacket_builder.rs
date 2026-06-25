@@ -1,34 +1,28 @@
 #![allow(clippy::too_many_arguments)]
-use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
+use crate::ontology::resource_references::ResourceRef;
 use crate::ontology::traits::{HasPrefixId, HasVersion};
 use crate::transform::bidict_library::BiDictLibrary;
 use crate::transform::cached_resource_resolver::CachedResourceResolver;
 use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::error::PhenopacketBuilderError;
-use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::{PhenopacketAccessors, PhenopacketBuilding};
 pub use crate::transform::transform_context::{BuilderMetaData, TransformContext};
-use crate::transform::utils::chromosomal_sex_from_str;
 use crate::transform::utils::{try_parse_time_element, try_parse_timestamp};
 use crate::utils::phenopacket_schema_version;
 use chrono::Utc;
 use log::warn;
-use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::DrugType as PhenopacketDrugType;
-use phenopackets::schema::v2::core::genomic_interpretation::Call;
 use phenopackets::schema::v2::core::interpretation::ProgressStatus;
 use phenopackets::schema::v2::core::measurement::MeasurementValue;
 use phenopackets::schema::v2::core::medical_action::Action;
 use phenopackets::schema::v2::core::value::Value;
 use phenopackets::schema::v2::core::vital_status::Status;
 use phenopackets::schema::v2::core::{
-    Diagnosis, Disease, GenomicInterpretation, Interpretation, Measurement, MedicalAction,
-    OntologyClass, PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex, Treatment,
-    Value as ValueStruct, VitalStatus,
+    Diagnosis, Disease, Interpretation, Measurement, MedicalAction, OntologyClass,
+    PhenotypicFeature, Procedure, Quantity, ReferenceRange, Sex, Treatment, Value as ValueStruct,
+    VitalStatus,
 };
-use pivotal::hgnc::GeneQuery;
-use pivotal::hgvs::AlleleCount;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -284,69 +278,23 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         &mut self,
         patient_id: &str,
         disease: &str,
-        gene_variant_data: &PathogenicGeneVariantData,
+        gene: Option<&str>,
+        hgvs1: Option<&str>,
+        hgvs2: Option<&str>,
         subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let mut genomic_interpretations: Vec<GenomicInterpretation> = vec![];
         let phenopacket_id = self.generate_phenopacket_id(patient_id);
 
         let (disease_term, res_ref) = Self::resolve_term(self.ctx.disease_bidict_lib(), disease)?;
-
         self.ensure_resource(patient_id, &res_ref);
 
-        if let PathogenicGeneVariantData::CausativeGene(gene) = gene_variant_data {
-            let (symbol, id) = self
-                .ctx
-                .hgnc_client()
-                .request_gene_identifier_pair(GeneQuery::from(gene.as_str()))?;
-            self.ensure_resource(patient_id, &ResourceRef::from(KnownResourcePrefixes::HGNC));
-
-            let gi = GenomicInterpretation {
-                subject_or_biosample_id: patient_id.to_string(),
-                call: Some(Call::Gene(GeneDescriptor {
-                    value_id: id.clone(),
-                    symbol: symbol.clone(),
-                    ..Default::default()
-                })),
-                ..Default::default()
-            };
-            genomic_interpretations.push(gi);
-        }
-
-        if matches!(
-            gene_variant_data,
-            PathogenicGeneVariantData::SingleVariant { .. }
-                | PathogenicGeneVariantData::HomozygousVariant { .. }
-                | PathogenicGeneVariantData::CompoundHeterozygousVariantPair { .. }
-        ) {
-            let chromosomal_sex = chromosomal_sex_from_str(subject_sex)?;
-
-            for var in gene_variant_data.get_vars() {
-                let validated_hgvs = self.ctx.hgvs_client().request_and_validate_hgvs(var)?;
-                self.ensure_resource(patient_id, &ResourceRef::from(KnownResourcePrefixes::HGNC));
-                self.ensure_resource(
-                    patient_id,
-                    &ResourceRef::from("geno").with_version("2025-07-25"),
-                );
-
-                if let Some(gene) = gene_variant_data.get_gene() {
-                    validated_hgvs.validate_against_gene(gene)?;
-                }
-
-                let vi = validated_hgvs.create_variant_interpretation(
-                    AlleleCount::try_from(gene_variant_data.get_allelic_count() as u8)?,
-                    &chromosomal_sex,
-                )?;
-
-                let gi = GenomicInterpretation {
-                    subject_or_biosample_id: patient_id.to_string(),
-                    call: Some(Call::VariantInterpretation(vi)),
-                    ..Default::default()
-                };
-
-                genomic_interpretations.push(gi);
-            }
-        }
+        let (gis, resources) = self.ctx.gi_builder().build_genomic_interpretations(
+            gene,
+            hgvs1,
+            hgvs2,
+            patient_id,
+            subject_sex,
+        );
 
         let interpretation =
             self.get_or_create_interpretation(patient_id, phenopacket_id.as_str(), disease_term);
@@ -356,7 +304,11 @@ impl PhenopacketBuilding for PhenopacketBuilder {
             .as_mut()
             .expect("Diagnosis was just created")
             .genomic_interpretations
-            .extend(genomic_interpretations);
+            .extend(gis);
+
+        for resource in resources {
+            self.ensure_resource(patient_id, &resource);
+        }
 
         Ok(())
     }

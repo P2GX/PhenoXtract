@@ -3,9 +3,8 @@ use crate::extract::ContextualizedDataFrame;
 use crate::extract::column_filter::ColumnFilterConfig;
 use crate::extract::enums::Filter;
 use crate::transform::collecting::traits::Collect;
-use crate::transform::collecting::utils::get_single_multiplicity_element;
+use crate::transform::collecting::utils::{get_single_multiplicity_element, get_str_at_index};
 use crate::transform::error::CollectorError;
-use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use crate::transform::traits::PhenopacketBuilding;
 use polars::prelude::StringChunked;
 use std::any::Any;
@@ -155,30 +154,34 @@ impl InterpretationCollector {
         subject_sex: Option<&str>,
         disease_col: &StringChunked,
     ) -> Result<(), CollectorError> {
-        let linked_hgnc_cols = patient_cdf.get_stringified_cols(
-            patient_cdf.get_linked_cols_with_context(Some(bb_id), &Context::Hgnc, &Context::None),
-        )?;
+        let linked_hgnc_col =
+            patient_cdf.get_single_linked_column_as_str(Some(bb_id), &[Context::Hgnc])?;
 
         let linked_hgvs_cols = patient_cdf.get_stringified_cols(
             patient_cdf.get_linked_cols_with_context(Some(bb_id), &Context::Hgvs, &Context::None),
         )?;
 
+        let (allele_one_col, allele_two_col) = match linked_hgvs_cols.len() {
+            0 => (None, None),
+            1 => (Some(linked_hgvs_cols[0]), None),
+            2 => (Some(linked_hgvs_cols[0]), Some(linked_hgvs_cols[1])),
+            n => {
+                return Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
+                    table_name: patient_cdf.context().name().to_string(),
+                    bb_id: bb_id.to_string(),
+                    contexts: vec![Context::Hgvs],
+                    n_found: n,
+                    n_expected: 2,
+                });
+            }
+        };
+
         for row_idx in 0..patient_cdf.data().height() {
-            let genes = linked_hgnc_cols
-                .iter()
-                .filter_map(|col| col.get(row_idx))
-                .collect::<Vec<&str>>();
+            let gene = get_str_at_index(linked_hgnc_col.as_ref(), row_idx);
+            let hgvs1 = get_str_at_index(allele_one_col, row_idx);
+            let hgvs2 = get_str_at_index(allele_two_col, row_idx);
 
-            let variants = linked_hgvs_cols
-                .iter()
-                .filter_map(|col| col.get(row_idx))
-                .collect::<Vec<&str>>();
-
-            let gene_variant_data =
-                PathogenicGeneVariantData::from_genes_and_variants(genes, variants)
-                    .map_err(CollectorError::GeneVariantData)?;
-
-            if matches!(gene_variant_data, PathogenicGeneVariantData::None) {
+            if (gene, hgvs1, hgvs2) == (None, None, None) {
                 continue;
             }
 
@@ -186,7 +189,9 @@ impl InterpretationCollector {
                 builder.upsert_interpretation(
                     patient_id,
                     disease,
-                    &gene_variant_data,
+                    gene,
+                    hgvs1,
+                    hgvs2,
                     subject_sex,
                 )?;
             }

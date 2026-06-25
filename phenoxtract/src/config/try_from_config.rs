@@ -15,6 +15,7 @@ use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
 use crate::phenoxtract::Phenoxtract;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
+use crate::transform::genomic_interpretation_builder::GenomicInterpretationBuilder;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_context::TransformContext;
@@ -22,8 +23,6 @@ use crate::transform::{PhenopacketBuilder, TransformerModule};
 use ontology_registry::blocking::bio_registry_metadata_provider::BioRegistryMetadataProvider;
 use ontology_registry::blocking::file_system_ontology_registry::FileSystemOntologyRegistry;
 use ontology_registry::blocking::obolib_ontology_provider::OboLibraryProvider;
-use pivotal::hgnc::CachedHGNCClient;
-use pivotal::hgvs::CachedHGVSClient;
 use polars::prelude::{CsvReadOptions, SerReader};
 use std::collections::HashMap;
 use std::fs;
@@ -80,8 +79,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut ctx_builder = TransformContext::builder(
             config.meta_data.clone().into(),
-            Arc::new(CachedHGNCClient::new_with_defaults()?),
-            Arc::new(CachedHGVSClient::new_with_defaults()?),
+            GenomicInterpretationBuilder::new_with_defaults()?,
         );
 
         if let Some(hpo_resource) = &config.meta_data.hpo_resource {
