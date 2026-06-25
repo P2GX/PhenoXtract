@@ -163,7 +163,7 @@ impl TransformContextBuilder {
             hgvs_client,
             disease_bidict_lib: BiDictLibrary::empty_with_name("DISEASE"),
             unit_bidict_lib: BiDictLibrary::empty_with_name("UNIT"),
-            assay_bidict_lib: BiDictLibrary::empty_with_name("ASSY"),
+            assay_bidict_lib: BiDictLibrary::empty_with_name("ASSAY"),
             qualitative_measurement_bidict_lib: BiDictLibrary::empty_with_name("QUANTITY"),
             procedure_bi_dict_lib: BiDictLibrary::empty_with_name("PROCEDURE"),
             anatomy_bi_dict_lib: BiDictLibrary::empty_with_name("ANATOMY"),
