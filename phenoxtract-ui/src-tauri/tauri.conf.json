@@ -4,13 +4,12 @@
   "version": "0.1.0",
   "identifier": "com.rouvenreuter.phenoxtract-ui",
   "build": {
-    "beforeDevCommand": "dx serve --port 1420 --interactive false",
+    "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "dx bundle --release",
-    "frontendDist": "../dist/public"
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../build"
   },
   "app": {
-    "withGlobalTauri": true,
     "windows": [
       {
         "title": "phenoxtract-ui",
