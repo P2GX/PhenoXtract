@@ -29,6 +29,12 @@ series_contexts:
       single: "procedure_time"
     data_context:
       time_of_procedure: age
+  - identifier:
+      single: "multi_column"
+    data_context:
+      multi_context:
+        - hpo
+        - disease
 "#;
 pub(crate) static EXCEL_DATASOURCE_CONFIG_FILE: &[u8] = br#"
 type: "excel"

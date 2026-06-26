@@ -12,5 +12,6 @@ mod test_suite;
 
 pub mod phenoxtract;
 pub mod transform;
+pub mod types;
 pub(crate) mod utils;
 mod validation;

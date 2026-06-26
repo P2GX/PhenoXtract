@@ -1,4 +1,6 @@
 #![allow(unused_assignments)]
+
+use crate::types::HashableSet;
 use enum_try_as_inner::EnumTryAsInner;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -61,7 +63,6 @@ pub enum Context {
     Disease,
     MultiHpoId,
     Onset(TimeElementType),
-    HpoOrDisease,
     TimeOfResolution(TimeElementType),
     Severity,
     ObservationStatus,
@@ -97,6 +98,8 @@ pub enum Context {
 
     QuantityValue,
     QuantityUnit,
+
+    MultiContext(HashableSet<Context>),
 
     #[default]
     None,
@@ -154,7 +157,6 @@ impl Context {
                 | ContextKind::Disease
                 | ContextKind::PrimarySite
                 | ContextKind::Hgnc
-                | ContextKind::HpoOrDisease
                 | ContextKind::Hgvs
                 | ContextKind::QuantitativeMeasurement
                 | ContextKind::QualitativeMeasurement
@@ -173,6 +175,7 @@ impl Context {
                 | ContextKind::TreatmentAgent
                 | ContextKind::RouteOfAdministration
                 | ContextKind::DrugType
+                | ContextKind::MultiContext
                 | ContextKind::None => None,
             })
             .collect()
