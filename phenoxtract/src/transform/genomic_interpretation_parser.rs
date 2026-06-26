@@ -4,7 +4,9 @@ use crate::ontology::resource_references::{KnownResourcePrefixes, ResourceRef};
 use crate::transform::error::PhenopacketBuilderError;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
 use phenopackets::schema::v2::core::genomic_interpretation::Call;
-use phenopackets::schema::v2::core::{GenomicInterpretation, OntologyClass, VariantInterpretation};
+use phenopackets::schema::v2::core::{
+    GenomicInterpretation, OntologyClass, Sex, VariantInterpretation,
+};
 use pivotal::hgnc::{CachedHGNCClient, GeneQuery, HGNCData};
 use pivotal::hgvs::{CachedHGVSClient, HGVSData, HGVSError, HgvsVariant};
 use std::sync::Arc;
@@ -101,7 +103,87 @@ impl GenomicInterpretationParser {
         hgvs1: &HgvsVariant,
         hgvs2: Option<&HgvsVariant>,
     ) -> OntologyClass {
-        todo!()
+        let sex_enum = if let Some(sex) = sex {
+            Sex::from_str_name(sex).unwrap()
+            // todo ! Error handling here
+        } else {
+            Sex::UnknownSex
+        };
+
+        match (&chromosomal_sex, &allele_count, is_x, is_y) {
+            // variants on non-sex chromosomes
+            (_, AlleleCount::Double, false, false) => Ok(OntologyClass {
+                id: "GENO:0000136".to_string(),
+                label: "homozygous".to_string(),
+            }),
+            (_, AlleleCount::Single, false, false) => Ok(OntologyClass {
+                id: "GENO:0000135".to_string(),
+                label: "heterozygous".to_string(),
+            }),
+            // variants on x-chromosome
+            (
+                ChromosomalSex::XX
+                | ChromosomalSex::XXY
+                | ChromosomalSex::XXX
+                | ChromosomalSex::Unknown,
+                AlleleCount::Double,
+                true,
+                false,
+            ) => Ok(OntologyClass {
+                id: "GENO:0000136".to_string(),
+                label: "homozygous".to_string(),
+            }),
+            (
+                ChromosomalSex::XX | ChromosomalSex::XXY | ChromosomalSex::XXX,
+                AlleleCount::Single,
+                true,
+                false,
+            ) => Ok(OntologyClass {
+                id: "GENO:0000135".to_string(),
+                label: "heterozygous".to_string(),
+            }),
+            (
+                ChromosomalSex::X | ChromosomalSex::XY | ChromosomalSex::XYY,
+                AlleleCount::Single,
+                true,
+                false,
+            ) => Ok(OntologyClass {
+                id: "GENO:0000134".to_string(),
+                label: "hemizygous".to_string(),
+            }),
+            (ChromosomalSex::Unknown, AlleleCount::Single, true, false) => Ok(OntologyClass {
+                id: "GENO:0000137".to_string(),
+                label: "unspecified zygosity".to_string(),
+            }),
+            // variants on y-chromosome
+            (ChromosomalSex::XYY | ChromosomalSex::Unknown, AlleleCount::Double, false, true) => {
+                Ok(OntologyClass {
+                    id: "GENO:0000136".to_string(),
+                    label: "homozygous".to_string(),
+                })
+            }
+            (ChromosomalSex::XYY, AlleleCount::Single, false, true) => Ok(OntologyClass {
+                id: "GENO:0000135".to_string(),
+                label: "heterozygous".to_string(),
+            }),
+            (ChromosomalSex::XY | ChromosomalSex::XXY, AlleleCount::Single, false, true) => {
+                Ok(OntologyClass {
+                    id: "GENO:0000134".to_string(),
+                    label: "hemizygous".to_string(),
+                })
+            }
+            (ChromosomalSex::Unknown, AlleleCount::Single, false, true) => Ok(OntologyClass {
+                id: "GENO:0000137".to_string(),
+                label: "unspecified zygosity".to_string(),
+            }),
+            // nothing else makes sense
+            _ => Err(HGVSError::ContradictoryAllelicData {
+                chromosomal_sex: chromosomal_sex.clone(),
+                allele_count,
+                is_x,
+                is_y,
+            }),
+        }
     }
 
     fn genomic_interpretation_from_gene(
@@ -130,7 +212,79 @@ impl GenomicInterpretationParser {
         validated_hgvs: &HgvsVariant,
         allelic_state: &OntologyClass,
     ) -> GenomicInterpretation {
-        todo!()
+        let gene_context = GeneDescriptor {
+            value_id: hgvs_variant.hgnc_id().to_string(),
+            symbol: hgvs_variant.gene_symbol().to_string(),
+            ..Default::default()
+        };
+
+        let mut expressions = vec![];
+
+        if Self::is_c_hgvs(hgvs_variant.allele()) {
+            let hgvs_c = Expression {
+                syntax: "hgvs.c".to_string(),
+                value: hgvs_variant.transcript_hgvs().to_string(),
+                version: String::default(),
+            };
+            expressions.push(hgvs_c);
+        }
+
+        if Self::is_n_hgvs(hgvs_variant.allele()) {
+            let hgvs_n = Expression {
+                syntax: "hgvs.n".to_string(),
+                value: hgvs_variant.transcript_hgvs().to_string(),
+                version: String::default(),
+            };
+            expressions.push(hgvs_n);
+        }
+
+        if Self::is_m_hgvs(hgvs_variant.allele()) {
+            let hgvs_m = Expression {
+                syntax: "hgvs.m".to_string(),
+                value: hgvs_variant.transcript_hgvs().to_string(),
+                version: String::default(),
+            };
+            expressions.push(hgvs_m);
+        }
+
+        expressions.push(Expression {
+            syntax: "hgvs.g".to_string(),
+            value: hgvs_variant.g_hgvs().to_string(),
+            version: String::default(),
+        });
+
+        if let Some(hgvs_p) = &hgvs_variant.p_hgvs() {
+            let hgvs_p = Expression {
+                syntax: "hgvs.p".to_string(),
+                value: hgvs_p.clone(),
+                version: String::default(),
+            };
+            expressions.push(hgvs_p);
+        }
+
+        let vcf_record = VcfRecord {
+            genome_assembly: hgvs_variant.assembly().to_string(),
+            chrom: hgvs_variant.chr().to_string(),
+            pos: hgvs_variant.position() as u64,
+            r#ref: hgvs_variant.ref_allele().to_string(),
+            alt: hgvs_variant.alt_allele().to_string(),
+            ..Default::default()
+        };
+
+        let variation_descriptor = VariationDescriptor {
+            id: Uuid::new_v4().to_string(),
+            gene_context: Some(gene_context),
+            expressions,
+            vcf_record: Some(vcf_record),
+            molecule_context: MoleculeContext::Genomic.into(),
+            allelic_state: Some(allelic_state),
+            ..Default::default()
+        };
+        VariantInterpretation {
+            acmg_pathogenicity_classification: AcmgPathogenicityClassification::Pathogenic.into(),
+            therapeutic_actionability: TherapeuticActionability::UnknownActionability.into(),
+            variation_descriptor: Some(variation_descriptor),
+        }
     }
 }
 
