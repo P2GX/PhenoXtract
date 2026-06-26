@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::transform::collecting::medical_actions::medical_treatment_data::DoseIntervalRow;
 use crate::transform::error::PhenopacketBuilderError;
-use crate::transform::pathogenic_gene_variant_info::PathogenicGeneVariantData;
 use phenopackets::schema::v2::Phenopacket;
 use phenopackets::schema::v2::core::{
     Disease, Individual, Interpretation, Measurement, MedicalAction, PhenotypicFeature, Resource,
@@ -60,7 +59,9 @@ pub trait PhenopacketBuilding {
         &mut self,
         patient_id: &str,
         disease: &str,
-        gene_variant_data: &PathogenicGeneVariantData,
+        gene: Option<&str>,
+        hgvs1: Option<&str>,
+        hgvs2: Option<&str>,
         subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError>;
 

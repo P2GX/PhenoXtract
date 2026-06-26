@@ -1,8 +1,7 @@
 use crate::config::MetaData;
 use crate::ontology::traits::BiDict;
 use crate::transform::bidict_library::BiDictLibrary;
-use pivotal::hgnc::HGNCData;
-use pivotal::hgvs::HGVSData;
+use crate::transform::genomic_interpretation_parser::GenomicInterpretationParser;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -49,8 +48,7 @@ impl From<MetaData> for BuilderMetaData {
 #[derive(Debug)]
 pub struct TransformContext {
     meta_data: BuilderMetaData,
-    hgnc_client: Arc<dyn HGNCData>,
-    hgvs_client: Arc<dyn HGVSData>,
+    gi_parser: GenomicInterpretationParser,
     hpo_bidict_lib: Arc<BiDictLibrary>,
     disease_bidict_lib: Arc<BiDictLibrary>,
     unit_bidict_lib: Arc<BiDictLibrary>,
@@ -80,26 +78,21 @@ impl PartialEq for TransformContext {
 impl TransformContext {
     pub fn builder(
         meta_data: BuilderMetaData,
-        hgnc_client: Arc<dyn HGNCData>,
-        hgvs_client: Arc<dyn HGVSData>,
+        gi_parser: GenomicInterpretationParser,
     ) -> TransformContextBuilder {
-        TransformContextBuilder::new(meta_data, hgnc_client, hgvs_client)
+        TransformContextBuilder::new(meta_data, gi_parser)
     }
 
     pub fn meta_data(&self) -> &BuilderMetaData {
         &self.meta_data
     }
 
+    pub fn gi_parser(&self) -> &GenomicInterpretationParser {
+        &self.gi_parser
+    }
+
     pub fn hpo_bidict_lib(&self) -> &Arc<BiDictLibrary> {
         &self.hpo_bidict_lib
-    }
-
-    pub fn hgnc_client(&self) -> &Arc<dyn HGNCData> {
-        &self.hgnc_client
-    }
-
-    pub fn hgvs_client(&self) -> &Arc<dyn HGVSData> {
-        &self.hgvs_client
     }
 
     pub fn disease_bidict_lib(&self) -> &Arc<BiDictLibrary> {
@@ -138,8 +131,7 @@ impl TransformContext {
 pub struct TransformContextBuilder {
     meta_data: BuilderMetaData,
     hpo_bidict_lib: BiDictLibrary,
-    hgnc_client: Arc<dyn HGNCData>,
-    hgvs_client: Arc<dyn HGVSData>,
+    gi_parser: GenomicInterpretationParser,
     disease_bidict_lib: BiDictLibrary,
     unit_bidict_lib: BiDictLibrary,
     assay_bidict_lib: BiDictLibrary,
@@ -151,16 +143,11 @@ pub struct TransformContextBuilder {
 }
 
 impl TransformContextBuilder {
-    pub fn new(
-        meta_data: BuilderMetaData,
-        hgnc_client: Arc<dyn HGNCData>,
-        hgvs_client: Arc<dyn HGVSData>,
-    ) -> Self {
+    pub fn new(meta_data: BuilderMetaData, gi_parser: GenomicInterpretationParser) -> Self {
         Self {
             meta_data,
             hpo_bidict_lib: BiDictLibrary::empty_with_name("HPO"),
-            hgnc_client,
-            hgvs_client,
+            gi_parser,
             disease_bidict_lib: BiDictLibrary::empty_with_name("DISEASE"),
             unit_bidict_lib: BiDictLibrary::empty_with_name("UNIT"),
             assay_bidict_lib: BiDictLibrary::empty_with_name("ASSY"),
@@ -172,16 +159,11 @@ impl TransformContextBuilder {
         }
     }
 
-    pub fn hgnc_client(mut self, client: Arc<dyn HGNCData>) -> Self {
-        self.hgnc_client = client;
+    #[allow(dead_code)]
+    pub(crate) fn gi_parser(mut self, gi_parser: GenomicInterpretationParser) -> Self {
+        self.gi_parser = gi_parser;
         self
     }
-
-    pub fn hgvs_client(mut self, client: Arc<dyn HGVSData>) -> Self {
-        self.hgvs_client = client;
-        self
-    }
-
     pub fn add_hpo_bidict(&mut self, bidict: Box<dyn BiDict>) {
         self.hpo_bidict_lib.add_bidict(bidict);
     }
@@ -221,8 +203,7 @@ impl TransformContextBuilder {
         TransformContext {
             meta_data: self.meta_data,
             hpo_bidict_lib: Arc::new(self.hpo_bidict_lib),
-            hgnc_client: self.hgnc_client,
-            hgvs_client: self.hgvs_client,
+            gi_parser: self.gi_parser,
             disease_bidict_lib: Arc::new(self.disease_bidict_lib),
             unit_bidict_lib: Arc::new(self.unit_bidict_lib),
             assay_bidict_lib: Arc::new(self.assay_bidict_lib),

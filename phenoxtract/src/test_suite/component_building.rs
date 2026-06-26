@@ -5,6 +5,7 @@ use crate::test_suite::ontology_mocking::{
 use crate::test_suite::phenopacket_component_generation::default_meta_data;
 use crate::transform::PhenopacketBuilder;
 use crate::transform::bidict_library::BiDictLibrary;
+use crate::transform::genomic_interpretation_parser::GenomicInterpretationParser;
 use crate::transform::transform_context::TransformContext;
 use dotenvy::dotenv;
 use pivotal::hgnc::MockHGNCClient;
@@ -22,8 +23,10 @@ pub(crate) fn build_test_mondo_bidict_library() -> BiDictLibrary {
 pub(crate) fn default_builder_context() -> TransformContext {
     let mut builder = TransformContext::builder(
         default_meta_data().into(),
-        Arc::new(MockHGNCClient::default()),
-        Arc::new(MockHGVSClient::default()),
+        GenomicInterpretationParser::new(
+            Arc::new(MockHGVSClient::default()),
+            Arc::new(MockHGNCClient::default()),
+        ),
     );
 
     builder.add_hpo_bidict(Box::new(HPO_BIDICT.clone()));
