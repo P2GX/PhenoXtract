@@ -9,12 +9,12 @@ use pivotal::hgvs::{CachedHGVSClient, HGVSData, HgvsVariant};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct GenomicInterpretationBuilder {
+pub struct GenomicInterpretationParser {
     hgvs_client: Arc<dyn HGVSData>,
     hgnc_client: Arc<dyn HGNCData>,
 }
 
-impl GenomicInterpretationBuilder {
+impl GenomicInterpretationParser {
     pub(crate) fn new(hgvs_client: Arc<dyn HGVSData>, hgnc_client: Arc<dyn HGNCData>) -> Self {
         Self {
             hgvs_client,

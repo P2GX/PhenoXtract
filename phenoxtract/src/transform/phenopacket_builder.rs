@@ -283,18 +283,18 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         hgvs2: Option<&str>,
         subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
-        let phenopacket_id = self.generate_phenopacket_id(patient_id);
-
-        let (disease_term, res_ref) = Self::resolve_term(self.ctx.disease_bidict_lib(), disease)?;
-        self.ensure_resource(patient_id, &res_ref);
-
-        let (gis, resources) = self.ctx.gi_builder().build_genomic_interpretations(
+        let (gis, resources) = self.ctx.gi_parser().build_genomic_interpretations(
             gene,
             hgvs1,
             hgvs2,
             patient_id,
             subject_sex,
         );
+
+        let phenopacket_id = self.generate_phenopacket_id(patient_id);
+
+        let (disease_term, res_ref) = Self::resolve_term(self.ctx.disease_bidict_lib(), disease)?;
+        self.ensure_resource(patient_id, &res_ref);
 
         let interpretation =
             self.get_or_create_interpretation(patient_id, phenopacket_id.as_str(), disease_term);

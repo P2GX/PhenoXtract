@@ -15,7 +15,7 @@ use crate::load::loader_factory::LoaderFactory;
 use crate::ontology::CachedOntologyFactory;
 use crate::phenoxtract::Phenoxtract;
 use crate::transform::collecting::cdf_collector_broker::CdfCollectorBroker;
-use crate::transform::genomic_interpretation_builder::GenomicInterpretationBuilder;
+use crate::transform::genomic_interpretation_parser::GenomicInterpretationParser;
 use crate::transform::strategies::strategy_factory::StrategyFactory;
 use crate::transform::strategies::traits::Strategy;
 use crate::transform::transform_context::TransformContext;
@@ -79,7 +79,7 @@ impl TryFrom<PipelineConfig> for Pipeline {
 
         let mut ctx_builder = TransformContext::builder(
             config.meta_data.clone().into(),
-            GenomicInterpretationBuilder::new_with_defaults()?,
+            GenomicInterpretationParser::new_with_defaults()?,
         );
 
         if let Some(hpo_resource) = &config.meta_data.hpo_resource {

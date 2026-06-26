@@ -161,29 +161,23 @@ impl InterpretationCollector {
             patient_cdf.get_linked_cols_with_context(Some(bb_id), &Context::Hgvs, &Context::None),
         )?;
 
-        let (allele_one_col, allele_two_col) = match linked_hgvs_cols.len() {
-            0 => (None, None),
-            1 => (Some(linked_hgvs_cols[0]), None),
-            2 => (Some(linked_hgvs_cols[0]), Some(linked_hgvs_cols[1])),
-            n => {
-                return Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
-                    table_name: patient_cdf.context().name().to_string(),
-                    bb_id: bb_id.to_string(),
-                    contexts: vec![Context::Hgvs],
-                    n_found: n,
-                    n_expected: 2,
-                });
-            }
-        };
+        if linked_hgvs_cols.len() > 2 {
+            return Err(CollectorError::ExpectedAtMostNLinkedColumnWithContexts {
+                table_name: patient_cdf.context().name().to_string(),
+                bb_id: bb_id.to_string(),
+                contexts: vec![Context::Hgvs],
+                n_found: linked_hgvs_cols.len(),
+                n_expected: 2,
+            });
+        }
+
+        let allele_one_col = linked_hgvs_cols.get(0).copied();
+        let allele_two_col = linked_hgvs_cols.get(1).copied();
 
         for row_idx in 0..patient_cdf.data().height() {
             let gene = get_str_at_index(linked_hgnc_col.as_ref(), row_idx);
             let hgvs1 = get_str_at_index(allele_one_col, row_idx);
             let hgvs2 = get_str_at_index(allele_two_col, row_idx);
-
-            if (gene, hgvs1, hgvs2) == (None, None, None) {
-                continue;
-            }
 
             if let Some(disease) = disease_col.get(row_idx) {
                 builder.upsert_interpretation(
