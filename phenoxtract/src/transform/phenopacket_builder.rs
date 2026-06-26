@@ -283,6 +283,7 @@ impl PhenopacketBuilding for PhenopacketBuilder {
         hgvs2: Option<&str>,
         subject_sex: Option<&str>,
     ) -> Result<(), PhenopacketBuilderError> {
+
         let (gis, resources) = self.ctx.gi_parser().build_genomic_interpretations(
             gene,
             hgvs1,
