@@ -159,7 +159,8 @@ impl TransformContextBuilder {
         }
     }
 
-    pub fn gi_builder(mut self, gi_builder: GenomicInterpretationBuilder) -> Self {
+    #[allow(dead_code)]
+    pub(crate) fn gi_builder(mut self, gi_builder: GenomicInterpretationBuilder) -> Self {
         self.gi_builder = gi_builder;
         self
     }

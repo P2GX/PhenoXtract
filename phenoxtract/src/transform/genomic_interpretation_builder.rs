@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused)]
 use crate::ontology::resource_references::ResourceRef;
 use crate::transform::error::PhenopacketBuilderError;
 use phenopackets::ga4gh::vrsatile::v1::GeneDescriptor;
@@ -7,7 +9,7 @@ use pivotal::hgvs::{CachedHGVSClient, HGVSData, HgvsVariant};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub(crate) struct GenomicInterpretationBuilder {
+pub struct GenomicInterpretationBuilder {
     hgvs_client: Arc<dyn HGVSData>,
     hgnc_client: Arc<dyn HGNCData>,
 }
