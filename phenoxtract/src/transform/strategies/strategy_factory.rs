@@ -2,6 +2,7 @@ use crate::config::strategy_config::StrategyConfig;
 use crate::error::ConstructionError;
 use crate::ontology::CachedOntologyFactory;
 use crate::transform::strategies::age_to_iso8601::AgeToIso8601Strategy;
+use crate::transform::strategies::column_renaming::ColumnRenamingStrategy;
 use crate::transform::strategies::hpo_disease_splitter::HpoDiseaseSplitterStrategy;
 use crate::transform::strategies::mapping::DefaultMapping;
 use crate::transform::strategies::traits::Strategy;
@@ -11,6 +12,7 @@ use crate::transform::strategies::{
 };
 use crate::transform::transform_context::TransformContext;
 use ontology_registry::traits::OntologyRegistration;
+use std::collections::HashSet;
 
 pub struct StrategyFactory<OR: OntologyRegistration> {
     ontology_factory: CachedOntologyFactory<OR>,
@@ -69,6 +71,17 @@ impl<OR: OntologyRegistration> StrategyFactory<OR> {
                 self.ctx.hpo_bidict_lib().clone(),
                 self.ctx.disease_bidict_lib().clone(),
             ))),
+            StrategyConfig::ColumnRenaming { renaming } => {
+                let names: HashSet<&String> = renaming.values().collect();
+                if names.len() < renaming.len() {
+                    return Err(ConstructionError::DuplicateColumnNames {
+                        reason: "Configured ColumnRenamingStrategy does feature duplicates."
+                            .to_string(),
+                    });
+                }
+
+                Ok(Box::new(ColumnRenamingStrategy::new(renaming.clone())))
+            }
         }
     }
 
@@ -87,6 +100,7 @@ mod tests {
     use crate::test_suite::resource_references::MONDO_REF;
     use crate::transform::strategies::mapping::DefaultMapping;
     use rstest::rstest;
+    use std::collections::HashMap;
 
     fn create_test_factory() -> StrategyFactory<MockOntologyRegistry> {
         StrategyFactory {
@@ -221,5 +235,35 @@ mod tests {
         let strategy: Box<dyn Strategy> = strategy_result.unwrap();
 
         let _: &dyn Strategy = strategy.as_ref();
+    }
+
+    #[rstest]
+    fn test_column_renaming_strategy_ok() {
+        let mut factory = create_test_factory();
+        let config = StrategyConfig::ColumnRenaming {
+            renaming: HashMap::from_iter([
+                ("1".to_string(), "2".to_string()),
+                ("3".to_string(), "4".to_string()),
+            ]),
+        };
+
+        let strategy_result = factory.try_from_config(&config);
+
+        assert!(strategy_result.is_ok());
+    }
+
+    #[rstest]
+    fn test_column_renaming_strategy_err() {
+        let mut factory = create_test_factory();
+        let config = StrategyConfig::ColumnRenaming {
+            renaming: HashMap::from_iter([
+                ("1".to_string(), "2".to_string()),
+                ("3".to_string(), "2".to_string()),
+            ]),
+        };
+
+        let strategy_result = factory.try_from_config(&config);
+
+        assert!(strategy_result.is_err());
     }
 }

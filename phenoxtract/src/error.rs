@@ -25,6 +25,8 @@ pub enum ConstructionError {
     LoadingAliases { path: PathBuf, err: PolarsError },
     #[error("Could not load Identifier because: {reason}")]
     Identifier { reason: String },
+    #[error("Found Duplicate Column Names: {reason}")]
+    DuplicateColumnNames { reason: String },
     #[error("Could not find config file at '{0}'")]
     NoConfigFileFound(PathBuf),
     #[error(transparent)]

@@ -2,6 +2,7 @@ use crate::config::context::ContextKind;
 use crate::ontology::resource_references::ResourceRef;
 use crate::transform::strategies::mapping::DefaultMapping;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -19,4 +20,7 @@ pub enum StrategyConfig {
         strict: bool,
     },
     HpoDiseaseSplitter,
+    ColumnRenaming {
+        renaming: HashMap<String, String>,
+    },
 }
