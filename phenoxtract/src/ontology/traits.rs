@@ -11,9 +11,9 @@ pub trait HasVersion {
 }
 
 pub trait BiDict: Send + Sync + Debug {
-    fn get(&self, id_or_label: &str) -> Result<&str, BiDictError>;
-    fn get_label(&self, id: &str) -> Result<&str, BiDictError>;
-    fn get_id(&self, term: &str) -> Result<&str, BiDictError>;
+    fn get(&self, id_or_label: &str) -> Result<String, BiDictError>;
+    fn get_label(&self, id: &str) -> Result<String, BiDictError>;
+    fn get_id(&self, term: &str) -> Result<String, BiDictError>;
 
     fn reference(&self) -> &ResourceRef;
 }
