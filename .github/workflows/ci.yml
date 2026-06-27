@@ -137,7 +137,7 @@ jobs:
       - name: Run ESLint
         run: pnpm lint ./src --ext .js,.jsx,.ts,.tsx
 
-  svelte-check:
+  Svelte-Check:
     runs-on: ubuntu-latest
     defaults:
       run:
