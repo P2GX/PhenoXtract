@@ -166,6 +166,43 @@
                 }
               }
             }
+          },
+          {
+            "subjectOrBiosampleId": "P001",
+            "interpretationStatus": "UNKNOWN_STATUS",
+            "variantInterpretation": {
+              "acmgPathogenicityClassification": "PATHOGENIC",
+              "therapeuticActionability": "UNKNOWN_ACTIONABILITY",
+              "variationDescriptor": {
+                "id": "17a94382-e965-487b-a895-f31ce94d100a",
+                "geneContext": {
+                  "valueId": "HGNC:4713",
+                  "symbol": "H19"
+                },
+                "expressions": [
+                  {
+                    "syntax": "hgvs.n",
+                    "value": "NR_002196.1:n.601G>T"
+                  },
+                  {
+                    "syntax": "hgvs.g",
+                    "value": "NC_000011.10:g.1997235C>A"
+                  }
+                ],
+                "vcfRecord": {
+                  "genomeAssembly": "hg38",
+                  "chrom": "chr11",
+                  "pos": 1997235,
+                  "ref": "C",
+                  "alt": "A"
+                },
+                "moleculeContext": "genomic",
+                "allelicState": {
+                  "id": "GENO:0000135",
+                  "label": "heterozygous"
+                }
+              }
+            }
           }
         ]
       }
