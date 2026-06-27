@@ -104,7 +104,7 @@ jobs:
           RUSTDOCFLAGS: "-D warnings -D rustdoc::broken_intra_doc_links"
         run: cargo doc --no-deps --all-features
 
-  ui-linting:
+  UI-Linting:
     runs-on: ubuntu-latest
     defaults:
       run:
