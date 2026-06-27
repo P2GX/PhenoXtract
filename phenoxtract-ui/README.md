@@ -6,6 +6,7 @@ This template should help get you started developing with Tauri, SvelteKit and T
 
 - `cd phenoxtract-ui`
 - `npm install -g pnpm`
+- `pnpm install tailwindcss @tailwindcss/vite`
 - `pnpm tauri dev`
 
 ## Recommended IDE Setup
