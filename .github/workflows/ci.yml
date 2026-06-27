@@ -36,6 +36,8 @@ jobs:
         with:
           toolchain: stable
 
+      - uses: ./.github/actions/setup-system-deps
+
       #- name: Rust Cache
       #  uses: Swatinem/rust-cache@v2.8.0
 
@@ -62,6 +64,8 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.8.0
 
+      - uses: ./.github/actions/setup-system-deps
+
       - name: Check formatting of Rust code with rustfmt
         uses: actions-rust-lang/rustfmt@v1.1.1
 
@@ -84,6 +88,8 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.8.0
 
+      - uses: ./.github/actions/setup-system-deps
+
       - run: cargo clippy --workspace --lib --all-targets --all-features -- -D clippy::dbg-macro
 
   doc-check:
@@ -98,6 +104,8 @@ jobs:
           toolchain: stable
 
       - uses: Swatinem/rust-cache@v2.8.0
+
+      - uses: ./.github/actions/setup-system-deps
 
       - name: Check documentation
         env:

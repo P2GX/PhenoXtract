@@ -1,0 +1,9 @@
+name: Install system dependencies
+description: Installs shared system dependencies for all jobs
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev libgtk-3-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev
+      shell: bash
