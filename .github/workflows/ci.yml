@@ -104,7 +104,7 @@ jobs:
           RUSTDOCFLAGS: "-D warnings -D rustdoc::broken_intra_doc_links"
         run: cargo doc --no-deps --all-features
 
-  eslint:
+  ui-linting:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -112,15 +112,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: latest
+          
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
