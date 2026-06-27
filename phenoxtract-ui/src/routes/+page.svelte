@@ -1,6 +1,8 @@
 <script lang="ts">
     import {invoke} from "@tauri-apps/api/core";
 
+    import {Navbar} from "flowbite-svelte";
+
     let name = $state("");
     let greetMsg = $state("");
 
