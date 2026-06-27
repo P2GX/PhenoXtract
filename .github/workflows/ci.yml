@@ -106,6 +106,9 @@ jobs:
 
   eslint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./phenoxtract-ui
     steps:
       - uses: actions/checkout@v4
 
@@ -123,4 +126,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
-        run: pnpm eslint ./phenoxtract-ui/src
+        run: pnpm lint ./phenoxtract-ui/src
