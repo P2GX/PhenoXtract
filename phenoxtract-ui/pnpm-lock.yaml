@@ -17,9 +17,6 @@ importers:
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.5.4
-      eslint:
-        specifier: ^10.5.0
-        version: 10.5.0(jiti@2.7.0)
       flowbite:
         specifier: ^4.0.2
         version: 4.0.2(rollup@4.62.2)
