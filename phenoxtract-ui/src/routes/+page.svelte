@@ -149,12 +149,10 @@ let name = $state("");
 <style>
 footer {
   display: flex;
-  flex: 0 0 auto;
   padding: 1rem;
   background: #262626;
   margin-top: auto;
-  flex-direction: row;
-  place-items: center;
+  justify-content: space-evenly;
   gap: 0.5rem;
 }
 .square {
