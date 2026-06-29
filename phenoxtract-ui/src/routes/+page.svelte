@@ -1,17 +1,27 @@
 <script lang="ts">
-import { Button, GradientButton } from "flowbite-svelte";
+import { Button } from "flowbite-svelte";
 import { Navbar, NavLi, NavHamburger, NavUl, Search, ToolbarButton } from "flowbite-svelte";
 import GithubLogo from "../icons/GithubLogo.svelte";
 import BugIcon from "../icons/BugIcon.svelte";
 import EmailIcon from "../icons/EmailIcon.svelte";
 import logo from "../icons/px-logo-2.png";
-// import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
+import { onMount } from "svelte";
 
 import { SearchOutline } from "flowbite-svelte-icons";
-import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
 
 let fileInput: HTMLInputElement;
 let selectedFolder = $state<string>("");
+let version = $state<string>("");
+
+onMount(async () => {
+  try {
+    version = await invoke("get_version");
+  } catch (error) {
+    console.error("Failed to get app version:", error);
+    version = "Unknown";
+  }
+});
 
 function handleChange(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -29,7 +39,7 @@ let name = $state("");
       <img alt="PX Logo" src={logo} class="logo" />
       <div class="brand-text">
         <h1>Phenoxtract</h1>
-        <span>0.1.0</span>
+        <span>{version}</span>
       </div>
     </header>
 
