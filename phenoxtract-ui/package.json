@@ -10,27 +10,28 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "lint": "eslint ."
+    "lint": "biome lint .",
+    "check:all": "pnpm check && pnpm lint",
+    "format": "biome format . --write"
   },
   "license": "MIT",
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
-    "eslint": "^10.5.0",
     "flowbite": "^4.0.2",
     "flowbite-svelte": "^1.33.1",
     "sv": "^0.16.1",
     "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.1",
     "@eslint/js": "^10.0.1",
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.9.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tauri-apps/cli": "^2",
     "@types/node": "^24",
-    "eslint": "^10.4.1",
     "eslint-plugin-svelte": "^3.19.0",
     "flowbite-svelte-icons": "^3.1.0",
     "globals": "^17.6.0",
