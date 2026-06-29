@@ -135,8 +135,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Biome lint
-
         run: pnpm biome lint .
+
       - name: Run Biome format
         run: pnpm biome format .
 

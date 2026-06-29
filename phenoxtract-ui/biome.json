@@ -28,6 +28,9 @@
       "preset": "recommended",
       "correctness": {
         "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noUnknownAtRules": "off"
       }
     }
   },
