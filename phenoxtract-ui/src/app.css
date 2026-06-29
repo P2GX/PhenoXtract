@@ -5,3 +5,17 @@
 @source "../node_modules/flowbite-svelte-icons/dist";
 
 @tailwind utilities;
+
+@font-face {
+  font-family: "LemonMilkMedium";
+  src: url("fonts/RussoOne-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "LemonMilkLight";
+  src: url("akira_expanded/Akira Expanded Demo.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}

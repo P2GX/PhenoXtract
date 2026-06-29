@@ -1,53 +1,53 @@
 name: Build and Deploy Documentation
 
 on:
- push:
-   branches:
-     - main
+  push:
+    branches:
+      - main
 
 permissions:
- contents: write
- pages: write
- id-token: write
+  contents: write
+  pages: write
+  id-token: write
 
 concurrency:
- group: "pages"
- cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
- build:
-   runs-on: ubuntu-latest
-   steps:
-     - uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-     - name: Set up Rust
-       uses: actions-rust-lang/setup-rust-toolchain@v1
-       with:
-         toolchain: stable
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
 
-     - name: Build Rust documentation
-       run: cargo doc --no-deps
+      - name: Build Rust documentation
+        run: cargo doc --no-deps
 
-     - name: Add redirect index.html
-       run: |
-        mkdir -p target/doc
-        echo '<meta http-equiv="refresh" content="0; url=phenoxtract/index.html">' > target/doc/index.html
+      - name: Add redirect index.html
+        run: |
+          mkdir -p target/doc
+          echo '<meta http-equiv="refresh" content="0; url=phenoxtract/index.html">' > target/doc/index.html
 
-     - name: Upload documentation artifact
-       uses: actions/upload-pages-artifact@v3
-       with:
-         path: target/doc            # the built docs
+      - name: Upload documentation artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc            # the built docs
 
- deploy:
-   needs: build
-   runs-on: ubuntu-latest
-   environment:
-     name: github-pages-${{ github.ref_name }}
-     url: ${{ steps.deployment.outputs.page_url }}
-   permissions:
-     pages: write
-     id-token: write
-   steps:
-     - name: Deploy to GitHub Pages
-       id: deployment
-       uses: actions/deploy-pages@v4
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: GithubLogo-pages-${{ GithubLogo.ref_name }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
