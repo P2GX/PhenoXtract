@@ -112,7 +112,7 @@ jobs:
           RUSTDOCFLAGS: "-D warnings -D rustdoc::broken_intra_doc_links"
         run: cargo doc --no-deps --all-features
 
-  UI-Linting:
+  Biome:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -134,8 +134,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run ESLint
-        run: pnpm lint ./src --ext .js,.jsx,.ts,.tsx
+      - name: Run Biome lint
+
+        run: pnpm biome lint .
+      - name: Run Biome format
+        run: pnpm biome format .
+
+      - name: Run Biome lint
+        run: pnpm biome check .
 
   Svelte-Check:
     runs-on: ubuntu-latest
