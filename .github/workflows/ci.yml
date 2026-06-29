@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./phenoxtract-ui
+        working-directory: ./phenoxtract-ui/src
     steps:
       - uses: actions/checkout@v4
 
