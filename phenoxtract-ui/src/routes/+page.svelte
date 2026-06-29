@@ -4,7 +4,7 @@ import { Navbar, NavLi, NavHamburger, NavUl, Search, ToolbarButton } from "flowb
 import GithubLogo from "../icons/GithubLogo.svelte";
 import BugIcon from "../icons/BugIcon.svelte";
 import EmailIcon from "../icons/EmailIcon.svelte";
-
+import logo from "../icons/px-logo-2.png";
 // import { invoke } from "@tauri-apps/api/core";
 
 import { SearchOutline } from "flowbite-svelte-icons";
@@ -26,15 +26,16 @@ let name = $state("");
 <div class="app-container">
   <aside class="sidebar">
     <header class="brand">
+      <img alt="PX Logo" src={logo} class="logo" />
       <div class="brand-text">
         <h1>Phenoxtract</h1>
         <span>0.1.0</span>
       </div>
     </header>
 
-    <Button class="m-2.5 bg-gray-500">Projects</Button>
-    <Button class="bg-transparent m-2.5 hover:bg-gray-500">Settings</Button>
-    <Button class="bg-transparent m-2.5 hover:bg-gray-500">Documentation</Button>
+    <Button class="m-2.5 bg-gray-500 justify-start">Projects</Button>
+    <Button class="bg-transparent m-2.5 hover:bg-gray-500 justify-start">Settings</Button>
+    <Button class="bg-transparent m-2.5 hover:bg-gray-500 justify-start">Documentation</Button>
 
     <footer>
       <a href="https://github.com/P2GX/PhenoXtract" target="_blank"
@@ -49,7 +50,7 @@ let name = $state("");
     </footer>
   </aside>
 
-  <div class="flex-1 flex flex-col w-full overflow-hidden mr-3 ml-3">
+  <div class="content-wrapper">
     <Navbar class="border-b border-gray-500">
       {#snippet children({toggle})}
         <div class="flex">
@@ -80,6 +81,58 @@ let name = $state("");
         </NavUl>
       {/snippet}
     </Navbar>
+    <div class="main-content">
+      <button
+        type="button"
+        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
+      >
+        <div class="square">ID</div>
+        <div>
+          <h3>Immunology Data</h3>
+          <span class="text-sm opacity-75">~/some/path/to/project</span>
+        </div>
+      </button>
+      <button
+        type="button"
+        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
+      >
+        <div class="square">ID</div>
+        <div>
+          <h3>Immunology Data</h3>
+          <span class="text-sm opacity-75">~/some/path/to/project</span>
+        </div>
+      </button>
+      <button
+        type="button"
+        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
+      >
+        <div class="square">ID</div>
+        <div>
+          <h3>Immunology Data</h3>
+          <span class="text-sm opacity-75">~/some/path/to/project</span>
+        </div>
+      </button>
+      <button
+        type="button"
+        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
+      >
+        <div class="square">ID</div>
+        <div>
+          <h3>Immunology Data</h3>
+          <span class="text-sm opacity-75">~/some/path/to/project</span>
+        </div>
+      </button>
+      <button
+        type="button"
+        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
+      >
+        <div class="square">ID</div>
+        <div>
+          <h3>Immunology Data</h3>
+          <span class="text-sm opacity-75">~/some/path/to/project</span>
+        </div>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -94,6 +147,19 @@ footer {
   place-items: center;
   gap: 0.5rem;
 }
+.square {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ff3e00;
+  color: white;
+  font-family: "RussOne", serif;
+  font-size: 0.8rem;
+  border-radius: 5px;
+}
+
 .sidebar {
   width: 250px;
   border-right: 1px solid #6a7282;
@@ -112,10 +178,10 @@ footer {
 }
 
 .brand-text h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   margin: 0;
   font-weight: normal;
-  font-family: "LemonMilkMedium", serif;
+  font-family: "RussOne", serif;
   color: #ffffff;
 }
 
@@ -132,27 +198,18 @@ footer {
 }
 
 .content-wrapper {
-  flex: 1; /* Fills all remaining horizontal space */
+  flex: 1;
   display: flex;
   flex-direction: column; /* Stacks Navbar on top, Main Content on bottom */
   height: 100%;
   overflow: hidden;
 }
 
-/* 3. The "Leftover Square" (Your Main Content) */
 .main-content {
   flex: 1; /* Fills all remaining vertical space under the Navbar */
   overflow-y: auto; /* Adds a scrollbar only here if your content is long */
-  background-color: #ffffff; /* Or whatever color you want your main area */
+  background-color: #262626; /* Or whatever color you want your main area */
   padding: 1.5rem;
-}
-
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
 }
 
 :root {
@@ -171,28 +228,10 @@ footer {
   -webkit-text-size-adjust: 100%;
 }
 
-.container {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
 .logo {
-  height: 6em;
-  padding: 1.5em;
+  height: 2.5em;
   will-change: filter;
   transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
 }
 
 a {
@@ -207,38 +246,6 @@ a:hover {
 
 h1 {
   text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
 }
 
 #greet-input {
