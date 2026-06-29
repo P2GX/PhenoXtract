@@ -1,11 +1,14 @@
 <script lang="ts">
-import { Button } from "flowbite-svelte";
+import { Button, GradientButton } from "flowbite-svelte";
 import { Navbar, NavLi, NavHamburger, NavUl, Search, ToolbarButton } from "flowbite-svelte";
 import GithubLogo from "../icons/GithubLogo.svelte";
+import BugIcon from "../icons/BugIcon.svelte";
+import EmailIcon from "../icons/EmailIcon.svelte";
 
 // import { invoke } from "@tauri-apps/api/core";
 
 import { SearchOutline } from "flowbite-svelte-icons";
+import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
 
 let fileInput: HTMLInputElement;
 let selectedFolder = $state<string>("");
@@ -19,6 +22,7 @@ function handleChange(event: Event) {
 
 let name = $state("");
 </script>
+
 <div class="app-container">
   <aside class="sidebar">
     <header class="brand">
@@ -28,49 +32,68 @@ let name = $state("");
       </div>
     </header>
 
-    <Button class="bg-gray-500 m-2.5">Projects</Button>
-    <Button class="bg-gray-500 m-2.5">Settings</Button>
-    <Button class="bg-gray-500 m-2.5">Documentation</Button>
+    <Button class="m-2.5 bg-gray-500">Projects</Button>
+    <Button class="bg-transparent m-2.5 hover:bg-gray-500">Settings</Button>
+    <Button class="bg-transparent m-2.5 hover:bg-gray-500">Documentation</Button>
 
-    <footer class="bg-gray-500 m-2.5">
-      <a href="https://github.com/P2GX/PhenoXtract"><GithubLogo size="50px" /></a>
+    <footer>
+      <a href="https://github.com/P2GX/PhenoXtract" target="_blank"
+        ><GithubLogo size="50px" color="#000000FF" strokeWidth="0" /></a
+      >
+      <a href="https://github.com/P2GX/PhenoXtract/issues" target="_blank"
+        ><BugIcon size="50px" color="#000000FF" strokeWidth="0" /></a
+      >
+      <a href="mailto:Rouven.Reuter@bih-charite.de" target="_blank"
+        ><EmailIcon size="50px" color="#000000FF" strokeWidth="0" /></a
+      >
     </footer>
   </aside>
 
-  <Navbar>
-    {#snippet children({toggle})}
-      <div class="flex">
-        <ToolbarButton class="block items-center md:hidden" onclick={toggle}>
-          <SearchOutline class="h-5 w-5 text-gray-500 dark:text-gray-400" />
-        </ToolbarButton>
-        <div class="hidden md:block">
-          <Search size="md" placeholder="Search..." />
+  <div class="flex-1 flex flex-col w-full overflow-hidden mr-3 ml-3">
+    <Navbar class="border-b border-gray-500">
+      {#snippet children({toggle})}
+        <div class="flex">
+          <ToolbarButton class="block items-center md:hidden" onclick={toggle}>
+            <SearchOutline class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          </ToolbarButton>
+          <div class="hidden md:block">
+            <Search size="md" placeholder="Search..." />
+          </div>
+          <NavHamburger class="bg-gray-500 text-white" />
         </div>
-        <NavHamburger class="bg-gray-500 text-white" />
-      </div>
 
-      <NavUl>
-        <NavLi class="bg-gray-500  text-white text-center mr-5" href="/"
-          ><p class="px-2.5">New Project</p></NavLi
-        >
-        <input
-          type="file"
-          bind:this={fileInput}
-          webkitdirectory
-          class="hidden"
-          onchange={handleChange}
-        />
+        <NavUl>
+          <NavLi class="bg-gray-500  text-white text-center mr-5" href="/"
+            ><p class="px-2.5">New Project</p></NavLi
+          >
+          <input
+            type="file"
+            bind:this={fileInput}
+            webkitdirectory
+            class="hidden"
+            onchange={handleChange}
+          />
 
-        <NavLi onclick={() => fileInput.click()} class="bg-gray-500  text-white text-center mr-5">
-          <p class="px-2.5">Open</p>
-        </NavLi>
-      </NavUl>
-    {/snippet}
-  </Navbar>
-  <hr class="h-px mt-2 border-0 bg-gray-500 m-5" />
+          <NavLi onclick={() => fileInput.click()} class="bg-gray-500  text-white text-center mr-5">
+            <p class="px-2.5">Open</p>
+          </NavLi>
+        </NavUl>
+      {/snippet}
+    </Navbar>
+  </div>
 </div>
 
 <style>
+footer {
+  display: flex;
+  flex: 0 0 auto;
+  padding: 1rem;
+  background: #262626;
+  margin-top: auto;
+  flex-direction: row;
+  place-items: center;
+  gap: 0.5rem;
+}
 .sidebar {
   width: 250px;
   border-right: 1px solid #6a7282;
@@ -78,6 +101,7 @@ let name = $state("");
   flex-direction: column;
   padding-top: 1rem;
   background-color: #262626;
+  height: 100%;
 }
 
 .brand {
@@ -105,6 +129,22 @@ let name = $state("");
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+}
+
+.content-wrapper {
+  flex: 1; /* Fills all remaining horizontal space */
+  display: flex;
+  flex-direction: column; /* Stacks Navbar on top, Main Content on bottom */
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 3. The "Leftover Square" (Your Main Content) */
+.main-content {
+  flex: 1; /* Fills all remaining vertical space under the Navbar */
+  overflow-y: auto; /* Adds a scrollbar only here if your content is long */
+  background-color: #ffffff; /* Or whatever color you want your main area */
+  padding: 1.5rem;
 }
 
 .logo.vite:hover {

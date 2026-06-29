@@ -1,7 +1,7 @@
 <script>
 export let size = "800px";
 export let color = "currentColor";
-export let strokeWidth = 2;
+export let strokeWidth = "0";
 </script>
 
 <svg
@@ -12,10 +12,10 @@ export let strokeWidth = 2;
   stroke={color}
   stroke-width={strokeWidth}
 >
-  <title>github [#142]</title>
+  <title>Repo</title>
   <desc>Created with Sketch.</desc>
   <defs></defs>
-  <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+  <g id="Page-1" stroke={color} stroke-width={strokeWidth} fill="none" fill-rule="evenodd">
     <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -7559.000000)" fill="#000000">
       <g id="icons" transform="translate(56.000000, 160.000000)">
         <path
