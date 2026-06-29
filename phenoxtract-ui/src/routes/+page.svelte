@@ -1,38 +1,56 @@
 <script lang="ts">
     import {invoke} from "@tauri-apps/api/core";
-    
-    let name = $state("");
-    let greetMsg = $state("");
 
-    async function greet(event: Event) {
-        event.preventDefault();
-        // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-        greetMsg = await invoke("greet", {name});
+    import {Navbar, NavLi, NavUl, NavHamburger, Search, ToolbarButton} from "flowbite-svelte";
+    import {SearchOutline} from "flowbite-svelte-icons";
+
+    let fileInput: HTMLInputElement;
+    let selectedFolder = $state<string>("");
+
+    function handleChange(event: Event) {
+        const target = event.target as HTMLInputElement;
+        if (target.files && target.files.length > 0) {
+            selectedFolder = target.files[0].webkitRelativePath.split("/")[0];
+        }
     }
+
+    let name = $state("");
+
 </script>
 
-<main class="container">
-    <h1 class="text-3xl font-bold underline">Welcome to Tauri + Svelte</h1>
 
-    <div class="row">
-        <a href="https://vite.dev" target="_blank">
-            <img src="/vite.svg" class="logo vite" alt="Vite Logo"/>
-        </a>
-        <a href="https://tauri.app" target="_blank">
-            <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo"/>
-        </a>
-        <a href="https://svelte.dev" target="_blank">
-            <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo"/>
-        </a>
-    </div>
-    <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
+<Navbar>
+    {#snippet children({toggle})}
+        <div class="flex">
+            <ToolbarButton class="block items-center md:hidden" onclick={toggle}>
+                <SearchOutline class="h-5 w-5 text-gray-500 dark:text-gray-400"/>
+            </ToolbarButton>
+            <div class="hidden md:block">
+                <Search size="md" placeholder="Search..."/>
+            </div>
+            <NavHamburger class="bg-gray-500 text-white"/>
 
-    <form class="row" onsubmit={greet}>
-        <input id="greet-input" placeholder="Enter a name..." bind:value={name}/>
-        <button type="submit">Greet</button>
-    </form>
-    <p>{greetMsg}</p>
-</main>
+        </div>
+
+        <NavUl>
+            <NavLi class="bg-gray-500  text-white text-center mr-5" href="/"><p class="px-2.5"> New Project </p></NavLi>
+            <input
+                    type="file"
+                    bind:this={fileInput}
+                    webkitdirectory
+                    class="hidden"
+                    onchange={handleChange}
+            />
+
+            <NavLi onclick={() => fileInput.click()} class="bg-gray-500  text-white text-center mr-5">
+                <p class="px-2.5"> Open</p>
+            </NavLi>
+        </NavUl>
+    {/snippet}
+</Navbar>
+<hr class="h-px mt-2 border-0 bg-gray-500 m-5"/>
+<div class="w-px h-60 bg-gray-500 mx-3"></div>
+
 
 <style>
     .logo.vite:hover {
@@ -50,7 +68,7 @@
         font-weight: 400;
 
         color: #0f0f0f;
-        background-color: #f6f6f6;
+        background-color: #262626;
 
         font-synthesis: none;
         text-rendering: optimizeLegibility;
@@ -61,7 +79,6 @@
 
     .container {
         margin: 0;
-        padding-top: 10vh;
         display: flex;
         flex-direction: column;
         justify-content: center;
