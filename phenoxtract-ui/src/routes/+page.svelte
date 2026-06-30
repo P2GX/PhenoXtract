@@ -28,8 +28,6 @@ function handleChange(event: Event) {
     selectedFolder = target.files[0].webkitRelativePath.split("/")[0];
   }
 }
-
-let name = $state("");
 </script>
 
 <div class="app-container">
