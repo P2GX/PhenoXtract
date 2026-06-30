@@ -30,7 +30,7 @@ function getInitials(name: string): string {
 
 <button type="button"
         class="project-panel"
-        style="--hover-color: {hoverColor}; --bg-color={bgColor}"
+        style="--hover-color: {hoverColor}; --bg-color: {bgColor}"
         onclick={onClick}>
   <div class="square" style="--square-color: {squareColor}">{getInitials(name)}</div>
   <div>
