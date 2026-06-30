@@ -9,11 +9,15 @@ pub struct ProjectPanel {
 }
 
 impl ProjectPanel {
-    pub fn new(name: impl Into<String>, dir: impl Into<String>, color: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        dir: impl Into<String>,
+        square_color: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             dir: dir.into(),
-            square_color: color.into(),
+            square_color: square_color.into(),
         }
     }
 }
