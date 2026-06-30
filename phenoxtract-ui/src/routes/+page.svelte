@@ -3,11 +3,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button, Navbar, NavHamburger, NavLi, NavUl, Search, ToolbarButton } from "flowbite-svelte";
 import { SearchOutline } from "flowbite-svelte-icons";
 import { onMount } from "svelte";
-import ProjectPanel from "../components/ProjectPanel.svelte";
 import BugIcon from "../icons/BugIcon.svelte";
 import EmailIcon from "../icons/EmailIcon.svelte";
 import GithubLogo from "../icons/GithubLogo.svelte";
 import logo from "../icons/px-logo-2.png";
+import ProjectPanel from "../components/ProjectPanel.svelte";
 
 let fileInput: HTMLInputElement;
 let selectedFolder = $state<string>("");
@@ -69,9 +69,9 @@ let name = $state("");
 
   <div class="content-wrapper">
     <Navbar class="border-b border-gray-500">
-      {#snippet children({toggle})}
+      {#snippet children()}
         <div class="flex">
-          <ToolbarButton class="block items-center md:hidden" onclick={toggle}>
+          <ToolbarButton class="block items-center md:hidden">
             <SearchOutline class="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </ToolbarButton>
           <div class="hidden md:block">
@@ -203,5 +203,15 @@ footer {
   height: 2.5em;
   will-change: filter;
   transition: 0.75s;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
 }
 </style>
