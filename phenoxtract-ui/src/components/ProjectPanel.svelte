@@ -9,7 +9,7 @@ interface Props {
   hoverColor?: string;
   bgColor?: string;
 }
-let { name, directory, squareColor, onClick,  hoverColor = "#6b7280", bgColor= "transparent"}: Props = $props();
+let { name, directory, squareColor, onClick,  hoverColor = "var(--highlight-color)", bgColor= "transparent"}: Props = $props();
 
 function getInitials(name: string): string {
   const words = name
@@ -65,7 +65,7 @@ function getInitials(name: string): string {
   align-items: center;
   background-color: var(--square-color);
   color: white;
-  font-family: "RussOne", serif;
+  font-family: var(--highlight-font), serif;
   font-size: 0.8rem;
   border-radius: 5px;
 }
