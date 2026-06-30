@@ -3,11 +3,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button, Navbar, NavHamburger, NavLi, NavUl, Search, ToolbarButton } from "flowbite-svelte";
 import { SearchOutline } from "flowbite-svelte-icons";
 import { onMount } from "svelte";
+import ProjectPanel from "../components/ProjectPanel.svelte";
 import BugIcon from "../icons/BugIcon.svelte";
 import EmailIcon from "../icons/EmailIcon.svelte";
 import GithubLogo from "../icons/GithubLogo.svelte";
 import logo from "../icons/px-logo-2.png";
-import ProjectPanel from "../components/ProjectPanel.svelte";
 
 let fileInput: HTMLInputElement;
 let selectedFolder = $state<string>("");
