@@ -153,7 +153,7 @@ let name = $state("");
 footer {
   display: flex;
   padding: 1rem;
-  background: #262626;
+  background: var(--bg-color);
   margin-top: auto;
   justify-content: space-evenly;
   gap: 0.5rem;
@@ -173,11 +173,11 @@ footer {
 
 .sidebar {
   width: 250px;
-  border-right: 1px solid #6a7282;
+  border-right: 1px solid var(--highlight-color);
   display: flex;
   flex-direction: column;
   padding-top: 1rem;
-  background-color: #262626;
+  background-color: var(--bg-color);
   height: 100%;
 }
 
@@ -211,15 +211,15 @@ footer {
 .content-wrapper {
   flex: 1;
   display: flex;
-  flex-direction: column; /* Stacks Navbar on top, Main Content on bottom */
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
 .main-content {
-  flex: 1; /* Fills all remaining vertical space under the Navbar */
-  overflow-y: auto; /* Adds a scrollbar only here if your content is long */
-  background-color: #262626; /* Or whatever color you want your main area */
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--bg-color);
   padding: 1.5rem;
 }
 
@@ -230,7 +230,7 @@ footer {
   font-weight: 400;
 
   color: #0f0f0f;
-  background-color: #262626;
+  background-color: var(--bg-color);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -247,7 +247,7 @@ footer {
 
 a {
   font-weight: 500;
-  color: #6a7282;
+  color: var(--highlight-color);
   text-decoration: inherit;
 }
 
