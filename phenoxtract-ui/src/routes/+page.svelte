@@ -1,11 +1,8 @@
 <script lang="ts">
 import { invoke } from "@tauri-apps/api/core";
 import { Button, Navbar, NavHamburger, NavLi, NavUl, Search, ToolbarButton } from "flowbite-svelte";
-import { SearchOutline } from "flowbite-svelte-icons";
+import { BugSolid, GithubSolid, MailBoxSolid, SearchOutline } from "flowbite-svelte-icons";
 import { onMount } from "svelte";
-import BugIcon from "../icons/BugIcon.svelte";
-import EmailIcon from "../icons/EmailIcon.svelte";
-import GithubLogo from "../icons/GithubLogo.svelte";
 import logo from "../icons/px-logo-2.png";
 
 let fileInput: HTMLInputElement;
@@ -55,13 +52,13 @@ let name = $state("");
 
     <footer>
       <a href="https://github.com/P2GX/PhenoXtract" target="_blank"
-        ><GithubLogo size="50px" color="#000000FF" strokeWidth="0" /></a
+        ><GithubSolid width="40" height="40" /></a
       >
       <a href="https://github.com/P2GX/PhenoXtract/issues" target="_blank"
-        ><BugIcon size="50px" color="#000000FF" strokeWidth="0" /></a
+        ><BugSolid width="40" height="40" /></a
       >
       <a href="mailto:Rouven.Reuter@bih-charite.de" target="_blank"
-        ><EmailIcon size="50px" color="#000000FF" strokeWidth="0" /></a
+        ><MailBoxSolid width="40" height="40" /></a
       >
     </footer>
   </aside>
@@ -250,11 +247,11 @@ footer {
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #0f0f0f;
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+  color: #6a7282;
 }
 </style>
