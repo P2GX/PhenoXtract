@@ -1,14 +1,13 @@
 <script lang="ts">
-import { Button } from "flowbite-svelte";
-import { Navbar, NavLi, NavHamburger, NavUl, Search, ToolbarButton } from "flowbite-svelte";
-import GithubLogo from "../icons/GithubLogo.svelte";
+import { invoke } from "@tauri-apps/api/core";
+import { Button, Navbar, NavHamburger, NavLi, NavUl, Search, ToolbarButton } from "flowbite-svelte";
+import { SearchOutline } from "flowbite-svelte-icons";
+import { onMount } from "svelte";
+import ProjectPanel from "../components/ProjectPanel.svelte";
 import BugIcon from "../icons/BugIcon.svelte";
 import EmailIcon from "../icons/EmailIcon.svelte";
+import GithubLogo from "../icons/GithubLogo.svelte";
 import logo from "../icons/px-logo-2.png";
-import { invoke } from "@tauri-apps/api/core";
-import { onMount } from "svelte";
-
-import { SearchOutline } from "flowbite-svelte-icons";
 
 let fileInput: HTMLInputElement;
 let selectedFolder = $state<string>("");
@@ -100,56 +99,24 @@ let name = $state("");
       {/snippet}
     </Navbar>
     <div class="main-content">
-      <button
-        type="button"
-        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
-      >
-        <div class="square">ID</div>
-        <div>
-          <h3>Immunology Data</h3>
-          <span class="text-sm opacity-75">~/some/path/to/project</span>
-        </div>
-      </button>
-      <button
-        type="button"
-        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
-      >
-        <div class="square">ID</div>
-        <div>
-          <h3>Immunology Data</h3>
-          <span class="text-sm opacity-75">~/some/path/to/project</span>
-        </div>
-      </button>
-      <button
-        type="button"
-        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
-      >
-        <div class="square">ID</div>
-        <div>
-          <h3>Immunology Data</h3>
-          <span class="text-sm opacity-75">~/some/path/to/project</span>
-        </div>
-      </button>
-      <button
-        type="button"
-        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
-      >
-        <div class="square">ID</div>
-        <div>
-          <h3>Immunology Data</h3>
-          <span class="text-sm opacity-75">~/some/path/to/project</span>
-        </div>
-      </button>
-      <button
-        type="button"
-        class="bg-transparent hover:bg-gray-500 w-full h-24 text-left text-white p-3 rounded flex items-center gap-4"
-      >
-        <div class="square">ID</div>
-        <div>
-          <h3>Immunology Data</h3>
-          <span class="text-sm opacity-75">~/some/path/to/project</span>
-        </div>
-      </button>
+      <ProjectPanel
+        name="Immunology Data"
+        directory="~/projects/my-project"
+        squareColor="#ff3e00"
+        onClick={() => console.log('clicked')}
+      />
+      <ProjectPanel
+        name="prechter_data_analysis"
+        directory="~/projects/my-project"
+        squareColor="#ff00ff"
+        onClick={() => console.log('clicked')}
+      />
+      <ProjectPanel
+        name="acuteKidneyInjury"
+        directory="~/projects/my-project"
+        squareColor="orange"
+        onClick={() => console.log('clicked')}
+      />
     </div>
   </div>
 </div>
