@@ -130,18 +130,6 @@ footer {
   justify-content: space-evenly;
   gap: 0.5rem;
 }
-.square {
-  width: 25px;
-  height: 25px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #ff3e00;
-  color: white;
-  font-family: "RussOne", serif;
-  font-size: 0.8rem;
-  border-radius: 5px;
-}
 
 .sidebar {
   width: 250px;
@@ -183,15 +171,15 @@ footer {
 .content-wrapper {
   flex: 1;
   display: flex;
-  flex-direction: column; /* Stacks Navbar on top, Main Content on bottom */
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
 .main-content {
-  flex: 1; /* Fills all remaining vertical space under the Navbar */
-  overflow-y: auto; /* Adds a scrollbar only here if your content is long */
-  background-color: #262626; /* Or whatever color you want your main area */
+  flex: 1;
+  overflow-y: auto;
+  background-color: #262626;
   padding: 1.5rem;
 }
 
@@ -215,44 +203,5 @@ footer {
   height: 2.5em;
   will-change: filter;
   transition: 0.75s;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-
-  button:active {
-    background-color: #0f0f0f69;
-  }
 }
 </style>
