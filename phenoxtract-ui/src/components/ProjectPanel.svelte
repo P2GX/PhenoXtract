@@ -41,13 +41,13 @@ function getInitials(name: string): string {
 
 <style>
 .project-panel {
-  background-color: var(--bg-color);
+  background-color: var(--global-bg-color);
   width: 100%;
   height: 6rem;
   text-align: left;
   color: white;
   padding: 0.75rem;
-  border-radius: 0.25rem;
+  border-radius: 0.50rem;
   display: flex;
   align-items: center;
   gap: 1rem;

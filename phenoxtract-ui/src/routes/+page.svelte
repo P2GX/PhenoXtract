@@ -121,7 +121,7 @@ function handleChange(event: Event) {
 footer {
   display: flex;
   padding: 1rem;
-  background: var(--bg-color);
+  background: var(--global-bg-color);
   margin-top: auto;
   justify-content: space-evenly;
   gap: 0.5rem;
@@ -133,7 +133,7 @@ footer {
   display: flex;
   flex-direction: column;
   padding-top: 1rem;
-  background-color: var(--bg-color);
+  background-color: var(--global-bg-color);
   height: 100%;
 }
 
@@ -175,7 +175,7 @@ footer {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  background-color: var(--bg-color);
+  background-color: var(--global-bg-color);
   padding: 1.5rem;
 }
 
@@ -186,7 +186,7 @@ footer {
   font-weight: 400;
 
   color: #0f0f0f;
-  background-color: var(--bg-color);
+  background-color: var(--global-bg-color);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

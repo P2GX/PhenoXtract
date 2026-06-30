@@ -16,5 +16,5 @@
 :root {
   --highlight-font: "RussOne";
   --highlight-color: #6a7282;
-  --bg-color: #262626;
+  --global-bg-color: #262626;
 }
