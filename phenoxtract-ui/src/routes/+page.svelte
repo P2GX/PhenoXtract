@@ -11,20 +11,17 @@ let selectedFolder: string = $state("");
 let version: string = $state("");
 let value: string = $state("");
 
+let panels: Array<{ name: string; directory: string; squareColor: string }> = $state([]);
+
 onMount(async () => {
   try {
     version = await invoke("get_version");
+    panels = await invoke("get_project_panels");
   } catch (error) {
     console.error("Failed to get app version:", error);
     version = "Unknown";
   }
 });
-
-let panels: Array<{ name: string; directory: string; squareColor: string }> = [
-  { name: "Immunology Data", directory: "~/projects/my-project", squareColor: "#ff3e00" },
-  { name: "prechter_data_analysis", directory: "~/projects/my-project", squareColor: "#ff00ff" },
-  { name: "acuteKidneyInjury", directory: "~/projects/my-project", squareColor: "orange" },
-];
 
 let panelSubset = $derived(
   panels.filter((panel) => {
