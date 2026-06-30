@@ -7,8 +7,9 @@ import ProjectPanel from "../components/ProjectPanel.svelte";
 import logo from "../icons/px-logo-2.png";
 
 let fileInput: HTMLInputElement;
-let selectedFolder = $state<string>("");
-let version = $state<string>("");
+let selectedFolder: string = $state("");
+let version: string = $state("");
+let value: string = $state("");
 
 onMount(async () => {
   try {
@@ -18,6 +19,22 @@ onMount(async () => {
     version = "Unknown";
   }
 });
+
+let panels: Array<{ name: string; directory: string; squareColor: string }> = [
+  { name: "Immunology Data", directory: "~/projects/my-project", squareColor: "#ff3e00" },
+  { name: "prechter_data_analysis", directory: "~/projects/my-project", squareColor: "#ff00ff" },
+  { name: "acuteKidneyInjury", directory: "~/projects/my-project", squareColor: "orange" },
+];
+
+let panelSubset = $derived(
+  panels.filter((panel) => {
+    let lower_search_input = value.toLowerCase();
+    return (
+      panel.name.toLowerCase().includes(lower_search_input) ||
+      panel.directory.toLowerCase().includes(lower_search_input)
+    );
+  })
+);
 
 function handleChange(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -70,7 +87,7 @@ function handleChange(event: Event) {
             <SearchOutline class="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </ToolbarButton>
           <div class="hidden md:block">
-            <Search size="md" placeholder="Search..." />
+            <Search size="md" placeholder="Search projects..." bind:value />
           </div>
           <NavHamburger class="bg-gray-500 text-white" />
         </div>
@@ -95,24 +112,14 @@ function handleChange(event: Event) {
     </Navbar>
     <div class="main-content">
       <!--TODO: These are placeholders -->
-      <ProjectPanel
-        name="Immunology Data"
-        directory="~/projects/my-project"
-        squareColor="#ff3e00"
-        onClick={() => console.log('clicked')}
-      />
-      <ProjectPanel
-        name="prechter_data_analysis"
-        directory="~/projects/my-project"
-        squareColor="#ff00ff"
-        onClick={() => console.log('clicked')}
-      />
-      <ProjectPanel
-        name="acuteKidneyInjury"
-        directory="~/projects/my-project"
-        squareColor="orange"
-        onClick={() => console.log('clicked')}
-      />
+      {#each panelSubset as p}
+        <ProjectPanel
+          name={p.name}
+          directory={p.directory}
+          squareColor={p.squareColor}
+          onClick={() => console.log('clicked')}
+        />
+      {/each}
     </div>
   </div>
 </div>
