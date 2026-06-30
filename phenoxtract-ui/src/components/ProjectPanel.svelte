@@ -6,8 +6,10 @@ interface Props {
   directory: string;
   squareColor: string;
   onClick: MouseEventHandler<HTMLButtonElement>;
+  hoverColor?: string;
+  bgColor?: string;
 }
-let { name, directory, squareColor, onClick }: Props = $props();
+let { name, directory, squareColor, onClick,  hoverColor = "#6b7280", bgColor= "transparent"}: Props = $props();
 
 function getInitials(name: string): string {
   const words = name
@@ -26,7 +28,10 @@ function getInitials(name: string): string {
 }
 </script>
 
-<button type="button" class="project-panel" onclick={onClick}>
+<button type="button"
+        class="project-panel"
+        style="--hover-color: {hoverColor}; --bg-color={bgColor}"
+        onclick={onClick}>
   <div class="square" style="--square-color: {squareColor}">{getInitials(name)}</div>
   <div>
     <h3>{name}</h3>
@@ -36,7 +41,7 @@ function getInitials(name: string): string {
 
 <style>
 .project-panel {
-  background-color: transparent;
+  background-color: var(--bg-color);
   width: 100%;
   height: 6rem;
   text-align: left;
@@ -49,7 +54,7 @@ function getInitials(name: string): string {
 }
 
 .project-panel:hover {
-  background-color: #6b7280;
+  background-color: var(--hover-color);
 }
 
 .square {

@@ -94,6 +94,7 @@ function handleChange(event: Event) {
       {/snippet}
     </Navbar>
     <div class="main-content">
+      <!--TODO: These are placeholders -->
       <ProjectPanel
         name="Immunology Data"
         directory="~/projects/my-project"
