@@ -23,15 +23,16 @@ onMount(async () => {
   }
 });
 
-let panelSubset = $derived(
-  panels.filter((panel) => {
-    let lower_search_input = value.toLowerCase();
-    return (
-      panel.name.toLowerCase().includes(lower_search_input) ||
-      panel.directory.toLowerCase().includes(lower_search_input)
-    );
-  })
-);
+let panelSubset = $derived.by(() => {
+  let lower_search_input = value.toLowerCase();
+
+  return panels.filter((panel) => {
+    let safeName = (panel.name ?? "").toLowerCase();
+    let safeDir = (panel.directory ?? "").toLowerCase();
+
+    return safeName.includes(lower_search_input) || safeDir.includes(lower_search_input);
+  });
+});
 
 function handleChange(event: Event) {
   const target = event.target as HTMLInputElement;
