@@ -12,3 +12,7 @@
   font-weight: normal;
   font-style: normal;
 }
+
+:root {
+  --highlight-font: "RussOne";
+}

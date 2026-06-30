@@ -166,7 +166,7 @@ footer {
   align-items: center;
   background-color: #ff3e00;
   color: white;
-  font-family: "RussOne", serif;
+  font-family: var(--highlight-font), serif;
   font-size: 0.8rem;
   border-radius: 5px;
 }
@@ -192,7 +192,7 @@ footer {
   font-size: 1.5rem;
   margin: 0;
   font-weight: normal;
-  font-family: "RussOne", serif;
+  font-family: var(--highlight-font), serif;
   color: #ffffff;
 }
 
