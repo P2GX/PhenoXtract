@@ -247,11 +247,11 @@ footer {
 
 a {
   font-weight: 500;
-  color: #0f0f0f;
+  color: #6a7282;
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #6a7282;
+  color: #9ca3af;
 }
 </style>
