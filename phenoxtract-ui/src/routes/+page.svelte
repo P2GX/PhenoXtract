@@ -20,6 +20,7 @@ onMount(async () => {
   } catch (error) {
     console.error("Failed to get app version:", error);
     version = "Unknown";
+    panels = [{ name: "Error", directory: "Error", squareColor: "red" }];
   }
 });
 
