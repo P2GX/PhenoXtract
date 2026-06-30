@@ -41,7 +41,7 @@ function getInitials(name: string): string {
 
 <style>
 .project-panel {
-  background-color: var(--global-bg-color);
+  background-color: var(--bg-color);
   width: 100%;
   height: 6rem;
   text-align: left;
