@@ -43,9 +43,17 @@ let name = $state("");
       </div>
     </header>
 
-    <Button class="m-2.5 bg-gray-500 justify-start">Projects</Button>
-    <Button class="bg-transparent m-2.5 hover:bg-gray-500 justify-start">Settings</Button>
-    <Button class="bg-transparent m-2.5 hover:bg-gray-500 justify-start">Documentation</Button>
+    <Button class="bg-gray-500 m-2.5  justify-start" href="/">Projects</Button>
+    <Button class="bg-transparent hover:bg-gray-500  m-2.5  justify-start" href="/settings"
+      >Settings</Button
+    >
+    <!--TODO: Add actual url for documentation, when its online` -->
+    <Button
+      class="bg-transparent m-2.5 hover:bg-gray-500 justify-start"
+      href="https://github.com/P2GX/PhenoXtract"
+      target="_blank"
+      >Documentation</Button
+    >
 
     <footer>
       <a href="https://github.com/P2GX/PhenoXtract" target="_blank"
