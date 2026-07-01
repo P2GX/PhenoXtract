@@ -115,7 +115,6 @@ function handleChange(event: Event) {
         <ProjectPanel
           name={p.name}
           directory={p.directory}
-          squareColor={p.squareColor}
           onClick={() => console.log('clicked')}
         />
       {/each}
