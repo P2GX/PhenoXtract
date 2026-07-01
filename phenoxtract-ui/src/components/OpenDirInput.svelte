@@ -1,12 +1,34 @@
-<script>
+<script lang="ts">
+import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpenSolid } from "flowbite-svelte-icons";
 
-let directory = $state("");
+let selectedItem: string = $state("");
+
+async function triggerFileSelect() {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+    });
+
+    if (selected !== null) {
+      selectedItem = selected as string;
+    }
+  } catch (error) {
+    console.error("Failed to open directory picker:", error);
+  }
+}
 </script>
 
 <div class="input-wrapper">
-  <input id="dir-input" placeholder="Pick Dir..." bind:value={directory} />
-  <button id="pick-dir-button" type="button" aria-label="Open Directory" title="Browse">
+  <input id="dir-input" placeholder="Pick Dir..." bind:value={selectedItem} />
+  <button
+    id="pick-dir-button"
+    type="button"
+    aria-label="Open Directory"
+    title="Browse"
+    onclick={triggerFileSelect}
+  >
     <FolderOpenSolid />
   </button>
 </div>
