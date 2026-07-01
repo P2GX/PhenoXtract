@@ -43,7 +43,7 @@ async function triggerFileSelect() {
 </script>
 
 <div class="input-wrapper">
-  <input id="dir-input" {placeholder} bind:value />
+  <input id="dir-input" title="Directory Text Box" {placeholder} bind:value />
   <button
     id="pick-dir-button"
     type="button"
