@@ -14,9 +14,9 @@ mod types;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let dummy_panels = vec![
-        ProjectPanel::new("Immunology Data", "~/projects/my-project", "#ff3e00"),
-        ProjectPanel::new("prechter_data_analysis", "~/projects/my-project", "#ff00ff"),
-        ProjectPanel::new("acuteKidneyInjury", "~/projects/my-project", "orange"),
+        ProjectPanel::new("Immunology Data", "~/projects/my-project"),
+        ProjectPanel::new("prechter_data_analysis", "~/projects/my-project"),
+        ProjectPanel::new("acuteKidneyInjury", "~/projects/my-project"),
     ];
 
     let app_dirs = init_app_dirs().expect("Could not determine application directories");
