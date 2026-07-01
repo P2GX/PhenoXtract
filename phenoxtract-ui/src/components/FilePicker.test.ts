@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/svelte";
 import { open } from "@tauri-apps/plugin-dialog";
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import FilePicker from "./FilePicker.svelte";
 import "@testing-library/jest-dom/vitest";
 
