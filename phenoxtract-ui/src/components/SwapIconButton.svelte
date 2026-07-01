@@ -32,6 +32,9 @@ async function handleClick(event: MouseEvent) {
   isPending = true;
   try {
     await onclick(event);
+  } catch (error) {
+    isPending = false;
+    console.error("SwapIconButton task failed:", error);
   } finally {
     isPending = false;
   }
