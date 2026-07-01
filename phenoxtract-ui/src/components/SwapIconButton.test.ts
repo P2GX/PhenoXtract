@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import SwapIconButton from "./SwapIconButton.svelte";
 
 describe("SwapIconButton", () => {
-  // 1. Create raw snippets to simulate the icons passed into the component
   const idleIcon = createRawSnippet(() => ({
     render: () => '<span data-testid="idle-icon">Idle</span>',
   }));
