@@ -2,7 +2,7 @@
 import type { Snippet } from "svelte";
 
 /**
- * A button that changes its icon for the time the assinged function runs.
+ * A button that changes its icon for the time the assigned function runs.
  *
  * @example
  * ```svelte
