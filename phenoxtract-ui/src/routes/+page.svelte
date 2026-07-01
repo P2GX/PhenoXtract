@@ -20,10 +20,10 @@ onMount(async () => {
   }
 });
 
-let panels: Array<{ name: string; directory: string; squareColor: string }> = [
-  { name: "Immunology Data", directory: "~/projects/my-project", squareColor: "#ff3e00" },
-  { name: "prechter_data_analysis", directory: "~/projects/my-project", squareColor: "#ff00ff" },
-  { name: "acuteKidneyInjury", directory: "~/projects/my-project", squareColor: "orange" },
+let panels: Array<{ name: string; directory: string }> = [
+  { name: "Immunology Data", directory: "~/projects/my-project" },
+  { name: "prechter_data_analysis", directory: "~/projects/my-project" },
+  { name: "acuteKidneyInjury", directory: "~/projects/my-project" },
 ];
 
 let panelSubset = $derived(
@@ -116,7 +116,6 @@ function handleChange(event: Event) {
         <ProjectPanel
           name={p.name}
           directory={p.directory}
-          squareColor={p.squareColor}
           onClick={() => console.log('clicked')}
         />
       {/each}
