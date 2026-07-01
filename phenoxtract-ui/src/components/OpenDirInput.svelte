@@ -1,14 +1,23 @@
 <script lang="ts">
-import { open } from "@tauri-apps/plugin-dialog";
+import { type DialogFilter, open } from "@tauri-apps/plugin-dialog";
 import { FolderOpenSolid } from "flowbite-svelte-icons";
+
+interface Props {
+  directory: boolean;
+  multiple: boolean;
+  placeholder: string;
+  filters?: DialogFilter[];
+}
+let { directory, multiple, placeholder, filters }: Props = $props();
 
 let selectedItem: string = $state("");
 
 async function triggerFileSelect() {
   try {
     const selected = await open({
-      directory: true,
-      multiple: false,
+      directory: directory,
+      multiple: multiple,
+      filters: filters,
     });
 
     if (selected !== null) {
@@ -21,7 +30,7 @@ async function triggerFileSelect() {
 </script>
 
 <div class="input-wrapper">
-  <input id="dir-input" placeholder="Pick Dir..." bind:value={selectedItem} />
+  <input id="dir-input" {placeholder} bind:value={selectedItem} />
   <button
     id="pick-dir-button"
     type="button"
