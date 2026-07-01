@@ -2,15 +2,28 @@
 import { type DialogFilter, open } from "@tauri-apps/plugin-dialog";
 import { FolderOpenSolid } from "flowbite-svelte-icons";
 
+/**
+ * A text input paired with a native OS file/directory picker button,
+ * powered by Tauri's dialog plugin.
+ *
+ * @example
+ * ```svelte
+ * <FilePicker
+ *   directory
+ *   multiple={false}
+ *   placeholder="Choose a folder…"
+ *   bind:value={chosenPath}
+ * />
+ * ```
+ */
 interface Props {
   directory: boolean;
   multiple: boolean;
   placeholder: string;
   filters?: DialogFilter[];
+  value?: string;
 }
-let { directory, multiple, placeholder, filters }: Props = $props();
-
-let selectedItem: string = $state("");
+let { directory, multiple, placeholder, filters, value = $bindable("") }: Props = $props();
 
 async function triggerFileSelect() {
   try {
@@ -21,7 +34,7 @@ async function triggerFileSelect() {
     });
 
     if (selected !== null) {
-      selectedItem = selected as string;
+      value = selected as string;
     }
   } catch (error) {
     console.error("Failed to open directory picker:", error);
@@ -30,7 +43,7 @@ async function triggerFileSelect() {
 </script>
 
 <div class="input-wrapper">
-  <input id="dir-input" {placeholder} bind:value={selectedItem} />
+  <input id="dir-input" {placeholder} bind:value />
   <button
     id="pick-dir-button"
     type="button"
