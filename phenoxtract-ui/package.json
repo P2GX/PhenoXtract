@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "lint": "biome lint .",
     "check:all": "pnpm check && pnpm lint",
-    "format": "biome format . --write"
+    "format": "biome format . --write",
+    "test": "vitest run"
   },
   "license": "MIT",
   "dependencies": {
